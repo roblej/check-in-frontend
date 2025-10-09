@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Button from '@/components/Button';
-//tttttt
+//ttttee
 const CheckinHotel = () => {
   const [destination, setDestination] = useState('');
   const [checkIn, setCheckIn] = useState('');
