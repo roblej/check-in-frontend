@@ -22,6 +22,9 @@ const Header = () => {
               <a href="/faq" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
                 FAQ
               </a>
+              <a href="/admin" className="text-sm font-medium text-[#3B82F6] hover:text-blue-600 transition-colors font-semibold">
+                관리자
+              </a>
             </nav>
           </div>
           <div className="flex items-center gap-3">
