@@ -85,7 +85,7 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
           {/* 로고 및 토글 버튼 */}
           <div className="flex h-10 shrink-0 items-center justify-between">
             <div className={`text-lg font-bold text-[#7C3AED] transition-all duration-300 ${isOpen ? 'text-xl' : 'text-base'}`}>
-              {isOpen ? '체크인 마스터' : '마스터'}
+              {isOpen ? '체크인' : '보기'}
             </div>
             <button
               onClick={onToggle}
