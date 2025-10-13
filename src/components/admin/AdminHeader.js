@@ -33,20 +33,20 @@ const AdminHeader = ({ onMenuClick }) => {
         <div className="flex justify-between items-center h-12 sm:h-16">
           {/* 좌측: 메뉴 버튼 + 페이지 제목 */}
           <div className="flex items-center gap-4">
-            {/* 모바일 메뉴 버튼 */}
+            {/* 모바일/태블릿 메뉴 버튼 */}
             <button
               onClick={onMenuClick}
-              className="lg:hidden p-1.5 sm:p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              className="xl:hidden p-1 sm:p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
               aria-label="메뉴 열기"
             >
-              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
 
             {/* 페이지 제목 */}
             <div>
-              <h1 className="text-lg sm:text-xl font-semibold text-gray-900">
+              <h1 className="text-sm sm:text-xl font-semibold text-gray-900">
                 {currentTitle}
               </h1>
               <p className="text-xs sm:text-sm text-gray-500">
@@ -56,32 +56,32 @@ const AdminHeader = ({ onMenuClick }) => {
           </div>
 
           {/* 우측: 사용자 정보 및 액션 */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-4">
             {/* 알림 */}
-            <button className="relative p-1 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md">
-              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button className="relative p-0.5 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md">
+              <svg className="w-3 h-3 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5V3h5v14z" />
               </svg>
               {/* 알림 배지 */}
-              <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 h-1.5 w-1.5 sm:h-2 sm:w-2 bg-red-500 rounded-full"></span>
+              <span className="absolute top-0 right-0 sm:top-1 sm:right-1 h-1 w-1 sm:h-2 sm:w-2 bg-red-500 rounded-full"></span>
             </button>
 
             {/* 사용자 프로필 */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1 sm:gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-xs sm:text-sm font-medium text-gray-900">관리자</p>
                 <p className="text-xs text-gray-500">admin@checkin.com</p>
               </div>
               
               {/* 프로필 아바타 */}
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#3B82F6] rounded-full flex items-center justify-center">
+              <div className="w-5 h-5 sm:w-8 sm:h-8 bg-[#3B82F6] rounded-full flex items-center justify-center">
                 <span className="text-white text-xs sm:text-sm font-medium">A</span>
               </div>
 
               {/* 로그아웃 버튼 */}
               <button 
                 onClick={handleLogout}
-                className="text-xs sm:text-sm text-gray-600 hover:text-gray-900 px-2 py-1 sm:px-3 sm:py-1.5 rounded hover:bg-gray-100 transition-colors"
+                className="text-xs sm:text-sm text-gray-600 hover:text-gray-900 px-1 py-0.5 sm:px-3 sm:py-1.5 rounded hover:bg-gray-100 transition-colors"
               >
                 로그아웃
               </button>

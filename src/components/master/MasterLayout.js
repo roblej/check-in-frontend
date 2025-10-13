@@ -12,8 +12,8 @@ const MasterLayout = ({ children, currentPage }) => {
   };
 
   const handleMainAreaClick = () => {
-    // 사이드바가 펼쳐져 있을 때만 접기
-    if (sidebarOpen) {
+    // 모바일에서만 사이드바 닫기
+    if (sidebarOpen && window.innerWidth < 1024) {
       setSidebarOpen(false);
     }
   };
@@ -27,9 +27,9 @@ const MasterLayout = ({ children, currentPage }) => {
         onToggle={handleSidebarToggle}
       />
       
-      {/* 메인 콘텐츠 영역 */}
+      {/* 메인 콘텐츠 영역 - 반응형 레이아웃 */}
       <div 
-        className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-24'}`}
+        className="xl:ml-64"
         onClick={handleMainAreaClick}
       >
         {/* 헤더 */}
@@ -38,8 +38,10 @@ const MasterLayout = ({ children, currentPage }) => {
         />
         
         {/* 페이지 콘텐츠 */}
-        <main className="p-6">
-          {children}
+        <main className="p-3 sm:p-6 max-w-full overflow-hidden">
+          <div className="max-w-7xl">
+            {children}
+          </div>
         </main>
       </div>
       

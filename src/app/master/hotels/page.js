@@ -135,31 +135,31 @@ const HotelManagement = () => {
         {/* 페이지 헤더 */}
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">호텔 관리</h2>
-            <p className="text-gray-600">등록된 호텔을 관리하고 모니터링하세요</p>
+            <h2 className="text-lg sm:text-2xl font-bold text-gray-900">호텔 관리</h2>
+            <p className="text-sm sm:text-base text-gray-600">등록된 호텔을 관리하고 모니터링하세요</p>
           </div>
-          <button className="bg-[#7C3AED] text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+          <button className="bg-[#7C3AED] text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm">
             호텔 등록
           </button>
         </div>
 
         {/* 검색 및 필터 */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <div className="bg-white p-3 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
             <div className="flex-1">
               <input
                 type="text"
                 placeholder="호텔명, 사업자명, 위치로 검색..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-2 sm:px-4 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-xs sm:text-sm"
               />
             </div>
             <div className="sm:w-48">
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-2 sm:px-4 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-xs sm:text-sm"
               >
                 <option value="all">모든 상태</option>
                 <option value="active">운영중</option>
@@ -172,33 +172,33 @@ const HotelManagement = () => {
 
         {/* 일괄 작업 버튼 */}
         {selectedHotels.length > 0 && (
-          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+          <div className="bg-purple-50 p-2 sm:p-4 rounded-lg border border-purple-200">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-purple-700">
+              <span className="text-xs sm:text-sm text-purple-700">
                 {selectedHotels.length}개 호텔이 선택됨
               </span>
-              <div className="flex gap-2">
+              <div className="flex gap-1 sm:gap-2">
                 <button
                   onClick={() => handleBulkAction('activate')}
-                  className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                  className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm bg-green-600 text-white rounded hover:bg-green-700"
                 >
                   활성화
                 </button>
                 <button
                   onClick={() => handleBulkAction('deactivate')}
-                  className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
+                  className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
                 >
                   비활성화
                 </button>
                 <button
                   onClick={() => handleBulkAction('suspend')}
-                  className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                  className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm bg-red-600 text-white rounded hover:bg-red-700"
                 >
                   정지
                 </button>
                 <button
                   onClick={() => handleBulkAction('message')}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
                   메시지 전송
                 </button>
@@ -207,10 +207,10 @@ const HotelManagement = () => {
           </div>
         )}
 
-        {/* 호텔 목록 테이블 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {/* 호텔 목록 - 데스크톱 테이블 */}
+        <div className="hidden sm:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left">
@@ -303,6 +303,50 @@ const HotelManagement = () => {
             </table>
           </div>
         </div>
+
+        {/* 호텔 목록 - 모바일 카드 형태 */}
+        <div className="sm:hidden space-y-3">
+          {filteredHotels.map((hotel) => (
+            <div key={hotel.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedHotels.includes(hotel.id)}
+                    onChange={() => handleSelectHotel(hotel.id)}
+                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <div>
+                    <div className="text-xs font-medium text-gray-900">{hotel.name}</div>
+                    <div className="text-xs text-gray-500">{hotel.owner}</div>
+                  </div>
+                </div>
+                <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(hotel.status)}`}>
+                  {getStatusText(hotel.status)}
+                </span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <div className="text-xs text-gray-500">
+                  {hotel.monthlyRevenue} • 예약 {hotel.totalReservations}건
+                </div>
+                <div className="flex gap-1">
+                  <button className="text-[#7C3AED] hover:text-purple-800 text-xs">
+                    상세
+                  </button>
+                  <button className="text-blue-600 hover:text-blue-800 text-xs">
+                    메시지
+                  </button>
+                  <button className="text-red-600 hover:text-red-800 text-xs">
+                    정지
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 통계 요약 */}
 
         {/* 통계 요약 */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
