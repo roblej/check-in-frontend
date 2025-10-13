@@ -35,7 +35,7 @@ const AdminDashboard = () => {
     }
   ];
 
-  // 최근 예약 데이터
+  // 최근 예약 데이터 (축소)
   const recentReservations = [
     {
       id: 'R001',
@@ -54,15 +54,6 @@ const AdminDashboard = () => {
       checkOut: '2024-01-16',
       status: 'checked-in',
       amount: '₩280,000'
-    },
-    {
-      id: 'R003',
-      guestName: '박민수',
-      roomType: '스탠다드룸',
-      checkIn: '2024-01-16',
-      checkOut: '2024-01-18',
-      status: 'pending',
-      amount: '₩320,000'
     }
   ];
 

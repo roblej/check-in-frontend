@@ -3,68 +3,68 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
+const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
   const pathname = usePathname();
   const menuItems = [
     {
       id: 'dashboard',
-      name: '대시보드',
+      name: '사이트 대시보드',
       icon: '📊',
-      path: '/admin'
+      path: '/master'
     },
     {
-      id: 'reservations',
-      name: '예약 관리',
-      icon: '📅',
-      path: '/admin/reservations',
-      submenu: [
-        { id: 'reservation-list', name: '예약 현황', path: '/admin/reservations' },
-        { id: 'checkin-checkout', name: '체크인/체크아웃', path: '/admin/checkin-checkout' },
-        { id: 'reservation-calendar', name: '예약 캘린더', path: '/admin/calendar' }
-      ]
-    },
-    {
-      id: 'rooms',
-      name: '객실 관리',
+      id: 'hotels',
+      name: '호텔 관리',
       icon: '🏨',
-      path: '/admin/rooms',
+      path: '/master/hotels',
       submenu: [
-        { id: 'room-list', name: '객실 현황', path: '/admin/rooms' },
-        { id: 'room-pricing', name: '가격 설정', path: '/admin/room-pricing' },
-        { id: 'room-types', name: '객실 타입', path: '/admin/room-types' }
+        { id: 'hotel-list', name: '호텔 목록', path: '/master/hotels' },
+        { id: 'hotel-approval', name: '호텔 승인', path: '/master/hotel-approval' },
+        { id: 'hotel-statistics', name: '호텔 통계', path: '/master/hotel-statistics' }
       ]
     },
     {
-      id: 'customers',
-      name: '고객 관리',
+      id: 'members',
+      name: '회원 관리',
       icon: '👥',
-      path: '/admin/customers',
+      path: '/master/members',
       submenu: [
-        { id: 'customer-list', name: '고객 목록', path: '/admin/customers' },
-        { id: 'customer-history', name: '이용 이력', path: '/admin/customer-history' },
-        { id: 'customer-feedback', name: '고객 피드백', path: '/admin/feedback' }
+        { id: 'member-list', name: '회원 목록', path: '/master/members' },
+        { id: 'member-history', name: '회원 이력', path: '/master/member-history' },
+        { id: 'member-statistics', name: '회원 통계', path: '/master/member-statistics' }
       ]
     },
     {
-      id: 'revenue',
-      name: '매출 관리',
-      icon: '💰',
-      path: '/admin/revenue',
+      id: 'messages',
+      name: '메시지 관리',
+      icon: '💬',
+      path: '/master/messages',
       submenu: [
-        { id: 'revenue-dashboard', name: '매출 현황', path: '/admin/revenue' },
-        { id: 'revenue-analysis', name: '수익 분석', path: '/admin/revenue-analysis' },
-        { id: 'settlement', name: '정산 관리', path: '/admin/settlement' }
+        { id: 'send-message', name: '메시지 전송', path: '/master/messages' },
+        { id: 'message-history', name: '전송 이력', path: '/master/message-history' },
+        { id: 'message-templates', name: '메시지 템플릿', path: '/master/message-templates' }
+      ]
+    },
+    {
+      id: 'statistics',
+      name: '통계 분석',
+      icon: '📈',
+      path: '/master/statistics',
+      submenu: [
+        { id: 'site-statistics', name: '사이트 통계', path: '/master/statistics' },
+        { id: 'revenue-analysis', name: '수익 분석', path: '/master/revenue-analysis' },
+        { id: 'user-behavior', name: '사용자 행동', path: '/master/user-behavior' }
       ]
     },
     {
       id: 'settings',
-      name: '설정',
+      name: '시스템 설정',
       icon: '⚙️',
-      path: '/admin/settings',
+      path: '/master/settings',
       submenu: [
-        { id: 'hotel-info', name: '호텔 정보', path: '/admin/hotel-info' },
-        { id: 'operational-settings', name: '운영 설정', path: '/admin/operational-settings' },
-        { id: 'user-management', name: '사용자 관리', path: '/admin/users' }
+        { id: 'site-settings', name: '사이트 설정', path: '/master/settings' },
+        { id: 'admin-management', name: '관리자 관리', path: '/master/admin-management' },
+        { id: 'system-logs', name: '시스템 로그', path: '/master/system-logs' }
       ]
     }
   ];
@@ -84,8 +84,8 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
         <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white border-r border-gray-200 px-3 py-6">
           {/* 로고 및 토글 버튼 */}
           <div className="flex h-10 shrink-0 items-center justify-between">
-            <div className={`text-lg font-bold text-[#3B82F6] transition-all duration-300 ${isOpen ? 'text-xl' : 'text-base'}`}>
-              {isOpen ? '체크인 관리자' : '관리자'}
+            <div className={`text-lg font-bold text-[#7C3AED] transition-all duration-300 ${isOpen ? 'text-xl' : 'text-base'}`}>
+              {isOpen ? '체크인 마스터' : '마스터'}
             </div>
             <button
               onClick={onToggle}
@@ -112,7 +112,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
                       href={item.path}
                       className={`group flex items-center ${isOpen ? 'gap-x-3' : 'justify-center'} rounded-md p-3 text-sm leading-6 font-semibold w-full text-left transition-colors ${
                         isActive(item.path) || isSubmenuActive(item.submenu || [])
-                          ? 'bg-[#3B82F6] text-white'
+                          ? 'bg-[#7C3AED] text-white'
                           : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                       }`}
                       title={!isOpen ? item.name : ''}
@@ -132,7 +132,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
                               href={subItem.path}
                               className={`block px-3 py-2 text-sm rounded-md transition-colors w-full text-left ${
                                 isActive(subItem.path)
-                                  ? 'bg-blue-50 text-[#3B82F6] font-medium'
+                                  ? 'bg-purple-50 text-[#7C3AED] font-medium'
                                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                               }`}
                             >
@@ -155,7 +155,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
         <div className="flex h-full flex-col px-4 py-6">
           {/* 모바일 헤더 */}
           <div className="flex items-center justify-between mb-6">
-            <div className="text-xl font-bold text-[#3B82F6]">체크인 관리자</div>
+            <div className="text-xl font-bold text-[#7C3AED]">체크인 마스터</div>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
@@ -176,7 +176,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
                       href={item.path}
                       className={`group flex gap-x-3 rounded-md p-3 text-sm leading-6 font-semibold w-full text-left transition-colors ${
                         isActive(item.path) || isSubmenuActive(item.submenu || [])
-                          ? 'bg-[#3B82F6] text-white'
+                          ? 'bg-[#7C3AED] text-white'
                           : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                       }`}
                     >
@@ -193,7 +193,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
                               href={subItem.path}
                               className={`block px-3 py-2 text-sm rounded-md transition-colors w-full text-left ${
                                 isActive(subItem.path)
-                                  ? 'bg-blue-50 text-[#3B82F6] font-medium'
+                                  ? 'bg-purple-50 text-[#7C3AED] font-medium'
                                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                               }`}
                             >
@@ -214,4 +214,4 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
   );
 };
 
-export default AdminSidebar;
+export default MasterSidebar;

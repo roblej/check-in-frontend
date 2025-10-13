@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 
-const AdminHeader = ({ onMenuClick }) => {
+const MasterHeader = ({ onMenuClick }) => {
   const pathname = usePathname();
   const router = useRouter();
   
@@ -12,20 +12,17 @@ const AdminHeader = ({ onMenuClick }) => {
   };
   
   const pageTitles = {
-    '/admin': '대시보드',
-    '/admin/reservations': '예약 관리',
-    '/admin/checkin-checkout': '체크인/체크아웃',
-    '/admin/rooms': '객실 관리',
-    '/admin/room-pricing': '가격 설정',
-    '/admin/room-types': '객실 타입',
-    '/admin/customers': '고객 관리',
-    '/admin/customer-history': '이용 이력',
-    '/admin/feedback': '고객 피드백',
-    '/admin/revenue': '매출 관리',
-    '/admin/settings': '설정'
+    '/master': '사이트 대시보드',
+    '/master/hotels': '호텔 관리',
+    '/master/hotel-approval': '호텔 승인',
+    '/master/members': '회원 관리',
+    '/master/member-history': '회원 이력',
+    '/master/messages': '메시지 관리',
+    '/master/statistics': '통계 분석',
+    '/master/settings': '시스템 설정'
   };
 
-  const currentTitle = pageTitles[pathname] || '관리자';
+  const currentTitle = pageTitles[pathname] || '사이트 관리자';
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
@@ -50,7 +47,7 @@ const AdminHeader = ({ onMenuClick }) => {
                 {currentTitle}
               </h1>
               <p className="text-xs sm:text-sm text-gray-500">
-                호텔 관리 시스템
+                체크인 사이트 관리 시스템
               </p>
             </div>
           </div>
@@ -69,13 +66,13 @@ const AdminHeader = ({ onMenuClick }) => {
             {/* 사용자 프로필 */}
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="text-right hidden sm:block">
-                <p className="text-xs sm:text-sm font-medium text-gray-900">관리자</p>
-                <p className="text-xs text-gray-500">admin@checkin.com</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-900">사이트 관리자</p>
+                <p className="text-xs text-gray-500">master@checkin.com</p>
               </div>
               
               {/* 프로필 아바타 */}
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#3B82F6] rounded-full flex items-center justify-center">
-                <span className="text-white text-xs sm:text-sm font-medium">A</span>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#7C3AED] rounded-full flex items-center justify-center">
+                <span className="text-white text-xs sm:text-sm font-medium">M</span>
               </div>
 
               {/* 로그아웃 버튼 */}
@@ -93,4 +90,5 @@ const AdminHeader = ({ onMenuClick }) => {
   );
 };
 
-export default AdminHeader;
+export default MasterHeader;
+
