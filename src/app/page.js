@@ -10,13 +10,19 @@ const CheckinHotel = () => {
   const [destination, setDestination] = useState('');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
+  const [diningDate, setDiningDate] = useState('');
+  const [mealType, setMealType] = useState('lunch');
   const [adults, setAdults] = useState(2);
   const [selectedType, setSelectedType] = useState('hotel');
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log('검색:', { destination, checkIn, checkOut, adults });
+    if (selectedType === 'dining') {
+      console.log('다이닝 검색:', { destination, diningDate, mealType, adults });
+    } else {
+      console.log('호텔 검색:', { destination, checkIn, checkOut, adults });
+    }
   };
 
   const slides = [
@@ -197,7 +203,7 @@ const CheckinHotel = () => {
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  호텔모텔국내전용
+                  숙소
                 </button>
               <button
                 onClick={() => setSelectedType('dining')}
@@ -213,45 +219,78 @@ const CheckinHotel = () => {
 
               {/* 검색 입력 필드 */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                {/* 목적지 */}
+                {/* 목적지/호텔 */}
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    호텔 어디로 여행 가시나요?
+                    {selectedType === 'dining' ? '식사를 어디서 하시나요?' : '어디로 여행 가시나요?'}
                   </label>
                   <input
                     type="text"
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
-                    placeholder="목적지를 입력하세요"
+                    placeholder={selectedType === 'dining' ? '호텔명을 입력하세요' : '목적지를 입력하세요'}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
                   />
                 </div>
 
-                {/* 체크인/체크아웃 */}
+                {/* 날짜 선택 */}
                 <div className="lg:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    숙박일정을 선택하세요
+                    {selectedType === 'dining' ? '식사일정을 선택하세요' : '숙박일정을 선택하세요'}
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="date"
-                      value={checkIn}
-                      onChange={(e) => setCheckIn(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
-                    />
-                    <input
-                      type="date"
-                      value={checkOut}
-                      onChange={(e) => setCheckOut(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
-                    />
-                  </div>
+                  {selectedType === 'dining' ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="date"
+                        value={diningDate}
+                        onChange={(e) => setDiningDate(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setMealType('lunch')}
+                          className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                            mealType === 'lunch'
+                              ? 'bg-[#3B82F6] text-white'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          점심
+                        </button>
+                        <button
+                          onClick={() => setMealType('dinner')}
+                          className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                            mealType === 'dinner'
+                              ? 'bg-[#3B82F6] text-white'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          저녁
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="date"
+                        value={checkIn}
+                        onChange={(e) => setCheckIn(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
+                      />
+                      <input
+                        type="date"
+                        value={checkOut}
+                        onChange={(e) => setCheckOut(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* 인원 선택 */}
                 <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    성인 {adults}명
+                    {`인원 ${adults}명`}
                   </label>
                   <div className="flex items-center gap-2">
                     <button
