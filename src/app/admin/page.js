@@ -1,6 +1,7 @@
 'use client';
 
 import AdminLayout from '@/components/admin/AdminLayout';
+import { Building2, LogOut, Calendar, DollarSign, Users, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 const AdminDashboard = () => {
   // 통계 데이터
@@ -10,32 +11,32 @@ const AdminDashboard = () => {
       value: '24',
       change: '+12%',
       changeType: 'positive',
-      icon: '🏨'
+      icon: <Building2 size={40} />
     },
     {
       title: '오늘 체크아웃',
       value: '18',
       change: '+8%',
       changeType: 'positive',
-      icon: '🚪'
+      icon: <LogOut size={40} />
     },
     {
       title: '예약 대기',
       value: '156',
       change: '+23%',
       changeType: 'positive',
-      icon: '📅'
+      icon: <Calendar size={40} />
     },
     {
       title: '오늘 매출',
       value: '₩2,450,000',
       change: '+15%',
       changeType: 'positive',
-      icon: '💰'
+      icon: <DollarSign size={40} />
     }
   ];
 
-  // 최근 예약 데이터
+  // 최근 예약 데이터 (축소)
   const recentReservations = [
     {
       id: 'R001',
@@ -54,15 +55,6 @@ const AdminDashboard = () => {
       checkOut: '2024-01-16',
       status: 'checked-in',
       amount: '₩280,000'
-    },
-    {
-      id: 'R003',
-      guestName: '박민수',
-      roomType: '스탠다드룸',
-      checkIn: '2024-01-16',
-      checkOut: '2024-01-18',
-      status: 'pending',
-      amount: '₩320,000'
     }
   ];
 
@@ -110,7 +102,7 @@ const AdminDashboard = () => {
                   <p className="text-sm font-medium text-gray-600">{stat.title}</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
                 </div>
-                <div className="text-3xl">{stat.icon}</div>
+                <div className="text-blue-600">{stat.icon}</div>
               </div>
               <div className="mt-4 flex items-center">
                 <span className={`text-sm font-medium ${

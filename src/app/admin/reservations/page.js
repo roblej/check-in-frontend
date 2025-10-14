@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { ClipboardList, Calendar, Building2 } from 'lucide-react';
 
 const ReservationsPage = () => {
   const [selectedTab, setSelectedTab] = useState('list');
@@ -133,9 +134,9 @@ const ReservationsPage = () => {
   });
 
   const tabs = [
-    { id: 'list', name: '예약 목록', icon: '📋' },
-    { id: 'calendar', name: '예약 캘린더', icon: '📅' },
-    { id: 'checkin', name: '체크인 관리', icon: '🏨' }
+    { id: 'list', name: '예약 목록', icon: <ClipboardList size={20} /> },
+    { id: 'calendar', name: '예약 캘린더', icon: <Calendar size={20} /> },
+    { id: 'checkin', name: '체크인 관리', icon: <Building2 size={20} /> }
   ];
 
   return (

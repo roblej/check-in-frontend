@@ -2,14 +2,15 @@
 
 import { useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { Building2, Settings, Users } from 'lucide-react';
 
 const SettingsPage = () => {
   const [activeTab, setActiveTab] = useState('hotel-info');
 
   const tabs = [
-    { id: 'hotel-info', name: '호텔 정보', icon: '🏨' },
-    { id: 'operational-settings', name: '운영 설정', icon: '⚙️' },
-    { id: 'user-management', name: '사용자 관리', icon: '👥' }
+    { id: 'hotel-info', name: '호텔 정보', icon: <Building2 size={20} /> },
+    { id: 'operational-settings', name: '운영 설정', icon: <Settings size={20} /> },
+    { id: 'user-management', name: '사용자 관리', icon: <Users size={20} /> }
   ];
 
   const hotelInfo = {
