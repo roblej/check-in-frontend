@@ -1,6 +1,7 @@
 'use client';
 
 import AdminLayout from '@/components/admin/AdminLayout';
+import { Star } from 'lucide-react';
 
 const CustomerHistoryPage = () => {
   const customerHistory = [
@@ -78,7 +79,12 @@ const CustomerHistoryPage = () => {
   };
 
   const getRatingStars = (rating) => {
-    return '⭐'.repeat(rating) + '☆'.repeat(5 - rating);
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star 
+        key={i} 
+        className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+      />
+    ));
   };
 
   return (
@@ -219,7 +225,7 @@ const CustomerHistoryPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">⭐</div>
+              <div className="text-yellow-600 mr-4"><Star size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">평균 평점</p>
                 <p className="text-2xl font-bold text-gray-900">

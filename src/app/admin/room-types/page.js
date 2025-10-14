@@ -1,6 +1,7 @@
 'use client';
 
 import AdminLayout from '@/components/admin/AdminLayout';
+import { Bed, Tv, Snowflake, Sofa, Utensils, Building2, CheckCircle, Users } from 'lucide-react';
 
 const RoomTypesPage = () => {
   const roomTypes = [
@@ -11,7 +12,7 @@ const RoomTypesPage = () => {
       capacity: 2,
       bedType: '더블베드',
       amenities: ['무료 WiFi', '에어컨', 'TV', '미니바', '욕실'],
-      images: ['🛏️', '📺', '❄️'],
+      images: [<Bed size={24} />, <Tv size={24} />, <Snowflake size={24} />],
       status: 'active'
     },
     {
@@ -21,7 +22,7 @@ const RoomTypesPage = () => {
       capacity: 3,
       bedType: '킹베드',
       amenities: ['무료 WiFi', '에어컨', 'TV', '미니바', '욕실', '발코니', '소파'],
-      images: ['🛏️', '📺', '❄️', '🛋️'],
+      images: [<Bed size={24} />, <Tv size={24} />, <Snowflake size={24} />, <Sofa size={24} />],
       status: 'active'
     },
     {
@@ -31,7 +32,7 @@ const RoomTypesPage = () => {
       capacity: 4,
       bedType: '킹베드 + 소파베드',
       amenities: ['무료 WiFi', '에어컨', 'TV', '미니바', '욕실', '발코니', '소파', '다이닝 테이블', '작업 공간'],
-      images: ['🛏️', '📺', '❄️', '🛋️', '🍽️'],
+      images: [<Bed size={24} />, <Tv size={24} />, <Snowflake size={24} />, <Sofa size={24} />, <Utensils size={24} />],
       status: 'active'
     },
     {
@@ -41,7 +42,7 @@ const RoomTypesPage = () => {
       capacity: 6,
       bedType: '킹베드 + 트윈베드',
       amenities: ['무료 WiFi', '에어컨', 'TV', '미니바', '욕실', '발코니', '소파', '다이닝 테이블', '작업 공간', '주방', '거실'],
-      images: ['🛏️', '📺', '❄️', '🛋️', '🍽️', '🍳'],
+      images: [<Bed size={24} />, <Tv size={24} />, <Snowflake size={24} />, <Sofa size={24} />, <Utensils size={24} />],
       status: 'active'
     }
   ];
@@ -129,7 +130,7 @@ const RoomTypesPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">🏨</div>
+              <div className="text-blue-600 mr-4"><Building2 size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">총 객실 타입</p>
                 <p className="text-2xl font-bold text-gray-900">{roomTypes.length}</p>
@@ -139,7 +140,7 @@ const RoomTypesPage = () => {
           
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">✅</div>
+              <div className="text-green-600 mr-4"><CheckCircle size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">활성 타입</p>
                 <p className="text-2xl font-bold text-gray-900">{roomTypes.filter(rt => rt.status === 'active').length}</p>
@@ -149,7 +150,7 @@ const RoomTypesPage = () => {
           
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">👥</div>
+              <div className="text-purple-600 mr-4"><Users size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">평균 수용 인원</p>
                 <p className="text-2xl font-bold text-gray-900">
