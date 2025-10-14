@@ -19,7 +19,7 @@ const MasterLayout = ({ children, currentPage }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex overflow-hidden master-layout">
       {/* 사이드바 */}
       <MasterSidebar 
         isOpen={sidebarOpen} 
@@ -29,7 +29,7 @@ const MasterLayout = ({ children, currentPage }) => {
       
       {/* 메인 콘텐츠 영역 - 반응형 레이아웃 */}
       <div 
-        className="xl:ml-72"
+        className="flex-1 flex flex-col h-screen xl:ml-72"
         onClick={handleMainAreaClick}
       >
         {/* 헤더 */}
@@ -38,7 +38,7 @@ const MasterLayout = ({ children, currentPage }) => {
         />
         
         {/* 페이지 콘텐츠 */}
-        <main className="p-3 sm:p-6 w-full">
+        <main className="flex-1 p-3 sm:p-6 overflow-y-auto">
           <div className="w-full">
             {children}
           </div>

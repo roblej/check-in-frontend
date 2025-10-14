@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
-import { Building2, Bed, Calendar, DollarSign } from 'lucide-react';
+import { Building2, Bed, Calendar, DollarSign, Star } from 'lucide-react';
 
 const HotelManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -257,7 +257,7 @@ const HotelManagement = () => {
                       <div>
                         <div className="text-sm font-medium text-gray-900">{hotel.name}</div>
                         <div className="text-sm text-gray-500">{hotel.location}</div>
-                        <div className="text-sm text-gray-500">객실 {hotel.rooms}개 • ⭐ {hotel.rating}</div>
+                        <div className="text-sm text-gray-500">객실 {hotel.rooms}개 • <Star className="inline w-3 h-3 text-yellow-400 fill-current" /> {hotel.rating}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 w-80">

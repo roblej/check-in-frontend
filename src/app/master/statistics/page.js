@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
+import { DollarSign, Calendar, Building2, Users, Star } from 'lucide-react';
 
 const Statistics = () => {
   const [dateRange, setDateRange] = useState('month');
@@ -14,7 +15,7 @@ const Statistics = () => {
       value: '₩2.4억',
       change: '+18.2%',
       changeType: 'positive',
-      icon: '💰',
+      icon: <DollarSign size={40} />,
       description: '이번 달 총 매출액'
     },
     {
@@ -22,7 +23,7 @@ const Statistics = () => {
       value: '15,432',
       change: '+12.5%',
       changeType: 'positive',
-      icon: '📅',
+      icon: <Calendar size={40} />,
       description: '이번 달 총 예약 건수'
     },
     {
@@ -30,7 +31,7 @@ const Statistics = () => {
       value: '127',
       change: '+8',
       changeType: 'positive',
-      icon: '🏨',
+      icon: <Building2 size={40} />,
       description: '현재 운영중인 호텔'
     },
     {
@@ -38,7 +39,7 @@ const Statistics = () => {
       value: '2,845',
       change: '+23.1%',
       changeType: 'positive',
-      icon: '👥',
+      icon: <Users size={40} />,
       description: '이번 달 신규 가입자'
     }
   ];
@@ -294,7 +295,7 @@ const Statistics = () => {
                       <div>
                         <div className="text-sm font-medium text-gray-900">{hotel.name}</div>
                         <div className="text-xs text-gray-500">
-                          예약 {hotel.reservations}건 • ⭐ {hotel.rating}
+                          예약 {hotel.reservations}건 • <Star className="inline w-3 h-3 text-yellow-400 fill-current" /> {hotel.rating}
                         </div>
                       </div>
                     </div>

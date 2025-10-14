@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
+import { Key, LogOut, Calendar, CreditCard, X, Edit, Star, ClipboardList, Hand } from 'lucide-react';
 
 const MemberHistory = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -98,23 +99,23 @@ const MemberHistory = () => {
   const getActionIcon = (action) => {
     switch (action) {
       case 'signup':
-        return '👋';
+        return <Hand className="w-4 h-4 text-green-600" />;
       case 'login':
-        return '🔑';
+        return <Key className="w-4 h-4 text-blue-600" />;
       case 'logout':
-        return '🚪';
+        return <LogOut className="w-4 h-4 text-gray-600" />;
       case 'reservation':
-        return '📅';
+        return <Calendar className="w-4 h-4 text-green-600" />;
       case 'payment':
-        return '💳';
+        return <CreditCard className="w-4 h-4 text-purple-600" />;
       case 'cancellation':
-        return '❌';
+        return <X className="w-4 h-4 text-red-600" />;
       case 'profile_update':
-        return '✏️';
+        return <Edit className="w-4 h-4 text-orange-600" />;
       case 'review':
-        return '⭐';
+        return <Star className="w-4 h-4 text-yellow-600" />;
       default:
-        return '📋';
+        return <ClipboardList className="w-4 h-4 text-gray-600" />;
     }
   };
 
@@ -185,7 +186,7 @@ const MemberHistory = () => {
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">📅</div>
+              <div className="text-blue-600 mr-4"><Calendar size={32} /></div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">
                   {memberHistories.filter(h => h.action === 'reservation').length}
@@ -305,7 +306,7 @@ const MemberHistory = () => {
           
           {filteredHistories.length === 0 && (
             <div className="p-12 text-center">
-              <div className="text-gray-400 text-4xl mb-4">📋</div>
+              <div className="text-gray-400 text-4xl mb-4"><ClipboardList className="w-12 h-12 mx-auto" /></div>
               <p className="text-gray-500">검색 조건에 맞는 이력이 없습니다.</p>
             </div>
           )}

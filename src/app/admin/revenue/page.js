@@ -1,6 +1,7 @@
 'use client';
 
 import AdminLayout from '@/components/admin/AdminLayout';
+import { DollarSign, Calendar, Building2, TrendingUp } from 'lucide-react';
 
 const RevenuePage = () => {
   const revenueData = [
@@ -32,7 +33,7 @@ const RevenuePage = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">💰</div>
+              <div className="text-green-600 mr-4"><DollarSign size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">오늘 매출</p>
                 <p className="text-2xl font-bold text-gray-900">{todayStats.revenue}</p>
@@ -43,7 +44,7 @@ const RevenuePage = () => {
           
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">📅</div>
+              <div className="text-blue-600 mr-4"><Calendar size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">오늘 예약</p>
                 <p className="text-2xl font-bold text-gray-900">{todayStats.bookings}</p>
@@ -54,7 +55,7 @@ const RevenuePage = () => {
           
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">🏨</div>
+              <div className="text-purple-600 mr-4"><Building2 size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">투숙률</p>
                 <p className="text-2xl font-bold text-gray-900">{todayStats.occupancy}</p>
@@ -65,7 +66,7 @@ const RevenuePage = () => {
           
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">📊</div>
+              <div className="text-orange-600 mr-4"><TrendingUp size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">평균 객실료</p>
                 <p className="text-2xl font-bold text-gray-900">{todayStats.averageRate}</p>

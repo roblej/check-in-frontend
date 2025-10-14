@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
+import { CheckCircle } from 'lucide-react';
 
 const HotelApproval = () => {
   const [selectedRequests, setSelectedRequests] = useState([]);
@@ -154,7 +155,7 @@ const HotelApproval = () => {
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">✅</div>
+              <div className="text-green-600 mr-4"><CheckCircle size={32} /></div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">24</p>
                 <p className="text-sm text-gray-600">이번 달 승인</p>
