@@ -25,6 +25,9 @@ const Header = () => {
               <a href="/admin" className="text-sm font-medium text-[#3B82F6] hover:text-blue-600 transition-colors font-semibold">
                 관리자
               </a>
+              <a href="/master" className="text-sm font-medium text-[#7C3AED] hover:text-purple-600 transition-colors font-semibold">
+                마스터
+              </a>
             </nav>
           </div>
           <div className="flex items-center gap-3">
