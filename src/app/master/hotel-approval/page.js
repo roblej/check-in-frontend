@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Eye, X } from 'lucide-react';
 
 const HotelApproval = () => {
   const [selectedRequests, setSelectedRequests] = useState([]);
@@ -144,7 +144,7 @@ const HotelApproval = () => {
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">👀</div>
+              <div className="text-blue-600 mr-4"><Eye size={32} /></div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">
                   {approvalRequests.filter(r => r.status === 'review').length}
@@ -164,7 +164,7 @@ const HotelApproval = () => {
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">❌</div>
+              <div className="text-red-600 mr-4"><X size={32} /></div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">3</p>
                 <p className="text-sm text-gray-600">이번 달 거부</p>
