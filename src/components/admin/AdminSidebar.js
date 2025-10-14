@@ -87,8 +87,8 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
 
   return (
     <>
-      {/* 데스크톱 사이드바 - 큰 화면에서만 항상 표시 */}
-      <div className="hidden xl:fixed xl:inset-y-0 xl:z-50 xl:flex xl:w-64 xl:flex-col">
+            {/* 데스크톱 사이드바 - 큰 화면에서만 항상 표시 */}
+            <div className="hidden xl:fixed xl:inset-y-0 xl:z-50 xl:flex xl:w-72 xl:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white border-r border-gray-200 px-6 py-6">
           {/* 로고 */}
           <div className="flex h-16 shrink-0 items-center">

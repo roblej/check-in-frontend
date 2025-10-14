@@ -1,6 +1,7 @@
 'use client';
 
 import AdminLayout from '@/components/admin/AdminLayout';
+import { Bed, Tv, Snowflake, Sofa, Utensils } from 'lucide-react';
 
 const RoomTypesPage = () => {
   const roomTypes = [
@@ -11,7 +12,7 @@ const RoomTypesPage = () => {
       capacity: 2,
       bedType: '더블베드',
       amenities: ['무료 WiFi', '에어컨', 'TV', '미니바', '욕실'],
-      images: ['🛏️', '📺', '❄️'],
+      images: [<Bed size={24} />, <Tv size={24} />, <Snowflake size={24} />],
       status: 'active'
     },
     {
@@ -21,7 +22,7 @@ const RoomTypesPage = () => {
       capacity: 3,
       bedType: '킹베드',
       amenities: ['무료 WiFi', '에어컨', 'TV', '미니바', '욕실', '발코니', '소파'],
-      images: ['🛏️', '📺', '❄️', '🛋️'],
+      images: [<Bed size={24} />, <Tv size={24} />, <Snowflake size={24} />, <Sofa size={24} />],
       status: 'active'
     },
     {
@@ -31,7 +32,7 @@ const RoomTypesPage = () => {
       capacity: 4,
       bedType: '킹베드 + 소파베드',
       amenities: ['무료 WiFi', '에어컨', 'TV', '미니바', '욕실', '발코니', '소파', '다이닝 테이블', '작업 공간'],
-      images: ['🛏️', '📺', '❄️', '🛋️', '🍽️'],
+      images: [<Bed size={24} />, <Tv size={24} />, <Snowflake size={24} />, <Sofa size={24} />, <Utensils size={24} />],
       status: 'active'
     },
     {
@@ -41,7 +42,7 @@ const RoomTypesPage = () => {
       capacity: 6,
       bedType: '킹베드 + 트윈베드',
       amenities: ['무료 WiFi', '에어컨', 'TV', '미니바', '욕실', '발코니', '소파', '다이닝 테이블', '작업 공간', '주방', '거실'],
-      images: ['🛏️', '📺', '❄️', '🛋️', '🍽️', '🍳'],
+      images: [<Bed size={24} />, <Tv size={24} />, <Snowflake size={24} />, <Sofa size={24} />, <Utensils size={24} />],
       status: 'active'
     }
   ];

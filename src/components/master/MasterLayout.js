@@ -29,7 +29,7 @@ const MasterLayout = ({ children, currentPage }) => {
       
       {/* 메인 콘텐츠 영역 - 반응형 레이아웃 */}
       <div 
-        className="xl:ml-64"
+        className="xl:ml-72"
         onClick={handleMainAreaClick}
       >
         {/* 헤더 */}
@@ -38,8 +38,8 @@ const MasterLayout = ({ children, currentPage }) => {
         />
         
         {/* 페이지 콘텐츠 */}
-        <main className="p-3 sm:p-6 max-w-full overflow-hidden">
-          <div className="max-w-7xl">
+        <main className="p-3 sm:p-6 w-full">
+          <div className="w-full">
             {children}
           </div>
         </main>

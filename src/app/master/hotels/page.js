@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
+import { Building2, Bed, Calendar, DollarSign } from 'lucide-react';
 
 const HotelManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -210,7 +211,7 @@ const HotelManagement = () => {
         {/* 호텔 목록 - 데스크톱 테이블 */}
         <div className="hidden sm:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left">
@@ -221,22 +222,22 @@ const HotelManagement = () => {
                       className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     />
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-96">
                     호텔 정보
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-80">
                     사업자 정보
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
                     운영 현황
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-56">
                     수익 정보
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
                     상태
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
                     액션
                   </th>
                 </tr>
@@ -252,47 +253,47 @@ const HotelManagement = () => {
                         className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                       />
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 w-96">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{hotel.name}</div>
                         <div className="text-sm text-gray-500">{hotel.location}</div>
                         <div className="text-sm text-gray-500">객실 {hotel.rooms}개 • ⭐ {hotel.rating}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 w-80">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{hotel.owner}</div>
                         <div className="text-sm text-gray-500">{hotel.email}</div>
                         <div className="text-sm text-gray-500">{hotel.phone}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 w-64">
                       <div>
                         <div className="text-sm text-gray-900">예약 {hotel.totalReservations}건</div>
                         <div className="text-sm text-gray-500">등록일: {hotel.registeredDate}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 w-56">
                       <div className="text-sm font-medium text-gray-900">{hotel.monthlyRevenue}</div>
                       <div className="text-sm text-gray-500">월 매출</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 w-40">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(hotel.status)}`}>
                         {getStatusText(hotel.status)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium space-y-1">
-                      <div className="flex flex-col gap-1">
-                        <button className="text-[#7C3AED] hover:text-purple-800 text-left">
+                    <td className="px-6 py-4 text-sm font-medium w-64">
+                      <div className="flex flex-wrap gap-2">
+                        <button className="text-[#7C3AED] hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-50 transition-colors">
                           상세보기
                         </button>
-                        <button className="text-blue-600 hover:text-blue-800 text-left">
-                          메시지 전송
+                        <button className="text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
+                          메시지
                         </button>
-                        <button className="text-green-600 hover:text-green-800 text-left">
+                        <button className="text-green-600 hover:text-green-800 px-2 py-1 rounded hover:bg-green-50 transition-colors">
                           수정
                         </button>
-                        <button className="text-red-600 hover:text-red-800 text-left">
+                        <button className="text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50 transition-colors">
                           정지
                         </button>
                       </div>
@@ -347,24 +348,50 @@ const HotelManagement = () => {
         </div>
 
         {/* 통계 요약 */}
-
-        {/* 통계 요약 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="text-2xl font-bold text-gray-900">{hotels.filter(h => h.status === 'active').length}</div>
-            <div className="text-sm text-gray-600">운영중인 호텔</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 lg:p-6 rounded-lg shadow-sm border border-purple-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xl lg:text-2xl font-bold text-purple-900">{hotels.filter(h => h.status === 'active').length}</div>
+                <div className="text-sm text-purple-700">운영중인 호텔</div>
+              </div>
+              <div className="w-8 h-8 lg:w-12 lg:h-12 bg-purple-500 rounded-full flex items-center justify-center">
+                <Building2 className="text-white w-4 h-4 lg:w-6 lg:h-6" />
+              </div>
+            </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="text-2xl font-bold text-gray-900">{hotels.reduce((sum, h) => sum + h.rooms, 0)}</div>
-            <div className="text-sm text-gray-600">총 객실 수</div>
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 lg:p-6 rounded-lg shadow-sm border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xl lg:text-2xl font-bold text-blue-900">{hotels.reduce((sum, h) => sum + h.rooms, 0)}</div>
+                <div className="text-sm text-blue-700">총 객실 수</div>
+              </div>
+              <div className="w-8 h-8 lg:w-12 lg:h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                <Bed className="text-white w-4 h-4 lg:w-6 lg:h-6" />
+              </div>
+            </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="text-2xl font-bold text-gray-900">{hotels.reduce((sum, h) => sum + h.totalReservations, 0).toLocaleString()}</div>
-            <div className="text-sm text-gray-600">총 예약 건수</div>
+          <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 lg:p-6 rounded-lg shadow-sm border border-green-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xl lg:text-2xl font-bold text-green-900">{hotels.reduce((sum, h) => sum + h.totalReservations, 0).toLocaleString()}</div>
+                <div className="text-sm text-green-700">총 예약 건수</div>
+              </div>
+              <div className="w-8 h-8 lg:w-12 lg:h-12 bg-green-500 rounded-full flex items-center justify-center">
+                <Calendar className="text-white w-4 h-4 lg:w-6 lg:h-6" />
+              </div>
+            </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="text-2xl font-bold text-gray-900">₩170억</div>
-            <div className="text-sm text-gray-600">총 월 매출</div>
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 lg:p-6 rounded-lg shadow-sm border border-orange-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xl lg:text-2xl font-bold text-orange-900">₩170억</div>
+                <div className="text-sm text-orange-700">총 월 매출</div>
+              </div>
+              <div className="w-8 h-8 lg:w-12 lg:h-12 bg-orange-500 rounded-full flex items-center justify-center">
+                <DollarSign className="text-white w-4 h-4 lg:w-6 lg:h-6" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
