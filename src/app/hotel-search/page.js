@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import { useState, useEffect } from "react";
+import Header from "@/components/Header";
+import HotelDetailModal from "@/components/hotel/HotelDetailModal";
 
 const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
   const [searchParams, setSearchParams] = useState({
@@ -26,6 +26,7 @@ const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedHotelId, setSelectedHotelId] = useState(null);
   const itemsPerPage = 12;
 
   // 샘플 호텔 데이터
@@ -121,10 +122,19 @@ const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
 
   // 필터링
   useEffect(() => {
-    let filtered = hotels.filter(hotel => {
-      if (hotel.price < filters.priceMin || hotel.price > filters.priceMax) return false;
-      if (filters.starRatings.length > 0 && !filters.starRatings.includes(hotel.starRating)) return false;
-      if (filters.districts.length > 0 && !filters.districts.includes(hotel.district)) return false;
+    let filtered = hotels.filter((hotel) => {
+      if (hotel.price < filters.priceMin || hotel.price > filters.priceMax)
+        return false;
+      if (
+        filters.starRatings.length > 0 &&
+        !filters.starRatings.includes(hotel.starRating)
+      )
+        return false;
+      if (
+        filters.districts.length > 0 &&
+        !filters.districts.includes(hotel.district)
+      )
+        return false;
       return true;
     });
 
@@ -151,11 +161,11 @@ const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
   const currentHotels = filteredHotels.slice(startIndex, endIndex);
 
   const toggleFilter = (type, value) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
       [type]: prev[type].includes(value)
-        ? prev[type].filter(v => v !== value)
-        : [...prev[type], value]
+        ? prev[type].filter((v) => v !== value)
+        : [...prev[type], value],
     }));
   };
 
@@ -329,7 +339,9 @@ const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
             {totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-6 pb-4">
                 <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
                   disabled={currentPage === 1}
                   className="px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                 >
@@ -349,7 +361,9 @@ const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
                   </button>
                 ))}
                 <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
                   disabled={currentPage === totalPages}
                   className="px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                 >
@@ -358,7 +372,6 @@ const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
               </div>
             )}
           </div>
-
 
           {/* 필터 패널 (하단에서 올라옴 - 오버레이 없음) */}
           {showFiltersPanel && (
@@ -545,6 +558,14 @@ const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
         </div>
       </div>
 
+      {/* 호텔 상세 모달 */}
+      {selectedHotelId && (
+        <HotelDetailModal
+          hotelId={selectedHotelId}
+          searchParams={searchParams}
+          onClose={() => setSelectedHotelId(null)}
+        />
+      )}
     </div>
   );
 };
