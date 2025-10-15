@@ -17,10 +17,10 @@ const ResalePage = () => {
 
   // 페이지 로딩 시 API 호출
   useEffect(() => {
-    const fetchAreas = async () => {
+    const fetchUsedTradeList = async () => {
       try {
-        const response = await axios.get('http://localhost:8888/api/areas');
-        console.log('Areas 데이터:', response.data);
+        const response = await axios.get('http://localhost:8888/api/used/list');
+        console.log('UsedTradeList 데이터:', response.data);
       } catch (error) {
         console.error('API 호출 중 오류 발생:', error);
         if (error.response) {
@@ -33,7 +33,7 @@ const ResalePage = () => {
       }
     };
 
-    fetchAreas();
+    fetchUsedTradeList();
   }, []);
 
   // 더미 데이터
