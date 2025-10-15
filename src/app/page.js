@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Button from '@/components/Button';
+import { useRouter } from 'next/navigation';
 
 const CheckinHotel = () => {
   const [destination, setDestination] = useState('');
@@ -13,9 +14,12 @@ const CheckinHotel = () => {
   const [selectedType, setSelectedType] = useState('hotel');
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  const router = useRouter();
+  
   const handleSearch = (e) => {
     e.preventDefault();
     console.log('검색:', { destination, checkIn, checkOut, adults });
+    router.push(`/hotel-search?destination=${destination}&checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}`);
   };
 
   const slides = [
