@@ -115,7 +115,7 @@ const ResaleItemCard = ({ item, onInquire, onBookmark }) => {
             className="flex-1 bg-orange-500 hover:bg-orange-600"
             onClick={handleInquire}
           >
-            문의하기
+            결제하기
           </Button>
           <Button
             variant="outline"
