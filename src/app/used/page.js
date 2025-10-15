@@ -22,14 +22,56 @@ const ResalePage = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [pageSize, setPageSize] = useState(10);
+  
+  // 검색 조건 상태 (실제 검색에 사용)
+  const [searchConditions, setSearchConditions] = useState({
+    destination: '',
+    checkIn: '',
+    checkOut: '',
+    adults: 2
+  });
 
   // 페이지 로딩 시 API 호출
   useEffect(() => {
     const fetchUsedTradeList = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`http://localhost:8888/api/used/list?page=${currentPage}&size=${pageSize}`);
-        console.log('UsedTradeList 데이터:', response.data);
+        
+        // 검색 조건이 있으면 검색 API, 없으면 전체 목록 API 호출
+        const hasSearchConditions = searchConditions.destination || 
+          searchConditions.checkIn || 
+          searchConditions.checkOut || 
+          searchConditions.adults !== 2;
+        
+        let apiUrl;
+        if (hasSearchConditions) {
+          // 검색 API 호출
+          const searchParams = new URLSearchParams({
+            page: currentPage.toString(),
+            size: pageSize.toString()
+          });
+          
+          if (searchConditions.destination) {
+            searchParams.append('destination', searchConditions.destination);
+          }
+          if (searchConditions.checkIn) {
+            searchParams.append('checkIn', searchConditions.checkIn);
+          }
+          if (searchConditions.checkOut) {
+            searchParams.append('checkOut', searchConditions.checkOut);
+          }
+          if (searchConditions.adults) {
+            searchParams.append('adults', searchConditions.adults.toString());
+          }
+          
+          apiUrl = `http://localhost:8888/api/used/search?${searchParams.toString()}`;
+        } else {
+          // 전체 목록 API 호출
+          apiUrl = `http://localhost:8888/api/used/list?page=${currentPage}&size=${pageSize}`;
+        }
+        
+        const response = await axios.get(apiUrl);
+        console.log('API 데이터:', response.data);
         
         // API 응답을 resaleItems 형태로 변환
         const transformedItems = response.data.content.map((item, index) => ({
@@ -143,11 +185,90 @@ const ResalePage = () => {
     };
 
     fetchUsedTradeList();
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, searchConditions]);
 
-  const handleSearch = (searchData) => {
+  const handleSearch = async (searchData) => {
     console.log('검색:', searchData);
-    // TODO: 검색 로직 구현
+    
+    try {
+      setLoading(true);
+      
+      // 검색 API 호출
+      const searchParams = new URLSearchParams({
+        page: '0', // 검색 시 첫 페이지부터
+        size: pageSize.toString()
+      });
+      
+      // 검색 조건이 있으면 파라미터에 추가
+      if (searchData.destination) {
+        searchParams.append('destination', searchData.destination);
+      }
+      if (searchData.checkIn) {
+        searchParams.append('checkIn', searchData.checkIn);
+      }
+      if (searchData.checkOut) {
+        searchParams.append('checkOut', searchData.checkOut);
+      }
+      if (searchData.adults) {
+        searchParams.append('adults', searchData.adults.toString());
+      }
+      
+      const response = await axios.get(`http://localhost:8888/api/used/search?${searchParams.toString()}`);
+      console.log('검색 결과:', response.data);
+      
+      // 검색 결과를 resaleItems 형태로 변환
+      const transformedItems = response.data.content.map((item, index) => ({
+        id: item.usedItemIdx,
+        hotelName: item.hotel?.hotelName || '호텔 정보 없음',
+        location: item.hotel?.hotelAddress || '주소 정보 없음',
+        originalPrice: item.reservation?.totalPrice || 0,
+        salePrice: item.price,
+        discountRate: item.reservation?.totalPrice ? 
+          Math.round(((item.reservation.totalPrice - item.price) / item.reservation.totalPrice) * 100) : 0,
+        checkIn: item.reservation?.checkinDate || '',
+        checkOut: item.reservation?.checkoutDate || '',
+        nights: item.reservation?.checkinDate && item.reservation?.checkoutDate ? 
+          Math.ceil((new Date(item.reservation.checkoutDate) - new Date(item.reservation.checkinDate)) / (1000 * 60 * 60 * 24)) : 1,
+        guests: item.reservation?.guest || 2,
+        roomType: item.reservation?.roomName || '객실 정보',
+        description: item.comment || '사정상 취소 불가능한 예약입니다. 싼 값에 양도합니다.',
+        seller: item.reservation?.customerNickname || '판매자',
+        image: item.hotel?.hotelImageUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop',
+        urgent: index % 2 === 0,
+        originalData: item
+      }));
+      
+      setResaleItems(transformedItems);
+      setTotalPages(response.data.totalPages);
+      setTotalElements(response.data.totalElements);
+      
+      // 검색 조건 업데이트
+      setSearchConditions({
+        destination: searchData.destination,
+        checkIn: searchData.checkIn,
+        checkOut: searchData.checkOut,
+        adults: searchData.adults
+      });
+      
+      // 검색 시 첫 페이지로 리셋
+      setCurrentPage(0);
+      
+    } catch (error) {
+      console.error('검색 API 호출 중 오류 발생:', error);
+      if (error.response) {
+        console.error('응답 오류:', error.response.status, error.response.statusText);
+      } else if (error.request) {
+        console.error('요청 오류:', error.request);
+      } else {
+        console.error('오류 메시지:', error.message);
+      }
+      // 에러 발생 시 빈 배열로 설정
+      setResaleItems([]);
+      setTotalPages(0);
+      setTotalElements(0);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleInquire = (item) => {
@@ -172,37 +293,22 @@ const ResalePage = () => {
   };
 
 
+  // 클라이언트 사이드 가격 필터링만 적용 (서버에서 검색은 처리됨)
   const filteredItems = resaleItems.filter(item => {
-    // 검색 필터 (호텔명, 위치)
-    const matchesSearch = !destination || 
-      item.hotelName.toLowerCase().includes(destination.toLowerCase()) ||
-      item.location.toLowerCase().includes(destination.toLowerCase());
-    
-    // 날짜 필터
-    const matchesCheckIn = !checkIn || item.checkIn >= checkIn;
-    const matchesCheckOut = !checkOut || item.checkOut <= checkOut;
-    
-    // 인원 필터
-    const matchesGuests = !adults || item.guests >= adults;
-    
-    // 가격 필터
-    const matchesPrice = (() => {
-      switch (filterPrice) {
-        case 'under200':
-          return item.salePrice <= 200000;
-        case '200-300':
-          return item.salePrice > 200000 && item.salePrice <= 300000;
-        case '300-400':
-          return item.salePrice > 300000 && item.salePrice <= 400000;
-        case 'over400':
-          return item.salePrice > 400000;
-        case 'all':
-        default:
-          return true;
-      }
-    })();
-    
-    return matchesSearch && matchesCheckIn && matchesCheckOut && matchesGuests && matchesPrice;
+    // 가격 필터만 클라이언트에서 처리
+    switch (filterPrice) {
+      case 'under200':
+        return item.salePrice <= 200000;
+      case '200-300':
+        return item.salePrice > 200000 && item.salePrice <= 300000;
+      case '300-400':
+        return item.salePrice > 300000 && item.salePrice <= 400000;
+      case 'over400':
+        return item.salePrice > 400000;
+      case 'all':
+      default:
+        return true;
+    }
   });
 
   const sortedItems = [...filteredItems].sort((a, b) => {
