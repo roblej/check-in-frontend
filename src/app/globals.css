@@ -8,6 +8,12 @@
   --font-family-mono: var(--font-geist-mono), monospace;
 }
 
+/* Prevent page scroll only for admin/master layouts */
+.admin-layout, .master-layout {
+  height: 100%;
+  overflow: hidden;
+}
+
 /* Button Component - Minimal with Blue UI */
 .btn {
   @apply cursor-pointer bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-3 rounded-lg transition-colors;

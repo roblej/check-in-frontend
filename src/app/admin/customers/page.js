@@ -1,6 +1,7 @@
 'use client';
 
 import AdminLayout from '@/components/admin/AdminLayout';
+import { Users, Star, Calendar, DollarSign } from 'lucide-react';
 
 const CustomerManagementPage = () => {
   const customers = [
@@ -49,7 +50,7 @@ const CustomerManagementPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">👥</div>
+              <div className="text-blue-600 mr-4"><Users size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">총 고객수</p>
                 <p className="text-2xl font-bold text-gray-900">1,234</p>
@@ -59,7 +60,7 @@ const CustomerManagementPage = () => {
           
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">⭐</div>
+              <div className="text-yellow-600 mr-4"><Star size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">VIP 고객</p>
                 <p className="text-2xl font-bold text-gray-900">89</p>
@@ -69,7 +70,7 @@ const CustomerManagementPage = () => {
           
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">📅</div>
+              <div className="text-green-600 mr-4"><Calendar size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">이번 달 신규</p>
                 <p className="text-2xl font-bold text-gray-900">156</p>
@@ -79,7 +80,7 @@ const CustomerManagementPage = () => {
           
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="text-3xl mr-4">💰</div>
+              <div className="text-purple-600 mr-4"><DollarSign size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">평균 구매액</p>
                 <p className="text-2xl font-bold text-gray-900">₩850,000</p>
