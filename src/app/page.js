@@ -22,10 +22,10 @@ const CheckinHotel = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (selectedType === 'dining') {
+      console.log('다이닝 검색:', { destination, diningDate, mealType, adults });
+    } else {
       console.log('검색:', { destination, checkIn, checkOut, adults });
     router.push(`/hotel-search?destination=${destination}&checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}`);
-    } else {
-      console.log('호텔 검색:', { destination, checkIn, checkOut, adults });
     }
   };
 
