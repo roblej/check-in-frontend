@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Button from '@/components/Button';
 import { useRouter } from 'next/navigation';
+import SearchCondition from '@/components/hotelSearch/SearchCondition';
 
 const CheckinHotel = () => {
   const [destination, setDestination] = useState('');
@@ -16,6 +17,7 @@ const CheckinHotel = () => {
   const [adults, setAdults] = useState(2);
   const [selectedType, setSelectedType] = useState('hotel');
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const router = useRouter();
   
@@ -27,6 +29,20 @@ const CheckinHotel = () => {
       console.log('검색:', { destination, checkIn, checkOut, adults });
     router.push(`/hotel-search?destination=${destination}&checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}`);
     }
+  };
+
+  // 날짜 변경 핸들러
+  const handleDateChange = (newCheckIn, newCheckOut) => {
+    setCheckIn(newCheckIn);
+    setCheckOut(newCheckOut);
+  };
+
+  // 날짜 포맷팅 함수
+  const formatDateDisplay = (date) => {
+    if (!date) return '';
+    // 시간대 문제 해결을 위해 로컬 시간으로 명시적 설정
+    const d = new Date(date + 'T00:00:00');
+    return `${d.getMonth() + 1}.${d.getDate()}. ${['일', '월', '화', '수', '목', '금', '토'][d.getDay()]}`;
   };
 
   const slides = [
@@ -143,8 +159,15 @@ const CheckinHotel = () => {
     }
   ];
 
+  // 바깥 클릭 시 날짜 선택기 닫기
+  const handleOutsideClick = (e) => {
+    if (isDatePickerOpen && !e.target.closest('.date-picker-container')) {
+      setIsDatePickerOpen(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" onClick={handleOutsideClick}>
       {/* 헤더 */}
       <Header />
 
@@ -233,12 +256,12 @@ const CheckinHotel = () => {
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
                     placeholder={selectedType === 'dining' ? '호텔명을 입력하세요' : '목적지를 입력하세요'}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all h-12"
                   />
                 </div>
 
                 {/* 날짜 선택 */}
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2 relative date-picker-container">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     {selectedType === 'dining' ? '식사일정을 선택하세요' : '숙박일정을 선택하세요'}
                   </label>
@@ -274,18 +297,36 @@ const CheckinHotel = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="date"
-                        value={checkIn}
-                        onChange={(e) => setCheckIn(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
-                      />
-                      <input
-                        type="date"
-                        value={checkOut}
-                        onChange={(e) => setCheckOut(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
+                    <div 
+                      className="grid grid-cols-2 gap-2 cursor-pointer"
+                      onClick={() => setIsDatePickerOpen(true)}
+                    >
+                      <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white hover:border-[#3B82F6] transition-colors h-12 flex flex-col justify-center">
+                        <div className="text-xs text-gray-600">체크인</div>
+                        <div className="text-sm text-gray-900 font-medium">
+                          {checkIn ? formatDateDisplay(checkIn) : '날짜 선택'}
+                        </div>
+                      </div>
+                      <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white hover:border-[#3B82F6] transition-colors h-12 flex flex-col justify-center">
+                        <div className="text-xs text-gray-600">체크아웃</div>
+                        <div className="text-sm text-gray-900 font-medium">
+                          {checkOut ? formatDateDisplay(checkOut) : '날짜 선택'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* 날짜 선택 컴포넌트 */}
+                  {isDatePickerOpen && (
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1">
+                      <SearchCondition
+                        isOpen={isDatePickerOpen}
+                        onClose={() => setIsDatePickerOpen(false)}
+                        checkIn={checkIn}
+                        checkOut={checkOut}
+                        onDateChange={handleDateChange}
+                        selectedType={selectedType}
+                        className="max-w-md" // 예시: 최대 너비를 md로 제한
                       />
                     </div>
                   )}
@@ -446,6 +487,7 @@ const CheckinHotel = () => {
 
       {/* 푸터 */}
       <Footer />
+
     </div>
   );
 };
