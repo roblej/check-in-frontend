@@ -64,10 +64,10 @@ const ResalePage = () => {
             searchParams.append('adults', searchConditions.adults.toString());
           }
           
-          apiUrl = `http://localhost:8888/api/used/search?${searchParams.toString()}`;
+          apiUrl = `/api/used/search?${searchParams.toString()}`;
         } else {
           // 전체 목록 API 호출
-          apiUrl = `http://localhost:8888/api/used/list?page=${currentPage}&size=${pageSize}`;
+          apiUrl = `/api/used/list?page=${currentPage}&size=${pageSize}`;
         }
         
         const response = await axios.get(apiUrl);
@@ -213,7 +213,7 @@ const ResalePage = () => {
         searchParams.append('adults', searchData.adults.toString());
       }
       
-      const response = await axios.get(`http://localhost:8888/api/used/search?${searchParams.toString()}`);
+      const response = await axios.get(`api/used/search?${searchParams.toString()}`);
       console.log('검색 결과:', response.data);
       
       // 검색 결과를 resaleItems 형태로 변환
