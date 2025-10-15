@@ -1,6 +1,6 @@
 'use client';
 
-import Button from './Button';
+import Button from '../Button';
 
 const HotelCard = ({ hotel, onBook }) => {
   const formatPrice = (price) => {
