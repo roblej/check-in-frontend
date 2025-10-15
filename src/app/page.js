@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Button from '@/components/Button';
+// 로컬브랜치
 
 const CheckinHotel = () => {
   const [destination, setDestination] = useState('');

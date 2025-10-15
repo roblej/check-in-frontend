@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { CheckCircle, Building2, Sparkles, Wrench, HelpCircle, Home, DollarSign } from 'lucide-react';
 
 const RoomsPage = () => {
   const [selectedTab, setSelectedTab] = useState('status');
@@ -54,15 +55,15 @@ const RoomsPage = () => {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'available':
-        return '✅';
+        return <CheckCircle className="w-5 h-5 text-green-600" />;
       case 'occupied':
-        return '🏨';
+        return <Building2 className="w-5 h-5 text-blue-600" />;
       case 'cleaning':
-        return '🧹';
+        return <Sparkles className="w-5 h-5 text-yellow-600" />;
       case 'maintenance':
-        return '🔧';
+        return <Wrench className="w-5 h-5 text-red-600" />;
       default:
-        return '❓';
+        return <HelpCircle className="w-5 h-5 text-gray-600" />;
     }
   };
 
@@ -73,9 +74,9 @@ const RoomsPage = () => {
   const floors = [...new Set(rooms.map(room => room.floor))].sort();
 
   const tabs = [
-    { id: 'status', name: '객실 현황', icon: '🏨' },
-    { id: 'pricing', name: '가격 설정', icon: '💰' },
-    { id: 'types', name: '객실 타입', icon: '🏠' }
+    { id: 'status', name: '객실 현황', icon: <Building2 size={20} /> },
+    { id: 'pricing', name: '가격 설정', icon: <DollarSign size={20} /> },
+    { id: 'types', name: '객실 타입', icon: <Home size={20} /> }
   ];
 
   return (
@@ -194,7 +195,7 @@ const RoomsPage = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center">
-              <div className="text-2xl mr-3">✅</div>
+              <div className="text-green-600 mr-3"><CheckCircle size={24} /></div>
               <div>
                 <div className="text-sm text-gray-600">이용가능</div>
                 <div className="text-xl font-bold text-green-600">
@@ -206,7 +207,7 @@ const RoomsPage = () => {
           
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center">
-              <div className="text-2xl mr-3">🏨</div>
+              <div className="text-blue-600 mr-3"><Building2 size={24} /></div>
               <div>
                 <div className="text-sm text-gray-600">투숙중</div>
                 <div className="text-xl font-bold text-blue-600">
@@ -218,7 +219,7 @@ const RoomsPage = () => {
           
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center">
-              <div className="text-2xl mr-3">🧹</div>
+              <div className="text-yellow-600 mr-3"><Sparkles size={24} /></div>
               <div>
                 <div className="text-sm text-gray-600">청소중</div>
                 <div className="text-xl font-bold text-yellow-600">
@@ -230,7 +231,7 @@ const RoomsPage = () => {
           
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center">
-              <div className="text-2xl mr-3">🔧</div>
+              <div className="text-red-600 mr-3"><Wrench size={24} /></div>
               <div>
                 <div className="text-sm text-gray-600">점검중</div>
                 <div className="text-xl font-bold text-red-600">

@@ -4,75 +4,75 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
-  Calendar, 
-  Bed, 
+  Building2, 
   Users, 
+  MessageSquare, 
   TrendingUp, 
   Settings 
 } from 'lucide-react';
 
-const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
+const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
   const pathname = usePathname();
   const menuItems = [
     {
       id: 'dashboard',
       name: '대시보드',
       icon: <LayoutDashboard size={20} />,
-      path: '/admin'
+      path: '/master'
     },
     {
-      id: 'reservations',
-      name: '예약 관리',
-      icon: <Calendar size={20} />,
-      path: '/admin/reservations',
+      id: 'hotels',
+      name: '호텔 관리',
+      icon: <Building2 size={20} />,
+      path: '/master/hotels',
       submenu: [
-        { id: 'reservation-list', name: '예약 현황', path: '/admin/reservations' },
-        { id: 'checkin-checkout', name: '체크인/체크아웃', path: '/admin/checkin-checkout' },
-        { id: 'reservation-calendar', name: '예약 캘린더', path: '/admin/calendar' }
+        { id: 'hotel-list', name: '호텔 목록', path: '/master/hotels' },
+        { id: 'hotel-approval', name: '호텔 승인', path: '/master/hotel-approval' },
+        { id: 'hotel-settings', name: '호텔 설정', path: '/master/hotel-settings' }
       ]
     },
     {
-      id: 'rooms',
-      name: '객실 관리',
-      icon: <Bed size={20} />,
-      path: '/admin/rooms',
-      submenu: [
-        { id: 'room-list', name: '객실 현황', path: '/admin/rooms' },
-        { id: 'room-pricing', name: '가격 설정', path: '/admin/room-pricing' },
-        { id: 'room-types', name: '객실 타입', path: '/admin/room-types' }
-      ]
-    },
-    {
-      id: 'customers',
-      name: '고객 관리',
+      id: 'members',
+      name: '회원 관리',
       icon: <Users size={20} />,
-      path: '/admin/customers',
+      path: '/master/members',
       submenu: [
-        { id: 'customer-list', name: '고객 목록', path: '/admin/customers' },
-        { id: 'customer-history', name: '이용 이력', path: '/admin/customer-history' },
-        { id: 'customer-feedback', name: '고객 피드백', path: '/admin/feedback' }
+        { id: 'member-list', name: '회원 목록', path: '/master/members' },
+        { id: 'member-history', name: '회원 이력', path: '/master/member-history' },
+        { id: 'member-feedback', name: '회원 피드백', path: '/master/member-feedback' }
       ]
     },
     {
-      id: 'revenue',
-      name: '매출 관리',
-      icon: <TrendingUp size={20} />,
-      path: '/admin/revenue',
+      id: 'messages',
+      name: '메시지 관리',
+      icon: <MessageSquare size={20} />,
+      path: '/master/messages',
       submenu: [
-        { id: 'revenue-dashboard', name: '매출 현황', path: '/admin/revenue' },
-        { id: 'revenue-analysis', name: '수익 분석', path: '/admin/revenue-analysis' },
-        { id: 'settlement', name: '정산 관리', path: '/admin/settlement' }
+        { id: 'message-list', name: '메시지 목록', path: '/master/messages' },
+        { id: 'message-send', name: '메시지 발송', path: '/master/message-send' },
+        { id: 'message-templates', name: '템플릿 관리', path: '/master/message-templates' }
+      ]
+    },
+    {
+      id: 'statistics',
+      name: '통계 분석',
+      icon: <TrendingUp size={20} />,
+      path: '/master/statistics',
+      submenu: [
+        { id: 'statistics-dashboard', name: '통계 현황', path: '/master/statistics' },
+        { id: 'statistics-analysis', name: '분석 리포트', path: '/master/statistics-analysis' },
+        { id: 'statistics-export', name: '데이터 내보내기', path: '/master/statistics-export' }
       ]
     },
     {
       id: 'settings',
       name: '설정',
       icon: <Settings size={20} />,
-      path: '/admin/settings',
+      path: '/master/settings',
       submenu: [
-        { id: 'hotel-info', name: '호텔 정보', path: '/admin/hotel-info' },
-        { id: 'operational-settings', name: '운영 설정', path: '/admin/operational-settings' },
-        { id: 'user-management', name: '사용자 관리', path: '/admin/users' }
+        { id: 'site-settings', name: '사이트 설정', path: '/master/site-settings' },
+        { id: 'system-settings', name: '시스템 설정', path: '/master/system-settings' },
+        { id: 'user-management', name: '사용자 관리', path: '/master/user-management' }
       ]
     }
   ];
@@ -87,13 +87,13 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
 
   return (
     <>
-            {/* 데스크톱 사이드바 - 큰 화면에서만 항상 표시 */}
-            <div className="hidden xl:fixed xl:inset-y-0 xl:z-50 xl:flex xl:w-72 xl:flex-col">
+      {/* 데스크톱 사이드바 - 큰 화면에서만 항상 표시 */}
+      <div className="hidden xl:fixed xl:inset-y-0 xl:z-50 xl:flex xl:w-72 xl:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white border-r border-gray-200 px-6 py-6">
           {/* 로고 */}
           <div className="flex h-16 shrink-0 items-center">
-            <div className="text-xl font-bold text-[#3B82F6]">
-              체크인 관리자
+            <div className="text-xl font-bold text-[#7C3AED]">
+              체크인 마스터
             </div>
           </div>
 
@@ -107,7 +107,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
                       href={item.path}
                       className={`group flex items-center gap-x-3 rounded-md p-3 text-sm leading-6 font-semibold w-full text-left transition-colors ${
                         isActive(item.path) || isSubmenuActive(item.submenu || [])
-                          ? 'bg-[#3B82F6] text-white'
+                          ? 'bg-[#7C3AED] text-white'
                           : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                       }`}
                     >
@@ -124,7 +124,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
                               href={subItem.path}
                               className={`block px-3 py-2 text-sm rounded-md transition-colors w-full text-left ${
                                 isActive(subItem.path)
-                                  ? 'bg-blue-50 text-[#3B82F6] font-medium'
+                                  ? 'bg-purple-50 text-[#7C3AED] font-medium'
                                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                               }`}
                             >
@@ -147,7 +147,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
         <div className="flex h-full flex-col px-4 py-4">
           {/* 모바일 헤더 */}
           <div className="flex items-center justify-between mb-4">
-            <div className="text-sm font-bold text-[#3B82F6]">체크인 관리자</div>
+            <div className="text-sm font-bold text-[#7C3AED]">체크인 마스터</div>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
@@ -168,7 +168,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
                       href={item.path}
                       className={`group flex gap-x-2 rounded-md p-2 text-xs leading-4 font-medium w-full text-left transition-colors ${
                         isActive(item.path) || isSubmenuActive(item.submenu || [])
-                          ? 'bg-[#3B82F6] text-white'
+                          ? 'bg-[#7C3AED] text-white'
                           : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                       }`}
                     >
@@ -185,7 +185,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
                               href={subItem.path}
                               className={`block px-2 py-1 text-xs rounded-md transition-colors w-full text-left ${
                                 isActive(subItem.path)
-                                  ? 'bg-blue-50 text-[#3B82F6] font-medium'
+                                  ? 'bg-purple-50 text-[#7C3AED] font-medium'
                                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                               }`}
                             >
@@ -214,4 +214,4 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
   );
 };
 
-export default AdminSidebar;
+export default MasterSidebar;

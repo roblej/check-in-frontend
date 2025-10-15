@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import AdminSidebar from './AdminSidebar';
-import AdminHeader from './AdminHeader';
+import MasterSidebar from './MasterSidebar';
+import MasterHeader from './MasterHeader';
 
-const AdminLayout = ({ children, currentPage }) => {
+const MasterLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSidebarToggle = () => {
@@ -19,9 +19,9 @@ const AdminLayout = ({ children, currentPage }) => {
   };
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden admin-layout">
+    <div className="h-screen bg-gray-50 flex overflow-hidden master-layout">
       {/* 사이드바 */}
-      <AdminSidebar 
+      <MasterSidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)}
         onToggle={handleSidebarToggle}
@@ -33,7 +33,7 @@ const AdminLayout = ({ children, currentPage }) => {
         onClick={handleMainAreaClick}
       >
         {/* 헤더 */}
-        <AdminHeader 
+        <MasterHeader 
           onMenuClick={handleSidebarToggle}
         />
         
@@ -49,4 +49,4 @@ const AdminLayout = ({ children, currentPage }) => {
   );
 };
 
-export default AdminLayout;
+export default MasterLayout;
