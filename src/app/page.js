@@ -20,7 +20,7 @@ const CheckinHotel = () => {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const router = useRouter();
-  
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (selectedType === 'dining') {
@@ -297,7 +297,7 @@ const CheckinHotel = () => {
                       </div>
                     </div>
                   ) : (
-                    <div 
+                    <div
                       className="grid grid-cols-2 gap-2 cursor-pointer"
                       onClick={() => setIsDatePickerOpen(true)}
                     >
@@ -315,7 +315,7 @@ const CheckinHotel = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* 날짜 선택 컴포넌트 */}
                   {isDatePickerOpen && (
                     <div className="absolute top-full left-0 right-0 z-50 mt-1">
@@ -403,6 +403,7 @@ const CheckinHotel = () => {
               <div
                 key={hotel.id}
                 className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden group cursor-pointer"
+                onClick={() => router.push(`/hotel/${hotel.id}`)}
               >
                 {/* 이미지 */}
                 <div className="relative h-48 overflow-hidden">
