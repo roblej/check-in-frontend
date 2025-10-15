@@ -3,6 +3,7 @@
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Star } from 'lucide-react';
 
+
 const CustomerHistoryPage = () => {
   const customerHistory = [
     {
@@ -208,7 +209,7 @@ const CustomerHistoryPage = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
-                        <div className="mb-1">{getRatingStars(history.rating)}</div>
+                        <div className="mb-1 display-flex">{getRatingStars(history.rating)}</div>
                         <div className="text-xs text-gray-600 max-w-xs truncate">
                           {history.feedback}
                         </div>
