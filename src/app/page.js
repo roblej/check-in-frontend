@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Button from '@/components/Button';
-// 로컬브랜치
+import { useRouter } from 'next/navigation';
 
 const CheckinHotel = () => {
   const [destination, setDestination] = useState('');
@@ -17,10 +17,13 @@ const CheckinHotel = () => {
   const [selectedType, setSelectedType] = useState('hotel');
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  const router = useRouter();
+  
   const handleSearch = (e) => {
     e.preventDefault();
     if (selectedType === 'dining') {
-      console.log('다이닝 검색:', { destination, diningDate, mealType, adults });
+      console.log('검색:', { destination, checkIn, checkOut, adults });
+    router.push(`/hotel-search?destination=${destination}&checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}`);
     } else {
       console.log('호텔 검색:', { destination, checkIn, checkOut, adults });
     }
