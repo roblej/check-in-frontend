@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import axios from 'axios';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Button from '@/components/Button';
@@ -13,6 +14,27 @@ const ResalePage = () => {
   const [adults, setAdults] = useState(2);
   const [sortBy, setSortBy] = useState('price');
   const [filterPrice, setFilterPrice] = useState('all');
+
+  // 페이지 로딩 시 API 호출
+  useEffect(() => {
+    const fetchAreas = async () => {
+      try {
+        const response = await axios.get('http://localhost:8888/api/areas');
+        console.log('Areas 데이터:', response.data);
+      } catch (error) {
+        console.error('API 호출 중 오류 발생:', error);
+        if (error.response) {
+          console.error('응답 오류:', error.response.status, error.response.statusText);
+        } else if (error.request) {
+          console.error('요청 오류:', error.request);
+        } else {
+          console.error('오류 메시지:', error.message);
+        }
+      }
+    };
+
+    fetchAreas();
+  }, []);
 
   // 더미 데이터
   const resaleItems = [
