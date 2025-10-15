@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
-const HotelSearchPage = () => {
+const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
   const [searchParams, setSearchParams] = useState({
-    destination: '서울',
-    checkIn: '10.22.수',
-    checkOut: '10.24.금',
+    destination: urlSearchParams.destination,
+    checkIn: urlSearchParams.checkIn,
+    checkOut: urlSearchParams.checkOut,
     nights: 2,
-    adults: 2,
+    adults: urlSearchParams?.adults || 2,
   });
 
   const [sortBy, setSortBy] = useState('인기순');
