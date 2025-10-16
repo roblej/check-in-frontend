@@ -8,7 +8,7 @@ const SearchCondition = ({
   checkIn, 
   checkOut, 
   onDateChange,
-  selectedType,
+  selectedType = 'hotel',
   className = ''
 }) => {
   const [selectedCheckIn, setSelectedCheckIn] = useState(checkIn);
@@ -41,26 +41,42 @@ const SearchCondition = ({
     // 시간대 문제 해결을 위해 로컬 날짜 그대로 사용
     const dateString = date; // 이미 YYYY-MM-DD 형식이므로 그대로 사용
     
-    if (!selectedCheckIn || (selectedCheckIn && selectedCheckOut)) {
-      // 체크인 날짜 선택 또는 새로운 선택 시작
+    if (selectedType === 'dining') {
+      // 다이닝: 하루만 선택 가능
       setSelectedCheckIn(dateString);
       setSelectedCheckOut(null);
-    } else if (selectedCheckIn && !selectedCheckOut) {
-      // 체크아웃 날짜 선택
-      if (new Date(dateString) > new Date(selectedCheckIn)) {
-        setSelectedCheckOut(dateString);
-      } else {
+    } else {
+      // 호텔: 체크인/체크아웃 선택
+      if (!selectedCheckIn || (selectedCheckIn && selectedCheckOut)) {
+        // 체크인 날짜 선택 또는 새로운 선택 시작
         setSelectedCheckIn(dateString);
         setSelectedCheckOut(null);
+      } else if (selectedCheckIn && !selectedCheckOut) {
+        // 체크아웃 날짜 선택
+        if (new Date(dateString) > new Date(selectedCheckIn)) {
+          setSelectedCheckOut(dateString);
+        } else {
+          setSelectedCheckIn(dateString);
+          setSelectedCheckOut(null);
+        }
       }
     }
   };
 
   // 적용 함수
   const applyDates = () => {
-    if (selectedCheckIn && selectedCheckOut) {
-      onDateChange(selectedCheckIn, selectedCheckOut);
-      onClose();
+    if (selectedType === 'dining') {
+      // 다이닝: 체크인 날짜만 있으면 적용
+      if (selectedCheckIn) {
+        onDateChange(selectedCheckIn, null);
+        onClose();
+      }
+    } else {
+      // 호텔: 체크인과 체크아웃 모두 있어야 적용
+      if (selectedCheckIn && selectedCheckOut) {
+        onDateChange(selectedCheckIn, selectedCheckOut);
+        onClose();
+      }
     }
   };
 
@@ -96,7 +112,7 @@ const SearchCondition = ({
       const isSelected = 
         (checkInStr && dateStr === checkInStr) ||
         (checkOutStr && dateStr === checkOutStr);
-      const isInRange = checkInStr && checkOutStr &&
+      const isInRange = selectedType === 'hotel' && checkInStr && checkOutStr &&
         dateStr > checkInStr && dateStr < checkOutStr;
 
       calendar.push({
@@ -201,7 +217,7 @@ const SearchCondition = ({
           <div className="flex justify-end">
             <button
               onClick={applyDates}
-              disabled={!selectedCheckIn || !selectedCheckOut}
+              disabled={selectedType === 'dining' ? !selectedCheckIn : (!selectedCheckIn || !selectedCheckOut)}
               className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               적용

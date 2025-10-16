@@ -71,6 +71,15 @@ const CheckinHotel = () => {
     return () => clearInterval(timer);
   }, [slides.length]);
 
+  useEffect(function(){
+    setCheckIn(null);
+    setCheckOut(null);
+    setDiningDate(null);
+    setMealType(null);
+    setAdults(2);
+    setDestination('');
+  },[selectedType]);
+
   const popularHotels = [
     {
       id: 1,
