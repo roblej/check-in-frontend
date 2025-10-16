@@ -70,38 +70,50 @@
   }
 }
 
-.animate-slide-in-right {
-  animation: slideInRight 0.3s ease-out;
-}
-
-/* 모달 내 sticky 네비게이션을 위한 추가 스타일 */
-.modal-sticky-nav {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-}
-
-/* 호텔 상세 패널: 모바일/데스크톱 반응형 배치 */
-.hotel-detail-panel {
-  position: fixed;
-  right: 0;
-  left: 0;
-  top: 72px; /* header 높이 추정 */
-  width: 100%;
-  height: calc(100vh - 72px);
-}
-
-@media (min-width: 1024px) {
-  .hotel-detail-panel {
-    left: 31%;
-    right: auto;
-    top: 120px;
-    width: 555px; /* 요청 폭 */
-    height: calc(100vh - 120px); /* 하단에 살짝 여백 */
-    border-radius: 12px;
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
+.animate-slide-in-right {
+  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.3s ease-out;
+}
+
+/* 모달 오버레이 애니메이션 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Sticky 요소 부드러운 전환 */
+.sticky-smooth {
+  transition: box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+/* 스크롤 성능 최적화 */
+.scroll-optimized {
+  will-change: transform;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
+}
 
 /* Hide scrollbar for horizontal scroll sections */
 .scrollbar-hide::-webkit-scrollbar {

@@ -1,25 +1,37 @@
-'use client';
+"use client";
 
-import Button from '../Button';
+import Button from "../Button";
 
-const HotelCard = ({ hotel, onBook }) => {
+const HotelCard = ({ hotel, onBook, onViewDetail }) => {
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('ko-KR').format(price);
+    return new Intl.NumberFormat("ko-KR").format(price);
   };
 
   const renderStars = (rating) => {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 !== 0;
-    
+
     return (
       <div className="flex items-center">
         {[...Array(5)].map((_, index) => {
           if (index < fullStars) {
-            return <span key={index} className="text-yellow-400 text-xs sm:text-sm">★</span>;
+            return (
+              <span key={index} className="text-yellow-400 text-xs sm:text-sm">
+                ★
+              </span>
+            );
           } else if (index === fullStars && hasHalfStar) {
-            return <span key={index} className="text-yellow-400 text-xs sm:text-sm">☆</span>;
+            return (
+              <span key={index} className="text-yellow-400 text-xs sm:text-sm">
+                ☆
+              </span>
+            );
           } else {
-            return <span key={index} className="text-gray-300 text-xs sm:text-sm">☆</span>;
+            return (
+              <span key={index} className="text-gray-300 text-xs sm:text-sm">
+                ☆
+              </span>
+            );
           }
         })}
       </div>
@@ -35,10 +47,12 @@ const HotelCard = ({ hotel, onBook }) => {
           <div className="w-full h-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
             <div className="text-center">
               <div className="text-3xl sm:text-4xl mb-2">🏨</div>
-              <span className="text-gray-500 text-xs sm:text-sm">호텔 이미지</span>
+              <span className="text-gray-500 text-xs sm:text-sm">
+                호텔 이미지
+              </span>
             </div>
           </div>
-          
+
           {/* 배지들 */}
           <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex flex-col gap-1 sm:gap-2">
             {hotel.isRecommended && (
@@ -68,10 +82,13 @@ const HotelCard = ({ hotel, onBook }) => {
           <div className="flex flex-col h-full">
             {/* 상단: 호텔명, 위치, 평점 */}
             <div className="mb-3 sm:mb-4">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2 hover:text-blue-600 transition-colors cursor-pointer line-clamp-1">
+              <h3
+                className="text-lg sm:text-xl font-semibold text-gray-900 mb-2 hover:text-blue-600 transition-colors cursor-pointer line-clamp-1"
+                onClick={() => onViewDetail && onViewDetail(hotel.id)}
+              >
                 {hotel.name}
               </h3>
-              
+
               <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-600 mb-2">
                 <span className="flex items-center gap-1">
                   <span>📍</span>
@@ -87,8 +104,12 @@ const HotelCard = ({ hotel, onBook }) => {
               {/* 평점 */}
               <div className="flex items-center gap-2 mb-2">
                 {renderStars(hotel.rating)}
-                <span className="text-xs sm:text-sm font-medium text-gray-700">{hotel.rating}</span>
-                <span className="text-xs sm:text-sm text-gray-500">({hotel.reviewCount.toLocaleString()})</span>
+                <span className="text-xs sm:text-sm font-medium text-gray-700">
+                  {hotel.rating}
+                </span>
+                <span className="text-xs sm:text-sm text-gray-500">
+                  ({hotel.reviewCount.toLocaleString()})
+                </span>
               </div>
 
               {/* 별점 표시 */}
@@ -98,14 +119,18 @@ const HotelCard = ({ hotel, onBook }) => {
                     <span
                       key={index}
                       className={`text-xs sm:text-sm ${
-                        index < hotel.starRating ? 'text-yellow-400' : 'text-gray-300'
+                        index < hotel.starRating
+                          ? "text-yellow-400"
+                          : "text-gray-300"
                       }`}
                     >
                       ★
                     </span>
                   ))}
                 </div>
-                <span className="text-xs text-gray-600">{hotel.starRating}성급</span>
+                <span className="text-xs text-gray-600">
+                  {hotel.starRating}성급
+                </span>
               </div>
             </div>
 
@@ -144,7 +169,7 @@ const HotelCard = ({ hotel, onBook }) => {
                   </div>
                   <p className="text-xs text-gray-500">1박 기준 • 세금 포함</p>
                 </div>
-                
+
                 <div className="flex sm:flex-col items-center sm:items-end gap-2">
                   <Button
                     variant="primary"
@@ -154,7 +179,10 @@ const HotelCard = ({ hotel, onBook }) => {
                   >
                     예약하기
                   </Button>
-                  <button className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 transition-colors px-2 whitespace-nowrap">
+                  <button
+                    className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 transition-colors px-2 whitespace-nowrap"
+                    onClick={() => onViewDetail && onViewDetail(hotel.id)}
+                  >
                     상세보기
                   </button>
                 </div>
