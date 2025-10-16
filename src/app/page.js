@@ -7,6 +7,8 @@ import Footer from '@/components/Footer';
 import Button from '@/components/Button';
 import { useRouter } from 'next/navigation';
 import SearchCondition from '@/components/hotelSearch/SearchCondition';
+import { useSearchStore } from '@/stores/searchStore';
+
 
 const CheckinHotel = () => {
   const [destination, setDestination] = useState('');
@@ -21,13 +23,15 @@ const CheckinHotel = () => {
 
   const router = useRouter();
 
+  const updateSearchParams = useSearchStore(state => state.updateSearchParams);
   const handleSearch = (e) => {
     e.preventDefault();
     if (selectedType === 'dining') {
       console.log('다이닝 검색:', { destination, diningDate, mealType, adults });
     } else {
       console.log('검색:', { destination, checkIn, checkOut, adults });
-    router.push(`/hotel-search?destination=${destination}&checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}`);
+      updateSearchParams({ destination:destination, checkIn:checkIn, checkOut:checkOut, adults:adults });
+    router.push(`/hotel-search`);
     }
   };
 

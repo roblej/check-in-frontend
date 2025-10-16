@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import HotelDetailPanel from "@/components/hotel/HotelDetailPanel";
+import { useSearchStore } from '@/stores/searchStore';
 
-const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
+const HotelSearchPage = () => {
+  const urlSearchParams = useSearchStore(state => state.searchParams);
   const [searchParams, setSearchParams] = useState({
     destination: urlSearchParams.destination,
     checkIn: urlSearchParams.checkIn,
