@@ -71,7 +71,6 @@ export default function FaqManagementPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState(null);
-  const [expandedFaqs, setExpandedFaqs] = useState(new Set());
   
   // 실제 필터링에 사용되는 상태 (검색 버튼 클릭시 업데이트)
   const [activeSearchTerm, setActiveSearchTerm] = useState('');
@@ -86,9 +85,48 @@ export default function FaqManagementPage() {
   });
 
   useEffect(() => {
-    // TODO: 실제 API 연동시 여기에서 fetch 후 setFaqs 호출
-    setFaqs(mockFaqList);
+    fetchFaqs();
   }, []);
+
+  const fetchFaqs = async () => {
+    try {
+      // 백엔드 API 호출 - FAQ 카테고리만 조회
+      const response = await fetch('/api/center/posts/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mainCategory: 'FAQ',
+          page: 0,
+          size: 100,
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // 백엔드 데이터를 프론트엔드 형식으로 변환
+        const convertedFaqs = (data.content || []).map(item => ({
+          id: item.centerIdx,
+          centerIdx: item.centerIdx,
+          category: item.subCategory || '기타',
+          question: item.title,
+          answer: item.content,
+          order: item.priority || 0,
+          createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
+          updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleString('ko-KR') : '',
+        }));
+        setFaqs(convertedFaqs);
+      } else {
+        // API 실패시 목 데이터 사용
+        setFaqs(mockFaqList);
+      }
+    } catch (error) {
+      console.error('FAQ 조회 실패:', error);
+      // 에러시 목 데이터 사용
+      setFaqs(mockFaqList);
+    }
+  };
 
   const filteredFaqs = faqs.filter(faq => {
     const matchesSearch = faq.question.toLowerCase().includes(activeSearchTerm.toLowerCase()) ||
@@ -97,16 +135,6 @@ export default function FaqManagementPage() {
     return matchesSearch && matchesCategory;
   });
 
-  // 아코디언 토글 함수
-  const toggleFaq = (faqId) => {
-    const newExpanded = new Set(expandedFaqs);
-    if (newExpanded.has(faqId)) {
-      newExpanded.delete(faqId);
-    } else {
-      newExpanded.add(faqId);
-    }
-    setExpandedFaqs(newExpanded);
-  };
 
   // 검색 버튼 클릭 핸들러
   const handleSearch = () => {
@@ -156,7 +184,7 @@ export default function FaqManagementPage() {
     setSelectedFaqs([]);
   };
 
-  const handleFaqAction = (faqId, action) => {
+  const handleFaqAction = async (faqId, action) => {
     const faq = faqs.find(f => f.id === faqId);
     
     switch (action) {
@@ -166,7 +194,21 @@ export default function FaqManagementPage() {
         break;
       case 'delete':
         if (confirm(`${faq.question}를 삭제하시겠습니까?`)) {
-          alert(`${faq.question}를 삭제했습니다.`);
+          try {
+            const response = await fetch(`/api/center/faq/${faq.centerIdx}`, {
+              method: 'DELETE',
+            });
+
+            if (response.ok) {
+              alert(`${faq.question}를 삭제했습니다.`);
+              fetchFaqs(); // 목록 새로고침
+            } else {
+              alert('FAQ 삭제에 실패했습니다.');
+            }
+          } catch (error) {
+            console.error('FAQ 삭제 실패:', error);
+            alert('FAQ 삭제 중 오류가 발생했습니다.');
+          }
         }
         break;
       default:
@@ -174,26 +216,76 @@ export default function FaqManagementPage() {
     }
   };
 
-  const handleAddFaq = () => {
+  const handleAddFaq = async () => {
     if (!newFaq.category || !newFaq.question || !newFaq.answer) {
       alert('모든 필드를 입력해주세요.');
       return;
     }
     
-    alert('새 FAQ가 추가되었습니다.');
-    setNewFaq({ category: '', question: '', answer: '', order: 0 });
-    setIsAddModalOpen(false);
+    try {
+      const response = await fetch('/api/center/faq', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: newFaq.question,
+          mainCategory: 'FAQ',
+          subCategory: newFaq.category,
+          content: newFaq.answer,
+          priority: newFaq.order,
+          status: 2, // 완료 상태
+        }),
+      });
+
+      if (response.ok) {
+        alert('새 FAQ가 추가되었습니다.');
+        setNewFaq({ category: '', question: '', answer: '', order: 0 });
+        setIsAddModalOpen(false);
+        fetchFaqs(); // 목록 새로고침
+      } else {
+        alert('FAQ 추가에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('FAQ 추가 실패:', error);
+      alert('FAQ 추가 중 오류가 발생했습니다.');
+    }
   };
 
-  const handleEditFaq = () => {
+  const handleEditFaq = async () => {
     if (!editingFaq.category || !editingFaq.question || !editingFaq.answer) {
       alert('모든 필드를 입력해주세요.');
       return;
     }
     
-    alert('FAQ가 수정되었습니다.');
-    setIsEditModalOpen(false);
-    setEditingFaq(null);
+    try {
+      const response = await fetch(`/api/center/faq/${editingFaq.centerIdx}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: editingFaq.question,
+          mainCategory: 'FAQ',
+          subCategory: editingFaq.category,
+          content: editingFaq.answer,
+          priority: editingFaq.order,
+          status: 2, // 완료 상태
+        }),
+      });
+
+      if (response.ok) {
+        alert('FAQ가 수정되었습니다.');
+        setIsEditModalOpen(false);
+        setEditingFaq(null);
+        fetchFaqs(); // 목록 새로고침
+      } else {
+        alert('FAQ 수정에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('FAQ 수정 실패:', error);
+      alert('FAQ 수정 중 오류가 발생했습니다.');
+    }
   };
 
   // 통계 계산
@@ -281,7 +373,7 @@ export default function FaqManagementPage() {
                 {activeSearchTerm || activeCategoryFilter !== '전체' ? (
                   <span>
                     검색 조건: 
-                    {activeSearchTerm && <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">&quot;{activeSearchTerm}&quot;</span>}
+                    테블{activeSearchTerm && <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">&quot;{activeSearchTerm}&quot;</span>}
                     {activeCategoryFilter !== '전체' && <span className="ml-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">카테고리: {activeCategoryFilter}</span>}
                   </span>
                 ) : (
@@ -351,19 +443,12 @@ export default function FaqManagementPage() {
                           <span className="text-xs text-gray-500">순서: {faq.order}</span>
                           <span className="text-xs text-gray-500">수정: {faq.updatedAt}</span>
                         </div>
-                        <button
-                          onClick={() => toggleFaq(faq.id)}
-                          className="text-left w-full"
-                        >
-                          <h3 className="text-lg font-medium text-gray-900 hover:text-purple-600 transition-colors">
-                            {faq.question}
-                          </h3>
-                        </button>
-                        {expandedFaqs.has(faq.id) && (
-                          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                            <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
-                          </div>
-                        )}
+                        <h3 className="text-lg font-medium text-gray-900 mb-3">
+                          {faq.question}
+                        </h3>
+                        <div className="p-4 bg-gray-50 rounded-lg">
+                          <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-4">

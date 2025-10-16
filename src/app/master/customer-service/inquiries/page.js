@@ -85,9 +85,51 @@ export default function InquiryListPage() {
   const [activePriorityFilter, setActivePriorityFilter] = useState('all');
 
   useEffect(() => {
-    // TODO: 실제 API 연동시 여기에서 fetch 후 setInquiries 호출
-    setInquiries(mockInquiryList);
+    fetchInquiries();
   }, []);
+
+  const fetchInquiries = async () => {
+    try {
+      // 백엔드 API 호출 - 문의 카테고리만 조회
+      const response = await fetch('/api/center/posts/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mainCategory: '문의',
+          page: 0,
+          size: 100,
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // 백엔드 데이터를 프론트엔드 형식으로 변환
+        const convertedInquiries = (data.content || []).map(item => ({
+          id: item.centerIdx,
+          username: item.customerIdx ? `고객${item.customerIdx}` : '관리자',
+          email: item.customerIdx ? `customer${item.customerIdx}@test.com` : 'admin@test.com',
+          title: item.title,
+          content: item.content,
+          status: item.status === 0 ? 'pending' : item.status === 1 ? 'in_progress' : 'completed',
+          category: item.subCategory || '기타',
+          priority: item.priority === 0 ? 'low' : item.priority === 1 ? 'medium' : 'high',
+          createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
+          answeredAt: item.status === 2 ? item.updatedAt : null,
+          assignedTo: item.adminIdx ? `관리자${item.adminIdx}` : '미배정',
+        }));
+        setInquiries(convertedInquiries);
+      } else {
+        // API 실패시 목 데이터 사용
+        setInquiries(mockInquiryList);
+      }
+    } catch (error) {
+      console.error('문의 조회 실패:', error);
+      // 에러시 목 데이터 사용
+      setInquiries(mockInquiryList);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -318,7 +360,7 @@ export default function InquiryListPage() {
         {/* 검색 및 필터 */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="md:col-span-2">
                 <input
                   type="text"
@@ -328,6 +370,21 @@ export default function InquiryListPage() {
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
+              </div>
+              <div>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="all">모든 카테고리</option>
+                  <option value="예약/취소">예약/취소</option>
+                  <option value="회원정보">회원정보</option>
+                  <option value="결제">결제</option>
+                  <option value="기술지원">기술지원</option>
+                  <option value="호텔정보">호텔정보</option>
+                  <option value="기타">기타</option>
+                </select>
               </div>
               <div>
                 <select
@@ -358,10 +415,11 @@ export default function InquiryListPage() {
             {/* 검색 버튼 영역 */}
             <div className="flex justify-between items-center">
               <div className="text-sm text-gray-600">
-                {activeSearchTerm || activeStatusFilter !== 'all' || activePriorityFilter !== 'all' ? (
+                {activeSearchTerm || activeCategoryFilter !== 'all' || activeStatusFilter !== 'all' || activePriorityFilter !== 'all' ? (
                   <span>
                     검색 조건: 
                     {activeSearchTerm && <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">"{activeSearchTerm}"</span>}
+                    {activeCategoryFilter !== 'all' && <span className="ml-1 px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">카테고리: {activeCategoryFilter}</span>}
                     {activeStatusFilter !== 'all' && <span className="ml-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">상태: {getStatusText(activeStatusFilter)}</span>}
                     {activePriorityFilter !== 'all' && <span className="ml-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">우선순위: {getPriorityText(activePriorityFilter)}</span>}
                   </span>
