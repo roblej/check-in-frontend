@@ -8,7 +8,7 @@ const SearchCondition = ({
   checkIn, 
   checkOut, 
   onDateChange,
-  selectedType,
+  selectedType = 'hotel',
   className = ''
 }) => {
   const [selectedCheckIn, setSelectedCheckIn] = useState(checkIn);
@@ -41,26 +41,42 @@ const SearchCondition = ({
     // 시간대 문제 해결을 위해 로컬 날짜 그대로 사용
     const dateString = date; // 이미 YYYY-MM-DD 형식이므로 그대로 사용
     
-    if (!selectedCheckIn || (selectedCheckIn && selectedCheckOut)) {
-      // 체크인 날짜 선택 또는 새로운 선택 시작
+    if (selectedType === 'dining') {
+      // 다이닝: 하루만 선택 가능
       setSelectedCheckIn(dateString);
       setSelectedCheckOut(null);
-    } else if (selectedCheckIn && !selectedCheckOut) {
-      // 체크아웃 날짜 선택
-      if (new Date(dateString) > new Date(selectedCheckIn)) {
-        setSelectedCheckOut(dateString);
-      } else {
+    } else {
+      // 호텔: 체크인/체크아웃 선택
+      if (!selectedCheckIn || (selectedCheckIn && selectedCheckOut)) {
+        // 체크인 날짜 선택 또는 새로운 선택 시작
         setSelectedCheckIn(dateString);
         setSelectedCheckOut(null);
+      } else if (selectedCheckIn && !selectedCheckOut) {
+        // 체크아웃 날짜 선택
+        if (new Date(dateString) > new Date(selectedCheckIn)) {
+          setSelectedCheckOut(dateString);
+        } else {
+          setSelectedCheckIn(dateString);
+          setSelectedCheckOut(null);
+        }
       }
     }
   };
 
   // 적용 함수
   const applyDates = () => {
-    if (selectedCheckIn && selectedCheckOut) {
-      onDateChange(selectedCheckIn, selectedCheckOut);
-      onClose();
+    if (selectedType === 'dining') {
+      // 다이닝: 체크인 날짜만 있으면 적용
+      if (selectedCheckIn) {
+        onDateChange(selectedCheckIn, null);
+        onClose();
+      }
+    } else {
+      // 호텔: 체크인과 체크아웃 모두 있어야 적용
+      if (selectedCheckIn && selectedCheckOut) {
+        onDateChange(selectedCheckIn, selectedCheckOut);
+        onClose();
+      }
     }
   };
 
@@ -96,7 +112,7 @@ const SearchCondition = ({
       const isSelected = 
         (checkInStr && dateStr === checkInStr) ||
         (checkOutStr && dateStr === checkOutStr);
-      const isInRange = checkInStr && checkOutStr &&
+      const isInRange = selectedType === 'hotel' && checkInStr && checkOutStr &&
         dateStr > checkInStr && dateStr < checkOutStr;
 
       calendar.push({
@@ -126,34 +142,8 @@ const SearchCondition = ({
     <>
       {/* 날짜 선택 패널 */}
       <div className={`bg-white rounded-lg shadow-lg border border-gray-200 w-full max-w-2xl ${className}`}>
-        {/* 상단 날짜 선택 헤더 */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex gap-3 mb-3">
-            {/* 체크인 */}
-            <div className={`flex-1 p-3 rounded-lg border-2 ${
-              selectedCheckIn && !selectedCheckOut 
-                ? 'border-teal-500 bg-teal-50' 
-                : 'border-gray-200'
-            }`}>
-              <div className="text-xs font-medium text-gray-600 mb-1">체크인</div>
-              <div className="text-sm font-semibold">
-                {selectedCheckIn ? formatDate(selectedCheckIn) : '날짜를 선택하세요'}
-              </div>
-            </div>
-
-            {/* 체크아웃 */}
-            <div className={`flex-1 p-3 rounded-lg border-2 ${
-              selectedCheckOut 
-                ? 'border-teal-500 bg-teal-50' 
-                : 'border-gray-200'
-            }`}>
-              <div className="text-xs font-medium text-gray-600 mb-1">체크아웃</div>
-              <div className="text-sm font-semibold">
-                {selectedCheckOut ? formatDate(selectedCheckOut) : '날짜를 선택하세요'}
-              </div>
-            </div>
-          </div>
-        </div>
+        
+       
 
         {/* 달력 */}
         <div className="p-4">
@@ -206,16 +196,16 @@ const SearchCondition = ({
                   h-8 w-full text-xs rounded transition-colors flex flex-col items-center justify-center
                   ${!day.isCurrentMonth ? 'text-gray-300' : day.isPastDate ? 'text-gray-300' : 'text-gray-700'}
                   ${day.isToday ? 'font-bold text-black' : ''}
-                  ${day.isSelected ? 'bg-teal-500 text-white font-bold' : ''}
-                  ${day.isInRange ? 'bg-teal-100' : ''}
+                  ${day.isSelected ? 'bg-blue-500 text-white font-bold' : ''}
+                  ${day.isInRange ? 'bg-blue-100' : ''}
                   ${day.isCurrentMonth && !day.isSelected && !day.isPastDate ? 'hover:bg-gray-100' : ''}
-                  ${day.isToday && !day.isSelected ? 'border-2 border-teal-500' : ''}
+                  ${day.isToday && !day.isSelected ? 'border-2 border-blue-500' : ''}
                   ${day.isPastDate ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
                 `}
               >
                 <div className="text-xs leading-none">{day.day}</div>
                 {day.isToday && !day.isSelected && (
-                  <div className="text-[10px] text-teal-600 font-normal leading-none mt-0.5">오늘</div>
+                  <div className="text-[10px] text-blue-600 font-normal leading-none mt-0.5">오늘</div>
                 )}
               </button>
             ))}
@@ -227,8 +217,8 @@ const SearchCondition = ({
           <div className="flex justify-end">
             <button
               onClick={applyDates}
-              disabled={!selectedCheckIn || !selectedCheckOut}
-              className="px-6 py-2 bg-teal-500 text-white rounded-lg text-sm font-semibold hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={selectedType === 'dining' ? !selectedCheckIn : (!selectedCheckIn || !selectedCheckOut)}
+              className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               적용
             </button>

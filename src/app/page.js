@@ -71,6 +71,15 @@ const CheckinHotel = () => {
     return () => clearInterval(timer);
   }, [slides.length]);
 
+  useEffect(function(){
+    setCheckIn(null);
+    setCheckOut(null);
+    setDiningDate(null);
+    setMealType(null);
+    setAdults(2);
+    setDestination('');
+  },[selectedType]);
+
   const popularHotels = [
     {
       id: 1,
@@ -266,36 +275,17 @@ const CheckinHotel = () => {
                     {selectedType === 'dining' ? '식사일정을 선택하세요' : '숙박일정을 선택하세요'}
                   </label>
                   {selectedType === 'dining' ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="date"
-                        value={diningDate}
-                        onChange={(e) => setDiningDate(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setMealType('lunch')}
-                          className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                            mealType === 'lunch'
-                              ? 'bg-[#3B82F6] text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          점심
-                        </button>
-                        <button
-                          onClick={() => setMealType('dinner')}
-                          className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                            mealType === 'dinner'
-                              ? 'bg-[#3B82F6] text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          저녁
-                        </button>
+                    <div
+                    className="grid grid-cols-2 gap-2 cursor-pointer"
+                    onClick={() => setIsDatePickerOpen(true)}
+                  >
+                    <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white hover:border-[#3B82F6] transition-colors h-12 flex flex-col justify-center">
+                      <div className="text-xs text-gray-600">다이닝</div>
+                      <div className="text-sm text-gray-900 font-medium">
+                        {checkIn ? formatDateDisplay(checkIn) : '날짜 선택'}
                       </div>
                     </div>
+                  </div>
                   ) : (
                     <div
                       className="grid grid-cols-2 gap-2 cursor-pointer"
