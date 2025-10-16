@@ -3,10 +3,21 @@
 import { useEffect, useRef } from "react";
 import HotelDetail from "./HotelDetail";
 
-const HotelDetailModal = ({ hotelId, searchParams, onClose }) => {
+/**
+ * 호텔 상세 패널 컴포넌트 (네이버 호텔 스타일)
+ * - 모달이 아닌 사이드 패널 형태
+ * - 배경 오버레이 없음 (다른 요소 클릭 가능)
+ * - 호텔 리스트와 지도가 그대로 보임
+ *
+ * @param {Object} props
+ * @param {number|string} props.hotelId - 호텔 ID
+ * @param {Object} props.searchParams - 검색 파라미터
+ * @param {Function} props.onClose - 패널 닫기 함수
+ */
+const HotelDetailPanel = ({ hotelId, searchParams, onClose }) => {
   const scrollContainerRef = useRef(null);
 
-  // ESC 키로 모달 닫기
+  // ESC 키로 패널 닫기
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === "Escape") {
@@ -16,22 +27,35 @@ const HotelDetailModal = ({ hotelId, searchParams, onClose }) => {
 
     window.addEventListener("keydown", handleEsc);
 
-    // 모달이 열려도 스크롤은 가능하게 유지
-    // document.body.style.overflow = "hidden";
-
     return () => {
       window.removeEventListener("keydown", handleEsc);
-      // document.body.style.overflow = "unset";
     };
   }, [onClose]);
 
   return (
-    <div className="hotel-detail-panel z-50 pointer-events-none">
-      {/* 네이버 호텔처럼 지도 위에 오버레이되는 모달 패널 (반응형) */}
-      <div className="h-full w-full bg-white shadow-2xl flex flex-col animate-slide-in-right pointer-events-auto lg:rounded-xl">
-        {/* 모달 헤더 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-white sticky top-0 z-10 shadow-sm">
-          <h2 className="text-xl font-bold text-gray-900">호텔 상세</h2>
+    <>
+      {/* 모바일: 전체 화면 모달 (배경 오버레이 있음) */}
+      <div
+        className="fixed inset-0 bg-black bg-opacity-30 z-40 animate-fade-in lg:hidden"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* 네이버 호텔 스타일 패널 */}
+      <div
+        className="fixed top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in-right
+                   w-full 
+                   lg:left-[calc(30%+1rem)] lg:right-auto lg:w-[555px] 
+                   lg:top-[120px] lg:h-[calc(100vh-140px)] 
+                   lg:rounded-xl lg:max-w-[555px]"
+        role="complementary"
+        aria-labelledby="panel-title"
+      >
+        {/* 패널 헤더 */}
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-white flex-shrink-0">
+          <h2 id="panel-title" className="text-xl font-bold text-gray-900">
+            호텔 상세
+          </h2>
           <button
             onClick={onClose}
             className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors shadow-sm"
@@ -53,8 +77,12 @@ const HotelDetailModal = ({ hotelId, searchParams, onClose }) => {
           </button>
         </div>
 
-        {/* 모달 컨텐츠 (스크롤 가능) */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+        {/* 패널 컨텐츠 (스크롤 가능) */}
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto relative"
+          style={{ scrollBehavior: "smooth" }}
+        >
           <HotelDetail
             hotelId={hotelId}
             searchParams={searchParams}
@@ -63,8 +91,8 @@ const HotelDetailModal = ({ hotelId, searchParams, onClose }) => {
           />
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
-export default HotelDetailModal;
+export default HotelDetailPanel;
