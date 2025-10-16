@@ -195,7 +195,7 @@ export default function FaqManagementPage() {
       case 'delete':
         if (confirm(`${faq.question}를 삭제하시겠습니까?`)) {
           try {
-            const response = await fetch(`/api/center/faq/${faq.centerIdx}`, {
+            const response = await fetch(`/api/center/posts/${faq.centerIdx}`, {
               method: 'DELETE',
             });
 
@@ -223,18 +223,18 @@ export default function FaqManagementPage() {
     }
     
     try {
-      const response = await fetch('/api/center/faq', {
+      const response = await fetch('/api/center/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           title: newFaq.question,
+          adminIdx: 2,
           mainCategory: 'FAQ',
           subCategory: newFaq.category,
           content: newFaq.answer,
-          priority: newFaq.order,
-          status: 2, // 완료 상태
+          priority: 0,
         }),
       });
 
@@ -259,7 +259,7 @@ export default function FaqManagementPage() {
     }
     
     try {
-      const response = await fetch(`/api/center/faq/${editingFaq.centerIdx}`, {
+      const response = await fetch(`/api/center/posts/${editingFaq.centerIdx}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -373,7 +373,7 @@ export default function FaqManagementPage() {
                 {activeSearchTerm || activeCategoryFilter !== '전체' ? (
                   <span>
                     검색 조건: 
-                    테블{activeSearchTerm && <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">&quot;{activeSearchTerm}&quot;</span>}
+                    {activeSearchTerm && <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">&quot;{activeSearchTerm}&quot;</span>}
                     {activeCategoryFilter !== '전체' && <span className="ml-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">카테고리: {activeCategoryFilter}</span>}
                   </span>
                 ) : (
