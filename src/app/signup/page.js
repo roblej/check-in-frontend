@@ -7,6 +7,7 @@ import Header from "@/components/Header";
 import styles from "./signup.module.css";
 
 export default function SignupPage() {
+  const api_url = "api/signup"
   const router = useRouter();
   const [formData, setFormData] = useState({
     userId: "",
