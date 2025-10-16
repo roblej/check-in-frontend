@@ -1,21 +1,67 @@
 'use client';
 
 import MasterLayout from '@/components/master/MasterLayout';
+import axios from 'axios';
 import { ChartColumn, Hotel, Users, MessageCircleMore, LayoutDashboard, Settings, CalendarCheck, CircleDollarSign } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const MasterDashboard = () => {
+
+  const api_url = "api/master/dashboard";
+
+  const [list, setList] = useState([]);
+  const [hotelCount, setHotelCount] = useState("불러오는중...");
+  const [customerList, setCustomerList] = useState([]);
+  const [customerCount, setCustomerCount] = useState("불러오는중...");
+  const [paymentAmount, setPaymentAmount] = useState("불러오는중...");
+
+  const [hotelRequestList, setHotelRequestList] = useState([]);
+  const [hotelRequestCount, setHotelRequestCount] = useState("불러오는중...");
+  const [newCustomers, setNewCustomers] = useState([]);
+  const [newCustomersCount, setNewCustomersCount] = useState("불러오는중...");
+
+  function getData(){
+    axios.get(api_url).then(res => {
+      if(res.data.hotelList){
+        console.log(res.data.hotelList);
+        setList(res.data.hotelList);
+        setHotelCount(res.data.hotelCount);
+      }
+      if(res.data.customerList){
+        setCustomerList(res.data.customerList);
+        setCustomerCount(res.data.customerCount);
+      }
+      if(res.data.paymentAmount){
+        setPaymentAmount(res.data.paymentAmount);
+      }
+      if(res.data.newCustomers){
+        console.log('New Customers Data:', res.data.newCustomers);
+        setNewCustomers(res.data.newCustomers);
+        setNewCustomersCount(res.data.newCustomersCount);
+      }
+      if(res.data.hotelRequestList){
+        setHotelRequestList(res.data.hotelRequestList);
+        setHotelRequestCount(res.data.hotelRequestCount);
+      }
+    });
+  }
+
+  useEffect(() => {
+    getData();
+  }, []);
+  
   // 사이트 통계 데이터
   const siteStats = [
     {
       title: '등록된 호텔',
-      value: '127',
+      value: `${hotelCount}`,
       change: '+8',
       changeType: 'positive',
       icon: <Hotel size={40} />
     },
     {
       title: '총 회원수',
-      value: '15,432',
+      value: `${customerCount}`,
       change: '+234',
       changeType: 'positive',
       icon: <Users size={40} />
@@ -29,32 +75,10 @@ const MasterDashboard = () => {
     },
     {
       title: '총 매출',
-      value: '₩2.4억',
+      value: '₩'+`${paymentAmount}`,
       change: '+18%',
       changeType: 'positive',
       icon: <CircleDollarSign size={40} />
-    }
-  ];
-
-  // 최근 호텔 등록 요청 (축소)
-  const recentHotelRequests = [
-    {
-      id: 'H001',
-      hotelName: '서울 그랜드 호텔',
-      owner: '김호텔',
-      location: '서울 강남구',
-      requestDate: '2024-01-15',
-      status: 'pending',
-      rooms: 45
-    },
-    {
-      id: 'H002',
-      hotelName: '부산 오션뷰 리조트',
-      owner: '이바다',
-      location: '부산 해운대구',
-      requestDate: '2024-01-14',
-      status: 'approved',
-      rooms: 120
     }
   ];
 
@@ -150,7 +174,7 @@ const MasterDashboard = () => {
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-sm sm:text-lg font-semibold text-gray-900">최근 호텔 등록 요청</h3>
-                <p className="text-xs sm:text-sm text-gray-600">승인 대기중인 호텔 등록 요청</p>
+                <p className="text-xs sm:text-sm text-gray-600">승인 대기중인 호텔 등록 요청 {hotelRequestCount}건</p>
               </div>
               <button className="text-[#7C3AED] hover:text-purple-800 text-xs sm:text-sm font-medium">
                 전체 보기
@@ -186,16 +210,16 @@ const MasterDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {recentHotelRequests.map((request) => (
-                  <tr key={request.id} className="hover:bg-gray-50">
+                {hotelRequestList.map((request) => (
+                  <tr key={request.contentId} className="hover:bg-gray-50">
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
-                      {request.hotelName}
+                      {request.title}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                      {request.owner}
+                      {request.ownerName}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                      {request.location}
+                      {request.adress}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                       {request.rooms}개
@@ -205,7 +229,7 @@ const MasterDashboard = () => {
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap">
                       <span className={`inline-flex px-1 sm:px-2 py-0.5 sm:py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status)}`}>
-                        {getStatusText(request.status)}
+                        {request.status === 0 ? '승인요청' : '승인됨'}
                       </span>
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium space-x-1 sm:space-x-2">
@@ -229,7 +253,7 @@ const MasterDashboard = () => {
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">최근 회원 가입</h3>
-                <p className="text-sm text-gray-600">새로 가입한 회원 목록</p>
+                <p className="text-sm text-gray-600">새로 가입한 회원 목록 {newCustomersCount}명</p>
               </div>
               <button className="text-[#7C3AED] hover:text-purple-800 text-sm font-medium">
                 전체 보기
@@ -251,7 +275,7 @@ const MasterDashboard = () => {
                     가입일
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    예약횟수
+                    누적금액
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     상태
@@ -262,8 +286,8 @@ const MasterDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {recentMembers.map((member) => (
-                  <tr key={member.id} className="hover:bg-gray-50">
+                {newCustomers.map((member) => (
+                  <tr key={member.customerIdx} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {member.name}
                     </td>
@@ -271,14 +295,14 @@ const MasterDashboard = () => {
                       {member.email}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {member.joinDate}
+                      {member.joinDate ? new Date(member.joinDate).toLocaleDateString('ko-KR') : '정보 없음'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {member.reservations}회
+                      {member.totalPrice || 0}원
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(member.status)}`}>
-                        {getStatusText(member.status)}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(member.status === 1 ? 'active' : 'inactive')}`}>
+                        {getStatusText(member.status === 1 ? 'active' : 'inactive')}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">

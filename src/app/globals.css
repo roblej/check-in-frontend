@@ -24,6 +24,9 @@
   @apply cursor-not-allowed opacity-50 bg-blue-300;
 }
 
+.display-flex {
+  display: flex;
+}
 /* Slider Styles */
 .slider::-webkit-slider-thumb {
   appearance: none;
