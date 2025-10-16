@@ -1,5 +1,7 @@
 'use client';
 
+import Link from "next/link";
+
 const Header = () => {
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
@@ -22,10 +24,10 @@ const Header = () => {
               <a href="/faq" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
                 FAQ
               </a>
-              <a href="/admin" className="text-sm font-medium text-[#3B82F6] hover:text-blue-600 transition-colors font-semibold">
+              <a href="/admin" className="text-sm font-semibold text-[#3B82F6] hover:text-blue-600 transition-colors">
                 관리자
               </a>
-              <a href="/master" className="text-sm font-medium text-[#7C3AED] hover:text-purple-600 transition-colors font-semibold">
+              <a href="/master" className="text-sm font-semibold text-[#7C3AED] hover:text-purple-600 transition-colors">
                 마스터
               </a>
             </nav>
@@ -37,6 +39,9 @@ const Header = () => {
             <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
               공유하기
             </button>
+            <a href="/mypage" className="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">
+              MY
+            </a>
             <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
               로그아웃
             </button>
