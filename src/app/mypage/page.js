@@ -6,10 +6,12 @@ import {
   MessageSquare, ChevronRight, Star, Clock, Check, X,
   CreditCard, Edit, Trash2, Share2, Hotel
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 export default function MyPage() {
+  const router = useRouter();
   // 탭 상태 관리
   const [reservationTab, setReservationTab] = useState('upcoming'); // upcoming, completed, cancelled
   const [couponTab, setCouponTab] = useState('available'); // available, used, expired
@@ -151,7 +153,10 @@ export default function MyPage() {
                 </div>
               </div>
             </div>
-            <button className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors font-medium">
+            <button 
+              onClick={() => router.push('/mypage/edit')}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors font-medium"
+            >
               <Edit className="w-4 h-4" />
               <span>개인정보 수정</span>
             </button>
