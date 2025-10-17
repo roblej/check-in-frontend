@@ -9,7 +9,7 @@ import HotelAmenities from "./HotelAmenities";
 import HotelReviews from "./HotelReviews";
 import HotelLocation from "./HotelLocation";
 import HotelPolicy from "./HotelPolicy";
-import { getMockHotelData } from "./mockHotelData";
+import { hotelAPI } from "@/lib/api/hotel";
 
 /**
  * 호텔 상세 정보 컴포넌트
@@ -20,7 +20,7 @@ import { getMockHotelData } from "./mockHotelData";
  * @param {React.RefObject} props.scrollContainerRef - 외부 스크롤 컨테이너 ref
  */
 const HotelDetail = ({
-  contentId ,
+  contentId,
   searchParams = {},
   isModal = false,
   scrollContainerRef: externalScrollRef,
@@ -28,6 +28,10 @@ const HotelDetail = ({
   const [activeSection, setActiveSection] = useState("rooms");
   const [isScrollingToSection, setIsScrollingToSection] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(0);
+  const [hotelData, setHotelData] = useState(null);
+  const [rooms, setRooms] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const navRef = useRef(null);
   const headerRef = useRef(null);
@@ -37,10 +41,85 @@ const HotelDetail = ({
   // 외부에서 전달된 scrollContainerRef가 있으면 사용, 없으면 내부 ref 사용
   const scrollContainerRef = externalScrollRef || internalScrollRef;
 
-  // 임시 호텔 데이터 (실제로는 axios로 API 호출)
-  const hotelData = getMockHotelData(contentId );
+  const formatPrice = (price) =>
+    new Intl.NumberFormat("ko-KR").format(Number(price || 0));
 
-  const formatPrice = (price) => new Intl.NumberFormat("ko-KR").format(price);
+  // 데이터 로드: 호텔 상세 + 객실 목록(contentId, optional name)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchData = async () => {
+      setIsLoading(true);
+      setErrorMessage("");
+      try {
+        const [hotelRes, roomsRes] = await Promise.all([
+          hotelAPI.getHotelDetail(contentId),
+          hotelAPI.getHotelRooms(contentId, {
+            name: searchParams?.roomName || undefined,
+          }),
+        ]);
+
+        // 백엔드 응답 형태 정규화 가정: { data: {...} } or plain object
+        const hotel = hotelRes?.data ?? hotelRes;
+        const roomList = roomsRes?.data ?? roomsRes ?? [];
+
+        // HotelInfo / HotelDetail 매핑
+        const mappedHotel = {
+          id: hotel?.contentId ?? contentId,
+          name: hotel?.title ?? "",
+          description: hotel?.hotelDetail?.scalelodging || "",
+          location: hotel?.adress ?? "",
+          rating: hotel?.rating ?? null, // 없으면 null
+          reviewCount: hotel?.reviewCount ?? 0,
+          starRating: hotel?.starRating ?? 0,
+          checkInTime: hotel?.checkInTime ?? "",
+          checkOutTime: hotel?.checkOutTime ?? "",
+          amenities: [
+            hotel?.hotelDetail?.foodplace,
+            hotel?.hotelDetail?.parkinglodging,
+            hotel?.hotelDetail?.reservationlodging,
+          ].filter(Boolean),
+          images: hotel?.images ?? (hotel?.imageUrl ? [hotel.imageUrl] : []),
+          district: hotel?.areaCode ?? "",
+        };
+
+        // Room 매핑
+        const mappedRooms = (Array.isArray(roomList) ? roomList : []).map(
+          (room) => ({
+            id: `${room.contentId}-${room.name}`,
+            name: room.name,
+            description: room.description || "",
+            size: room.size || "",
+            bedType: room.bedType || "",
+            maxOccupancy: room.capacity ?? 2,
+            amenities: Array.isArray(room.amenities) ? room.amenities : [],
+            checkInInfo: mappedHotel.checkInTime
+              ? `${mappedHotel.checkInTime} 이후 체크인`
+              : "",
+            originalPrice: Number(room.basePrice ?? 0),
+            price: Number(room.basePrice ?? 0),
+            discount: 0,
+            imageUrl: room.imageUrl || "",
+          })
+        );
+
+        if (isMounted) {
+          setHotelData(mappedHotel);
+          setRooms(mappedRooms);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setErrorMessage("호텔 정보를 불러오지 못했습니다.");
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    if (contentId) fetchData();
+    return () => {
+      isMounted = false;
+    };
+  }, [contentId, searchParams?.roomName]);
 
   // 네비게이션 섹션
   const navSections = [
@@ -191,6 +270,26 @@ const HotelDetail = ({
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-gray-600">불러오는 중...</div>
+      </div>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-red-600" role="alert" aria-live="assertive">
+          {errorMessage}
+        </div>
+      </div>
+    );
+  }
+
+  if (!hotelData) return null;
+
   return (
     <div id={`hotel-${hotelData.id}`} className="bg-gray-50 min-h-screen">
       {/* Sticky 헤더 - 메인 Header 아래에 고정 */}
@@ -228,9 +327,9 @@ const HotelDetail = ({
             <div className="text-right ml-4 flex-shrink-0">
               <p className="text-sm text-gray-500">최저가</p>
               <p className="text-xl font-bold text-blue-600">
-                ₩{formatPrice(hotelData.rooms[0].price)}
+                ₩{formatPrice(rooms[0]?.price || 0)}
               </p>
-              <LiveViewerCount contentId ={hotelData.id} />
+              <LiveViewerCount contentId={hotelData.id} />
             </div>
           </div>
         </div>
@@ -270,7 +369,7 @@ const HotelDetail = ({
         }`}
       >
         {/* 호텔 이미지 갤러리 */}
-        <HotelGallery images={hotelData.images} isModal={isModal} />
+        <HotelGallery images={hotelData.images ?? []} isModal={isModal} />
 
         {/* 호텔 소개 */}
         <HotelInfo hotelData={hotelData} />
@@ -279,7 +378,7 @@ const HotelDetail = ({
         <div ref={(el) => (sectionsRef.current["rooms"] = el)} className="mb-8">
           <h2 className="text-2xl font-bold mb-4">객실 선택</h2>
           <div className="space-y-4">
-            {hotelData.rooms.map((room) => (
+            {rooms.map((room) => (
               <RoomCard
                 key={room.id}
                 room={room}
