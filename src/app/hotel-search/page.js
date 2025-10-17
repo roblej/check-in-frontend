@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import HotelDetailPanel from "@/components/hotel/HotelDetailPanel";
+import { useSearchStore } from '@/stores/searchStore';
 
-const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
+const HotelSearchPage = () => {
+  const urlSearchParams = useSearchStore(state => state.searchParams);
   const [searchParams, setSearchParams] = useState({
     destination: urlSearchParams.destination,
     checkIn: urlSearchParams.checkIn,
@@ -26,11 +28,11 @@ const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedHotelId, setSelectedHotelId] = useState(null);
+  const [selectedcontentId , setSelectedcontentId ] = useState(null);
 
   // 모달 열기 함수
-  const handleHotelClick = (hotelId) => {
-    setSelectedHotelId(hotelId);
+  const handleHotelClick = (contentId ) => {
+    setSelectedcontentId (contentId );
   };
   const itemsPerPage = 12;
 
@@ -665,11 +667,11 @@ const HotelSearchPage = ({ searchParams: urlSearchParams }) => {
       </div>
 
       {/* 호텔 상세 패널 - 네이버 호텔 스타일 */}
-      {selectedHotelId && (
+      {selectedcontentId  && (
         <HotelDetailPanel
-          hotelId={selectedHotelId}
+        contentId ={selectedcontentId }
           searchParams={searchParams}
-          onClose={() => setSelectedHotelId(null)}
+          onClose={() => setSelectedcontentId (null)}
         />
       )}
     </div>

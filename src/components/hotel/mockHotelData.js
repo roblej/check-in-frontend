@@ -2,8 +2,8 @@
  * 호텔 상세 페이지용 임시 데이터
  * TODO: 실제 API 연동 시 제거 예정
  */
-export const getMockHotelData = (hotelId) => ({
-  id: hotelId || 1,
+export const getMockHotelData = (contentId ) => ({
+  id: contentId  || 1,
   name: "신라스테이 광화문",
   rating: 8.4,
   reviewCount: 245,

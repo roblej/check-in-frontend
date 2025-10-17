@@ -8,22 +8,13 @@ const Header = () => {
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-14">
           <div className="flex items-center gap-8">
-            <a href="/" className="text-2xl font-bold text-[#3B82F6] cursor-pointer hover:text-blue-600 transition-colors">
+            <Link href="/" className="text-2xl font-bold text-[#3B82F6] cursor-pointer hover:text-blue-600 transition-colors">
               체크인
-            </a>
+            </Link>
             <nav className="hidden md:flex items-center gap-6">
-              <a href="/" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                호텔
-              </a>
-              <a href="/" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                모텔
-              </a>
-              <a href="/" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                국내전용
-              </a>
-              <a href="/faq" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                FAQ
-              </a>
+              <Link href="/" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+                뭐넣지
+              </Link>
               <a href="/admin" className="text-sm font-semibold text-[#3B82F6] hover:text-blue-600 transition-colors">
                 관리자
               </a>
@@ -34,7 +25,9 @@ const Header = () => {
           </div>
           <div className="flex items-center gap-3">
             <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
-              전체서비스
+              <Link href="/center" className="text-sm font-semibold text-[#3B82F6] hover:text-blue-600 transition-colors">
+                고객센터
+              </Link>
             </button>
             <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
               공유하기
@@ -42,9 +35,9 @@ const Header = () => {
             <a href="/mypage" className="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">
               MY
             </a>
-            <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
-              로그아웃
-            </button>
+            <Link href="/login" className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
+              로그인
+            </Link>
           </div>
         </div>
       </div>
