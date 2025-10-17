@@ -6,11 +6,11 @@ import StructuredData from "@/components/SEO/StructuredData";
 
 // 동적 메타데이터 생성
 export async function generateMetadata({ params }) {
-  const hotelId = params.id;
+  const contentId  = params.id;
 
   // 실제로는 API에서 호텔 정보를 가져와야 함
   const hotelData = {
-    id: hotelId,
+    id: contentId ,
     name: "신라스테이 광화문",
     description: "광화문 중심부에 위치한 프리미엄 비즈니스 호텔입니다.",
     location: "서울 종로구",
@@ -36,13 +36,13 @@ export async function generateMetadata({ params }) {
       images: hotelData.images,
     },
     alternates: {
-      canonical: `/hotel/${hotelId}`,
+      canonical: `/hotel/${contentId }`,
     },
   };
 }
 
 const HotelDetailPage = ({ params, searchParams }) => {
-  const hotelId = params.id;
+  const contentId  = params.id;
 
   // URL에서 검색 파라미터 가져오기
   const searchParamsData = {
@@ -55,7 +55,7 @@ const HotelDetailPage = ({ params, searchParams }) => {
 
   // 임시 호텔 데이터 (실제로는 API에서 가져와야 함)
   const hotelData = {
-    id: hotelId,
+    id: contentId ,
     name: "신라스테이 광화문",
     description: "광화문 중심부에 위치한 프리미엄 비즈니스 호텔입니다.",
     location: "서울 종로구 삼봉로 71",
@@ -80,7 +80,7 @@ const HotelDetailPage = ({ params, searchParams }) => {
     <div className="min-h-screen bg-gray-50">
       <StructuredData hotelData={hotelData} />
       <Header />
-      <HotelDetail hotelId={hotelId} searchParams={searchParamsData} />
+      <HotelDetail contentId ={contentId } searchParams={searchParamsData} />
       <Footer />
     </div>
   );

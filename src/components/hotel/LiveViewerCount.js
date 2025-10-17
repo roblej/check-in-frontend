@@ -3,12 +3,21 @@
 import { useState, useEffect } from "react";
 import { hotelAPI } from "@/lib/api/hotel";
 
-const LiveViewerCount = ({ hotelId }) => {
+/**
+ * 호텔 실시간 조회수 표시 컴포넌트 (ISR + Redis + TanStack Query)
+ *
+ * 흐름:
+ * 1. 페이지 진입 시 → 백엔드에 view 등록 (1회)
+ * 2. TanStack Query로 30초마다 /views API 호출
+ * 3. Redis TTL 1분 동안 유지
+ */
+
+const LiveViewerCount = ({ contentId  }) => {
   const [viewCount, setViewCount] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    if (!hotelId) return;
+    if (!contentId ) return;
 
     // 컴포넌트가 화면에 보일 때 조회수 증가
     const observer = new IntersectionObserver(
@@ -17,7 +26,7 @@ const LiveViewerCount = ({ hotelId }) => {
           if (entry.isIntersecting && !isVisible) {
             setIsVisible(true);
             // 조회수 증가
-            hotelAPI.incrementHotelView(hotelId).catch(console.error);
+            hotelAPI.incrementHotelView(contentId ).catch(console.error);
           } else if (!entry.isIntersecting && isVisible) {
             setIsVisible(false);
           }
@@ -26,7 +35,7 @@ const LiveViewerCount = ({ hotelId }) => {
       { threshold: 0.5 }
     );
 
-    const element = document.getElementById(`hotel-${hotelId}`);
+    const element = document.getElementById(`hotel-${contentId }`);
     if (element) {
       observer.observe(element);
     }
@@ -36,15 +45,15 @@ const LiveViewerCount = ({ hotelId }) => {
         observer.unobserve(element);
       }
     };
-  }, [hotelId, isVisible]);
+  }, [contentId , isVisible]);
 
   useEffect(() => {
-    if (!hotelId) return;
+    if (!contentId ) return;
 
     // 초기 조회수 로드
     const loadViewCount = async () => {
       try {
-        const data = await hotelAPI.getHotelViews(hotelId);
+        const data = await hotelAPI.getHotelViews(contentId );
         setViewCount(data.views || 0);
       } catch (error) {
         console.error("조회수 로드 실패:", error);
@@ -57,7 +66,7 @@ const LiveViewerCount = ({ hotelId }) => {
     const interval = setInterval(loadViewCount, 10000);
 
     return () => clearInterval(interval);
-  }, [hotelId]);
+  }, [contentId ]);
 
   if (viewCount === 0) return null;
 

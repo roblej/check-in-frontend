@@ -53,7 +53,7 @@ src/
 
 #### **전체 페이지 모드** (`isModal={false}`)
 
-- **위치**: `src/app/hotel/[id]/page.js`
+- **위치**: `src/app/hotel/[contentId]/page.js`
 - **사용 컴포넌트**: `HotelDetail` (직접)
 - **특징**:
   - 전체 페이지로 호텔 정보 표시
@@ -101,7 +101,7 @@ src/
 
 ```javascript
 {
-  hotelId: number|string,        // 호텔 ID
+  contentId : number|string,        // 호텔 ID
   searchParams: Object,          // 검색 조건 (체크인/아웃, 인원 등)
   isModal: boolean,              // 패널 모드 여부
   scrollContainerRef: RefObject  // 외부 스크롤 컨테이너 (패널용)
@@ -284,13 +284,13 @@ setActiveSection(currentSection);
 1. 호텔 클릭
    ↓
 2. hotel-search/page.js
-   - setSelectedHotelId(hotelId)
+   - setSelectedcontentId (contentId )
    ↓
 3. HotelDetailPanel 렌더링
-   - hotelId, searchParams 전달
+   - contentId , searchParams 전달
    ↓
 4. HotelDetail 렌더링
-   - getMockHotelData(hotelId) 호출
+   - getMockHotelData(contentId ) 호출
    - 섹션별 컴포넌트 렌더링
    ↓
 5. 사용자 인터랙션

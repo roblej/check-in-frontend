@@ -10,11 +10,11 @@ import HotelDetail from "./HotelDetail";
  * - 호텔 리스트와 지도가 그대로 보임
  *
  * @param {Object} props
- * @param {number|string} props.hotelId - 호텔 ID
+ * @param {number|string} props.contentId  - 호텔 ID
  * @param {Object} props.searchParams - 검색 파라미터
  * @param {Function} props.onClose - 패널 닫기 함수
  */
-const HotelDetailPanel = ({ hotelId, searchParams, onClose }) => {
+const HotelDetailPanel = ({ contentId , searchParams, onClose }) => {
   const scrollContainerRef = useRef(null);
 
   // ESC 키로 패널 닫기
@@ -84,7 +84,7 @@ const HotelDetailPanel = ({ hotelId, searchParams, onClose }) => {
           style={{ scrollBehavior: "smooth" }}
         >
           <HotelDetail
-            hotelId={hotelId}
+            contentId ={contentId }
             searchParams={searchParams}
             isModal={true}
             scrollContainerRef={scrollContainerRef}
