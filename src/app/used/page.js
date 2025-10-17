@@ -100,6 +100,8 @@ const ResalePage = () => {
         const dummyItems = [
           {
             id: 999,
+            reservIdx: 1, // roomReservation 테이블의 reservIdx
+            contentId: '1003654', // 호텔의 contentId
             hotelName: '더미 호텔 A',
             location: '서울시 강남구',
             originalPrice: 300000,
@@ -118,6 +120,8 @@ const ResalePage = () => {
           },
           {
             id: 998,
+            reservIdx: 2, // roomReservation 테이블의 reservIdx
+            contentId: '1003655', // 호텔의 contentId
             hotelName: '더미 호텔 B',
             location: '부산시 해운대구',
             originalPrice: 200000,
@@ -136,6 +140,8 @@ const ResalePage = () => {
           },
           {
             id: 997,
+            reservIdx: 3, // roomReservation 테이블의 reservIdx
+            contentId: '1003656', // 호텔의 contentId
             hotelName: '더미 호텔 C',
             location: '제주시 연동',
             originalPrice: 400000,

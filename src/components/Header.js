@@ -13,16 +13,7 @@ const Header = () => {
             </a>
             <nav className="hidden md:flex items-center gap-6">
               <a href="/" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                호텔
-              </a>
-              <a href="/" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                모텔
-              </a>
-              <a href="/" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                국내전용
-              </a>
-              <a href="/faq" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                FAQ
+                뭐넣지
               </a>
               <a href="/admin" className="text-sm font-semibold text-[#3B82F6] hover:text-blue-600 transition-colors">
                 관리자
@@ -34,7 +25,9 @@ const Header = () => {
           </div>
           <div className="flex items-center gap-3">
             <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
-              전체서비스
+              <Link href="/center" className="text-sm font-semibold text-[#3B82F6] hover:text-blue-600 transition-colors">
+                고객센터
+              </Link>
             </button>
             <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
               공유하기
