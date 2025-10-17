@@ -33,12 +33,19 @@ const ResaleItemCard = ({ item, onInquire, onBookmark }) => {
     <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden group">
       {/* 이미지 */}
       <div className="relative h-48 overflow-hidden">
-        <Image
-          src={item.image}
-          alt={item.hotelName}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
-        />
+        {item.image ? (
+          <Image
+            src={item.image}
+            alt={item.hotelName || '호텔 이미지'}
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+            <span className="text-gray-400 text-sm">이미지 없음</span>
+          </div>
+        )}
         {item.urgent && (
           <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
             긴급
@@ -52,8 +59,8 @@ const ResaleItemCard = ({ item, onInquire, onBookmark }) => {
       {/* 내용 */}
       <div className="p-6">
         <div className="mb-3">
-          <h3 className="text-lg font-bold text-gray-900 mb-1">{item.hotelName}</h3>
-          <p className="text-sm text-gray-600">{item.location}</p>
+          <h3 className="text-lg font-bold text-gray-900 mb-1">{item.hotelName || '호텔명 없음'}</h3>
+          <p className="text-sm text-gray-600">{item.location || '위치 정보 없음'}</p>
         </div>
 
         {/* 날짜 및 숙박 정보 */}
@@ -64,8 +71,8 @@ const ResaleItemCard = ({ item, onInquire, onBookmark }) => {
           </div>
           <div className="flex items-center text-sm text-gray-600">
             <span className="mr-2">🏨</span>
-            <span>성인 {item.guests}명</span>
-            <span className="ml-2 text-gray-400">• {item.roomType}</span>
+            <span>성인 {item.guests || 0}명</span>
+            <span className="ml-2 text-gray-400">• {item.roomType || '객실 정보 없음'}</span>
           </div>
         </div>
 
@@ -74,16 +81,16 @@ const ResaleItemCard = ({ item, onInquire, onBookmark }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500 line-through">
-                원가: {formatPrice(item.originalPrice)}원
+                원가: {formatPrice(item.originalPrice || 0)}원
               </p>
               <p className="text-xl font-bold text-orange-600">
-                {formatPrice(item.salePrice)}원
+                {formatPrice(item.salePrice || 0)}원
               </p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500">할인</p>
               <p className="text-lg font-semibold text-red-500">
-                -{formatPrice(item.originalPrice - item.salePrice)}원
+                -{formatPrice((item.originalPrice || 0) - (item.salePrice || 0))}원
               </p>
             </div>
           </div>
@@ -91,7 +98,7 @@ const ResaleItemCard = ({ item, onInquire, onBookmark }) => {
 
         {/* 설명 */}
         <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-          {item.description}
+          {item.description || '설명이 없습니다.'}
         </p>
 
         {/* 판매자 정보 */}
@@ -99,11 +106,11 @@ const ResaleItemCard = ({ item, onInquire, onBookmark }) => {
           <div className="flex items-center">
             <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-2">
               <span className="text-xs font-semibold text-gray-600">
-                {item.seller.charAt(0)}
+                {item.seller?.charAt(0) || '?'}
               </span>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900">{item.seller}</p>
+              <p className="text-sm font-medium text-gray-900">{item.seller || '판매자 정보 없음'}</p>
             </div>
           </div>
         </div>

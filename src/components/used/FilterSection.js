@@ -22,7 +22,8 @@ const FilterSection = ({
     }
   };
   return (
-    <div className="bg-white rounded-xl shadow-lg p-4 mb-6 border border-gray-200">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="bg-white rounded-xl shadow-lg p-4 mb-6 border border-gray-200">
       <div className="flex flex-wrap gap-4 items-center justify-between">
         <div className="flex flex-wrap gap-4 items-center">
           {/* 정렬 필터 */}
@@ -100,6 +101,7 @@ const FilterSection = ({
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

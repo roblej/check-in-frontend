@@ -22,7 +22,7 @@ const HeroSection = ({
 
   return (
     <section className="bg-gradient-to-r from-orange-50 to-red-50 py-12 md:py-16">
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
             <span className="text-gray-900">예약 양도</span>
