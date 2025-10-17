@@ -1,68 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
 import { Building2, Bed, Calendar, DollarSign, Star } from 'lucide-react';
+import axios from 'axios';
 
 const HotelManagement = () => {
+  const api_url = "/api/master/hotels";
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedHotels, setSelectedHotels] = useState([]);
+  const [hotels, setHotels] = useState([]);
+  const [hotelCount, setHotelCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  // 호텔 목록 데이터 (축소)
-  const hotels = [
-    {
-      id: 'H001',
-      name: '서울 그랜드 호텔',
-      owner: '김호텔',
-      email: 'grand@hotel.com',
-      phone: '02-1234-5678',
-      location: '서울 강남구 테헤란로 123',
-      rooms: 45,
-      rating: 4.5,
-      registeredDate: '2024-01-10',
-      status: 'active',
-      totalReservations: 1250,
-      monthlyRevenue: '₩45,000,000'
-    },
-    {
-      id: 'H002',
-      name: '부산 오션뷰 리조트',
-      owner: '이바다',
-      email: 'ocean@resort.com',
-      phone: '051-9876-5432',
-      location: '부산 해운대구 해운대해변로 456',
-      rooms: 120,
-      rating: 4.8,
-      registeredDate: '2024-01-05',
-      status: 'active',
-      totalReservations: 2100,
-      monthlyRevenue: '₩89,000,000'
-    },
-    {
-      id: 'H003',
-      name: '제주 힐링 펜션',
-      owner: '박제주',
-      email: 'healing@jeju.com',
-      phone: '064-1111-2222',
-      location: '제주 서귀포시 중문관광로 789',
-      rooms: 12,
-      rating: 4.2,
-      registeredDate: '2024-01-08',
-      status: 'inactive',
-      totalReservations: 340,
-      monthlyRevenue: '₩8,500,000'
-    }
-  ];
+  // API에서 호텔 데이터 가져오기
+  const getData = () => {
+    axios.get(api_url).then(res => {
+      if (res.data.hotelList) {
+        console.log('Hotel Data:', res.data.hotelList);
+        setHotels(res.data.hotelList);
+        setHotelCount(res.data.hotelCount);
+        setLoading(false);
+      }
+    }).catch(error => {
+      console.error('Error fetching hotel data:', error);
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    getData();
+  }, []);
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active':
+      case 0:
         return 'bg-green-100 text-green-800';
-      case 'inactive':
+      case 1:
         return 'bg-gray-100 text-gray-800';
-      case 'suspended':
-        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -70,22 +47,22 @@ const HotelManagement = () => {
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'active':
+      case 0:
         return '운영중';
-      case 'inactive':
-        return '비활성';
-      case 'suspended':
-        return '정지됨';
+      case 1:
+        return '운영종료';
       default:
         return '알 수 없음';
     }
   };
 
   const filteredHotels = hotels.filter(hotel => {
-    const matchesSearch = hotel.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         hotel.owner.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         hotel.location.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || hotel.status === statusFilter;
+    const matchesSearch = hotel.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         hotel.adminName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         hotel.adress.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || 
+                         (statusFilter === 'active' && hotel.status === 1) ||
+                         (statusFilter === 'inactive' && hotel.status === 0);
     return matchesSearch && matchesStatus;
   });
 
@@ -101,7 +78,7 @@ const HotelManagement = () => {
     if (selectedHotels.length === filteredHotels.length) {
       setSelectedHotels([]);
     } else {
-      setSelectedHotels(filteredHotels.map(hotel => hotel.id));
+      setSelectedHotels(filteredHotels.map(hotel => hotel.contentId));
     }
   };
 
@@ -129,6 +106,16 @@ const HotelManagement = () => {
     }
     setSelectedHotels([]);
   };
+
+  if (loading) {
+    return (
+      <MasterLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="text-lg text-gray-600">호텔 데이터를 불러오는 중...</div>
+        </div>
+      </MasterLayout>
+    );
+  }
 
   return (
     <MasterLayout>
@@ -244,37 +231,37 @@ const HotelManagement = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredHotels.map((hotel) => (
-                  <tr key={hotel.id} className="hover:bg-gray-50">
+                  <tr key={hotel.contentId} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <input
                         type="checkbox"
-                        checked={selectedHotels.includes(hotel.id)}
-                        onChange={() => handleSelectHotel(hotel.id)}
+                        checked={selectedHotels.includes(hotel.contentId)}
+                        onChange={() => handleSelectHotel(hotel.contentId)}
                         className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                       />
                     </td>
                     <td className="px-6 py-4 w-120">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{hotel.name}</div>
-                        <div className="text-sm text-gray-500">{hotel.location}</div>
-                        <div className="text-sm text-gray-500">객실 {hotel.rooms}개 • <Star className="inline w-3 h-3 text-yellow-400 fill-current" /> {hotel.rating}</div>
+                        <div className="text-sm font-medium text-gray-900">{hotel.title}</div>
+                        <div className="text-sm text-gray-500">{hotel.adress}</div>
+                        <div className="text-sm text-gray-500">객실 {hotel.rooms}개</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 w-80">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{hotel.owner}</div>
-                        <div className="text-sm text-gray-500">{hotel.email}</div>
-                        <div className="text-sm text-gray-500">{hotel.phone}</div>
+                        <div className="text-sm font-medium text-gray-900">{hotel.adminName}</div>
+                        <div className="text-sm text-gray-500">{hotel.adminEmail}</div>
+                        <div className="text-sm text-gray-500">{hotel.adminPhone}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 w-64">
                       <div>
-                        <div className="text-sm text-gray-900">예약 {hotel.totalReservations}건</div>
-                        <div className="text-sm text-gray-500">등록일: {hotel.registeredDate}</div>
+                        <div className="text-sm text-gray-900">예약 정보 없음</div>
+                        <div className="text-sm text-gray-500">등록일: 정보 없음</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 w-56">
-                      <div className="text-sm font-medium text-gray-900">{hotel.monthlyRevenue}</div>
+                      <div className="text-sm font-medium text-gray-900">정보 없음</div>
                       <div className="text-sm text-gray-500">월 매출</div>
                     </td>
                     <td className="px-6 py-4 w-40">
@@ -308,18 +295,18 @@ const HotelManagement = () => {
         {/* 호텔 목록 - 모바일 카드 형태 */}
         <div className="sm:hidden space-y-3">
           {filteredHotels.map((hotel) => (
-            <div key={hotel.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+            <div key={hotel.contentId} className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={selectedHotels.includes(hotel.id)}
-                    onChange={() => handleSelectHotel(hotel.id)}
+                    checked={selectedHotels.includes(hotel.contentId)}
+                    onChange={() => handleSelectHotel(hotel.contentId)}
                     className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                   />
                   <div>
-                    <div className="text-xs font-medium text-gray-900">{hotel.name}</div>
-                    <div className="text-xs text-gray-500">{hotel.owner}</div>
+                    <div className="text-xs font-medium text-gray-900">{hotel.title}</div>
+                    <div className="text-xs text-gray-500">{hotel.adminName}</div>
                   </div>
                 </div>
                 <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(hotel.status)}`}>
@@ -329,7 +316,7 @@ const HotelManagement = () => {
               
               <div className="flex justify-between items-center">
                 <div className="text-xs text-gray-500">
-                  {hotel.monthlyRevenue} • 예약 {hotel.totalReservations}건
+                  객실 {hotel.rooms}
                 </div>
                 <div className="flex gap-1">
                   <button className="text-[#7C3AED] hover:text-purple-800 text-xs">
@@ -347,12 +334,15 @@ const HotelManagement = () => {
           ))}
         </div>
 
+
         {/* 통계 요약 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
           <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 lg:p-6 rounded-lg shadow-sm border border-purple-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xl lg:text-2xl font-bold text-purple-900">{hotels.filter(h => h.status === 'active').length}</div>
+                <div className="text-xl lg:text-2xl font-bold text-purple-900">
+                  {hotels && hotels.length > 0 ? hotels.filter(h => h && h.status === 1).length : 0}
+                </div>
                 <div className="text-sm text-purple-700">운영중인 호텔</div>
               </div>
               <div className="w-8 h-8 lg:w-12 lg:h-12 bg-purple-500 rounded-full flex items-center justify-center">
@@ -363,7 +353,15 @@ const HotelManagement = () => {
           <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 lg:p-6 rounded-lg shadow-sm border border-blue-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xl lg:text-2xl font-bold text-blue-900">{hotels.reduce((sum, h) => sum + h.rooms, 0)}</div>
+                <div className="text-xl lg:text-2xl font-bold text-blue-900">
+                  {hotels && hotels.length > 0 
+                    ? hotels.reduce((sum, h) => {
+                        const rooms = h && h.rooms ? parseInt(h.rooms) : 0;
+                        return sum + (isNaN(rooms) ? 0 : rooms);
+                      }, 0)
+                    : 0
+                  }
+                </div>
                 <div className="text-sm text-blue-700">총 객실 수</div>
               </div>
               <div className="w-8 h-8 lg:w-12 lg:h-12 bg-blue-500 rounded-full flex items-center justify-center">
@@ -374,8 +372,8 @@ const HotelManagement = () => {
           <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 lg:p-6 rounded-lg shadow-sm border border-green-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xl lg:text-2xl font-bold text-green-900">{hotels.reduce((sum, h) => sum + h.totalReservations, 0).toLocaleString()}</div>
-                <div className="text-sm text-green-700">총 예약 건수</div>
+                <div className="text-xl lg:text-2xl font-bold text-green-900">{hotelCount || 0}</div>
+                <div className="text-sm text-green-700">총 호텔 수</div>
               </div>
               <div className="w-8 h-8 lg:w-12 lg:h-12 bg-green-500 rounded-full flex items-center justify-center">
                 <Calendar className="text-white w-4 h-4 lg:w-6 lg:h-6" />
@@ -385,8 +383,10 @@ const HotelManagement = () => {
           <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 lg:p-6 rounded-lg shadow-sm border border-orange-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xl lg:text-2xl font-bold text-orange-900">₩170억</div>
-                <div className="text-sm text-orange-700">총 월 매출</div>
+                <div className="text-xl lg:text-2xl font-bold text-orange-900">
+                  {hotels && hotels.length > 0 ? hotels.filter(h => h && h.status === 0).length : 0}
+                </div>
+                <div className="text-sm text-orange-700">비활성 호텔</div>
               </div>
               <div className="w-8 h-8 lg:w-12 lg:h-12 bg-orange-500 rounded-full flex items-center justify-center">
                 <DollarSign className="text-white w-4 h-4 lg:w-6 lg:h-6" />
