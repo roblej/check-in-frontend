@@ -14,13 +14,13 @@ import { getMockHotelData } from "./mockHotelData";
 /**
  * 호텔 상세 정보 컴포넌트
  * @param {Object} props
- * @param {number|string} props.hotelId - 호텔 ID
+ * @param {number|string} props.contentId  - 호텔 ID
  * @param {Object} props.searchParams - 검색 파라미터 (체크인/체크아웃 등)
  * @param {boolean} props.isModal - 모달 모드 여부
  * @param {React.RefObject} props.scrollContainerRef - 외부 스크롤 컨테이너 ref
  */
 const HotelDetail = ({
-  hotelId,
+  contentId ,
   searchParams = {},
   isModal = false,
   scrollContainerRef: externalScrollRef,
@@ -38,7 +38,7 @@ const HotelDetail = ({
   const scrollContainerRef = externalScrollRef || internalScrollRef;
 
   // 임시 호텔 데이터 (실제로는 axios로 API 호출)
-  const hotelData = getMockHotelData(hotelId);
+  const hotelData = getMockHotelData(contentId );
 
   const formatPrice = (price) => new Intl.NumberFormat("ko-KR").format(price);
 
@@ -230,7 +230,7 @@ const HotelDetail = ({
               <p className="text-xl font-bold text-blue-600">
                 ₩{formatPrice(hotelData.rooms[0].price)}
               </p>
-              <LiveViewerCount hotelId={hotelData.id} />
+              <LiveViewerCount contentId ={hotelData.id} />
             </div>
           </div>
         </div>
