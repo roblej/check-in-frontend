@@ -34,10 +34,52 @@ const ResaleSearch = ({
     try {
       setLoading(true);
       
-      // 현재는 전체 목록 API만 사용 (검색 API는 아직 구현되지 않음)
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/list?page=${page}&size=${pageSize}`;
-
-      const response = await axios.get(apiUrl);
+      // 검색 조건이 있으면 검색 API, 없으면 전체 목록 API 호출
+      const hasSearchConditions = searchParams.destination || 
+        searchParams.checkIn || 
+        searchParams.checkOut || 
+        searchParams.adults !== 2 ||
+        searchParams.priceMin ||
+        searchParams.priceMax ||
+        searchParams.sortBy !== 'date';
+      
+      let response;
+      if (hasSearchConditions) {
+        // 정렬 방향 결정
+        let sortDirection = 'asc';
+        let sortBy = searchParams.sortBy?.replace('-desc', '') || 'date';
+        
+        if (searchParams.sortBy?.includes('-desc')) {
+          sortDirection = 'desc';
+        } else if (sortBy === 'discount') {
+          // 할인율 높은 순은 기본적으로 내림차순
+          sortDirection = 'desc';
+        }
+        
+        const requestBody = {
+          destination: searchParams.destination || null,
+          checkIn: searchParams.checkIn || null,
+          checkOut: searchParams.checkOut || null,
+          adults: searchParams.adults || null,
+          priceMin: searchParams.priceMin || null,
+          priceMax: searchParams.priceMax || null,
+          sortBy: sortBy,
+          sortDirection: sortDirection,
+          status: null,
+          page: page,
+          size: pageSize
+        };
+        
+        console.log('검색 API 호출:', requestBody);
+        
+        // 검색 API 호출 (POST)
+        response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/search`, requestBody);
+      } else {
+        // 전체 목록 API 호출 (GET)
+        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/list?page=${page}&size=${pageSize}`;
+        console.log('전체 목록 API 호출:', apiUrl);
+        response = await axios.get(apiUrl);
+      }
       
       if (response.data) {
         // 백엔드 API 응답을 프론트엔드 형식으로 변환
@@ -181,16 +223,58 @@ const ResaleSearch = ({
 
   // 정렬 변경
   const handleSortChange = (newSortBy) => {
+    console.log('정렬 변경:', newSortBy);
     setSortBy(newSortBy);
-    // 정렬 로직 구현 (필요시)
-    fetchUsedTradeList(currentPage, searchConditions);
+    
+    // 검색 조건에 정렬 정보 추가
+    const updatedConditions = {
+      ...searchConditions,
+      sortBy: newSortBy
+    };
+    console.log('업데이트된 검색 조건:', updatedConditions);
+    setSearchConditions(updatedConditions);
+    fetchUsedTradeList(currentPage, updatedConditions);
   };
 
   // 가격 필터 변경
   const handlePriceFilterChange = (newFilterPrice) => {
+    console.log('가격 필터 변경:', newFilterPrice);
     setFilterPrice(newFilterPrice);
-    // 가격 필터 로직 구현 (필요시)
-    fetchUsedTradeList(currentPage, searchConditions);
+    
+    // 가격 필터를 priceMin, priceMax로 변환
+    let priceMin = null;
+    let priceMax = null;
+    
+    switch (newFilterPrice) {
+      case 'under200':
+        priceMax = 200000;
+        break;
+      case '200-300':
+        priceMin = 200000;
+        priceMax = 300000;
+        break;
+      case '300-400':
+        priceMin = 300000;
+        priceMax = 400000;
+        break;
+      case 'over400':
+        priceMin = 400000;
+        break;
+      default:
+        priceMin = null;
+        priceMax = null;
+    }
+    
+    // 검색 조건에 가격 정보 추가
+    const updatedConditions = {
+      ...searchConditions,
+      priceMin,
+      priceMax,
+      priceFilter: newFilterPrice
+    };
+    console.log('업데이트된 검색 조건:', updatedConditions);
+    setSearchConditions(updatedConditions);
+    fetchUsedTradeList(currentPage, updatedConditions);
   };
 
   // 문의하기 핸들러
@@ -203,6 +287,30 @@ const ResaleSearch = ({
   const handleBookmark = (item) => {
     console.log('찜하기:', item);
     // 찜하기 로직 구현
+  };
+
+  // 필터 초기화 핸들러
+  const handleReset = () => {
+    setDestination('');
+    setCheckIn('');
+    setCheckOut('');
+    setAdults(2);
+    setSortBy('date');
+    setFilterPrice('all');
+    
+    const resetConditions = {
+      destination: '',
+      checkIn: '',
+      checkOut: '',
+      adults: 2,
+      priceMin: null,
+      priceMax: null,
+      sortBy: 'date',
+      priceFilter: 'all'
+    };
+    
+    setSearchConditions(resetConditions);
+    fetchUsedTradeList(0, resetConditions);
   };
 
   // 현재 상태를 반환하는 객체
@@ -228,7 +336,8 @@ const ResaleSearch = ({
     handleSortChange,
     handlePriceFilterChange,
     handleInquire,
-    handleBookmark
+    handleBookmark,
+    handleReset
   };
 
   return searchState;

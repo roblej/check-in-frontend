@@ -7,7 +7,8 @@ const FilterSection = ({
   setFilterPrice, 
   totalCount,
   pageSize,
-  setPageSize
+  setPageSize,
+  onReset
 }) => {
   const getSortLabel = (sortValue) => {
     switch (sortValue) {
@@ -100,6 +101,14 @@ const FilterSection = ({
               {getSortLabel(sortBy)}
             </div>
           )}
+          
+          {/* 필터 초기화 버튼 */}
+          <button
+            onClick={onReset}
+            className="px-3 py-2 text-sm text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors border border-gray-300 hover:border-orange-300"
+          >
+            필터 초기화
+          </button>
         </div>
       </div>
       </div>

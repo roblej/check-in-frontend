@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import ResaleItemCard from './usedItemCard';
+import UsedItemCard from './UsedItemCard';
 import Pagination from '@/components/Pagination';
 
-const ResaleList = ({ 
+const UsedList = ({ 
   resaleItems, 
   loading, 
   currentPage, 
@@ -32,7 +32,7 @@ const ResaleList = ({
           // usedItemIdx를 주요 식별자로 사용
           const uniqueKey = item.usedItemIdx || `resale-item-${index}`;
           return (
-            <ResaleItemCard
+            <UsedItemCard
               key={uniqueKey}
               item={item}
               onInquire={onInquire}
@@ -56,4 +56,4 @@ const ResaleList = ({
   );
 };
 
-export default ResaleList;
+export default UsedList;
