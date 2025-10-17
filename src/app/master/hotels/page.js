@@ -253,7 +253,7 @@ const HotelManagement = () => {
                         className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                       />
                     </td>
-                    <td className="px-6 py-4 w-96">
+                    <td className="px-6 py-4 w-120">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{hotel.name}</div>
                         <div className="text-sm text-gray-500">{hotel.location}</div>

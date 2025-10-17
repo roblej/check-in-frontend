@@ -228,7 +228,7 @@ const CustomerFeedbackPage = () => {
                   <div className="flex items-center gap-4 mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600">평점:</span>
-                      <span className="text-sm">{getRatingStars(feedback.rating)}</span>
+                      <span className="text-sm display-flex">{getRatingStars(feedback.rating)}</span>
                     </div>
                     <span className="text-sm text-gray-500">카테고리: {getCategoryText(feedback.category)}</span>
                     <span className="text-sm text-gray-500">작성일: {feedback.createdAt}</span>
