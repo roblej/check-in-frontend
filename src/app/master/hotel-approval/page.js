@@ -1,11 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
 import { CheckCircle, Eye, X } from 'lucide-react';
+import axios from 'axios';
 
 const HotelApproval = () => {
+
+  const api_url = "/api/master/hotelApproval";
+
   const [selectedRequests, setSelectedRequests] = useState([]);
+  const [hotelApprovalList, setHotelApprovalList] = useState([]);
+  const [hotelApprovalCount, setHotelApprovalCount] = useState(0);
+  
+  function getData(){
+    axios.get(api_url).then(res => {
+      if(res.data.hotelRequestList){
+        console.log(res.data.hotelRequestList);
+        setHotelApprovalList(res.data.hotelRequestList);
+        setHotelApprovalCount(res.data.hotelRequestCount);
+      }
+    });
+  }
+
+  useEffect(() => {
+    getData();
+  }, []);
 
   // 호텔 승인 대기 목록
   const approvalRequests = [
@@ -200,19 +220,19 @@ const HotelApproval = () => {
 
         {/* 승인 요청 목록 */}
         <div className="space-y-4">
-          {approvalRequests.map((request) => (
-            <div key={request.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          {hotelApprovalList.map((request) => (
+            <div key={request.contentId} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    checked={selectedRequests.includes(request.id)}
-                    onChange={() => handleSelectRequest(request.id)}
+                    checked={selectedRequests.includes(request.contentId)}
+                    onChange={() => handleSelectRequest(request.contentId)}
                     className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                   />
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{request.hotelName}</h3>
-                    <p className="text-sm text-gray-600">{request.location}</p>
+                    <h3 className="text-lg font-semibold text-gray-900">{request.title}</h3>
+                    <p className="text-sm text-gray-600">{request.adress}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -230,15 +250,15 @@ const HotelApproval = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">사업자명:</span>
-                      <span className="text-gray-900">{request.owner}</span>
+                      <span className="text-gray-900">{request.ownerName}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">이메일:</span>
-                      <span className="text-gray-900">{request.email}</span>
+                      <span className="text-gray-900">{request.ownerEmail}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">전화번호:</span>
-                      <span className="text-gray-900">{request.phone}</span>
+                      <span className="text-gray-900">{request.ownerPhone}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">사업자번호:</span>
@@ -251,7 +271,7 @@ const HotelApproval = () => {
                   </div>
                 </div>
 
-                {/* 제출 서류 및 설명 */}
+                {/* 제출 서류 및 설명
                 <div>
                   <h4 className="font-medium text-gray-900 mb-3">제출 서류</h4>
                   <div className="space-y-2 mb-4">
@@ -270,7 +290,7 @@ const HotelApproval = () => {
                   <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">
                     {request.description}
                   </p>
-                </div>
+                </div> */}
               </div>
 
               {/* 액션 버튼 */}
