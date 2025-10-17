@@ -253,11 +253,18 @@ const CenterPage = () => {
                           }`} 
                         />
                       </button>
-                      {expandedFaq === faq.id && (
+                      <div 
+                        className="overflow-hidden transition-all duration-500 ease-in-out"
+                        style={{
+                          maxHeight: expandedFaq === faq.id ? '500px' : '0px',
+                          opacity: expandedFaq === faq.id ? 1 : 0,
+                          transform: expandedFaq === faq.id ? 'translateY(0)' : 'translateY(-10px)'
+                        }}
+                      >
                         <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                           <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
                         </div>
-                      )}
+                      </div>
                     </div>
                   ))}
                 </div>
