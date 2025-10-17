@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
-import { MessageSquare, Clock, CheckCircle, AlertCircle, User, Mail, Calendar } from 'lucide-react';
+import { MessageSquare, Clock, CheckCircle, AlertCircle, User, Mail, Calendar, X } from 'lucide-react';
 
 const mockInquiryList = [
   {
@@ -76,13 +76,17 @@ export default function InquiryListPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
-  const [selectedInquiries, setSelectedInquiries] = useState([]);
   
   // 실제 필터링에 사용되는 상태 (검색 버튼 클릭시 업데이트)
   const [activeSearchTerm, setActiveSearchTerm] = useState('');
   const [activeStatusFilter, setActiveStatusFilter] = useState('all');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('all');
   const [activePriorityFilter, setActivePriorityFilter] = useState('all');
+  
+  // 모달 상태
+  const [selectedInquiry, setSelectedInquiry] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
     fetchInquiries();
@@ -134,11 +138,11 @@ export default function InquiryListPage() {
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-purple-100 text-purple-800';
       case 'in_progress':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-purple-200 text-purple-900';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-purple-300 text-purple-900';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -173,11 +177,11 @@ export default function InquiryListPage() {
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'high':
-        return 'bg-red-100 text-red-800';
+        return 'bg-purple-600 text-white';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-purple-400 text-white';
       case 'low':
-        return 'bg-green-100 text-green-800';
+        return 'bg-purple-200 text-purple-900';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -226,21 +230,6 @@ export default function InquiryListPage() {
     setActivePriorityFilter('all');
   };
 
-  const handleSelectInquiry = (inquiryId) => {
-    setSelectedInquiries(prev => 
-      prev.includes(inquiryId) 
-        ? prev.filter(id => id !== inquiryId)
-        : [...prev, inquiryId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedInquiries.length === filteredInquiries.length) {
-      setSelectedInquiries([]);
-    } else {
-      setSelectedInquiries(filteredInquiries.map(inquiry => inquiry.id));
-    }
-  };
 
   const handleBulkAction = (action) => {
     if (selectedInquiries.length === 0) {
@@ -266,25 +255,39 @@ export default function InquiryListPage() {
     setSelectedInquiries([]);
   };
 
-  const handleInquiryAction = (inquiryId, action) => {
+  // 모달 열기
+  const handleViewInquiry = (inquiryId) => {
     const inquiry = inquiries.find(i => i.id === inquiryId);
-    
-    switch (action) {
-      case 'view':
-        alert(`${inquiry.title} 상세보기`);
-        break;
-      case 'reply':
-        alert(`${inquiry.title} 답변하기`);
-        break;
-      case 'assign':
-        alert(`${inquiry.title} 담당자 배정`);
-        break;
-      case 'complete':
-        alert(`${inquiry.title} 완료 처리`);
-        break;
-      default:
-        break;
+    setSelectedInquiry(inquiry);
+    setIsModalOpen(true);
+    setReplyText('');
+  };
+
+  // 모달 닫기
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedInquiry(null);
+    setReplyText('');
+  };
+
+  // 답변 전송
+  const handleSendReply = () => {
+    if (!replyText.trim()) {
+      alert('답변 내용을 입력해주세요.');
+      return;
     }
+    
+    // 여기서 실제 API 호출
+    alert(`답변이 전송되었습니다.\n\n답변 내용: ${replyText}`);
+    
+    // 문의 상태를 완료로 변경
+    setInquiries(prev => prev.map(inquiry => 
+      inquiry.id === selectedInquiry.id 
+        ? { ...inquiry, status: 'completed', answeredAt: new Date().toLocaleString('ko-KR') }
+        : inquiry
+    ));
+    
+    handleCloseModal();
   };
 
   // 통계 계산
@@ -322,10 +325,10 @@ export default function InquiryListPage() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-green-600">{completedInquiries}</div>
+                <div className="text-2xl font-bold text-purple-600">{completedInquiries}</div>
                 <div className="text-sm text-gray-600">답변 완료</div>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
+              <CheckCircle className="w-8 h-8 text-purple-600" />
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -340,10 +343,10 @@ export default function InquiryListPage() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-yellow-600">{pendingInquiries}</div>
+                <div className="text-2xl font-bold text-green-600">{pendingInquiries}</div>
                 <div className="text-sm text-gray-600">대기중</div>
               </div>
-              <AlertCircle className="w-8 h-8 text-yellow-600" />
+              <AlertCircle className="w-8 h-8 text-green-600" />
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -419,9 +422,9 @@ export default function InquiryListPage() {
                   <span>
                     검색 조건: 
                     {activeSearchTerm && <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">"{activeSearchTerm}"</span>}
-                    {activeCategoryFilter !== 'all' && <span className="ml-1 px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">카테고리: {activeCategoryFilter}</span>}
-                    {activeStatusFilter !== 'all' && <span className="ml-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">상태: {getStatusText(activeStatusFilter)}</span>}
-                    {activePriorityFilter !== 'all' && <span className="ml-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">우선순위: {getPriorityText(activePriorityFilter)}</span>}
+                    {activeCategoryFilter !== 'all' && <span className="ml-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">카테고리: {activeCategoryFilter}</span>}
+                    {activeStatusFilter !== 'all' && <span className="ml-1 px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">상태: {getStatusText(activeStatusFilter)}</span>}
+                    {activePriorityFilter !== 'all' && <span className="ml-1 px-2 py-1 bg-red-100 text-red-800 rounded text-xs">우선순위: {getPriorityText(activePriorityFilter)}</span>}
                   </span>
                 ) : (
                   <span>전체 문의를 표시하고 있습니다.</span>
@@ -445,36 +448,6 @@ export default function InquiryListPage() {
           </div>
         </div>
 
-        {/* 일괄 작업 버튼 */}
-        {selectedInquiries.length > 0 && (
-          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-purple-700">
-                {selectedInquiries.length}건의 문의가 선택됨
-              </span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleBulkAction('assign')}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  담당자 배정
-                </button>
-                <button
-                  onClick={() => handleBulkAction('complete')}
-                  className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  완료 처리
-                </button>
-                <button
-                  onClick={() => handleBulkAction('delete')}
-                  className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                >
-                  삭제
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 문의 목록 테이블 */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -482,14 +455,6 @@ export default function InquiryListPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left">
-                    <input
-                      type="checkbox"
-                      checked={selectedInquiries.length === filteredInquiries.length && filteredInquiries.length > 0}
-                      onChange={handleSelectAll}
-                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                    />
-                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     문의 정보
                   </th>
@@ -505,27 +470,22 @@ export default function InquiryListPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     작성일시
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    액션
-                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredInquiries.map((inquiry) => (
                   <tr key={inquiry.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedInquiries.includes(inquiry.id)}
-                        onChange={() => handleSelectInquiry(inquiry.id)}
-                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{inquiry.title}</div>
                         <div className="text-sm text-gray-500 truncate max-w-xs">{inquiry.content}</div>
                         <div className="text-xs text-gray-400 mt-1">{inquiry.category}</div>
+                        <button 
+                          onClick={() => handleViewInquiry(inquiry.id)}
+                          className="text-[#7C3AED] hover:text-purple-800 text-xs mt-1"
+                        >
+                          상세보기
+                        </button>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -558,39 +518,11 @@ export default function InquiryListPage() {
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900">{inquiry.createdAt}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium">
-                      <div className="flex flex-col gap-1">
-                        <button 
-                          onClick={() => handleInquiryAction(inquiry.id, 'view')}
-                          className="text-[#7C3AED] hover:text-purple-800 text-left"
-                        >
-                          상세보기
-                        </button>
-                        <button 
-                          onClick={() => handleInquiryAction(inquiry.id, 'reply')}
-                          className="text-blue-600 hover:text-blue-800 text-left"
-                        >
-                          답변하기
-                        </button>
-                        <button 
-                          onClick={() => handleInquiryAction(inquiry.id, 'assign')}
-                          className="text-green-600 hover:text-green-800 text-left"
-                        >
-                          담당자 배정
-                        </button>
-                        <button 
-                          onClick={() => handleInquiryAction(inquiry.id, 'complete')}
-                          className="text-orange-600 hover:text-orange-800 text-left"
-                        >
-                          완료 처리
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 ))}
                 {filteredInquiries.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-gray-400 text-center">
+                    <td colSpan={4} className="px-6 py-8 text-gray-400 text-center">
                       조건에 맞는 문의가 없습니다.
                     </td>
                   </tr>
@@ -599,6 +531,82 @@ export default function InquiryListPage() {
             </table>
           </div>
         </div>
+
+
+        {/* 상세보기 모달 */}
+        {isModalOpen && selectedInquiry && (
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+              {/* 모달 헤더 */}
+              <div className="flex justify-between items-center p-6 border-b border-gray-200">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{selectedInquiry.title}</h3>
+                  <p className="text-sm text-gray-600">{selectedInquiry.username} • {selectedInquiry.email}</p>
+                </div>
+                <button
+                  onClick={handleCloseModal}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* 모달 내용 */}
+              <div className="p-6 overflow-y-auto max-h-[60vh]">
+                <div className="space-y-6">
+                  {/* 문의 정보 */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center gap-4 mb-3">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedInquiry.status)}`}>
+                        {getStatusText(selectedInquiry.status)}
+                      </span>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(selectedInquiry.priority)}`}>
+                        {getPriorityText(selectedInquiry.priority)}
+                      </span>
+                      <span className="text-xs text-gray-500">{selectedInquiry.category}</span>
+                    </div>
+                    <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {selectedInquiry.content}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2">
+                      작성일: {selectedInquiry.createdAt}
+                    </div>
+                  </div>
+
+                  {/* 답변 입력 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      답변 작성
+                    </label>
+                    <textarea
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="문의에 대한 답변을 작성해주세요..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                      rows={6}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 모달 푸터 */}
+              <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
+                <button
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSendReply}
+                  className="px-4 py-2 bg-[#7C3AED] text-white rounded-lg hover:bg-purple-700"
+                >
+                  답변 전송
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </MasterLayout>
   );

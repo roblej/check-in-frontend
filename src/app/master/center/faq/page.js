@@ -527,7 +527,7 @@ export default function FaqManagementPage() {
 
         {/* FAQ 추가 모달 */}
         {isAddModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-semibold mb-4">새 FAQ 추가</h3>
               <div className="space-y-4">
@@ -595,7 +595,7 @@ export default function FaqManagementPage() {
 
         {/* FAQ 수정 모달 */}
         {isEditModalOpen && editingFaq && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-semibold mb-4">FAQ 수정</h3>
               <div className="space-y-4">

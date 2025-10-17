@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Pagination from '@/components/Pagination';
 import { HelpCircle, MessageCircle, Search, Plus, ChevronDown } from 'lucide-react';
 
 const CenterPage = () => {
@@ -10,9 +11,16 @@ const CenterPage = () => {
   const [faqs, setFaqs] = useState([]);
   const [inquiries, setInquiries] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeSearchTerm, setActiveSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('전체');
   const [loading, setLoading] = useState(true);
   const [expandedFaq, setExpandedFaq] = useState(null);
+  
+  // 페이징 상태
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [pageSize] = useState(5);
 
   // FAQ 카테고리
   const faqCategories = ['전체', '예약/취소', '회원정보', '결제', '기술지원', '호텔정보'];
@@ -31,9 +39,9 @@ const CenterPage = () => {
         body: JSON.stringify({
           mainCategory: 'FAQ',
           subCategory: categoryFilter === '전체' ? null : categoryFilter,
-          title: searchTerm || null,
-          page: 0,
-          size: 100,
+          title: activeSearchTerm || null,
+          page: currentPage,
+          size: pageSize,
         }),
       });
       
@@ -47,11 +55,13 @@ const CenterPage = () => {
           createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
         }));
         setFaqs(convertedFaqs);
+        setTotalPages(data.totalPages || 0);
+        setTotalElements(data.totalElements || 0);
       }
     } catch (error) {
       console.error('FAQ 조회 실패:', error);
     }
-  }, [searchTerm, categoryFilter]);
+  }, [activeSearchTerm, categoryFilter, currentPage, pageSize]);
 
   // 1대1 문의 데이터 로드
   const fetchInquiries = useCallback(async () => {
@@ -64,9 +74,9 @@ const CenterPage = () => {
         body: JSON.stringify({
           mainCategory: '문의',
           subCategory: categoryFilter === '전체' ? null : categoryFilter,
-          title: searchTerm || null,
-          page: 0,
-          size: 100,
+          title: activeSearchTerm || null,
+          page: currentPage,
+          size: pageSize,
         }),
       });
       
@@ -81,11 +91,13 @@ const CenterPage = () => {
           createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
         }));
         setInquiries(convertedInquiries);
+        setTotalPages(data.totalPages || 0);
+        setTotalElements(data.totalElements || 0);
       }
     } catch (error) {
       console.error('1대1 문의 조회 실패:', error);
     }
-  }, [searchTerm, categoryFilter]);
+  }, [activeSearchTerm, categoryFilter, currentPage, pageSize]);
 
   // 탭 변경 시 데이터 로드
   useEffect(() => {
@@ -104,6 +116,8 @@ const CenterPage = () => {
 
   // 검색 핸들러
   const handleSearch = () => {
+    setActiveSearchTerm(searchTerm);
+    setCurrentPage(0); // 검색 시 첫 페이지로 이동
     setLoading(true);
     if (activeTab === 'FAQ') {
       fetchFaqs().finally(() => setLoading(false));
@@ -112,10 +126,17 @@ const CenterPage = () => {
     }
   };
 
+  // 페이지 변경 핸들러
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
   // 필터 초기화
   const handleResetFilters = () => {
     setSearchTerm('');
+    setActiveSearchTerm('');
     setCategoryFilter('전체');
+    setCurrentPage(0);
   };
 
   return (
@@ -186,10 +207,10 @@ const CenterPage = () => {
             
             <div className="flex justify-between items-center">
               <div className="text-sm text-gray-600">
-                {searchTerm || categoryFilter !== '전체' ? (
+                {activeSearchTerm || categoryFilter !== '전체' ? (
                   <span>
                     검색 조건: 
-                    {searchTerm && <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">&quot;{searchTerm}&quot;</span>}
+                    {activeSearchTerm && <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">&quot;{activeSearchTerm}&quot;</span>}
                     {categoryFilter !== '전체' && <span className="ml-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">카테고리: {categoryFilter}</span>}
                   </span>
                 ) : (
@@ -269,6 +290,19 @@ const CenterPage = () => {
                   ))}
                 </div>
               )}
+              
+              {/* FAQ 페이징 */}
+              {totalPages > 1 && (
+                <div className="px-6 py-4 border-t border-gray-200">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalElements={totalElements}
+                    pageSize={pageSize}
+                    onPageChange={handlePageChange}
+                  />
+                </div>
+              )}
             </div>
           ) : (
             /* 1대1 문의 탭 */
@@ -316,6 +350,19 @@ const CenterPage = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+              
+              {/* 1대1 문의 페이징 */}
+              {totalPages > 1 && (
+                <div className="px-6 py-4 border-t border-gray-200">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalElements={totalElements}
+                    pageSize={pageSize}
+                    onPageChange={handlePageChange}
+                  />
                 </div>
               )}
             </div>
