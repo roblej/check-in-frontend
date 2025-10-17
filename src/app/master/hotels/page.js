@@ -3,10 +3,9 @@
 import { useEffect, useState } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
 import { Building2, Bed, Calendar, DollarSign, Star } from 'lucide-react';
-import axios from 'axios';
 
 const HotelManagement = () => {
-  const api_url = "/api/master/hotels";
+  const api_url = "/api/master/hotelList";
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -16,18 +15,64 @@ const HotelManagement = () => {
   const [loading, setLoading] = useState(true);
 
   // API에서 호텔 데이터 가져오기
-  const getData = () => {
-    axios.get(api_url).then(res => {
-      if (res.data.hotelList) {
-        console.log('Hotel Data:', res.data.hotelList);
-        setHotels(res.data.hotelList);
-        setHotelCount(res.data.hotelCount);
-        setLoading(false);
+  const getData = async () => {
+    try {
+      setLoading(true);
+      console.log('=== API 호출 시작 ===');
+      console.log('API URL:', api_url);
+      
+      const response = await fetch(api_url, {
+        cache: 'no-store', // SSR을 위해 캐시 비활성화
+      });
+      
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('=== API 응답 데이터 ===');
+        console.log('전체 응답:', data);
+        console.log('호텔 목록 개수:', data.content ? data.content.length : 'content 없음');
+        console.log('총 호텔 수:', data.totalElements || 'totalElements 없음');
+        console.log('현재 페이지:', data.number || 'number 없음');
+        console.log('전체 페이지 수:', data.totalPages || 'totalPages 없음');
+        
+        if (data.content) {
+          // DTO 데이터를 프론트엔드 형식으로 변환
+          const transformedHotels = data.content.map(hotel => ({
+            contentId: hotel.contentId,
+            title: hotel.title,
+            adress: hotel.adress,
+            tel: hotel.tel,
+            status: hotel.status,
+            imageUrl: hotel.imageUrl,
+            rooms: hotel.hotelDetail?.roomcount || '0',
+            adminName: hotel.admin?.adminName || '',
+            adminEmail: hotel.admin?.adminEmail || '',
+            adminPhone: hotel.admin?.adminPhone || '',
+            originalData: hotel
+          }));
+          
+          console.log('=== 변환된 호텔 데이터 ===');
+          console.log('변환된 호텔 목록:', transformedHotels);
+          
+          setHotels(transformedHotels);
+          setHotelCount(data.totalElements || 0);
+        } else {
+          console.log('content가 없습니다. 원본 데이터 사용');
+          setHotels(data.hotelList || []);
+          setHotelCount(data.hotelCount || 0);
+        }
+      } else {
+        console.error('API 응답 실패:', response.status, response.statusText);
       }
-    }).catch(error => {
-      console.error('Error fetching hotel data:', error);
+    } catch (error) {
+      console.error('=== API 호출 오류 ===');
+      console.error('Error:', error);
+    } finally {
       setLoading(false);
-    });
+      console.log('=== API 호출 완료 ===');
+    }
   };
 
   useEffect(() => {
@@ -316,7 +361,7 @@ const HotelManagement = () => {
               
               <div className="flex justify-between items-center">
                 <div className="text-xs text-gray-500">
-                  객실 {hotel.rooms}
+                  객실 {hotel.rooms}개
                 </div>
                 <div className="flex gap-1">
                   <button className="text-[#7C3AED] hover:text-purple-800 text-xs">
