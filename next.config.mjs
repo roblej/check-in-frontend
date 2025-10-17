@@ -8,6 +8,18 @@ const nextConfig = {
                 port: '',
                 pathname: '/**',
             },
+            {
+                protocol: 'http',
+                hostname: 'tong.visitkorea.or.kr',
+                port: '',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'tong.visitkorea.or.kr',
+                port: '',
+                pathname: '/**',
+            },
         ],
     },
     async rewrites(){

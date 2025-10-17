@@ -368,7 +368,7 @@ const CheckinHotel = () => {
             {/* 중고거래 시스템 버튼 - 2/10 비율 */}
             <div className="flex-[2] flex flex-col justify-center">
               <button
-                onClick={() => window.location.href = '/resale'}
+                onClick={() => window.location.href = '/used'}
                 className="bg-gradient-to-br from-orange-400 to-red-500 hover:from-orange-500 hover:to-red-600 text-white rounded-2xl shadow-xl p-6 md:p-8 border border-orange-300 transition-all duration-300 hover:shadow-2xl hover:scale-105 h-full flex flex-col items-center justify-center"
               >
                 <div className="text-4xl md:text-5xl mb-3">🏨</div>
