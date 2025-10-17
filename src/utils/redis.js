@@ -20,49 +20,49 @@ const getRedisClient = () => {
 // 호텔 조회수 관련 함수들
 export const redisUtils = {
   // 호텔 실시간 조회수 증가
-  incrementHotelView: async (hotelId) => {
+  incrementHotelView: async (contentId ) => {
     const client = getRedisClient();
-    const key = `hotel:views:${hotelId}`;
+    const key = `hotel:views:${contentId }`;
     await client.incr(key);
     await client.expire(key, 86400); // 24시간 후 만료
   },
 
   // 호텔 실시간 조회수 조회
-  getHotelViews: async (hotelId) => {
+  getHotelViews: async (contentId ) => {
     const client = getRedisClient();
-    const key = `hotel:views:${hotelId}`;
+    const key = `hotel:views:${contentId }`;
     const views = await client.get(key);
     return parseInt(views) || 0;
   },
 
   // 여러 호텔의 조회수 조회
-  getMultipleHotelViews: async (hotelIds) => {
+  getMultipleHotelViews: async (contentIds) => {
     const client = getRedisClient();
-    const keys = hotelIds.map((id) => `hotel:views:${id}`);
+    const keys = contentIds.map((id) => `hotel:views:${id}`);
     const views = await client.mget(...keys);
     return views.map((view, index) => ({
-      hotelId: hotelIds[index],
+      contentId : contentIds [index],
       views: parseInt(view) || 0,
     }));
   },
 
   // 실시간 사용자 세션 관리
-  addUserSession: async (sessionId, hotelId) => {
+  addUserSession: async (sessionId, contentId ) => {
     const client = getRedisClient();
-    const key = `hotel:session:${hotelId}`;
+    const key = `hotel:session:${contentId }`;
     await client.sadd(key, sessionId);
     await client.expire(key, 1800); // 30분 후 만료
   },
 
-  removeUserSession: async (sessionId, hotelId) => {
+  removeUserSession: async (sessionId, contentId ) => {
     const client = getRedisClient();
-    const key = `hotel:session:${hotelId}`;
+    const key = `hotel:session:${contentId }`;
     await client.srem(key, sessionId);
   },
 
-  getHotelActiveUsers: async (hotelId) => {
+  getHotelActiveUsers: async (contentId ) => {
     const client = getRedisClient();
-    const key = `hotel:session:${hotelId}`;
+    const key = `hotel:session:${contentId }`;
     const count = await client.scard(key);
     return count;
   },
@@ -74,9 +74,9 @@ export const redisUtils = {
     const views = [];
 
     for (const key of keys) {
-      const hotelId = key.replace("hotel:views:", "");
+      const contentId  = key.replace("hotel:views:", "");
       const count = await client.get(key);
-      views.push({ hotelId, views: parseInt(count) || 0 });
+      views.push({ contentId , views: parseInt(count) || 0 });
     }
 
     return views.sort((a, b) => b.views - a.views).slice(0, limit);
