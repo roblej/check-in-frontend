@@ -420,8 +420,8 @@ export default function InquiryListPage() {
               <div className="text-sm text-gray-600">
                 {activeSearchTerm || activeCategoryFilter !== 'all' || activeStatusFilter !== 'all' || activePriorityFilter !== 'all' ? (
                   <span>
-                    검색 조건: 
-                    {activeSearchTerm && <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">"{activeSearchTerm}"</span>}
+                    검색 조건:
+                    {activeSearchTerm && <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">&quot;{activeSearchTerm}&quot;</span>}
                     {activeCategoryFilter !== 'all' && <span className="ml-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">카테고리: {activeCategoryFilter}</span>}
                     {activeStatusFilter !== 'all' && <span className="ml-1 px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">상태: {getStatusText(activeStatusFilter)}</span>}
                     {activePriorityFilter !== 'all' && <span className="ml-1 px-2 py-1 bg-red-100 text-red-800 rounded text-xs">우선순위: {getPriorityText(activePriorityFilter)}</span>}
