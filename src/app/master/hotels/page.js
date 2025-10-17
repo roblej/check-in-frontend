@@ -89,11 +89,11 @@ const HotelManagement = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleSelectHotel = (hotelId) => {
+  const handleSelectHotel = (contentId ) => {
     setSelectedHotels(prev => 
-      prev.includes(hotelId) 
-        ? prev.filter(id => id !== hotelId)
-        : [...prev, hotelId]
+      prev.includes(contentId ) 
+        ? prev.filter(id => id !== contentId )
+        : [...prev, contentId ]
     );
   };
 

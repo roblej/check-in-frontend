@@ -28,11 +28,11 @@ const HotelSearchPage = () => {
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedHotelId, setSelectedHotelId] = useState(null);
+  const [selectedcontentId , setSelectedcontentId ] = useState(null);
 
   // 모달 열기 함수
-  const handleHotelClick = (hotelId) => {
-    setSelectedHotelId(hotelId);
+  const handleHotelClick = (contentId ) => {
+    setSelectedcontentId (contentId );
   };
   const itemsPerPage = 12;
 
@@ -667,11 +667,11 @@ const HotelSearchPage = () => {
       </div>
 
       {/* 호텔 상세 패널 - 네이버 호텔 스타일 */}
-      {selectedHotelId && (
+      {selectedcontentId  && (
         <HotelDetailPanel
-          hotelId={selectedHotelId}
+        contentId ={selectedcontentId }
           searchParams={searchParams}
-          onClose={() => setSelectedHotelId(null)}
+          onClose={() => setSelectedcontentId (null)}
         />
       )}
     </div>
