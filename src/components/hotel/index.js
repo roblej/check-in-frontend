@@ -8,3 +8,4 @@ export { default as HotelLocation } from "./HotelLocation";
 export { default as HotelPolicy } from "./HotelPolicy";
 export { default as RoomCard } from "./RoomCard";
 export { default as LiveViewerCount } from "./LiveViewerCount";
+export { default as LiveViewerPanel } from "./LiveViewerPanel";

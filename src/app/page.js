@@ -10,6 +10,7 @@ import SearchCondition from '@/components/hotelSearch/SearchCondition';
 import { useSearchStore } from '@/stores/searchStore';
 
 
+
 const CheckinHotel = () => {
   const [destination, setDestination] = useState('');
   const [checkIn, setCheckIn] = useState('');
