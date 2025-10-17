@@ -3,14 +3,15 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HotelDetail from "@/components/hotel/HotelDetail";
 import StructuredData from "@/components/SEO/StructuredData";
+import LiveViewerPanel from "@/components/hotel/LiveViewerPanel";
 
-// 동적 메타데이터 생성
-export async function generateMetadata({ params }) {
-  const contentId  = params.id;
+// SSR시점에서 동적 메타데이터 생성
+export async function generateMetadata({ params,searchParams }) {
+  const contentId = params.id;
 
   // 실제로는 API에서 호텔 정보를 가져와야 함
   const hotelData = {
-    id: contentId ,
+    id: contentId,
     name: "신라스테이 광화문",
     description: "광화문 중심부에 위치한 프리미엄 비즈니스 호텔입니다.",
     location: "서울 종로구",
@@ -19,6 +20,14 @@ export async function generateMetadata({ params }) {
     images: ["/hotel-main.jpg"],
   };
 
+  //  쿼리스트링 기반 검색 파라미터 (URL에서 가져옴)
+  const checkIn = searchParams?.checkIn || "";
+  const checkOut = searchParams?.checkOut || "";
+  const nights = searchParams?.nights || "1";
+  const adults = searchParams?.adults || "2";
+
+  //날짜 + 인원수 조합으로 동적 메타데이터 생성
+  const stayInfo = `${checkIn} ~ ${checkOut} | ${nights}박 | 성인 ${adults}명`;
   return {
     title: `${hotelData.name} - 체크인`,
     description: hotelData.description,
@@ -36,13 +45,13 @@ export async function generateMetadata({ params }) {
       images: hotelData.images,
     },
     alternates: {
-      canonical: `/hotel/${contentId }`,
+      canonical: `/hotel/${contentId}`,
     },
   };
 }
 
 const HotelDetailPage = ({ params, searchParams }) => {
-  const contentId  = params.id;
+  const contentId = params.id;
 
   // URL에서 검색 파라미터 가져오기
   const searchParamsData = {
@@ -55,7 +64,7 @@ const HotelDetailPage = ({ params, searchParams }) => {
 
   // 임시 호텔 데이터 (실제로는 API에서 가져와야 함)
   const hotelData = {
-    id: contentId ,
+    id: contentId,
     name: "신라스테이 광화문",
     description: "광화문 중심부에 위치한 프리미엄 비즈니스 호텔입니다.",
     location: "서울 종로구 삼봉로 71",
@@ -80,8 +89,10 @@ const HotelDetailPage = ({ params, searchParams }) => {
     <div className="min-h-screen bg-gray-50">
       <StructuredData hotelData={hotelData} />
       <Header />
-      <HotelDetail contentId ={contentId } searchParams={searchParamsData} />
+      <HotelDetail contentId={contentId} searchParams={searchParamsData} />
       <Footer />
+      {/* 실시간 조회수 플로팅 패널 */}
+      <LiveViewerPanel contentId={contentId} />
     </div>
   );
 };
