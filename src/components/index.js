@@ -4,7 +4,7 @@ export { default as Button } from './Button';
 
 export { default as HotelCard } from './HotelCard';
 export { default as HotelFilters } from './HotelFilters';
-export { default as ResaleItemCard } from './used/usedItemCard';
+export { default as ResaleItemCard } from './used/UsedItemCard';
 export { default as HeroSection } from './used/HeroSection';
 export { default as FilterSection } from './used/FilterSection';
 export { default as Pagination } from './Pagination';

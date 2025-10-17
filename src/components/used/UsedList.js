@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import ResaleItemCard from './usedItemCard';
+import ResaleItemCard from './UsedItemCard';
 import Pagination from '@/components/Pagination';
 
 const ResaleList = ({ 

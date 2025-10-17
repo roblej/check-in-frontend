@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import HeroSection from './HeroSection';
 import FilterSection from './FilterSection';
-import ResaleList from './ResaleList';
-import ResaleSearch from './ResaleSearch';
+import ResaleList from './UsedList';
+import ResaleSearch from './UsedSearch';
 
 const UsedPageContent = ({ initialData, initialSearchParams }) => {
   const [data, setData] = useState({
@@ -39,6 +39,7 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
         adults={searchState.adults}
         setAdults={searchState.setAdults}
         onSearch={searchState.handleSearch}
+        onReset={searchState.handleReset}
       />
 
       {/* 필터 섹션 */}
@@ -48,6 +49,9 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
         filterPrice={searchState.filterPrice}
         setFilterPrice={searchState.handlePriceFilterChange}
         totalCount={searchState.totalElements}
+        pageSize={searchState.pageSize}
+        setPageSize={() => {}} // 페이지 크기 변경은 현재 미구현
+        onReset={searchState.handleReset}
       />
 
       {/* 메인 콘텐츠 */}
