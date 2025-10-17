@@ -306,9 +306,6 @@ export default function InquiryListPage() {
             <h2 className="text-2xl font-bold text-gray-900">1:1 문의 관리</h2>
             <p className="text-gray-600">회원들의 1:1 문의를 관리하고 답변하세요</p>
           </div>
-          <button className="bg-[#7C3AED] text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-            답변 템플릿 관리
-          </button>
         </div>
 
         {/* 통계 카드 */}
