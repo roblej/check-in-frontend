@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import HeroSection from './HeroSection';
 import FilterSection from './FilterSection';
-import ResaleList from './UsedList';
+import UsedList from './UsedList';
 import ResaleSearch from './UsedSearch';
 
 const UsedPageContent = ({ initialData, initialSearchParams }) => {
@@ -56,7 +56,7 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
 
       {/* 메인 콘텐츠 */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <ResaleList
+        <UsedList
           resaleItems={searchState.resaleItems}
           loading={searchState.loading}
           currentPage={searchState.currentPage}
