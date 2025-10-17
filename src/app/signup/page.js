@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import styles from "./signup.module.css";
+import axios from "axios";
 
 export default function SignupPage() {
   const api_url = "api/signup"
@@ -20,6 +21,13 @@ export default function SignupPage() {
     birthdate: "",
     gender: "",
   });
+  axios.post(api_url, formData)
+    .then(response => {
+      console.log(response.data);
+    })
+    .catch(error => {
+      console.error(error);
+    });
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
