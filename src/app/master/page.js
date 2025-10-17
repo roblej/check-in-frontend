@@ -32,7 +32,7 @@ const MasterDashboard = () => {
         setCustomerCount(res.data.customerCount);
       }
       if(res.data.paymentAmount){
-        setPaymentAmount(res.data.paymentAmount);
+        setPnaymetAmount(res.data.paymentAmount);
       }
       if(res.data.newCustomers){
         console.log('New Customers Data:', res.data.newCustomers);
