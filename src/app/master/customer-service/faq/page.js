@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
+import Pagination from '@/components/Pagination';
 import { HelpCircle, Plus, Edit, Trash2, Eye, EyeOff, Search, Filter } from 'lucide-react';
 
 const mockFaqList = [
@@ -75,6 +76,12 @@ export default function FaqManagementPage() {
   // 실제 필터링에 사용되는 상태 (검색 버튼 클릭시 업데이트)
   const [activeSearchTerm, setActiveSearchTerm] = useState('');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('전체');
+  
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(10); // 페이지당 표시할 FAQ 수
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
 
   // 새 FAQ 추가 폼 상태
   const [newFaq, setNewFaq] = useState({
@@ -84,13 +91,9 @@ export default function FaqManagementPage() {
     order: 0,
   });
 
-  useEffect(() => {
-    fetchFaqs();
-  }, []);
-
-  const fetchFaqs = async () => {
+  const fetchFaqs = useCallback(async (page = 0, size = pageSize, searchTerm = null, category = null) => {
     try {
-      // 백엔드 API 호출 - FAQ 카테고리만 조회
+      // 백엔드 API 호출 - FAQ 카테고리만 조회 (페이지네이션 적용)
       const response = await fetch('/api/center/posts/search', {
         method: 'POST',
         headers: {
@@ -98,13 +101,16 @@ export default function FaqManagementPage() {
         },
         body: JSON.stringify({
           mainCategory: 'FAQ',
-          page: 0,
-          size: 100,
+          subCategory: category,
+          title: searchTerm,
+          page: page,
+          size: size,
         }),
       });
       
       if (response.ok) {
         const data = await response.json();
+        
         // 백엔드 데이터를 프론트엔드 형식으로 변환
         const convertedFaqs = (data.content || []).map(item => ({
           id: item.centerIdx,
@@ -116,30 +122,45 @@ export default function FaqManagementPage() {
           createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
           updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleString('ko-KR') : '',
         }));
+        
         setFaqs(convertedFaqs);
+        
+        // 페이지네이션 정보 업데이트
+        setTotalPages(data.totalPages || 0);
+        setTotalElements(data.totalElements || 0);
       } else {
         // API 실패시 목 데이터 사용
         setFaqs(mockFaqList);
+        setTotalPages(Math.ceil(mockFaqList.length / pageSize));
+        setTotalElements(mockFaqList.length);
       }
     } catch (error) {
       console.error('FAQ 조회 실패:', error);
       // 에러시 목 데이터 사용
       setFaqs(mockFaqList);
+      setTotalPages(Math.ceil(mockFaqList.length / pageSize));
+      setTotalElements(mockFaqList.length);
     }
-  };
+  }, [pageSize]);
 
-  const filteredFaqs = faqs.filter(faq => {
-    const matchesSearch = faq.question.toLowerCase().includes(activeSearchTerm.toLowerCase()) ||
-                         faq.answer.toLowerCase().includes(activeSearchTerm.toLowerCase());
-    const matchesCategory = activeCategoryFilter === '전체' || faq.category === activeCategoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  useEffect(() => {
+    // API 호출만 수행
+    fetchFaqs();
+  }, [fetchFaqs]);
+
+  // 서버 사이드 페이지네이션을 사용하므로 클라이언트 사이드 필터링 제거
+  // faqs는 이미 현재 페이지의 데이터만 포함
 
 
   // 검색 버튼 클릭 핸들러
   const handleSearch = () => {
     setActiveSearchTerm(searchTerm);
     setActiveCategoryFilter(categoryFilter);
+    setCurrentPage(0); // 검색 시 첫 페이지로 이동
+    // API 호출하여 검색 결과 가져오기
+    const searchValue = searchTerm.trim() || null;
+    const categoryValue = categoryFilter === '전체' ? null : categoryFilter;
+    fetchFaqs(0, pageSize, searchValue, categoryValue);
   };
 
   // 필터 초기화 핸들러
@@ -148,6 +169,19 @@ export default function FaqManagementPage() {
     setCategoryFilter('전체');
     setActiveSearchTerm('');
     setActiveCategoryFilter('전체');
+    setCurrentPage(0); // 필터 초기화 시 첫 페이지로 이동
+    // API 호출하여 전체 데이터 가져오기
+    fetchFaqs(0, pageSize, null, null);
+  };
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    setSelectedFaqs([]); // 페이지 변경 시 선택 해제
+    // API 호출하여 해당 페이지 데이터 가져오기
+    const searchValue = activeSearchTerm.trim() || null;
+    const categoryValue = activeCategoryFilter === '전체' ? null : activeCategoryFilter;
+    fetchFaqs(page, pageSize, searchValue, categoryValue);
   };
 
   const handleSelectFaq = (faqId) => {
@@ -159,10 +193,10 @@ export default function FaqManagementPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedFaqs.length === filteredFaqs.length) {
+    if (selectedFaqs.length === faqs.length) {
       setSelectedFaqs([]);
     } else {
-      setSelectedFaqs(filteredFaqs.map(faq => faq.id));
+      setSelectedFaqs(faqs.map(faq => faq.id));
     }
   };
 
@@ -201,7 +235,9 @@ export default function FaqManagementPage() {
 
             if (response.ok) {
               alert(`${faq.question}를 삭제했습니다.`);
-              fetchFaqs(); // 목록 새로고침
+              const searchValue = activeSearchTerm.trim() || null;
+              const categoryValue = activeCategoryFilter === '전체' ? null : activeCategoryFilter;
+              fetchFaqs(currentPage, pageSize, searchValue, categoryValue); // 목록 새로고침
             } else {
               alert('FAQ 삭제에 실패했습니다.');
             }
@@ -242,7 +278,9 @@ export default function FaqManagementPage() {
         alert('새 FAQ가 추가되었습니다.');
         setNewFaq({ category: '', question: '', answer: '', order: 0 });
         setIsAddModalOpen(false);
-        fetchFaqs(); // 목록 새로고침
+        const searchValue = activeSearchTerm.trim() || null;
+        const categoryValue = activeCategoryFilter === '전체' ? null : activeCategoryFilter;
+        fetchFaqs(currentPage, pageSize, searchValue, categoryValue); // 목록 새로고침
       } else {
         alert('FAQ 추가에 실패했습니다.');
       }
@@ -278,7 +316,9 @@ export default function FaqManagementPage() {
         alert('FAQ가 수정되었습니다.');
         setIsEditModalOpen(false);
         setEditingFaq(null);
-        fetchFaqs(); // 목록 새로고침
+        const searchValue = activeSearchTerm.trim() || null;
+        const categoryValue = activeCategoryFilter === '전체' ? null : activeCategoryFilter;
+        fetchFaqs(currentPage, pageSize, searchValue, categoryValue); // 목록 새로고침
       } else {
         alert('FAQ 수정에 실패했습니다.');
       }
@@ -288,8 +328,8 @@ export default function FaqManagementPage() {
     }
   };
 
-  // 통계 계산
-  const totalFaqs = faqs.length;
+  // 통계 계산 - 서버에서 받은 전체 개수 사용
+  const totalFaqs = totalElements;
 
   return (
     <MasterLayout>
@@ -332,8 +372,8 @@ export default function FaqManagementPage() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-green-600">{filteredFaqs.length}</div>
-                <div className="text-sm text-gray-600">검색 결과</div>
+                <div className="text-2xl font-bold text-green-600">{currentPage + 1}</div>
+                <div className="text-sm text-gray-600">현재 페이지</div>
               </div>
               <Search className="w-8 h-8 text-green-600" />
             </div>
@@ -419,13 +459,13 @@ export default function FaqManagementPage() {
 
         {/* FAQ 아코디언 목록 */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          {filteredFaqs.length === 0 ? (
+          {faqs.length === 0 ? (
             <div className="px-6 py-8 text-gray-400 text-center">
               조건에 맞는 FAQ가 없습니다.
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {filteredFaqs.map((faq) => (
+              {faqs.map((faq) => (
                 <div key={faq.id} className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4 flex-1">
@@ -473,6 +513,17 @@ export default function FaqManagementPage() {
             </div>
           )}
         </div>
+
+        {/* 페이지네이션 */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalElements={totalElements}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+          />
+        )}
 
         {/* FAQ 추가 모달 */}
         {isAddModalOpen && (
