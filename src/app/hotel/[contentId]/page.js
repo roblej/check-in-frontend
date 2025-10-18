@@ -4,50 +4,45 @@ import Footer from "@/components/Footer";
 import HotelDetail from "@/components/hotel/HotelDetail";
 import StructuredData from "@/components/SEO/StructuredData";
 import LiveViewerPanel from "@/components/hotel/LiveViewerPanel";
+import { hotelAPI } from "@/lib/api/hotel";
 
 // SSR시점에서 동적 메타데이터 생성
-export async function generateMetadata({ params,searchParams }) {
+export async function generateMetadata({ params, searchParams }) {
   const contentId = params.id;
+  try {
+    const res = await hotelAPI.getHotelDetail(contentId);
+    const hotel = res?.data ?? res ?? {};
+    const name = hotel?.title || "호텔 상세";
+    const description = hotel?.hotelDetail?.scalelodging || "";
+    const images = hotel?.images ?? (hotel?.imageUrl ? [hotel.imageUrl] : []);
 
-  // 실제로는 API에서 호텔 정보를 가져와야 함
-  const hotelData = {
-    id: contentId,
-    name: "신라스테이 광화문",
-    description: "광화문 중심부에 위치한 프리미엄 비즈니스 호텔입니다.",
-    location: "서울 종로구",
-    rating: 8.4,
-    price: 180000,
-    images: ["/hotel-main.jpg"],
-  };
-
-  //  쿼리스트링 기반 검색 파라미터 (URL에서 가져옴)
-  const checkIn = searchParams?.checkIn || "";
-  const checkOut = searchParams?.checkOut || "";
-  const nights = searchParams?.nights || "1";
-  const adults = searchParams?.adults || "2";
-
-  //날짜 + 인원수 조합으로 동적 메타데이터 생성
-  const stayInfo = `${checkIn} ~ ${checkOut} | ${nights}박 | 성인 ${adults}명`;
-  return {
-    title: `${hotelData.name} - 체크인`,
-    description: hotelData.description,
-    keywords: `호텔, ${hotelData.location}, 숙박, 예약, ${hotelData.name}`,
-    openGraph: {
-      title: `${hotelData.name} - 체크인`,
-      description: hotelData.description,
-      images: hotelData.images,
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: `${hotelData.name} - 체크인`,
-      description: hotelData.description,
-      images: hotelData.images,
-    },
-    alternates: {
-      canonical: `/hotel/${contentId}`,
-    },
-  };
+    return {
+      title: `${name} - 체크인`,
+      description,
+      keywords: `호텔, ${hotel?.adress || ""}, 숙박, 예약, ${name}`,
+      openGraph: {
+        title: `${name} - 체크인`,
+        description,
+        images,
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: `${name} - 체크인`,
+        description,
+        images,
+      },
+      alternates: {
+        canonical: `/hotel/${contentId}`,
+      },
+    };
+  } catch (e) {
+    return {
+      title: `호텔 상세 - 체크인`,
+      description: "호텔 상세 정보",
+      alternates: { canonical: `/hotel/${contentId}` },
+    };
+  }
 }
 
 const HotelDetailPage = ({ params, searchParams }) => {
@@ -62,32 +57,9 @@ const HotelDetailPage = ({ params, searchParams }) => {
     adults: parseInt(searchParams?.adults || "2"),
   };
 
-  // 임시 호텔 데이터 (실제로는 API에서 가져와야 함)
-  const hotelData = {
-    id: contentId,
-    name: "신라스테이 광화문",
-    description: "광화문 중심부에 위치한 프리미엄 비즈니스 호텔입니다.",
-    location: "서울 종로구 삼봉로 71",
-    district: "종로구",
-    rating: 8.4,
-    reviewCount: 245,
-    starRating: 4,
-    checkInTime: "15:00",
-    checkOutTime: "11:00",
-    amenities: ["무료 WiFi", "수영장", "피트니스 센터", "레스토랑", "주차장"],
-    images: ["/hotel-main.jpg"],
-    rooms: [
-      {
-        name: "스탠다드 더블",
-        description: "편안한 휴식을 위한 기본형 객실입니다.",
-        price: 180000,
-      },
-    ],
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <StructuredData hotelData={hotelData} />
+      {/* StructuredData는 추후 실제 데이터 연결 시 보완 */}
       <Header />
       <HotelDetail contentId={contentId} searchParams={searchParamsData} />
       <Footer />

@@ -3,19 +3,27 @@
 /**
  * 호텔 이용 정책 컴포넌트
  * @param {Object} props
- * @param {string} props.checkInTime - 체크인 시간
- * @param {string} props.checkOutTime - 체크아웃 시간
+ * @param {string} [props.checkInTime=""] - 체크인 시간
+ * @param {string} [props.checkOutTime=""] - 체크아웃 시간
  */
-const HotelPolicy = ({ checkInTime, checkOutTime }) => {
+const HotelPolicy = ({ checkInTime = "", checkOutTime = "" }) => {
   return (
     <div className="bg-white rounded-lg p-6 shadow">
-      <h2 className="text-2xl font-bold mb-4">이용 정책</h2>
+      <h2 id="policy-heading" className="text-2xl font-bold mb-4">
+        이용 정책
+      </h2>
       <div className="space-y-4 text-gray-700">
-        <div>
-          <h3 className="font-semibold mb-2">체크인/체크아웃</h3>
-          <p className="text-sm">• 체크인: {checkInTime} 이후</p>
-          <p className="text-sm">• 체크아웃: {checkOutTime} 이전</p>
-        </div>
+        {(checkInTime || checkOutTime) && (
+          <div>
+            <h3 className="font-semibold mb-2">체크인/체크아웃</h3>
+            {checkInTime && (
+              <p className="text-sm">• 체크인: {checkInTime} 이후</p>
+            )}
+            {checkOutTime && (
+              <p className="text-sm">• 체크아웃: {checkOutTime} 이전</p>
+            )}
+          </div>
+        )}
         <div>
           <h3 className="font-semibold mb-2">취소 정책</h3>
           <p className="text-sm">• 체크인 3일 전까지 무료 취소 가능</p>
