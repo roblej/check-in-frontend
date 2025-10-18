@@ -59,6 +59,15 @@ export const useSearchStore = create(
 
       // 최근 검색 전체 삭제
       clearRecentSearches: () => set({ recentSearches: [] }),
+
+      // 호텔 검색 결과
+      searchResults: [],
+
+      // 호텔 검색 결과 설정
+      setSearchResults: (hotels) => set({ searchResults: hotels }),
+
+      // 호텔 검색 결과 초기화
+      clearSearchResults: () => set({ searchResults: [] }),
     }),
     {
       name: "search-storage",
