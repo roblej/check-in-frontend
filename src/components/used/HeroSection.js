@@ -11,7 +11,8 @@ const HeroSection = ({
   setCheckOut, 
   adults, 
   setAdults, 
-  onSearch 
+  onSearch,
+  onReset 
 }) => {
   const handleSearch = (e) => {
     e.preventDefault();
@@ -105,15 +106,26 @@ const HeroSection = ({
               </div>
             </div>
 
-            {/* 검색 버튼 */}
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="w-full"
-            >
-              검색
-            </Button>
+            {/* 버튼 그룹 */}
+            <div className="flex gap-3">
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="flex-1"
+              >
+                검색
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                onClick={onReset}
+                className="px-6"
+              >
+                초기화
+              </Button>
+            </div>
           </form>
         </div>
       </div>
