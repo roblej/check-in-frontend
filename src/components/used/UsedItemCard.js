@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Button from '../Button';
 
-const ResaleItemCard = ({ item, onInquire, onBookmark }) => {
+const UsedItemCard = ({ item, onInquire, onBookmark }) => {
   const formatPrice = (price) => {
     return new Intl.NumberFormat('ko-KR').format(price);
   };
@@ -137,4 +137,4 @@ const ResaleItemCard = ({ item, onInquire, onBookmark }) => {
   );
 };
 
-export default ResaleItemCard;
+export default UsedItemCard;

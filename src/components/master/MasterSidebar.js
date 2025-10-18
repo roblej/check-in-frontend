@@ -54,13 +54,13 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
       ]
     },
     {
-      id: 'customer-service',
+      id: 'center',
       name: '고객센터',
       icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636A9 9 0 105.636 18.364 9 9 0 0018.364 5.636z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 15s1.5 2 4 2 4-2 4-2" /></svg>,
-      path: '/master/customer-service',
+      path: '/master/center',
       submenu: [
-        { id: 'faq-list', name: '자주 묻는 질문', path: '/master/customer-service/faq' },
-        { id: 'inquiry-list', name: '1:1 문의 목록', path: '/master/customer-service/inquiries' }
+        { id: 'faq-list', name: '자주 묻는 질문', path: '/master/center/faq' },
+        { id: 'inquiry-list', name: '1:1 문의 목록', path: '/master/center/inquiries' }
       ]
     },
     {

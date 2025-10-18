@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 
 const MasterDashboard = () => {
 
-  const api_url = "api/master/dashboard";
+  const api_url = "/api/master/dashboard";
 
   const [list, setList] = useState([]);
   const [hotelCount, setHotelCount] = useState("불러오는중...");
@@ -23,7 +23,6 @@ const MasterDashboard = () => {
   function getData(){
     axios.get(api_url).then(res => {
       if(res.data.hotelList){
-        console.log(res.data.hotelList);
         setList(res.data.hotelList);
         setHotelCount(res.data.hotelCount);
       }

@@ -7,12 +7,39 @@ async function getInitialData(searchParams) {
   try {
     const { destination, checkIn, checkOut, adults, page = 0, size = 10 } = searchParams;
     
-    // 현재는 전체 목록 API만 사용 (검색 API는 아직 구현되지 않음)
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/list?page=${page}&size=${size}`;
-
-    const response = await fetch(apiUrl, {
-      cache: 'no-store', // SSR을 위해 캐시 비활성화
-    });
+    // 검색 조건이 있으면 검색 API, 없으면 전체 목록 API 호출
+    const hasSearchConditions = destination || checkIn || checkOut || adults !== 2;
+    
+    let response;
+    if (hasSearchConditions) {
+      // 검색 API 호출 (POST)
+      response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          destination: destination || null,
+          checkIn: checkIn || null,
+          checkOut: checkOut || null,
+          adults: adults || null,
+          priceMin: null,
+          priceMax: null,
+          sortBy: 'date',
+          sortDirection: 'asc',
+          status: null,
+          page: page,
+          size: size
+        }),
+        cache: 'no-store', // SSR을 위해 캐시 비활성화
+      });
+    } else {
+      // 전체 목록 API 호출 (GET)
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/list?page=${page}&size=${size}`;
+      response = await fetch(apiUrl, {
+        cache: 'no-store', // SSR을 위해 캐시 비활성화
+      });
+    }
     
     if (response.ok) {
       const data = await response.json();
