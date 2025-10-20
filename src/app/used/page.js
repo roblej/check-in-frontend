@@ -67,7 +67,10 @@ async function getInitialData(searchParams) {
           seller: item.reservation?.customerNickname || '판매자 정보 없음',
           image: item.hotel?.hotelImageUrl || '',
           urgent: false,
-          originalData: item
+          originalData: {
+            ...item,
+            roomIdx: item.reservation?.roomIdx || item.roomIdx || null
+          }
         }));
         
         return {
@@ -104,7 +107,12 @@ async function getInitialData(searchParams) {
         seller: '더미판매자1',
         image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop',
         urgent: false,
-        originalData: null
+        originalData: {
+          roomIdx: 101,
+          reservation: {
+            roomIdx: 101
+          }
+        }
       },
       {
         id: 998,
@@ -125,7 +133,12 @@ async function getInitialData(searchParams) {
         seller: '더미판매자2',
         image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop',
         urgent: true,
-        originalData: null
+        originalData: {
+          roomIdx: 102,
+          reservation: {
+            roomIdx: 102
+          }
+        }
       },
       {
         id: 997,
@@ -146,7 +159,12 @@ async function getInitialData(searchParams) {
         seller: '더미판매자3',
         image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop',
         urgent: false,
-        originalData: null
+        originalData: {
+          roomIdx: 103,
+          reservation: {
+            roomIdx: 103
+          }
+        }
       }
     ],
     totalPages: 1,
