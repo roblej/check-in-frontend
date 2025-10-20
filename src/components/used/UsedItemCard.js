@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Button from '../Button';
 
-const UsedItemCard = ({ item, onInquire, onBookmark }) => {
+const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
   const formatPrice = (price) => {
     return new Intl.NumberFormat('ko-KR').format(price);
   };
@@ -29,10 +29,28 @@ const UsedItemCard = ({ item, onInquire, onBookmark }) => {
     }
   };
 
+  const handleHotelDetail = () => {
+    if (onHotelDetail) {
+      onHotelDetail(item);
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden group">
       {/* 이미지 */}
-      <div className="relative h-48 overflow-hidden">
+      <div 
+        className="relative h-48 overflow-hidden cursor-pointer"
+        onClick={handleHotelDetail}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleHotelDetail();
+          }
+        }}
+        aria-label={`${item.hotelName} 호텔 상세 정보 보기`}
+      >
         {item.image ? (
           <Image
             src={item.image}
@@ -59,7 +77,21 @@ const UsedItemCard = ({ item, onInquire, onBookmark }) => {
       {/* 내용 */}
       <div className="p-6">
         <div className="mb-3">
-          <h3 className="text-lg font-bold text-gray-900 mb-1">{item.hotelName || '호텔명 없음'}</h3>
+          <h3 
+            className="text-lg font-bold text-gray-900 mb-1 cursor-pointer hover:text-blue-600 transition-colors"
+            onClick={handleHotelDetail}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleHotelDetail();
+              }
+            }}
+            aria-label={`${item.hotelName} 호텔 상세 정보 보기`}
+          >
+            {item.hotelName || '호텔명 없음'}
+          </h3>
           <p className="text-sm text-gray-600">{item.location || '위치 정보 없음'}</p>
         </div>
 

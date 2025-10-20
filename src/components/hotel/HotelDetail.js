@@ -122,12 +122,25 @@ const HotelDetail = ({
    * 백엔드 객실 데이터를 프론트엔드 형식으로 매핑
    * @param {Object[]} roomList - 백엔드 객실 데이터 배열
    * @param {string} checkInTime - 체크인 시간
+   * @param {string|number} [roomIdx] - 특정 객실 ID (선택사항)
    * @returns {Room[]} 매핑된 객실 데이터 배열
    */
-  const mapRoomData = useCallback((roomList, checkInTime) => {
+  const mapRoomData = useCallback((roomList, checkInTime, roomIdx = null) => {
     const safeRoomList = Array.isArray(roomList) ? roomList : [];
 
-    return safeRoomList.map((room, index) => ({
+    // roomIdx가 있으면 해당 객실만 필터링
+    const filteredRooms = roomIdx 
+      ? safeRoomList.filter(room => room.roomIdx == roomIdx)
+      : safeRoomList;
+
+        console.log('mapRoomData 필터링 결과:', {
+          roomIdx: roomIdx,
+          totalRooms: safeRoomList.length,
+          filteredRooms: filteredRooms.length,
+          filteredRoomIds: filteredRooms.map(r => r.roomIdx)
+        });
+
+        return filteredRooms.map((room, index) => ({
       id: room.roomIdx
         ? `${room.contentId}-${room.roomIdx}`
         : `${room.contentId}-${room.name}-${index}`,
@@ -165,9 +178,24 @@ const HotelDetail = ({
         const hotel = hotelRes?.data ?? hotelRes;
         const roomList = roomsRes?.data ?? roomsRes;
 
+        console.log('HotelDetail - API 응답:', {
+          contentId: contentId,
+          hotel: hotel,
+          roomList: roomList,
+          roomListLength: roomList?.length || 0
+        });
+
         // 데이터 매핑
         const mappedHotel = mapHotelData(hotel);
-        const mappedRooms = mapRoomData(roomList, mappedHotel?.checkInTime);
+        
+        console.log('HotelDetail - roomIdx 필터링:', {
+          contentId: contentId,
+          roomIdx: searchParams?.roomIdx,
+          totalRooms: roomList?.length || 0,
+          searchParams: searchParams
+        });
+        
+        const mappedRooms = mapRoomData(roomList, mappedHotel?.checkInTime, searchParams?.roomIdx);
 
         if (isMounted) {
           setHotelData(mappedHotel);
@@ -188,7 +216,7 @@ const HotelDetail = ({
     return () => {
       isMounted = false;
     };
-  }, [contentId, searchParams?.roomName, mapHotelData, mapRoomData]);
+  }, [contentId, searchParams, mapHotelData, mapRoomData]);
 
   // 네비게이션 섹션
   const navSections = [
@@ -382,7 +410,7 @@ const HotelDetail = ({
           isModal ? "top-0" : "top-[56px]"
         }`}
       >
-        <div className={`${isModal ? "px-4" : "max-w-7xl mx-auto px-4"} py-3`}>
+        <div className={`${isModal ? "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" : "max-w-7xl mx-auto px-4"} py-3`}>
           <div className="flex items-center justify-between">
             {/* 호텔 기본 정보 */}
             <div className="flex-1 min-w-0">
@@ -436,7 +464,7 @@ const HotelDetail = ({
         className="bg-white border-b shadow-md sticky z-30"
         style={{ top: `${headerHeight}px` }}
       >
-        <div className={`${isModal ? "px-4" : "max-w-7xl mx-auto px-4"}`}>
+        <div className={`${isModal ? "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" : "max-w-7xl mx-auto px-4"}`}>
           <div className="flex gap-1 overflow-x-auto scrollbar-hide">
             {navSections.map((section) => (
               <button
@@ -461,7 +489,7 @@ const HotelDetail = ({
       {/* 메인 컨텐츠 */}
       <div
         className={`${
-          isModal ? "px-4 py-4 pb-8" : "max-w-7xl mx-auto px-4 py-6 pt-6"
+          isModal ? "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 pb-8" : "max-w-7xl mx-auto px-4 py-6 pt-6"
         }`}
       >
         {/* 이미지 갤러리 */}
@@ -477,7 +505,7 @@ const HotelDetail = ({
           aria-labelledby="rooms-heading"
         >
           <h2 id="rooms-heading" className="text-2xl font-bold mb-4">
-            객실 선택
+            {searchParams?.roomIdx ? '객실 확인' : '객실 선택'}
           </h2>
           <div className="space-y-4">
             {Array.isArray(rooms) && rooms.length > 0 ? (
