@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
+import Pagination from '@/components/Pagination';
 import { Building2, Bed, Calendar, DollarSign, Star } from 'lucide-react';
 
 const HotelManagement = () => {
-  const api_url = "/api/master/hotelList";
+  const api_url = "/api/master/hotels";
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -13,15 +14,21 @@ const HotelManagement = () => {
   const [hotels, setHotels] = useState([]);
   const [hotelCount, setHotelCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  
+  // Pagination 상태 추가
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [pageSize, setPageSize] = useState(5);
 
   // API에서 호텔 데이터 가져오기
-  const getData = async () => {
+  const getData = async (page = currentPage, size = pageSize) => {
     try {
       setLoading(true);
       console.log('=== API 호출 시작 ===');
       console.log('API URL:', api_url);
+      console.log('Page:', page, 'Size:', size);
       
-      const response = await fetch(api_url, {
+      const response = await fetch(`${api_url}?page=${page}&size=${size}`, {
         cache: 'no-store', // SSR을 위해 캐시 비활성화
       });
       
@@ -58,10 +65,14 @@ const HotelManagement = () => {
           
           setHotels(transformedHotels);
           setHotelCount(data.totalElements || 0);
+          setTotalPages(data.totalPages || 0);
+          setCurrentPage(data.number || 0);
         } else {
           console.log('content가 없습니다. 원본 데이터 사용');
           setHotels(data.hotelList || []);
           setHotelCount(data.hotelCount || 0);
+          setTotalPages(1);
+          setCurrentPage(0);
         }
       } else {
         console.error('API 응답 실패:', response.status, response.statusText);
@@ -78,6 +89,12 @@ const HotelManagement = () => {
   useEffect(() => {
     getData();
   }, []);
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    getData(newPage, pageSize);
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -439,6 +456,19 @@ const HotelManagement = () => {
             </div>
           </div>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-8">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalElements={hotelCount}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+            />
+          </div>
+        )}
       </div>
     </MasterLayout>
   );

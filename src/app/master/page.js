@@ -9,9 +9,7 @@ const MasterDashboard = () => {
 
   const api_url = "/api/master/dashboard";
 
-  const [list, setList] = useState([]);
   const [hotelCount, setHotelCount] = useState("불러오는중...");
-  const [customerList, setCustomerList] = useState([]);
   const [customerCount, setCustomerCount] = useState("불러오는중...");
   const [paymentAmount, setPaymentAmount] = useState("불러오는중...");
 
@@ -22,16 +20,14 @@ const MasterDashboard = () => {
 
   function getData(){
     axios.get(api_url).then(res => {
-      if(res.data.hotelList){
-        setList(res.data.hotelList);
+      if(res.data.hotelCount){
         setHotelCount(res.data.hotelCount);
       }
-      if(res.data.customerList){
-        setCustomerList(res.data.customerList);
+      if(res.data.customerCount){
         setCustomerCount(res.data.customerCount);
       }
       if(res.data.paymentAmount){
-        setPnaymetAmount(res.data.paymentAmount);
+        setPaymentAmount(res.data.paymentAmount);
       }
       if(res.data.newCustomers){
         console.log('New Customers Data:', res.data.newCustomers);
