@@ -95,28 +95,31 @@ const HotelDetail = ({
    * @param {Object} hotel - 백엔드 호텔 데이터
    * @returns {HotelData} 매핑된 호텔 데이터
    */
-  const mapHotelData = useCallback((hotel) => {
-    if (!hotel) return null;
+  const mapHotelData = useCallback(
+    (hotel) => {
+      if (!hotel) return null;
 
-    return {
-      id: hotel.contentId ?? contentId,
-      name: hotel.title ?? "",
-      description: hotel.hotelDetail?.scalelodging || "",
-      location: hotel.adress ?? "",
-      rating: hotel.rating ?? 0,
-      reviewCount: hotel.reviewCount ?? 0,
-      starRating: hotel.starRating ?? 0,
-      checkInTime: hotel.checkInTime ?? "",
-      checkOutTime: hotel.checkOutTime ?? "",
-      amenities: [
-        hotel.hotelDetail?.foodplace,
-        hotel.hotelDetail?.parkinglodging,
-        hotel.hotelDetail?.reservationlodging,
-      ].filter(Boolean),
-      images: hotel.images ?? (hotel.imageUrl ? [hotel.imageUrl] : []),
-      district: hotel.areaCode ?? "",
-    };
-  }, [contentId]);
+      return {
+        id: hotel.contentId ?? contentId,
+        name: hotel.title ?? "",
+        description: hotel.hotelDetail?.scalelodging || "",
+        location: hotel.adress ?? "",
+        rating: hotel.rating ?? 0,
+        reviewCount: hotel.reviewCount ?? 0,
+        starRating: hotel.starRating ?? 0,
+        checkInTime: hotel.checkInTime ?? "",
+        checkOutTime: hotel.checkOutTime ?? "",
+        amenities: [
+          hotel.hotelDetail?.foodplace,
+          hotel.hotelDetail?.parkinglodging,
+          hotel.hotelDetail?.reservationlodging,
+        ].filter(Boolean),
+        images: hotel.images ?? (hotel.imageUrl ? [hotel.imageUrl] : []),
+        district: hotel.areaCode ?? "",
+      };
+    },
+    [contentId]
+  );
 
   /**
    * 백엔드 객실 데이터를 프론트엔드 형식으로 매핑
@@ -352,7 +355,9 @@ const HotelDetail = ({
     return (
       <div className="bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="text-center" role="alert" aria-live="assertive">
-          <p className="text-red-600 text-lg font-medium mb-2">{errorMessage}</p>
+          <p className="text-red-600 text-lg font-medium mb-2">
+            {errorMessage}
+          </p>
           <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -465,7 +470,7 @@ const HotelDetail = ({
         }`}
       >
         {/* 이미지 갤러리 */}
-        <HotelGallery images={hotelData.images} isModal={isModal} />
+        <HotelGallery contentId={contentId} isModal={isModal} />
 
         {/* 호텔 기본 정보 */}
         <HotelInfo hotelData={hotelData} />
@@ -502,7 +507,7 @@ const HotelDetail = ({
           ref={(el) => (sectionsRef.current["amenities"] = el)}
           aria-labelledby="amenities-heading"
         >
-          <HotelAmenities amenities={hotelData.amenities} />
+          <HotelAmenities contentId={contentId} />
         </section>
 
         {/* 리뷰 */}
