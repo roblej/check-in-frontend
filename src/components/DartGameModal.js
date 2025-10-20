@@ -18,14 +18,158 @@ const DartGameModal = ({ isOpen, onClose }) => {
   const markerRef = useRef(null);
   const gaugeIntervalRef = useRef(null);
 
-  // 한국 경계 좌표 (정확한 범위)
+  // 한국관광공사 지역코드 매핑
+  const areaCodeMap = {
+    '서울': '1',
+    '인천': '2',
+    '대전': '3',
+    '대구': '4',
+    '광주': '5',
+    '부산': '6',
+    '울산': '7',
+    '세종': '8',
+    '경기': '31',
+    '강원': '32',
+    '충북': '33',
+    '충남': '34',
+    '경북': '35',
+    '경남': '36',
+    '전북': '37',
+    '전남': '38',
+    '제주': '39'
+  };
+
+  // 위도/경도를 기반으로 지역코드 가져오기
+  const getAreaCodeFromCoords = async (lat, lng) => {
+    return new Promise((resolve) => {
+      if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
+        console.error('Kakao Maps Services not loaded');
+        resolve(null);
+        return;
+      }
+
+      const geocoder = new window.kakao.maps.services.Geocoder();
+      
+      geocoder.coord2Address(lng, lat, (result, status) => {
+        if (status === window.kakao.maps.services.Status.OK && result[0]) {
+          const address = result[0].address;
+          console.log('역지오코딩 결과:', address);
+          
+          // 시도 이름 추출 (region_1depth_name)
+          const region = address.region_1depth_name;
+          
+          // 지역명에서 '특별시', '광역시', '특별자치시', '도' 제거
+          const cleanRegion = region
+            .replace('특별시', '')
+            .replace('광역시', '')
+            .replace('특별자치시', '')
+            .replace('특별자치도', '')
+            .replace('도', '')
+            .trim();
+          
+          // 지역코드 매핑
+          const areaCode = areaCodeMap[cleanRegion] || null;
+          
+          console.log('지역:', region, '-> 정제:', cleanRegion, '-> 코드:', areaCode);
+          
+          resolve({
+            areaCode,
+            regionName: region,
+            address: address.address_name
+          });
+        } else {
+          console.error('역지오코딩 실패');
+          resolve(null);
+        }
+      });
+    });
+  };
+
+  // 한국(대한민국) 육지 경계 좌표 (휴전선 이남)
+  const koreaPolygon = [
+    // 서해안 북부 (경기도)
+    { lat: 37.7, lng: 126.4 }, // 1번 (이전 3번)
+    { lat: 37.5, lng: 126.5 },
+    { lat: 37.3, lng: 126.5 },
+    
+    // 서해안 북부 (경기 - 충남)
+    { lat: 37.1, lng: 126.6 },
+    { lat: 36.9, lng: 126.5 },
+    { lat: 36.7, lng: 126.5 },
+    { lat: 36.5, lng: 126.5 },
+    { lat: 36.3, lng: 126.4 },
+    { lat: 36.1, lng: 126.4 },
+    
+    // 서해안 남부 (충남 - 전북 - 전남)
+    { lat: 35.9, lng: 126.5 },
+    { lat: 35.7, lng: 126.4 },
+    { lat: 35.5, lng: 126.3 },
+    { lat: 35.3, lng: 126.3 },
+    { lat: 35.1, lng: 126.2 },
+    { lat: 34.9, lng: 126.2 },
+    { lat: 34.8, lng: 126.3 },
+    
+    // 남해안 서부 (전남)
+    { lat: 34.7, lng: 126.5 },
+    { lat: 34.6, lng: 126.7 },
+    { lat: 34.5, lng: 127.0 },
+    { lat: 34.4, lng: 127.3 },
+    { lat: 34.5, lng: 127.6 },
+    
+    // 남해안 중부 (경남)
+    { lat: 34.6, lng: 128.0 },
+    { lat: 34.7, lng: 128.4 },
+    { lat: 34.9, lng: 128.8 },
+    
+    // 남해안 동부 (부산 - 울산)
+    { lat: 35.0, lng: 129.1 },
+    { lat: 35.2, lng: 129.2 },
+    { lat: 35.4, lng: 129.3 },
+    
+    // 동해안 (경상도)
+    { lat: 35.6, lng: 129.4 },
+    { lat: 36.0, lng: 129.4 },
+    { lat: 36.4, lng: 129.4 },
+    { lat: 36.8, lng: 129.4 },
+    { lat: 37.2, lng: 129.3 },
+    
+    // 동해안 북부 (강원도)
+    { lat: 37.5, lng: 129.1 },
+    { lat: 37.7, lng: 128.9 },
+    { lat: 37.9, lng: 128.7 },
+    { lat: 38.0, lng: 128.5 },
+    
+    // 북동쪽 (강원도 북부 - 휴전선 부근)
+    { lat: 38.1, lng: 128.3 },
+    { lat: 38.2, lng: 128.0 },
+    { lat: 38.2, lng: 127.7 },
+    { lat: 38.2, lng: 127.4 },
+    { lat: 38.1, lng: 127.1 },
+    { lat: 38.0, lng: 126.8 } // 44번 (이전 44번) - 3번과 연결됨
+  ];
+
   const koreaBounds = {
-    north: 38.6,
-    south: 33.1,
-    east: 131.9,
-    west: 124.6,
+    north: 38.2,
+    south: 34.4,
+    east: 129.4,
+    west: 126.2,
     centerLat: 36.5,
     centerLng: 127.5
+  };
+
+  // 점이 폴리곤 내부에 있는지 확인하는 함수 (Ray Casting Algorithm)
+  const isPointInPolygon = (point, polygon) => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lng, yi = polygon[i].lat;
+      const xj = polygon[j].lng, yj = polygon[j].lat;
+      
+      const intersect = ((yi > point.lat) !== (yj > point.lat))
+        && (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+      
+      if (intersect) inside = !inside;
+    }
+    return inside;
   };
 
   // 카카오맵 초기화
@@ -33,9 +177,9 @@ const DartGameModal = ({ isOpen, onClose }) => {
     if (!isOpen || mapLoaded) return;
 
     const script = document.createElement('script');
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY}&autoload=false`;
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY}&autoload=false&libraries=services`;
     script.async = true;
-    
+
     script.onload = () => {
       window.kakao.maps.load(() => {
         const container = mapRef.current;
@@ -43,8 +187,25 @@ const DartGameModal = ({ isOpen, onClose }) => {
           center: new window.kakao.maps.LatLng(koreaBounds.centerLat, koreaBounds.centerLng),
           level: 13 // 한국 전체가 보이는 레벨
         };
-        
+
         mapInstanceRef.current = new window.kakao.maps.Map(container, options);
+
+        // 한국 육지 경계 폴리곤 그리기
+        const polygonPath = koreaPolygon.map(coord => 
+          new window.kakao.maps.LatLng(coord.lat, coord.lng)
+        );
+
+        const polygon = new window.kakao.maps.Polygon({
+          path: polygonPath,
+          strokeWeight: 4,
+          strokeColor: '#ef4444',
+          strokeOpacity: 0,
+          fillColor: '#ef4444',
+          fillOpacity: 0
+        });
+
+        polygon.setMap(mapInstanceRef.current);
+
         setMapLoaded(true);
       });
     };
@@ -115,31 +276,72 @@ const DartGameModal = ({ isOpen, onClose }) => {
     };
   }, [isOpen, mapLoaded, isThrowing, isCharging, powerGauge]);
 
+  // targetLocation이 업데이트되면 호텔 검색
+  useEffect(() => {
+    // 마커가 찍히고, 지역코드가 정상적으로 들어왔을 때 호텔 검색 실행
+    if (targetLocation && targetLocation.areaCode) {
+      searchHotelsNearLocation(targetLocation);
+    }
+  }, [targetLocation]);
+
   // 차징 시작
   const startCharging = () => {
     setIsCharging(true);
     setPowerGauge(0);
     setPowerDirection(1);
+
+    // 지도를 기본 중심으로 복귀
+    if (mapInstanceRef.current && window.kakao) {
+      const centerPosition = new window.kakao.maps.LatLng(koreaBounds.centerLat, koreaBounds.centerLng);
+      mapInstanceRef.current.panTo(centerPosition);
+    }
+
+    // 이전 마커 제거
+    if (markerRef.current) {
+      markerRef.current.setMap(null);
+      markerRef.current = null;
+    }
+
+    // 이전 결과 초기화
+    setTargetLocation(null);
+    setRecommendedHotels([]);
   };
 
-  // 파워에 따른 랜덤 좌표 생성 (한국 범위 내)
+  // 파워에 따른 랜덤 좌표 생성 (한국 육지 내부만)
   const generateRandomLocation = (power) => {
     // 파워에 따라 분산 조절 (파워가 높을수록 넓은 범위)
     const powerFactor = power / 10;
-    
-    // 한국 중심에서 파워에 따라 범위 조절
-    const latRange = (koreaBounds.north - koreaBounds.south) * powerFactor;
-    const lngRange = (koreaBounds.east - koreaBounds.west) * powerFactor;
-    
-    // 중심에서 랜덤하게 퍼지도록
-    const lat = koreaBounds.centerLat + (Math.random() - 0.5) * latRange;
-    const lng = koreaBounds.centerLng + (Math.random() - 0.5) * lngRange;
-    
-    // 한국 경계 내로 제한
-    const clampedLat = Math.max(koreaBounds.south, Math.min(koreaBounds.north, lat));
-    const clampedLng = Math.max(koreaBounds.west, Math.min(koreaBounds.east, lng));
-    
-    return { lat: clampedLat, lng: clampedLng };
+
+    // 최대 시도 횟수 (무한 루프 방지)
+    const maxAttempts = 100;
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      // 한국 중심에서 파워에 따라 범위 조절
+      const latRange = (koreaBounds.north - koreaBounds.south) * powerFactor;
+      const lngRange = (koreaBounds.east - koreaBounds.west) * powerFactor;
+
+      // 중심에서 랜덤하게 퍼지도록
+      const lat = koreaBounds.centerLat + (Math.random() - 0.5) * latRange;
+      const lng = koreaBounds.centerLng + (Math.random() - 0.5) * lngRange;
+
+      // 한국 경계 내로 제한
+      const clampedLat = Math.max(koreaBounds.south, Math.min(koreaBounds.north, lat));
+      const clampedLng = Math.max(koreaBounds.west, Math.min(koreaBounds.east, lng));
+
+      const point = { lat: clampedLat, lng: clampedLng };
+
+      // 폴리곤 내부에 있는지 확인
+      if (isPointInPolygon(point, koreaPolygon)) {
+        return point;
+      }
+
+      attempts++;
+    }
+
+    // 최대 시도 후에도 실패하면 중심점 반환
+    console.warn('육지 좌표를 찾지 못해 중심점을 반환합니다.');
+    return { lat: koreaBounds.centerLat, lng: koreaBounds.centerLng };
   };
 
   // 다트 던지기
@@ -150,7 +352,14 @@ const DartGameModal = ({ isOpen, onClose }) => {
     
     // 파워에 따른 랜덤 위치 생성
     const randomLocation = generateRandomLocation(power);
-    setTargetLocation(randomLocation);
+    
+    // 지역코드 가져오기
+    getAreaCodeFromCoords(randomLocation.lat, randomLocation.lng).then(locationInfo => {
+      setTargetLocation({
+        ...randomLocation,
+        ...locationInfo
+      });
+    });
 
     // 지도에 마커를 먼저 생성 (보이지 않게)
     if (mapInstanceRef.current && window.kakao && dartRef.current) {
@@ -193,15 +402,21 @@ const DartGameModal = ({ isOpen, onClose }) => {
         const targetX = overlayPoint.x - dartStartX - 16; // 다트 크기 절반
         const targetY = overlayPoint.y - dartStartY - 16;
         
-        // 다트 애니메이션
-        dartRef.current.style.transition = 'all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        // 파워에 따른 이동 속도 계산 (파워가 높을수록 빠르게)
+        // 파워 0-3: 1.5초, 파워 4-7: 1초, 파워 8-10: 0.6초
+        const duration = power < 3 ? 1.5 : 
+                        power < 7 ? 1.0 : 
+                                   0.6;
+        
+        // 다트 애니메이션 (파워에 따른 속도 적용)
+        dartRef.current.style.transition = `all ${duration}s cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
         dartRef.current.style.transform = `translate(${targetX}px, ${targetY}px) rotate(45deg) scale(1.2)`;
         dartRef.current.style.opacity = '1';
         
         // 임시 마커 제거
         tempMarker.setMap(null);
         
-        // 애니메이션 완료 후
+        // 애니메이션 완료 후 (파워에 따른 지연 시간 적용)
         setTimeout(() => {
           // 다트 숨기기
           if (dartRef.current) {
@@ -218,8 +433,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
           // 지도 중심을 마커 위치로 부드럽게 이동
           mapInstanceRef.current.panTo(position);
           
-          // 해당 지역 호텔 검색
-          searchHotelsNearLocation(randomLocation);
+          // 호텔 검색은 targetLocation이 업데이트될 때 useEffect에서 처리됩니다.
           
           setIsThrowing(false);
           
@@ -231,7 +445,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
               dartRef.current.style.opacity = '1';
             }
           }, 100);
-        }, 1000);
+        }, duration * 1000); // 파워에 따른 지연 시간 (초를 밀리초로 변환)
       }, 10);
     }
   };
@@ -239,15 +453,28 @@ const DartGameModal = ({ isOpen, onClose }) => {
   // 위치 기반 호텔 검색
   const searchHotelsNearLocation = async (location) => {
     try {
-      // 현재는 인기 호텔 중 랜덤하게 선택
-      const response = await hotelAPI.getHotels();
-      const hotels = response?.data || response || [];
+      console.log('호텔 검색 시작:', location);
       
-      // 랜덤하게 3개 호텔 선택
-      const shuffled = hotels.sort(() => 0.5 - Math.random());
-      setRecommendedHotels(shuffled.slice(0, 3));
+      // areaCode가 있으면 해당 지역의 호텔 조회
+      if (location.areaCode) {
+        console.log('지역코드로 호텔 검색:', location.areaCode);
+        const response = await hotelAPI.getHotelsByAreaCode(location.areaCode, 10);
+        const hotels = response || [];
+        
+        console.log('검색된 호텔:', hotels);
+        setRecommendedHotels(hotels);
+      } else {
+        // areaCode가 없으면 전국 호텔을 표시하지 않음
+        console.log('지역코드 없음, 호텔 목록을 표시하지 않습니다.');
+        setRecommendedHotels([]);
+      }
     } catch (error) {
       console.error('호텔 검색 실패:', error);
+      console.error('에러 상세:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       setRecommendedHotels([]);
     } finally {
       setIsLoading(false);
@@ -301,9 +528,9 @@ const DartGameModal = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* 배경 오버레이 */}
+      {/* 배경 오버레이 (블러 처리) */}
       <div 
-        className="absolute inset-0 bg-black bg-opacity-50"
+        className="absolute inset-0 bg-transparent backdrop-blur-sm"
         onClick={onClose}
       />
       
@@ -334,160 +561,159 @@ const DartGameModal = ({ isOpen, onClose }) => {
         <div className="p-6">
           {/* 게임 영역 */}
           <div className="relative bg-gradient-to-br from-blue-100 to-green-100 rounded-2xl p-6 mb-6">
-            {/* 카카오맵 */}
-            <div className="relative w-full h-96 bg-gray-200 rounded-xl overflow-hidden">
-              <div 
-                ref={mapRef}
-                className="w-full h-full"
-                style={{ minHeight: '384px' }}
-              />
-              
-              {/* 로딩 상태 */}
-              {!mapLoaded && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">지도를 불러오는 중...</p>
-                  </div>
-                </div>
-              )}
-
-              {/* 다트 (지도 위에 오버레이) - 왼쪽 하단에서 시작 */}
-              <div
-                ref={dartRef}
-                className="absolute bottom-4 left-4 w-10 h-10 transition-all duration-1000 ease-out z-10"
-                style={{
-                  transform: 'translate(0, 0) rotate(45deg)',
-                  opacity: 1
-                }}
-              >
-                <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                  {/* 다트 몸통 */}
-                  <path 
-                    d="M16 2 L16 22" 
-                    stroke="#dc2626" 
-                    strokeWidth="3" 
-                    fill="none"
-                  />
-                  {/* 다트 날개 (왼쪽) */}
-                  <path 
-                    d="M16 6 L10 12 L16 14 Z" 
-                    fill="#ef4444" 
-                    stroke="#dc2626" 
-                    strokeWidth="1"
-                  />
-                  {/* 다트 날개 (오른쪽) */}
-                  <path 
-                    d="M16 6 L22 12 L16 14 Z" 
-                    fill="#ef4444" 
-                    stroke="#dc2626" 
-                    strokeWidth="1"
-                  />
-                  {/* 다트 팁 (끝) */}
-                  <circle 
-                    cx="16" 
-                    cy="2" 
-                    r="2.5" 
-                    fill="#dc2626"
-                  />
-                  {/* 다트 손잡이 */}
-                  <rect 
-                    x="14" 
-                    y="22" 
-                    width="4" 
-                    height="6" 
-                    fill="#7f1d1d" 
-                    rx="2"
-                  />
-                  {/* 다트 깃털 (왼쪽) */}
-                  <path 
-                    d="M16 24 L11 30 L16 28 Z" 
-                    fill="#fca5a5" 
-                    stroke="#ef4444" 
-                    strokeWidth="0.5"
-                  />
-                  {/* 다트 깃털 (오른쪽) */}
-                  <path 
-                    d="M16 24 L21 30 L16 28 Z" 
-                    fill="#fca5a5" 
-                    stroke="#ef4444" 
-                    strokeWidth="0.5"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            {/* 파워 게이지 바 */}
-            <div className="mt-6 mb-4">
-              <div className="text-center mb-3">
-                <h3 className="text-lg font-bold text-gray-900 mb-1">
-                  🎯 다트 파워 게이지
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {isCharging ? 
-                    '스페이스바를 다시 눌러 다트를 던지세요!' : 
-                    '스페이스바를 눌러 게이지를 시작하세요!'}
-                </p>
-              </div>
-              
-              {/* 게이지 바 */}
-              <div className="relative w-full h-12 bg-gray-200 rounded-full overflow-hidden shadow-inner">
-                {/* 배경 눈금 */}
-                <div className="absolute inset-0 flex">
-                  {[...Array(10)].map((_, i) => (
-                    <div 
-                      key={i} 
-                      className="flex-1 border-r border-gray-300"
-                      style={{ 
-                        backgroundColor: i < 3 ? 'rgba(34, 197, 94, 0.2)' : 
-                                       i < 7 ? 'rgba(251, 191, 36, 0.2)' : 
-                                               'rgba(239, 68, 68, 0.2)'
-                      }}
-                    />
-                  ))}
-                </div>
+            <div className="flex gap-4">
+              {/* 카카오맵 */}
+              <div className="relative flex-1 h-[500px] bg-gray-200 rounded-xl overflow-hidden">
+                <div 
+                  ref={mapRef}
+                  className="w-full h-full"
+                  style={{ minHeight: '384px' }}
+                />
                 
-                {/* 파워 바 */}
+                {/* 로딩 상태 */}
+                {!mapLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600">지도를 불러오는 중...</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 다트 (지도 위에 오버레이) - 왼쪽 하단에서 시작 */}
                 <div
-                  className="absolute left-0 top-0 h-full transition-all duration-100 flex items-center justify-end pr-2"
-                  style={{ 
-                    width: `${(powerGauge / 10) * 100}%`,
-                    background: powerGauge < 3 ? 'linear-gradient(90deg, #22c55e, #16a34a)' :
-                               powerGauge < 7 ? 'linear-gradient(90deg, #fbbf24, #f59e0b)' :
-                                               'linear-gradient(90deg, #ef4444, #dc2626)'
+                  ref={dartRef}
+                  className="absolute bottom-4 left-4 w-10 h-10 transition-all duration-1000 ease-out z-10"
+                  style={{
+                    transform: 'translate(0, 0) rotate(45deg)',
+                    opacity: 1
                   }}
                 >
-                  {powerGauge > 0 && (
-                    <span className="text-white font-bold text-sm">
-                      {powerGauge.toFixed(1)}
-                    </span>
-                  )}
-                </div>
-
-                {/* 게이지 숫자 라벨 */}
-                <div className="absolute inset-0 flex items-center justify-between px-2 pointer-events-none">
-                  <span className="text-xs font-bold text-gray-700">0</span>
-                  <span className="text-xs font-bold text-gray-700">5</span>
-                  <span className="text-xs font-bold text-gray-700">10</span>
+                  <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                    {/* 다트 몸통 */}
+                    <path 
+                      d="M16 2 L16 22" 
+                      stroke="#dc2626" 
+                      strokeWidth="3" 
+                      fill="none"
+                    />
+                    {/* 다트 날개 (왼쪽) */}
+                    <path 
+                      d="M16 6 L10 12 L16 14 Z" 
+                      fill="#ef4444" 
+                      stroke="#dc2626" 
+                      strokeWidth="1"
+                    />
+                    {/* 다트 날개 (오른쪽) */}
+                    <path 
+                      d="M16 6 L22 12 L16 14 Z" 
+                      fill="#ef4444" 
+                      stroke="#dc2626" 
+                      strokeWidth="1"
+                    />
+                    {/* 다트 팁 (끝) */}
+                    <circle 
+                      cx="16" 
+                      cy="2" 
+                      r="2.5" 
+                      fill="#dc2626"
+                    />
+                    {/* 다트 손잡이 */}
+                    <rect 
+                      x="14" 
+                      y="22" 
+                      width="4" 
+                      height="6" 
+                      fill="#7f1d1d" 
+                      rx="2"
+                    />
+                    {/* 다트 깃털 (왼쪽) */}
+                    <path 
+                      d="M16 24 L11 30 L16 28 Z" 
+                      fill="#fca5a5" 
+                      stroke="#ef4444" 
+                      strokeWidth="0.5"
+                    />
+                    {/* 다트 깃털 (오른쪽) */}
+                    <path 
+                      d="M16 24 L21 30 L16 28 Z" 
+                      fill="#fca5a5" 
+                      stroke="#ef4444" 
+                      strokeWidth="0.5"
+                    />
+                  </svg>
                 </div>
               </div>
 
-              {/* 파워 상태 텍스트 */}
-              <div className="text-center mt-2">
-                <span className={`text-sm font-bold ${
-                  powerGauge < 3 ? 'text-green-600' :
-                  powerGauge < 7 ? 'text-yellow-600' :
-                                  'text-red-600'
-                }`}>
-                  {powerGauge < 3 ? '약함' :
-                   powerGauge < 7 ? '중간' :
-                                   '강함'}
-                </span>
+              {/* 파워 게이지 바 (세로) */}
+              <div className="flex flex-col items-center justify-between h-[500px] py-4">
+                {/* 상단: 숫자 라벨 */}
+                <div className="text-center mb-2">
+                  <span className="text-xs font-bold text-gray-700">10</span>
+                </div>
+
+                {/* 중앙: 세로 게이지 바 */}
+                <div className="relative w-16 flex-1 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                  {/* 배경 눈금 */}
+                  <div className="absolute inset-0 flex flex-col">
+                    {[...Array(10)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="flex-1 border-b border-gray-300"
+                        style={{ 
+                          backgroundColor: (9 - i) < 3 ? 'rgba(34, 197, 94, 0.2)' : 
+                                         (9 - i) < 7 ? 'rgba(251, 191, 36, 0.2)' : 
+                                                       'rgba(239, 68, 68, 0.2)'
+                        }}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* 파워 바 (아래에서 위로) */}
+                  <div
+                    className="absolute left-0 bottom-0 w-full transition-all duration-100 flex items-center justify-center"
+                    style={{ 
+                      height: `${(powerGauge / 10) * 100}%`,
+                      background: powerGauge < 3 ? 'linear-gradient(to top, #22c55e, #16a34a)' :
+                                 powerGauge < 7 ? 'linear-gradient(to top, #fbbf24, #f59e0b)' :
+                                                 'linear-gradient(to top, #ef4444, #dc2626)'
+                    }}
+                  >
+                    {powerGauge > 0 && (
+                      <span className="text-white font-bold text-sm rotate-0">
+                        {powerGauge.toFixed(1)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 중간 숫자 */}
+                <div className="absolute top-1/2 right-0 transform translate-x-6 -translate-y-1/2">
+                  <span className="text-xs font-bold text-gray-700">5</span>
+                </div>
+
+                {/* 하단: 숫자 라벨 */}
+                <div className="text-center mt-2">
+                  <span className="text-xs font-bold text-gray-700">0</span>
+                </div>
+
+                {/* 파워 상태 텍스트 */}
+                <div className="text-center mt-4">
+                  <span className={`text-sm font-bold ${
+                    powerGauge < 3 ? 'text-green-600' :
+                    powerGauge < 7 ? 'text-yellow-600' :
+                                    'text-red-600'
+                  }`}>
+                    {powerGauge < 3 ? '약함' :
+                     powerGauge < 7 ? '중간' :
+                                     '강함'}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* 컨트롤 버튼 */}
-            <div className="flex justify-center gap-4 mt-4">
+            {/* 컨트롤 버튼 및 안내 */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-4">
               {isCharging ? (
                 <button
                   onClick={() => throwDart(powerGauge)}
@@ -506,22 +732,22 @@ const DartGameModal = ({ isOpen, onClose }) => {
                 </button>
               )}
               
-              {targetLocation && !isCharging && (
-                <button
-                  onClick={resetDart}
-                  className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-full transition-colors"
-                >
-                  다시 던지기
-                </button>
-              )}
+              {/* 안내 텍스트 */}
+              <div className="px-4 py-2 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>💡</strong> 스페이스바로 게이지 시작 및 다트 던지기
+                </p>
+              </div>
             </div>
 
-            {/* 안내 텍스트 */}
-            <div className="text-center mt-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>💡 사용법:</strong> 스페이스바를 누르면 게이지가 시작되고, 다시 누르면 다트를 던집니다!
-              </p>
-            </div>
+            {/* 스크롤 안내 */}
+            {targetLocation && (
+              <div className="text-center mt-4 animate-bounce">
+                <p className="text-sm text-gray-600">
+                  ⬇️ 아래로 스크롤하여 결과를 확인하세요 ⬇️
+                </p>
+              </div>
+            )}
           </div>
 
           {/* 결과 영역 */}
@@ -532,12 +758,34 @@ const DartGameModal = ({ isOpen, onClose }) => {
               </h3>
               
               <div className="mb-6">
-                <p className="text-gray-600 mb-2">
-                  <strong>위치:</strong> 위도 {targetLocation.lat.toFixed(4)}, 경도 {targetLocation.lng.toFixed(4)}
-                </p>
-                <p className="text-sm text-gray-500">
-                  이 지역 근처의 추천 호텔을 찾아보세요!
-                </p>
+                <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
+                  {targetLocation.regionName && (
+                    <p className="text-lg font-bold text-blue-600 mb-2">
+                      🏛️ {targetLocation.regionName}
+                    </p>
+                  )}
+                  {targetLocation.address && (
+                    <p className="text-gray-700 mb-2">
+                      <strong>📍 주소:</strong> {targetLocation.address}
+                    </p>
+                  )}
+                  <p className="text-gray-600 mb-2">
+                    <strong>🗺️ 좌표:</strong> 위도 {targetLocation.lat.toFixed(4)}, 경도 {targetLocation.lng.toFixed(4)}
+                  </p>
+                  {targetLocation.areaCode && (
+                    <p className="text-sm text-gray-500">
+                      <strong>🔢 지역코드:</strong> {targetLocation.areaCode}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-500 mt-3">
+                    다트가 찍힌 위치를 기준으로 근처 호텔을 추천해드립니다! 🏨
+                  </p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800">
+                    💡 <strong>Tip:</strong> 다른 지역을 탐색하려면 위로 스크롤하여 게이지를 다시 시작하세요!
+                  </p>
+                </div>
               </div>
 
               {/* 추천 호텔 */}
@@ -549,27 +797,59 @@ const DartGameModal = ({ isOpen, onClose }) => {
               ) : recommendedHotels.length > 0 ? (
                 <div>
                   <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                    🏨 추천 호텔
+                    🏨 추천 호텔 ({recommendedHotels.length}개)
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {recommendedHotels.map((hotel, index) => (
-                      <div key={index} className="bg-white rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <h5 className="font-semibold text-gray-900 mb-2">{hotel.title}</h5>
-                        <p className="text-sm text-gray-600 mb-2">{hotel.adress}</p>
+                      <div 
+                        key={hotel.contentId || index} 
+                        className="bg-white rounded-lg overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 cursor-pointer"
+                        onClick={() => window.open(`/hotel/${hotel.contentId}`, '_blank')}
+                      >
                         {hotel.imageUrl && (
-                          <img 
-                            src={hotel.imageUrl} 
-                            alt={hotel.title}
-                            className="w-full h-24 object-cover rounded"
-                          />
+                          <div className="relative h-40 overflow-hidden">
+                            <img 
+                              src={hotel.imageUrl} 
+                              alt={hotel.title}
+                              className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                            />
+                          </div>
                         )}
+                        <div className="p-4">
+                          <h5 className="font-bold text-gray-900 mb-2 line-clamp-1">{hotel.title}</h5>
+                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">{hotel.adress}</p>
+                          
+                          {/* 가격 정보 */}
+                          {(hotel.minPrice || hotel.maxPrice) && (
+                            <div className="border-t pt-3 mt-3">
+                              <p className="text-xs text-gray-500 mb-1">1박 기준</p>
+                              <div className="flex items-center justify-between">
+                                {hotel.minPrice && hotel.maxPrice && hotel.minPrice !== hotel.maxPrice ? (
+                                  <p className="text-lg font-bold text-blue-600">
+                                    {new Intl.NumberFormat('ko-KR').format(hotel.minPrice)}원 ~
+                                  </p>
+                                ) : hotel.minPrice ? (
+                                  <p className="text-lg font-bold text-blue-600">
+                                    {new Intl.NumberFormat('ko-KR').format(hotel.minPrice)}원
+                                  </p>
+                                ) : (
+                                  <p className="text-sm text-gray-500">가격 문의</p>
+                                )}
+                                <button className="text-sm bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition-colors">
+                                  보기
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  <p>이 지역 근처의 호텔을 찾을 수 없습니다.</p>
+                  <p className="mb-2">이 지역의 호텔을 찾을 수 없습니다.</p>
+                  <p className="text-sm">다른 지역을 시도해보세요!</p>
                 </div>
               )}
             </div>
