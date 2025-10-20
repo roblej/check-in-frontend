@@ -65,4 +65,12 @@ export const hotelAPI = {
     const response = await axiosInstance.get(`/hotels/${contentId}/facilities`);
     return response.data;
   },
+
+  // 지역코드로 호텔 목록 조회
+  getHotelsByAreaCode: async (areaCode, limit = 10) => {
+    const response = await axiosInstance.get("/hotel/area", {
+      params: { areaCode, limit }
+    });
+    return response.data;
+  },
 };
