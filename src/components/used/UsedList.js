@@ -13,7 +13,8 @@ const UsedList = ({
   pageSize, 
   onPageChange,
   onInquire,
-  onBookmark 
+  onBookmark,
+  onHotelDetail
 }) => {
   if (loading) {
     return (
@@ -37,6 +38,7 @@ const UsedList = ({
               item={item}
               onInquire={onInquire}
               onBookmark={onBookmark}
+              onHotelDetail={onHotelDetail}
             />
           );
         })}
