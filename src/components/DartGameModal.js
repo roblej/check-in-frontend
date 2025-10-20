@@ -17,6 +17,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
   const gaugeIntervalRef = useRef(null);
+  const hotelMarkersRef = useRef([]);
 
   // 한국관광공사 지역코드 매핑
   const areaCodeMap = {
@@ -294,6 +295,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
     if (mapInstanceRef.current && window.kakao) {
       const centerPosition = new window.kakao.maps.LatLng(koreaBounds.centerLat, koreaBounds.centerLng);
       mapInstanceRef.current.panTo(centerPosition);
+      mapInstanceRef.current.setLevel(13); // 줌 레벨 초기화
     }
 
     // 이전 마커 제거
@@ -307,31 +309,20 @@ const DartGameModal = ({ isOpen, onClose }) => {
     setRecommendedHotels([]);
   };
 
-  // 파워에 따른 랜덤 좌표 생성 (한국 육지 내부만)
-  const generateRandomLocation = (power) => {
-    // 파워에 따라 분산 조절 (파워가 높을수록 넓은 범위)
-    const powerFactor = power / 10;
-
+  // 랜덤 좌표 생성 (한국 육지 내부만)
+  const generateRandomLocation = () => {
     // 최대 시도 횟수 (무한 루프 방지)
-    const maxAttempts = 100;
+    const maxAttempts = 200;
     let attempts = 0;
 
     while (attempts < maxAttempts) {
-      // 한국 중심에서 파워에 따라 범위 조절
-      const latRange = (koreaBounds.north - koreaBounds.south) * powerFactor;
-      const lngRange = (koreaBounds.east - koreaBounds.west) * powerFactor;
+      // 한국 전체 경계 내에서 완전 랜덤 좌표 생성
+      const lat = koreaBounds.south + Math.random() * (koreaBounds.north - koreaBounds.south);
+      const lng = koreaBounds.west + Math.random() * (koreaBounds.east - koreaBounds.west);
 
-      // 중심에서 랜덤하게 퍼지도록
-      const lat = koreaBounds.centerLat + (Math.random() - 0.5) * latRange;
-      const lng = koreaBounds.centerLng + (Math.random() - 0.5) * lngRange;
+      const point = { lat, lng };
 
-      // 한국 경계 내로 제한
-      const clampedLat = Math.max(koreaBounds.south, Math.min(koreaBounds.north, lat));
-      const clampedLng = Math.max(koreaBounds.west, Math.min(koreaBounds.east, lng));
-
-      const point = { lat: clampedLat, lng: clampedLng };
-
-      // 폴리곤 내부에 있는지 확인
+      // 생성된 좌표가 폴리곤(육지) 내부에 있는지 확인
       if (isPointInPolygon(point, koreaPolygon)) {
         return point;
       }
@@ -339,9 +330,53 @@ const DartGameModal = ({ isOpen, onClose }) => {
       attempts++;
     }
 
-    // 최대 시도 후에도 실패하면 중심점 반환
-    console.warn('육지 좌표를 찾지 못해 중심점을 반환합니다.');
-    return { lat: koreaBounds.centerLat, lng: koreaBounds.centerLng };
+    // 최대 시도 후에도 실패하면, 폴리곤 꼭지점 중 하나를 랜덤으로 반환
+    console.warn(`육지 좌표를 ${maxAttempts}번 시도 후에도 찾지 못했습니다. 폴리곤 꼭지점 중 하나를 반환합니다.`);
+    return koreaPolygon[Math.floor(Math.random() * koreaPolygon.length)];
+  };
+
+  // 선분 위의 가장 가까운 점을 찾는 함수
+  const findNearestPointOnSegment = (point, p1, p2) => {
+    const dx = p2.lng - p1.lng;
+    const dy = p2.lat - p1.lat;
+
+    if (dx === 0 && dy === 0) {
+        const dist = Math.sqrt(Math.pow(point.lng - p1.lng, 2) + Math.pow(point.lat - p1.lat, 2));
+        return { distance: dist, closestPoint: p1 };
+    }
+
+    const t = ((point.lng - p1.lng) * dx + (point.lat - p1.lat) * dy) / (dx * dx + dy * dy);
+
+    let closestPoint;
+    if (t < 0) {
+        closestPoint = p1;
+    } else if (t > 1) {
+        closestPoint = p2;
+    } else {
+        closestPoint = { lat: p1.lat + t * dy, lng: p1.lng + t * dx };
+    }
+
+    const distance = Math.sqrt(Math.pow(point.lng - closestPoint.lng, 2) + Math.pow(point.lat - closestPoint.lat, 2));
+    return { distance, closestPoint };
+  };
+
+  // 폴리곤(다각형) 경계 위의 가장 가까운 점을 찾는 함수
+  const findNearestPointOnPolygon = (point, polygon) => {
+      let minDistance = Infinity;
+      let nearestPoint = null;
+
+      for (let i = 0; i < polygon.length; i++) {
+          const p1 = polygon[i];
+          const p2 = polygon[(i + 1) % polygon.length]; // 다음 꼭지점 (마지막->처음 연결)
+
+          const { distance, closestPoint } = findNearestPointOnSegment(point, p1, p2);
+
+          if (distance < minDistance) {
+              minDistance = distance;
+              nearestPoint = closestPoint;
+          }
+      }
+      return nearestPoint;
   };
 
   // 다트 던지기
@@ -350,15 +385,28 @@ const DartGameModal = ({ isOpen, onClose }) => {
     setIsThrowing(true);
     setIsLoading(true);
     
-    // 파워에 따른 랜덤 위치 생성
-    const randomLocation = generateRandomLocation(power);
+    // 랜덤 위치 생성 (파워와 무관하게)
+    const randomLocation = generateRandomLocation();
     
-    // 지역코드 가져오기
-    getAreaCodeFromCoords(randomLocation.lat, randomLocation.lng).then(locationInfo => {
-      setTargetLocation({
-        ...randomLocation,
-        ...locationInfo
-      });
+    // 지역코드 가져오기 (실패 시 대체 로직 포함)
+    getAreaCodeFromCoords(randomLocation.lat, randomLocation.lng).then(async (locationInfo) => {
+      if (locationInfo && locationInfo.areaCode) {
+        setTargetLocation({
+          ...randomLocation,
+          ...locationInfo,
+        });
+      } else {
+        // 지역코드를 찾지 못한 경우 (바다 등), 가장 가까운 육지 좌표로 재검색
+        console.log('지역코드를 찾지 못했습니다. 가장 가까운 육지를 검색합니다.');
+        const nearestPoint = findNearestPointOnPolygon(randomLocation, koreaPolygon);
+        const nearestLocationInfo = await getAreaCodeFromCoords(nearestPoint.lat, nearestPoint.lng);
+
+        setTargetLocation({
+          ...randomLocation, // 다트는 원래 위치에 찍힘
+          ...nearestLocationInfo, // 정보는 가장 가까운 육지 정보 사용
+          fallbackMessage: `가장 가까운 육지인 '${nearestLocationInfo.regionName}' 지역의 정보를 표시합니다.`
+        });
+      }
     });
 
     // 지도에 마커를 먼저 생성 (보이지 않게)
@@ -450,6 +498,82 @@ const DartGameModal = ({ isOpen, onClose }) => {
     }
   };
 
+  // 호텔 마커 제거
+  const clearHotelMarkers = () => {
+    hotelMarkersRef.current.forEach(marker => marker.setMap(null));
+    hotelMarkersRef.current = [];
+  };
+
+  // 호텔 마커 표시
+  const displayHotelMarkers = (hotels) => {
+    if (!window.kakao || !window.kakao.maps || !mapInstanceRef.current) return;
+
+    clearHotelMarkers();
+
+    const geocoder = new window.kakao.maps.services.Geocoder();
+
+    hotels.forEach((hotel, index) => {
+      if (!hotel.adress) {
+        console.warn('주소가 없는 호텔 데이터는 건너뜁니다:', hotel);
+        return;
+      }
+
+      geocoder.addressSearch(hotel.adress, (result, status) => {
+        if (status === window.kakao.maps.services.Status.OK) {
+          const coords = new window.kakao.maps.LatLng(result[0].y, result[0].x);
+
+          // 마커 이미지 설정 (숫자 마커)
+          const imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_number_blue.png';
+          const imageSize = new window.kakao.maps.Size(36, 37);
+          const imgOptions = {
+            spriteSize: new window.kakao.maps.Size(36, 691),
+            spriteOrigin: new window.kakao.maps.Point(0, (index * 46) + 10),
+            offset: new window.kakao.maps.Point(13, 37)
+          };
+          const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imgOptions);
+
+          const marker = new window.kakao.maps.Marker({
+            map: mapInstanceRef.current,
+            position: coords,
+            title: hotel.title,
+            image: markerImage
+          });
+
+          const infowindow = new window.kakao.maps.InfoWindow({
+            content: `<div style="padding:5px;font-size:12px;min-width:150px;text-align:center;">${hotel.title}</div>`,
+            disableAutoPan: true,
+          });
+
+          window.kakao.maps.event.addListener(marker, 'mouseover', () => {
+            infowindow.open(mapInstanceRef.current, marker);
+          });
+          window.kakao.maps.event.addListener(marker, 'mouseout', () => {
+            infowindow.close();
+          });
+          
+          window.kakao.maps.event.addListener(marker, 'click', () => {
+            window.open(`/hotel/${hotel.contentId}`, '_blank');
+          });
+
+          hotelMarkersRef.current.push(marker);
+        } else {
+          console.warn(`'${hotel.adress}' 주소에 대한 좌표 변환 실패`);
+        }
+      });
+    });
+  };
+
+  // 추천 호텔 목록이 변경되면 마커 업데이트
+  useEffect(() => {
+    if (mapLoaded && recommendedHotels) {
+      if (recommendedHotels.length > 0) {
+        displayHotelMarkers(recommendedHotels);
+      } else {
+        clearHotelMarkers();
+      }
+    }
+  }, [recommendedHotels, mapLoaded]);
+
   // 위치 기반 호텔 검색
   const searchHotelsNearLocation = async (location) => {
     try {
@@ -535,7 +659,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
       />
       
       {/* 모달 컨텐츠 */}
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-y-auto">
         {/* 모달 헤더 */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
           <div className="flex items-center justify-between">
@@ -563,7 +687,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
           <div className="relative bg-gradient-to-br from-blue-100 to-green-100 rounded-2xl p-6 mb-6">
             <div className="flex gap-4">
               {/* 카카오맵 */}
-              <div className="relative flex-1 h-[500px] bg-gray-200 rounded-xl overflow-hidden">
+              <div className="relative flex-1 h-[55vh] bg-gray-200 rounded-xl overflow-hidden">
                 <div 
                   ref={mapRef}
                   className="w-full h-full"
@@ -646,7 +770,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
               </div>
 
               {/* 파워 게이지 바 (세로) */}
-              <div className="flex flex-col items-center justify-between h-[500px] py-4">
+              <div className="flex flex-col items-center justify-between h-[55vh] py-4">
                 {/* 상단: 숫자 라벨 */}
                 <div className="text-center mb-2">
                   <span className="text-xs font-bold text-gray-700">10</span>
@@ -759,6 +883,11 @@ const DartGameModal = ({ isOpen, onClose }) => {
               
               <div className="mb-6">
                 <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
+                  {targetLocation.fallbackMessage && (
+                    <p className="text-sm text-orange-600 bg-orange-100 p-3 rounded-lg mb-3">
+                      <strong>💡 알림:</strong> {targetLocation.fallbackMessage}
+                    </p>
+                  )}
                   {targetLocation.regionName && (
                     <p className="text-lg font-bold text-blue-600 mb-2">
                       🏛️ {targetLocation.regionName}
