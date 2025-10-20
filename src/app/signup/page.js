@@ -28,8 +28,12 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   useEffect(function(){
+    if (/^[a-zA-Z0-9]{4,20}$/.test(formData.id)){
     checkId();
-
+    }
+    else{
+      
+    }
   },[formData.id]);
 
 
@@ -50,7 +54,10 @@ export default function SignupPage() {
     axios.post(checkId_url, { id: formData.id }).then(function(res){
       console.log(res.data);
       if(res.data.message){
-        errors.userId = res.data.message;
+        console.log(res.data.message);
+        const idError ={};
+        idError.userId = res.data.message;
+        setErrors(idError);
       }
     })
   }

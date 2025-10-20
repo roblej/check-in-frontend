@@ -9,6 +9,7 @@ const HotelSearchResults = ({
   handleHotelClick, 
   sortBy, 
   setSortBy, 
+  days,
   showFiltersPanel, 
   setShowFiltersPanel,
   filteredHotels
@@ -71,7 +72,7 @@ const HotelSearchResults = ({
 
           {/* 정렬 & 필터 */}
           <div className="flex items-center justify-between">
-            <p className="text-xs text-red-500">2박 세금포함 가격</p>
+            <p className="text-xs text-red-500">{days||1}박 세금포함 가격</p>
             <div className="flex items-center gap-2">
               <select
                 value={sortBy}
