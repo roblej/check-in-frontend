@@ -21,7 +21,10 @@ const PopularHotels = () => {
   // 인기 호텔 데이터 가져오기
   useEffect(() => {
     axios.get(api_url).then(res => {
+      console.log('PopularHotels API 응답:', res.data);
       setPopularHotels(res.data);
+    }).catch(err => {
+      console.error('PopularHotels API 에러:', err);
     });
   }, []);
 
@@ -29,6 +32,10 @@ const PopularHotels = () => {
    * 호텔 카드 클릭 핸들러
    */
   const handleHotelClick = (contentId) => {
+    console.log('PopularHotels 호텔 클릭:', {
+      contentId,
+      targetUrl: `/hotel/${contentId}`
+    });
     router.push(`/hotel/${contentId}`);
   };
 

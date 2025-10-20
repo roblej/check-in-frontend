@@ -396,7 +396,7 @@ const HotelDetail = ({
           isModal ? "top-0" : "top-[56px]"
         }`}
       >
-        <div className={`${isModal ? "px-4" : "max-w-7xl mx-auto px-4"} py-3`}>
+        <div className={`${isModal ? "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" : "max-w-7xl mx-auto px-4"} py-3`}>
           <div className="flex items-center justify-between">
             {/* 호텔 기본 정보 */}
             <div className="flex-1 min-w-0">
@@ -450,7 +450,7 @@ const HotelDetail = ({
         className="bg-white border-b shadow-md sticky z-30"
         style={{ top: `${headerHeight}px` }}
       >
-        <div className={`${isModal ? "px-4" : "max-w-7xl mx-auto px-4"}`}>
+        <div className={`${isModal ? "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" : "max-w-7xl mx-auto px-4"}`}>
           <div className="flex gap-1 overflow-x-auto scrollbar-hide">
             {navSections.map((section) => (
               <button
@@ -475,7 +475,7 @@ const HotelDetail = ({
       {/* 메인 컨텐츠 */}
       <div
         className={`${
-          isModal ? "px-4 py-4 pb-8" : "max-w-7xl mx-auto px-4 py-6 pt-6"
+          isModal ? "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 pb-8" : "max-w-7xl mx-auto px-4 py-6 pt-6"
         }`}
       >
         {/* 이미지 갤러리 */}
