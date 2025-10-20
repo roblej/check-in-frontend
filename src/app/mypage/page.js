@@ -346,15 +346,10 @@ export default function MyPage() {
                   {coupon.name}
                 </h3>
                 <p className="text-xs text-gray-500 mb-3">{coupon.condition}</p>
-                <div className="flex items-center justify-between text-xs">
+                <div className="text-xs">
                   <span className={couponTab === 'available' ? 'text-gray-600' : 'text-gray-400'}>
                     {couponTab === 'used' ? `사용일: ${coupon.usedDate}` : `만료일: ${coupon.expiry}`}
                   </span>
-                  {couponTab === 'available' && (
-                    <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors">
-                      사용하기
-                    </button>
-                  )}
                 </div>
               </div>
             ))}
