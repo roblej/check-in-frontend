@@ -9,69 +9,20 @@ const HotelApproval = () => {
 
   const api_url = "/api/master/hotelApproval";
 
+  const [hotelRequestList, setHotelRequestList] = useState([]);
+  const [hotelRequestCount, setHotelRequestCount] = useState(0);
   const [selectedRequests, setSelectedRequests] = useState([]);
-  const [hotelApprovalList, setHotelApprovalList] = useState([]);
-  const [hotelApprovalCount, setHotelApprovalCount] = useState(0);
-  
+
   function getData(){
     axios.get(api_url).then(res => {
-      if(res.data.hotelRequestList){
-        console.log(res.data.hotelRequestList);
-        setHotelApprovalList(res.data.hotelRequestList);
-        setHotelApprovalCount(res.data.hotelRequestCount);
-      }
+        setHotelRequestList(res.data.content);
+        setHotelRequestCount(res.data.content.length);
     });
   }
 
   useEffect(() => {
     getData();
   }, []);
-
-  // 호텔 승인 대기 목록
-  const approvalRequests = [
-    {
-      id: 'HA001',
-      hotelName: '인천 스카이 호텔',
-      owner: '김스카이',
-      email: 'sky@hotel.com',
-      phone: '032-1234-5678',
-      location: '인천 중구 공항로 123',
-      businessNumber: '123-45-67890',
-      rooms: 85,
-      requestDate: '2024-01-15',
-      documents: ['사업자등록증', '건축물대장', '소방안전증명서'],
-      status: 'pending',
-      description: '인천공항 인근 비즈니스 호텔로 출장객 대상 서비스 제공'
-    },
-    {
-      id: 'HA002',
-      hotelName: '대구 힐탑 리조트',
-      owner: '이힐탑',
-      email: 'hilltop@resort.com',
-      phone: '053-9876-5432',
-      location: '대구 달성군 산악로 456',
-      businessNumber: '987-65-43210',
-      rooms: 150,
-      requestDate: '2024-01-14',
-      documents: ['사업자등록증', '건축물대장', '소방안전증명서', '관광사업등록증'],
-      status: 'review',
-      description: '자연 친화적 리조트로 가족 단위 고객 대상'
-    },
-    {
-      id: 'HA003',
-      hotelName: '울산 바다 펜션',
-      owner: '박바다',
-      email: 'sea@pension.com',
-      phone: '052-5555-6666',
-      location: '울산 동구 해안로 789',
-      businessNumber: '555-66-77888',
-      rooms: 20,
-      requestDate: '2024-01-13',
-      documents: ['사업자등록증', '건축물대장'],
-      status: 'pending',
-      description: '해변가 소규모 펜션, 커플 및 소규모 그룹 대상'
-    }
-  ];
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -103,43 +54,6 @@ const HotelApproval = () => {
     }
   };
 
-  const handleSelectRequest = (requestId) => {
-    setSelectedRequests(prev => 
-      prev.includes(requestId) 
-        ? prev.filter(id => id !== requestId)
-        : [...prev, requestId]
-    );
-  };
-
-  const handleApproval = (requestId, action) => {
-    const request = approvalRequests.find(r => r.id === requestId);
-    if (action === 'approve') {
-      alert(`${request.hotelName}의 등록을 승인했습니다.`);
-    } else if (action === 'reject') {
-      const reason = prompt('거부 사유를 입력해주세요:');
-      if (reason) {
-        alert(`${request.hotelName}의 등록을 거부했습니다.\n사유: ${reason}`);
-      }
-    }
-  };
-
-  const handleBulkApproval = (action) => {
-    if (selectedRequests.length === 0) {
-      alert('승인할 호텔을 선택해주세요.');
-      return;
-    }
-    
-    if (action === 'approve') {
-      alert(`${selectedRequests.length}개 호텔을 일괄 승인했습니다.`);
-    } else if (action === 'reject') {
-      const reason = prompt('일괄 거부 사유를 입력해주세요:');
-      if (reason) {
-        alert(`${selectedRequests.length}개 호텔을 일괄 거부했습니다.`);
-      }
-    }
-    setSelectedRequests([]);
-  };
-
   return (
     <MasterLayout>
       <div className="space-y-6">
@@ -156,7 +70,7 @@ const HotelApproval = () => {
               <div className="text-3xl mr-4">⏳</div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {approvalRequests.filter(r => r.status === 'pending').length}
+                  
                 </p>
                 <p className="text-sm text-gray-600">승인 대기</p>
               </div>
@@ -167,7 +81,7 @@ const HotelApproval = () => {
               <div className="text-blue-600 mr-4"><Eye size={32} /></div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {approvalRequests.filter(r => r.status === 'review').length}
+                  
                 </p>
                 <p className="text-sm text-gray-600">검토중</p>
               </div>
@@ -220,26 +134,26 @@ const HotelApproval = () => {
 
         {/* 승인 요청 목록 */}
         <div className="space-y-4">
-          {hotelApprovalList.map((request) => (
-            <div key={request.contentId} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          {hotelRequestList.map((request) => (
+            <div key={request.registrationIdx} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    checked={selectedRequests.includes(request.contentId)}
-                    onChange={() => handleSelectRequest(request.contentId)}
+                    checked={selectedRequests.includes(request.registrationIdx)}
+                    onChange={() => handleSelectRequest(request.registrationIdx)}
                     className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                   />
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{request.title}</h3>
-                    <p className="text-sm text-gray-600">{request.adress}</p>
+                    <h3 className="text-lg font-semibold text-gray-900">{request.hotelInfo.title}</h3>
+                    <p className="text-sm text-gray-600">{request.hotelInfo.adress}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status)}`}>
                     {getStatusText(request.status)}
                   </span>
-                  <span className="text-sm text-gray-500">{request.requestDate}</span>
+                  <span className="text-sm text-gray-500">{request.regiDate}</span>
                 </div>
               </div>
 
@@ -250,23 +164,23 @@ const HotelApproval = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">사업자명:</span>
-                      <span className="text-gray-900">{request.ownerName}</span>
+                      <span className="text-gray-900">{request.admin.adminName}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">이메일:</span>
-                      <span className="text-gray-900">{request.ownerEmail}</span>
+                      <span className="text-gray-900">{request.admin.adminEmail}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">전화번호:</span>
-                      <span className="text-gray-900">{request.ownerPhone}</span>
+                      <span className="text-gray-900">{request.admin.adminPhone}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">사업자번호:</span>
-                      <span className="text-gray-900">{request.businessNumber}</span>
+                      <span className="text-gray-900">아무번호</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">객실 수:</span>
-                      <span className="text-gray-900">{request.rooms}개</span>
+                      <span className="text-gray-900">{request.hotelInfo.rooms}개</span>
                     </div>
                   </div>
                 </div>
