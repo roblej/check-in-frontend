@@ -132,7 +132,7 @@ const HeroSection = () => {
           // Zustand store에 호텔 데이터 저장
           setSearchResults(hotels);
           // 페이지 이동
-          router.push('/hotel-search');
+          router.push(`/hotel-search?destination=${destination}&checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}`);
         } else {
           alert('호텔 데이터를 가져오는데 실패했습니다.');
         }

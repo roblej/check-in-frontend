@@ -6,18 +6,28 @@ import HotelDetailPanel from "@/components/hotel/HotelDetailPanel";
 import HotelSearchResults from "@/components/hotelSearch/HotelSearchResults";
 import { useSearchStore } from '@/stores/searchStore';
 import axios from "axios";
+import { useSearchParams } from 'next/navigation';
 
 const HotelSearchPage = () => {
+  const searchParams = useSearchParams();
+  
+  // URL에서 파라미터 추출
+  const destination = searchParams.get('destination');
+  const checkIn = searchParams.get('checkIn');
+  const checkOut = searchParams.get('checkOut');
+  const adults = searchParams.get('adults');
+  
+  console.log(destination, checkIn, checkOut, adults);
   const urlSearchParams = useSearchStore(state => state.searchParams);
   const searchResults = useSearchStore(state => state.searchResults);
-  const [searchParams, setSearchParams] = useState({
-    destination: urlSearchParams.destination,
-    checkIn: urlSearchParams.checkIn,
-    checkOut: urlSearchParams.checkOut,
-    nights: 2,
-    adults: urlSearchParams?.adults || 2,
+  const [localSearchParams, setLocalSearchParams] = useState({
+    destination: destination,
+    checkIn: checkIn,
+    checkOut: checkOut,
+    nights: new Date(checkOut).getDate() - new Date(checkIn).getDate(),
+    adults: adults || 2,
   });
-
+  
   const [sortBy, setSortBy] = useState("인기순");
   const [filters, setFilters] = useState({
     priceMin: 0,
@@ -97,15 +107,15 @@ const HotelSearchPage = () => {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-700">
-                  {searchParams.destination}
+                  {localSearchParams.destination}
                 </span>
                 <span className="text-gray-400">|</span>
                 <span className="text-sm text-gray-600">
-                  {searchParams.checkIn} - {searchParams.checkOut}
+                  {localSearchParams.checkIn} - {localSearchParams.checkOut}
                 </span>
                 <span className="text-gray-400">|</span>
                 <span className="text-sm text-gray-600">
-                  성인 {searchParams.adults}명
+                  성인 {localSearchParams.adults}명
                 </span>
               </div>
             </div>
@@ -128,6 +138,7 @@ const HotelSearchPage = () => {
           handleHotelClick={handleHotelClick}
           sortBy={sortBy}
           setSortBy={setSortBy}
+          days ={localSearchParams.nights}
           showFiltersPanel={showFiltersPanel}
           setShowFiltersPanel={setShowFiltersPanel}
           filteredHotels={filteredHotels}
@@ -204,7 +215,7 @@ const HotelSearchPage = () => {
       {selectedcontentId && (
         <HotelDetailPanel
           contentId={selectedcontentId}
-          searchParams={searchParams}
+          searchParams={localSearchParams}
           onClose={() => setSelectedcontentId(null)}
         />
       )}
