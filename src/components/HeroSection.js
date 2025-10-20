@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/Button";
 import SearchCondition from "@/components/hotelSearch/SearchCondition";
 import { useSearchStore } from "@/stores/searchStore";
+import axios from "axios";
 
 /**
  * 메인 페이지 히어로 섹션 컴포넌트
@@ -27,6 +28,7 @@ const HeroSection = () => {
 
   const router = useRouter();
   const updateSearchParams = useSearchStore((state) => state.updateSearchParams);
+  const setSearchResults = useSearchStore((state) => state.setSearchResults);
 
   // 슬라이더 데이터
   const slides = [
@@ -81,8 +83,28 @@ const HeroSection = () => {
     setCheckOut(newCheckOut);
   };
 
+  const [searchHotels, setSearchHotels] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const hotel_url = "api/hotel/search";
+  // 호텔 가져오기
+
+  async function getHotels(){
+    try {
+      const res = await axios.post(hotel_url);
+      if(res.data){
+        console.log(res.data);
+        setSearchHotels(res.data);
+        return res.data;
+      }
+    } catch (error) {
+      console.error('호텔 데이터 가져오기 실패:', error);
+      return null;
+    }
+  };
+
+
   // 검색 핸들러
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
     if (selectedType === "dining") {
       console.log("다이닝 검색:", {
@@ -99,7 +121,28 @@ const HeroSection = () => {
         checkOut: checkOut,
         adults: adults,
       });
-      router.push(`/hotel-search`);
+      
+      // 로딩 시작
+      setIsSearching(true);
+      
+      try {
+        // 호텔 데이터를 가져온 후 페이지 이동
+        const hotels = await getHotels();
+        if (hotels) {
+          // Zustand store에 호텔 데이터 저장
+          setSearchResults(hotels);
+          // 페이지 이동
+          router.push('/hotel-search');
+        } else {
+          alert('호텔 데이터를 가져오는데 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('검색 중 오류 발생:', error);
+        alert('검색 중 오류가 발생했습니다.');
+      } finally {
+        // 로딩 종료
+        setIsSearching(false);
+      }
     }
   };
 
@@ -295,8 +338,16 @@ const HeroSection = () => {
               variant="primary"
               size="lg"
               className="w-full"
+              disabled={isSearching}
             >
-              검색
+              {isSearching ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>검색 중...</span>
+                </div>
+              ) : (
+                "검색"
+              )}
             </Button>
           </div>
 

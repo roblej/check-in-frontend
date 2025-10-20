@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
@@ -8,10 +8,12 @@ import styles from "./signup.module.css";
 import axios from "axios";
 
 export default function SignupPage() {
-  const api_url = "api/signup"
+  const signUp_url = "/api/login/signup";
+  const checkId_url = "/api/login/checkId";
+
   const router = useRouter();
   const [formData, setFormData] = useState({
-    userId: "",
+    id: "",
     password: "",
     passwordConfirm: "",
     email: "",
@@ -21,17 +23,37 @@ export default function SignupPage() {
     birthdate: "",
     gender: "",
   });
-  axios.post(api_url, formData)
-    .then(response => {
-      console.log(response.data);
-    })
-    .catch(error => {
-      console.error(error);
-    });
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  useEffect(function(){
+    checkId();
 
+  },[formData.id]);
+
+
+  function signUp(){
+    axios.post(signUp_url, formData)
+      .then(response => {
+        console.log(response.data);
+        if(response.data.message){
+          errors.userId = response.data.message;
+        }
+      })
+      
+  }
+
+ 
+
+  function checkId(){
+    axios.post(checkId_url, { id: formData.id }).then(function(res){
+      console.log(res.data);
+      if(res.data.message){
+        errors.userId = res.data.message;
+      }
+    })
+  }
   // 입력 필드 변경 핸들러
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -54,9 +76,9 @@ export default function SignupPage() {
     const newErrors = {};
 
     // 아이디 검사 (4-20자, 영문+숫자)
-    if (!formData.userId) {
+    if (!formData.id) {
       newErrors.userId = "아이디를 입력해주세요.";
-    } else if (!/^[a-zA-Z0-9]{4,20}$/.test(formData.userId)) {
+    } else if (!/^[a-zA-Z0-9]{4,20}$/.test(formData.id)) {
       newErrors.userId = "아이디는 4-20자의 영문, 숫자만 가능합니다.";
     }
 
@@ -160,14 +182,14 @@ export default function SignupPage() {
           <form onSubmit={handleSubmit} className={styles.form}>
             {/* 아이디 */}
             <div className={styles.formGroup}>
-              <label htmlFor="userId" className={styles.label}>
+              <label htmlFor="id" className={styles.label}>
                 아이디 <span className={styles.required}>*</span>
               </label>
               <input
                 type="text"
-                id="userId"
-                name="userId"
-                value={formData.userId}
+                id="id"
+                name="id"
+                value={formData.id}
                 onChange={handleChange}
                 className={`${styles.input} ${errors.userId ? styles.inputError : ""}`}
                 placeholder="4-20자의 영문, 숫자"
