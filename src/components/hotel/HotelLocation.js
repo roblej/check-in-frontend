@@ -8,7 +8,6 @@ import KakaoMap from "./KakaoMap";
  * @param {string} [props.location=""] - 호텔 주소
  */
 const HotelLocation = ({ location = "" }) => {
-  console.log("HotelLocation 받은 주소:", location);
   if (!location) {
     return (
       <div className="bg-white rounded-lg p-6 mb-6 shadow">
@@ -22,7 +21,6 @@ const HotelLocation = ({ location = "" }) => {
       </div>
     );
   }
-  console.log("HotelLocation → 전달된 location:", location);
   return (
     <div className="bg-white rounded-lg p-6 mb-6 shadow">
       <h2 id="location-heading" className="text-2xl font-bold mb-4">

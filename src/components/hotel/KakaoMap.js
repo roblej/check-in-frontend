@@ -37,9 +37,7 @@ const KakaoMap = ({ address, width = "100%", height = "300px" }) => {
         script.async = true;
 
         script.onload = () => {
-          console.log("카카오 지도 스크립트 로드 완료");
           window.kakao.maps.load(() => {
-            console.log("카카오 지도 초기화 완료");
             setIsLoaded(true);
             initializeMap();
           });
@@ -60,15 +58,8 @@ const KakaoMap = ({ address, width = "100%", height = "300px" }) => {
      */
     const initializeMap = () => {
       const normalized = (address || "").trim();
-      console.log(
-        "지도 초기화 시작 - 원본 주소:",
-        address,
-        "정규화된 주소:",
-        normalized
-      );
 
       if (!mapRef.current) {
-        console.log("mapRef가 없음 - 200ms 후 재시도");
         setTimeout(() => {
           if (mapRef.current) {
             initializeMap();
@@ -78,29 +69,12 @@ const KakaoMap = ({ address, width = "100%", height = "300px" }) => {
       }
 
       if (!normalized) {
-        console.log("주소가 비어있음");
         return;
       }
 
-      console.log(
-        "map size",
-        mapRef.current.offsetWidth,
-        mapRef.current.offsetHeight
-      );
-
       try {
         const geocoder = new window.kakao.maps.services.Geocoder();
-        console.log("지오코더 주소:", normalized);
         geocoder.addressSearch(normalized, (result, status) => {
-          console.log(
-            "지오코더 상태:",
-            status,
-            "결과 수:",
-            Array.isArray(result) ? result.length : 0,
-            "검색 주소:",
-            normalized
-          );
-
           if (
             status === window.kakao.maps.services.Status.OK &&
             Array.isArray(result) &&
@@ -144,8 +118,6 @@ const KakaoMap = ({ address, width = "100%", height = "300px" }) => {
               map.setCenter(coords);
             }, 150);
           } else {
-            console.warn("주소 검색 실패. 상태:", status, "주소:", address);
-
             // 주소 실패 시 기본 좌표(서울 시청)로 표시
             const fallbackCoords = new window.kakao.maps.LatLng(
               37.5665,

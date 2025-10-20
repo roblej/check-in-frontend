@@ -20,7 +20,6 @@ const HotelAmenities = ({ contentId }) => {
         const data = await hotelAPI.getHotelFacilities(contentId);
         setFacilities(data);
       } catch (err) {
-        console.error("편의시설 로딩 오류:", err);
         setError("편의시설 정보를 불러올 수 없습니다.");
       } finally {
         setLoading(false);
