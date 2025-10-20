@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-
+import axios from "axios";
+import { useState, useEffect } from "react";
 /**
  * 인기 호텔 섹션 컴포넌트
  *
@@ -13,9 +14,16 @@ import { useRouter } from "next/navigation";
  */
 const PopularHotels = () => {
   const router = useRouter();
-
+  const api_url = "/api/hotel/popular";
+  const [popularHotels, setPopularHotels] = useState([]);
+  useEffect(() => {
+    axios.get(api_url).then(res => {
+      console.log(res.data);
+      setPopularHotels(res.data);
+    });
+  }, []);
   // 인기 호텔 데이터
-  const popularHotels = [
+  const popularHotels1 = [
     {
       id: 1,
       name: "그랜드 하얏트 서울",
@@ -87,8 +95,8 @@ const PopularHotels = () => {
   /**
    * 호텔 카드 클릭 핸들러
    */
-  const handleHotelClick = (hotelId) => {
-    router.push(`/hotel/${hotelId}`);
+  const handleHotelClick = (contentId) => {
+    router.push(`/hotel/${contentId}`);
   };
 
   return (
@@ -102,32 +110,27 @@ const PopularHotels = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {popularHotels.map((hotel) => (
           <div
-            key={hotel.id}
+            key={hotel.contentId}
             className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden group cursor-pointer"
-            onClick={() => handleHotelClick(hotel.id)}
+            onClick={() => handleHotelClick(hotel.contentId)}
           >
             {/* 이미지 */}
             <div className="relative h-48 overflow-hidden">
               <Image
-                src={hotel.image}
-                alt={hotel.name}
+                src={hotel.imageUrl}
+                alt={hotel.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              {hotel.discount > 0 && (
-                <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                  {hotel.discount}% 할인
-                </div>
-              )}
             </div>
 
             {/* 내용 */}
             <div className="p-6">
               <div className="mb-3">
                 <h3 className="text-lg font-bold text-gray-900 mb-1">
-                  {hotel.name}
+                  {hotel.title}
                 </h3>
-                <p className="text-sm text-gray-600">{hotel.location}</p>
+                <p className="text-sm text-gray-600">{hotel.adress}</p>
               </div>
 
               {/* 평점 및 리뷰 */}
@@ -135,11 +138,11 @@ const PopularHotels = () => {
                 <div className="flex items-center">
                   <span className="text-yellow-500 text-sm">⭐</span>
                   <span className="text-sm font-medium text-gray-900 ml-1">
-                    {hotel.rating}
+                    {hotel.starRating}
                   </span>
                 </div>
                 <span className="text-sm text-gray-500 ml-2">
-                  ({hotel.reviews}개 리뷰)
+                  ({hotel.reviewCount}개 리뷰)
                 </span>
               </div>
 
@@ -148,7 +151,7 @@ const PopularHotels = () => {
                 <div>
                   <p className="text-sm text-gray-500">1박 기준</p>
                   <p className="text-xl font-bold text-[#3B82F6]">
-                    {new Intl.NumberFormat("ko-KR").format(hotel.price)}원
+                    {new Intl.NumberFormat("ko-KR").format(hotel.originalPrice)}원
                   </p>
                 </div>
                 <button className="bg-[#3B82F6] hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">

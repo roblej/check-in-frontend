@@ -59,7 +59,8 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
     console.log('호텔 상세 모달 열기:', {
       contentId: item.contentId,
       roomIdx: roomIdx,
-      originalData: item.originalData
+      originalData: item.originalData,
+      item: item
     });
     
     // URL에 모달 상태 추가

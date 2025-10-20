@@ -133,14 +133,7 @@ const HotelDetail = ({
       ? safeRoomList.filter(room => room.roomIdx == roomIdx)
       : safeRoomList;
 
-        console.log('mapRoomData 필터링 결과:', {
-          roomIdx: roomIdx,
-          totalRooms: safeRoomList.length,
-          filteredRooms: filteredRooms.length,
-          filteredRoomIds: filteredRooms.map(r => r.roomIdx)
-        });
-
-        return filteredRooms.map((room, index) => ({
+    return filteredRooms.map((room, index) => ({
       id: room.roomIdx
         ? `${room.contentId}-${room.roomIdx}`
         : `${room.contentId}-${room.name}-${index}`,
@@ -178,24 +171,17 @@ const HotelDetail = ({
         const hotel = hotelRes?.data ?? hotelRes;
         const roomList = roomsRes?.data ?? roomsRes;
 
-        console.log('HotelDetail - API 응답:', {
-          contentId: contentId,
-          hotel: hotel,
-          roomList: roomList,
-          roomListLength: roomList?.length || 0
-        });
-
         // 데이터 매핑
         const mappedHotel = mapHotelData(hotel);
-        
-        console.log('HotelDetail - roomIdx 필터링:', {
-          contentId: contentId,
-          roomIdx: searchParams?.roomIdx,
-          totalRooms: roomList?.length || 0,
-          searchParams: searchParams
-        });
-        
         const mappedRooms = mapRoomData(roomList, mappedHotel?.checkInTime, searchParams?.roomIdx);
+
+        console.log('HotelDetail 데이터 로드:', {
+          contentId,
+          roomIdx: searchParams?.roomIdx,
+          originalRoomCount: roomList?.length,
+          filteredRoomCount: mappedRooms?.length,
+          searchParams
+        });
 
         if (isMounted) {
           setHotelData(mappedHotel);
@@ -216,7 +202,7 @@ const HotelDetail = ({
     return () => {
       isMounted = false;
     };
-  }, [contentId, searchParams, mapHotelData, mapRoomData]);
+  }, [contentId, searchParams?.roomName, searchParams?.roomIdx, mapHotelData, mapRoomData]);
 
   // 네비게이션 섹션
   const navSections = [
@@ -410,7 +396,7 @@ const HotelDetail = ({
           isModal ? "top-0" : "top-[56px]"
         }`}
       >
-        <div className={`${isModal ? "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" : "max-w-7xl mx-auto px-4"} py-3`}>
+        <div className={`${isModal ? "px-4" : "max-w-7xl mx-auto px-4"} py-3`}>
           <div className="flex items-center justify-between">
             {/* 호텔 기본 정보 */}
             <div className="flex-1 min-w-0">
@@ -464,7 +450,7 @@ const HotelDetail = ({
         className="bg-white border-b shadow-md sticky z-30"
         style={{ top: `${headerHeight}px` }}
       >
-        <div className={`${isModal ? "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" : "max-w-7xl mx-auto px-4"}`}>
+        <div className={`${isModal ? "px-4" : "max-w-7xl mx-auto px-4"}`}>
           <div className="flex gap-1 overflow-x-auto scrollbar-hide">
             {navSections.map((section) => (
               <button
@@ -489,7 +475,7 @@ const HotelDetail = ({
       {/* 메인 컨텐츠 */}
       <div
         className={`${
-          isModal ? "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 pb-8" : "max-w-7xl mx-auto px-4 py-6 pt-6"
+          isModal ? "px-4 py-4 pb-8" : "max-w-7xl mx-auto px-4 py-6 pt-6"
         }`}
       >
         {/* 이미지 갤러리 */}
