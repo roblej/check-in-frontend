@@ -1,11 +1,8 @@
-'use client';
-
-import { useState } from 'react';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HeroSection from "@/components/HeroSection";
 import PopularHotels from "@/components/PopularHotels";
-import DartGameModal from "@/components/DartGameModal";
+import DartGameSection from "@/components/DartGameSection";
 
 /**
  * 체크인 호텔 메인 페이지 (SSR)
@@ -15,9 +12,7 @@ import DartGameModal from "@/components/DartGameModal";
  * - 클라이언트 컴포넌트들을 조합하여 구성
  */
 const CheckinHotel = () => {
-  const [isDartModalOpen, setIsDartModalOpen] = useState(false);
-
-  // 여행 전 체크 아이템 데이터
+  // 여행 전 체크 아이템 데이터 (서버 컴포넌트에서 관리)
   const travelCheckItems = [
     {
       title: "출장 항공권",
@@ -52,21 +47,9 @@ const CheckinHotel = () => {
 
       {/* 메인 컨텐츠 */}
       <main className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* 어디갈지 모르겠다면? 섹션 */}
-        <section className="mb-16">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-              🎯 어디갈지 모르겠다면?
-            </h2>
-            <p className="text-gray-600 mb-6">다트를 던져서 랜덤한 여행지를 발견해보세요!</p>
-            <button
-              onClick={() => setIsDartModalOpen(true)}
-              className="px-8 py-4 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-            >
-              🎯 다트 던지고 여행지 찾기
-            </button>
-          </div>
-        </section>
+        
+        {/* 다트 게임 섹션 (클라이언트 컴포넌트) */}
+        <DartGameSection />
 
         {/* 가장 인기있는 숙소 섹션 */}
         <PopularHotels />
@@ -104,11 +87,10 @@ const CheckinHotel = () => {
       {/* 푸터 */}
       <Footer />
 
-      {/* 다트 게임 모달 */}
-      <DartGameModal 
-        isOpen={isDartModalOpen} 
-        onClose={() => setIsDartModalOpen(false)} 
-      />
+      {/* 
+        다트 게임 모달은 이제 DartGameSection 컴포넌트 내부에 렌더링됩니다.
+        하지만 position: fixed 속성으로 인해 최종 DOM에서는 페이지 전체를 기준으로 위치하게 됩니다.
+      */}
     </div>
   );
 };
