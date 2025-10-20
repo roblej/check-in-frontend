@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { 
-  Calendar, Heart, MapPin, Gift, FileText, User, 
-  MessageSquare, ChevronRight, Star, Clock, Check, X,
-  CreditCard, Edit, Trash2, Share2, Hotel
+  Calendar, Heart, MapPin, Gift, User,
+  MessageSquare, ChevronRight, Star, Clock,
+  Edit, Trash2, Share2, Hotel
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
@@ -16,6 +16,32 @@ export default function MyPage() {
   const [reservationTab, setReservationTab] = useState('upcoming'); // upcoming, completed, cancelled
   const [couponTab, setCouponTab] = useState('available'); // available, used, expired
   const [reviewTab, setReviewTab] = useState('writable'); // writable, written
+
+  // 예약 관련 핸들러
+  const handleReservationDetail = (reservationId) => {
+    router.push(`/mypage/reservation/${reservationId}`);
+  };
+
+  const handleHotelLocation = (reservation) => {
+    // 호텔 상세 페이지로 이동 (호텔 위치 정보 포함)
+    router.push(`/hotel/${reservation.id}?tab=location`);
+  };
+
+  const handleCancelReservation = (reservation) => {
+    if (confirm(`${reservation.hotelName} 예약을 취소하시겠습니까?`)) {
+      // 예약 취소 페이지로 이동
+      router.push(`/mypage/reservation/${reservation.id}/cancel`);
+    }
+  };
+
+  const handleWriteReview = (reservation) => {
+    router.push(`/mypage/review/write?reservationId=${reservation.id}`);
+  };
+
+  const handleRebook = (reservation) => {
+    // 호텔 상세 페이지로 이동 (재예약)
+    router.push(`/hotel/${reservation.id}`);
+  };
 
   // 더미 데이터
   const reservations = {
@@ -250,26 +276,38 @@ export default function MyPage() {
                 <div className="flex gap-2">
                   {reservationTab === 'upcoming' && (
                     <>
-                      <button className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+                      <button 
+                        onClick={() => handleReservationDetail(reservation.id)}
+                        className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                      >
                         예약 상세보기
                       </button>
-                      <button className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
+                      <button 
+                        onClick={() => handleHotelLocation(reservation)}
+                        className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                      >
                         호텔 위치보기
                       </button>
-                      <button className="flex-1 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors">
+                      <button 
+                        onClick={() => handleCancelReservation(reservation)}
+                        className="flex-1 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors"
+                      >
                         예약 취소
                       </button>
                     </>
                   )}
                   {reservationTab === 'completed' && (
                     <>
-                      <button className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+                      <button 
+                        onClick={() => handleWriteReview(reservation)}
+                        className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                      >
                         리뷰 작성
                       </button>
-                      <button className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
-                        영수증 발급
-                      </button>
-                      <button className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
+                      <button 
+                        onClick={() => handleRebook(reservation)}
+                        className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                      >
                         재예약하기
                       </button>
                     </>
