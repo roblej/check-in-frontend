@@ -1,4 +1,6 @@
 const RoomCard = ({ room, searchParams, formatPrice }) => {
+  const isReadOnly = !!searchParams?.roomIdx; // roomIdx가 있으면 읽기 전용
+  
   return (
     <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
       {/* 모바일은 세로, 데스크톱은 2열 그리드로 균형 배치 */}
@@ -43,9 +45,11 @@ const RoomCard = ({ room, searchParams, formatPrice }) => {
                   / {searchParams.nights || 1}박
                 </span>
               </div>
-              <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-md">
-                예약하기
-              </button>
+              {!isReadOnly && (
+                <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-md">
+                  예약하기
+                </button>
+              )}
             </div>
           </div>
 
@@ -81,9 +85,11 @@ const RoomCard = ({ room, searchParams, formatPrice }) => {
                 </span>
               </div>
             </div>
-            <button className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-2 rounded-lg font-medium transition-colors shadow-md">
-              예약하기
-            </button>
+            {!isReadOnly && (
+              <button className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-2 rounded-lg font-medium transition-colors shadow-md">
+                예약하기
+              </button>
+            )}
           </div>
         </div>
       </div>
