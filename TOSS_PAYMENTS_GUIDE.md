@@ -9,9 +9,6 @@
 NEXT_PUBLIC_TOSS_CLIENT_KEY=
 TOSS_SECRET_KEY=
 
-# API URL
-NEXT_PUBLIC_API_URL=http://localhost:8888
-
 # 이메일 설정 (SendGrid)
 SENDGRID_SMTP_USER=apikey
 SENDGRID_SMTP_PASS=your_sendgrid_api_key_here
