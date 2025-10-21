@@ -15,16 +15,18 @@ import { hotelAPI } from "@/lib/api/hotel";
  * @param {string} contentId - 호텔 ID
  * @param {boolean} showAlways - 항상 표시할지 여부 (기본값: false, 조회수가 0일 때는 숨김)
  */
-const LiveViewerCount = ({ contentId, showAlways = false }) => {
+const LiveViewerCount = ({ contentId, showAlways = true }) => {
   // 진입 시 1회 조회수 등록
   useEffect(() => {
     if (!contentId) return;
 
     const registerView = async () => {
       try {
-        await hotelAPI.incrementHotelView(contentId);
+        console.log("🔍 조회수 등록 시도:", contentId);
+        const result = await hotelAPI.incrementHotelView(contentId);
+        console.log("✅ 조회수 등록 성공:", result);
       } catch (error) {
-        console.error("조회수 등록 실패:", error);
+        console.error("❌ 조회수 등록 실패:", error);
       }
     };
 
@@ -35,12 +37,14 @@ const LiveViewerCount = ({ contentId, showAlways = false }) => {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["hotelViews", contentId],
     queryFn: async () => {
+      console.log("🔍 조회수 조회 시도:", contentId);
       const res = await hotelAPI.getHotelViews(contentId);
-      return res.views ?? 0;
+      console.log("📊 조회수 조회 결과:", res);
+      return res.data?.views ?? 0;
     },
-    refetchInterval: 30000, // 30초마다 자동 갱신
-    staleTime: 30000, // 30초 동안 캐시 유지
-    gcTime: 60000, // 메모리 캐시 유지 시간
+    refetchInterval: 10000, // 10초마다 자동 갱신 (더 빠른 테스트를 위해)
+    staleTime: 10000, // 10초 동안 캐시 유지
+    gcTime: 30000, // 메모리 캐시 유지 시간
     enabled: !!contentId, // contentId가 있을 때만 쿼리 실행
   });
 
