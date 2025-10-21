@@ -1,12 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { CheckCircle, Building2, Sparkles, Wrench, HelpCircle, Home, DollarSign } from 'lucide-react';
+import axios from 'axios';
 
 const RoomsPage = () => {
+
+  const api_url = "/api/admin/roomList";
+
   const [selectedTab, setSelectedTab] = useState('status');
   const [selectedFloor, setSelectedFloor] = useState('all');
+  const [roomList, setRoomList] = useState([]);
+
+  function getData(){
+    axios.get(api_url).then(res => {
+      console.log(res.data);
+      setRoomList(res.data);
+    });
+  }
+
+  useEffect(() => {
+    getData();
+  }, []);
 
   // 객실 데이터
   const rooms = [
@@ -143,12 +159,12 @@ const RoomsPage = () => {
 
         {/* 객실 현황 그리드 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredRooms.map((room) => (
-            <div key={room.number} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+          {roomList.map((room) => (
+            <div key={room.roomIdx} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
               {/* 객실 번호 및 상태 */}
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold text-gray-900">{room.number}호</h3>
-                <span className="text-2xl">{getStatusIcon(room.status)}</span>
+                <h3 className="text-lg font-semibold text-gray-900">{room.name}</h3>
+                <span className="text-2xl">{getStatusIcon(room.roomIdx)}</span>
               </div>
 
               {/* 객실 정보 */}
@@ -159,12 +175,12 @@ const RoomsPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">가격:</span>
-                  <span className="text-sm font-medium text-gray-900">{room.price}</span>
+                  <span className="text-sm font-medium text-gray-900">{room.basePrice}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">상태:</span>
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(room.status)}`}>
-                    {getStatusText(room.status)}
+                    {getStatusText(room.roomCount)}
                   </span>
                 </div>
               </div>
