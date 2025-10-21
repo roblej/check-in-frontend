@@ -18,8 +18,8 @@ const HotelSearchPage = () => {
   const adults = searchParams.get('adults');
   
   console.log(destination, checkIn, checkOut, adults);
-  const urlSearchParams = useSearchStore(state => state.searchParams);
-  const searchResults = useSearchStore(state => state.searchResults);
+  
+  const [searchResults, setSearchResults] = useState([]);
   const [localSearchParams, setLocalSearchParams] = useState({
     destination: destination,
     checkIn: checkIn,
@@ -39,14 +39,46 @@ const HotelSearchPage = () => {
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [selectedcontentId, setSelectedcontentId] = useState(null);
-
+  const [searchHotels, setSearchHotels] = useState([]);
+  const hotel_url = "api/hotel/search";
 
   // 호텔 데이터 (임시)
   const [filteredHotels, setFilteredHotels] = useState([]);
  
+  async function getHotels(){
+    try {
+      console.log('=== getHotels 디버깅 ===');
+      console.log('URL에서 받은 destination:', destination);
+      console.log('localSearchParams.destination:', localSearchParams.destination);
+      console.log('전체 localSearchParams:', localSearchParams);
+      
+      if (!localSearchParams.destination) {
+        console.log('destination이 없어서 API 호출하지 않음');
+        return null;
+      }
+      
+      
+      const res = await axios.post(hotel_url, {title:localSearchParams.destination});
+      if(res.data){
+        console.log(res.data);
+        setSearchResults(res.data);
+        return res.data;
+      }
+    } catch (error) {
+      console.error('호텔 데이터 가져오기 실패:', error);
+      return null;
+    }
+  };
+
+  useEffect(function(){
+    if (localSearchParams.destination) {
+      getHotels();
+    }
+  },[localSearchParams.destination])
   // 필터링
   useEffect(() => {
     const hotels = searchResults || [];
+    console.log("hotels:",hotels);
     if (!Array.isArray(hotels) || hotels.length === 0) {
       setFilteredHotels([]);
       return;
