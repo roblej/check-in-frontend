@@ -9,7 +9,7 @@ import axios from "axios";
 
 /**
  * 메인 페이지 히어로 섹션 컴포넌트
- * 
+ *
  * 기능:
  * - 슬라이더로 메인 메시지 표시
  * - 호텔/다이닝 검색 폼
@@ -27,8 +27,8 @@ const HeroSection = () => {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const router = useRouter();
-  const updateSearchParams = useSearchStore((state) => state.updateSearchParams);
-  const setSearchResults = useSearchStore((state) => state.setSearchResults);
+  const { updateSearchParams, searchParams: storeSearchParams } =
+    useSearchStore();
 
   // 슬라이더 데이터
   const slides = [
@@ -58,14 +58,32 @@ const HeroSection = () => {
     return () => clearInterval(timer);
   }, [slides.length]);
 
-  // 검색 타입 변경 시 상태 초기화
+  // 스토어에서 검색 조건 불러오기
   useEffect(() => {
-    setCheckIn(null);
-    setCheckOut(null);
-    setDiningDate(null);
-    setMealType(null);
-    setAdults(2);
-    setDestination("");
+    if (storeSearchParams.destination) {
+      setDestination(storeSearchParams.destination);
+    }
+    if (storeSearchParams.checkIn) {
+      setCheckIn(storeSearchParams.checkIn);
+    }
+    if (storeSearchParams.checkOut) {
+      setCheckOut(storeSearchParams.checkOut);
+    }
+    if (storeSearchParams.adults) {
+      setAdults(storeSearchParams.adults);
+    }
+  }, [storeSearchParams]);
+
+  // 검색 타입 변경 시 상태 초기화 (다이닝으로 변경할 때만)
+  useEffect(() => {
+    if (selectedType === "dining") {
+      setCheckIn(null);
+      setCheckOut(null);
+      setDiningDate(null);
+      setMealType(null);
+      setAdults(2);
+      setDestination("");
+    }
   }, [selectedType]);
 
   // 날짜 포맷팅 함수
@@ -83,11 +101,7 @@ const HeroSection = () => {
     setCheckOut(newCheckOut);
   };
 
-  
   // 호텔 가져오기
-
-  
-
 
   // 검색 핸들러
   const handleSearch = async (e) => {
@@ -101,16 +115,26 @@ const HeroSection = () => {
       });
     } else {
       console.log("검색:", { destination, checkIn, checkOut, adults });
+      const nights =
+        checkIn && checkOut
+          ? Math.ceil(
+              (new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)
+            )
+          : 1;
+
       updateSearchParams({
         destination: destination,
         checkIn: checkIn,
         checkOut: checkOut,
+        nights: nights,
         adults: adults,
+        children: 0,
       });
-      
-          // 페이지 이동
-        router.push(`/hotel-search?destination=${destination}&checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}`);
-     
+
+      // 페이지 이동
+      router.push(
+        `/hotel-search?destination=${destination}&checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}`
+      );
     }
   };
 
@@ -307,7 +331,7 @@ const HeroSection = () => {
               size="lg"
               className="w-full"
             >
-                검색
+              검색
             </Button>
           </div>
 
@@ -319,9 +343,13 @@ const HeroSection = () => {
             >
               <div className="text-4xl md:text-5xl mb-3">🏨</div>
               <div className="text-center">
-                <div className="text-lg md:text-xl font-bold mb-2">예약 양도</div>
+                <div className="text-lg md:text-xl font-bold mb-2">
+                  예약 양도
+                </div>
                 <div className="text-sm md:text-base opacity-90">중고거래</div>
-                <div className="text-xs md:text-sm mt-2 opacity-75">싼 값에 양도</div>
+                <div className="text-xs md:text-sm mt-2 opacity-75">
+                  싼 값에 양도
+                </div>
               </div>
             </button>
           </div>

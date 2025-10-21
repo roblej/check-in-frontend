@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Header from "@/components/Header";
 import HotelDetailPanel from "@/components/hotel/HotelDetailPanel";
 import HotelSearchResults from "@/components/hotelSearch/HotelSearchResults";
@@ -10,7 +10,9 @@ import { useSearchParams } from 'next/navigation';
 
 const HotelSearchPage = () => {
   const searchParams = useSearchParams();
-  
+  const { updateSearchParams, searchParams: storeSearchParams } =
+    useSearchStore();
+
   // URL에서 파라미터 추출
   const destination = searchParams.get('destination');
   const checkIn = searchParams.get('checkIn');
@@ -20,14 +22,30 @@ const HotelSearchPage = () => {
   console.log(destination, checkIn, checkOut, adults);
   
   const [searchResults, setSearchResults] = useState([]);
-  const [localSearchParams, setLocalSearchParams] = useState({
-    destination: destination,
-    checkIn: checkIn,
-    checkOut: checkOut,
-    nights: new Date(checkOut).getDate() - new Date(checkIn).getDate(),
-    adults: adults || 2,
-  });
-  
+
+  // URL 파라미터를 Zustand 스토어에 저장
+  useEffect(() => {
+    if (destination && checkIn && checkOut && adults) {
+      const nights = Math.ceil(
+        (new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)
+      );
+      const searchData = {
+        destination,
+        checkIn,
+        checkOut,
+        nights,
+        adults: parseInt(adults),
+        children: 0, // 아이는 필요없음음
+      };
+
+      console.log("Zustand 스토어에 저장할 데이터:", searchData);
+      updateSearchParams(searchData);
+    }
+  }, [destination, checkIn, checkOut, adults, updateSearchParams]);
+
+  // 스토어에서 검색 파라미터 가져오기
+  const localSearchParams = storeSearchParams;
+
   const [sortBy, setSortBy] = useState("인기순");
   const [filters, setFilters] = useState({
     priceMin: 0,
@@ -44,14 +62,17 @@ const HotelSearchPage = () => {
 
   // 호텔 데이터 (임시)
   const [filteredHotels, setFilteredHotels] = useState([]);
- 
-  async function getHotels(){
+
+  const getHotels = useCallback(async () => {
     try {
-      console.log('=== getHotels 디버깅 ===');
-      console.log('URL에서 받은 destination:', destination);
-      console.log('localSearchParams.destination:', localSearchParams.destination);
-      console.log('전체 localSearchParams:', localSearchParams);
-      
+      console.log("=== getHotels 디버깅 ===");
+      console.log("URL에서 받은 destination:", destination);
+      console.log(
+        "localSearchParams.destination:",
+        localSearchParams.destination
+      );
+      console.log("전체 localSearchParams:", localSearchParams);
+
       if (!localSearchParams.destination) {
         console.log('destination이 없어서 API 호출하지 않음');
         return null;
@@ -65,16 +86,19 @@ const HotelSearchPage = () => {
         return res.data;
       }
     } catch (error) {
-      console.error('호텔 데이터 가져오기 실패:', error);
+      console.error("호텔 데이터 가져오기 실패:", error);
       return null;
     }
-  };
+  }, [destination, localSearchParams.destination]);
 
-  useEffect(function(){
-    if (localSearchParams.destination) {
-      getHotels();
-    }
-  },[localSearchParams.destination])
+  useEffect(
+    function () {
+      if (localSearchParams.destination) {
+        getHotels();
+      }
+    },
+    [localSearchParams.destination, getHotels]
+  );
   // 필터링
   useEffect(() => {
     const hotels = searchResults || [];
@@ -87,9 +111,15 @@ const HotelSearchPage = () => {
     let filtered = hotels.filter((hotel) => {
       if (hotel.price < filters.priceMin || hotel.price > filters.priceMax)
         return false;
-      if (filters.starRatings.length > 0 && !filters.starRatings.includes(hotel.starRating))
+      if (
+        filters.starRatings.length > 0 &&
+        !filters.starRatings.includes(hotel.starRating)
+      )
         return false;
-      if (filters.amenities.length > 0 && !filters.amenities.some(amenity => hotel.amenities.includes(amenity)))
+      if (
+        filters.amenities.length > 0 &&
+        !filters.amenities.some((amenity) => hotel.amenities.includes(amenity))
+      )
         return false;
       return true;
     });
@@ -114,7 +144,6 @@ const HotelSearchPage = () => {
 
   const formatPrice = (price) => new Intl.NumberFormat("ko-KR").format(price);
 
-
   const toggleFilter = (type, value) => {
     setFilters((prev) => ({
       ...prev,
@@ -131,7 +160,7 @@ const HotelSearchPage = () => {
   return (
     <div className="h-screen bg-gray-50 overflow-hidden flex flex-col">
       <Header />
-      
+
       {/* 검색 조건 바 */}
       <div className="bg-white border-b flex-shrink-0">
         <div className="max-w-[1200px] mx-auto px-4 py-3">
@@ -151,7 +180,7 @@ const HotelSearchPage = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button className="px-3 py-1 text-sm text-gray-600 hover:text-blue-600">
                 검색 조건 변경
