@@ -1,5 +1,6 @@
 export { default as HotelDetail } from "./HotelDetail";
 export { default as HotelDetailPanel } from "./HotelDetailPanel";
+export { default as SearchConditionModal } from "./SearchConditionModal";
 export { default as HotelGallery } from "./HotelGallery";
 export { default as HotelInfo } from "./HotelInfo";
 export { default as HotelAmenities } from "./HotelAmenities";
