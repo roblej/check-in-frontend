@@ -12,9 +12,16 @@ const UsedPaymentForm = ({ initialData }) => {
   // 결제 정보 상태
   const [paymentInfo, setPaymentInfo] = useState({
     ...initialData,
-    customerName: '태인',
-    customerEmail: 'taein@gmail.com',
-    customerPhone: '010-1234-5678'
+    customerIdx: 2,
+    customerName: '주르',
+    customerEmail: 'jururu@gmail.com',
+    customerPhone: '01012345678',
+    customerCash: 1000000,
+    customerPoint: 1000000,
+    // 결제 방식 관련 필드 추가
+    useCash: 0,        // 사용할 캐시 금액
+    usePoint: 0,       // 사용할 포인트 금액
+    paymentMethod: 'card' // 결제 방식: 'card', 'cash', 'point', 'mixed'
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -26,9 +33,30 @@ const UsedPaymentForm = ({ initialData }) => {
     orderId: `used_hotel_${paymentInfo.usedItemIdx || Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }), [paymentInfo.usedItemIdx]);
 
+  // 결제 금액 계산 (useMemo로 최적화)
+  const paymentAmounts = useMemo(() => {
+    const totalAmount = paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1); // 세금 포함
+    const maxCash = Math.min(paymentInfo.useCash, paymentInfo.customerCash);
+    const maxPoint = Math.min(paymentInfo.usePoint, paymentInfo.customerPoint);
+    
+    // 사용 가능한 캐시와 포인트 합계
+    const availableCashPoint = maxCash + maxPoint;
+    
+    // 실제 결제 금액 (총 금액 - 캐시 - 포인트)
+    const actualPaymentAmount = Math.max(0, totalAmount - availableCashPoint);
+    
+    return {
+      totalAmount,
+      useCash: maxCash,
+      usePoint: maxPoint,
+      actualPaymentAmount,
+      availableCashPoint
+    };
+  }, [paymentInfo.salePrice, paymentInfo.useCash, paymentInfo.usePoint, paymentInfo.customerCash, paymentInfo.customerPoint]);
+
   useEffect(() => {
     loadFromStorage();
-  }, []); // 빈 의존성 배열로 변경하여 한 번만 실행
+  }, [loadFromStorage]); // loadFromStorage 의존성 추가
 
   // 폼 유효성 검사 (useMemo로 최적화)
   const isFormValid = useMemo(() => {
@@ -80,6 +108,44 @@ const UsedPaymentForm = ({ initialData }) => {
     }
   };
 
+  // 캐시 사용량 변경 핸들러
+  const handleCashChange = (value) => {
+    const cashAmount = Math.max(0, Math.min(parseInt(value) || 0, paymentInfo.customerCash));
+    setPaymentInfo(prev => ({
+      ...prev,
+      useCash: cashAmount
+    }));
+  };
+
+  // 포인트 사용량 변경 핸들러
+  const handlePointChange = (value) => {
+    const pointAmount = Math.max(0, Math.min(parseInt(value) || 0, paymentInfo.customerPoint));
+    setPaymentInfo(prev => ({
+      ...prev,
+      usePoint: pointAmount
+    }));
+  };
+
+  // 전체 캐시 사용
+  const useAllCash = () => {
+    const totalAmount = paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1);
+    const maxCash = Math.min(paymentInfo.customerCash, totalAmount);
+    setPaymentInfo(prev => ({
+      ...prev,
+      useCash: maxCash
+    }));
+  };
+
+  // 전체 포인트 사용
+  const useAllPoint = () => {
+    const totalAmount = paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1);
+    const maxPoint = Math.min(paymentInfo.customerPoint, totalAmount);
+    setPaymentInfo(prev => ({
+      ...prev,
+      usePoint: maxPoint
+    }));
+  };
+
   // 토스페이먼츠 결제 성공 처리
   const handlePaymentSuccess = async (paymentResult) => {
     try {
@@ -92,8 +158,15 @@ const UsedPaymentForm = ({ initialData }) => {
         body: JSON.stringify({
           paymentKey: paymentResult.paymentKey,
           orderId: paymentResult.orderId,
-          amount: paymentInfo.salePrice,
+          amount: paymentAmounts.actualPaymentAmount, // 실제 결제 금액
+          totalAmount: paymentAmounts.totalAmount, // 총 결제 금액
           usedItemIdx: paymentInfo.usedItemIdx,
+          paymentInfo: {
+            useCash: paymentAmounts.useCash,
+            usePoint: paymentAmounts.usePoint,
+            actualPaymentAmount: paymentAmounts.actualPaymentAmount,
+            paymentMethod: paymentAmounts.actualPaymentAmount > 0 ? 'mixed' : 'cash_point_only'
+          },
           hotelInfo: {
             hotelName: paymentInfo.hotelName,
             roomType: paymentInfo.roomType,
@@ -108,14 +181,16 @@ const UsedPaymentForm = ({ initialData }) => {
           customerInfo: {
             name: paymentInfo.customerName,
             email: paymentInfo.customerEmail,
-            phone: paymentInfo.customerPhone
+            phone: paymentInfo.customerPhone,
+            cashBalance: paymentInfo.customerCash - paymentAmounts.useCash,
+            pointBalance: paymentInfo.customerPoint - paymentAmounts.usePoint
           }
         }),
       });
 
       if (response.ok) {
         clearPaymentDraft();
-        router.push(`/checkout/success?orderId=${paymentResult.orderId}&amount=${paymentInfo.salePrice}&type=used_hotel`);
+        router.push(`/checkout/success?orderId=${paymentResult.orderId}&amount=${paymentAmounts.totalAmount}&type=used_hotel&cash=${paymentAmounts.useCash}&point=${paymentAmounts.usePoint}&card=${paymentAmounts.actualPaymentAmount}`);
       }
     } catch (error) {
       console.error('결제 완료 처리 오류:', error);
@@ -252,7 +327,7 @@ const UsedPaymentForm = ({ initialData }) => {
                 <TossPaymentsWidget
                   clientKey={process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY}
                   customerKey={paymentKeys.customerKey}
-                  amount={paymentInfo.salePrice}
+                  amount={paymentAmounts.actualPaymentAmount}
                   orderId={paymentKeys.orderId}
                   orderName={`${paymentInfo.hotelName} - ${paymentInfo.roomType}`}
                   customerName={paymentInfo.customerName}
@@ -286,18 +361,104 @@ const UsedPaymentForm = ({ initialData }) => {
                 <hr className="my-3" />
                 <div className="flex justify-between text-lg font-semibold">
                   <span>총 결제 금액</span>
-                  <span className="text-orange-600">{(paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1)).toLocaleString()}원</span>
+                  <span className="text-blue-600">{paymentAmounts.totalAmount.toLocaleString()}원</span>
+                </div>
+              </div>
+
+              {/* 캐시 및 포인트 사용 */}
+              <div className="space-y-4 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">결제 방식</h3>
+                
+                {/* 캐시 사용 */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-medium text-gray-700">
+                      캐시 사용 (보유: {paymentInfo.customerCash.toLocaleString()}원)
+                    </label>
+                    <button
+                      onClick={useAllCash}
+                      className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200"
+                    >
+                      전체 사용
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={paymentInfo.useCash}
+                      onChange={(e) => handleCashChange(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="사용할 캐시 금액"
+                      min="0"
+                      max={paymentInfo.customerCash}
+                    />
+                    <span className="text-sm text-gray-500 self-center">원</span>
+                  </div>
+                </div>
+
+                {/* 포인트 사용 */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-medium text-gray-700">
+                      포인트 사용 (보유: {paymentInfo.customerPoint.toLocaleString()}P)
+                    </label>
+                    <button
+                      onClick={useAllPoint}
+                      className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200"
+                    >
+                      전체 사용
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={paymentInfo.usePoint}
+                      onChange={(e) => handlePointChange(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="사용할 포인트"
+                      min="0"
+                      max={paymentInfo.customerPoint}
+                    />
+                    <span className="text-sm text-gray-500 self-center">P</span>
+                  </div>
+                </div>
+
+                {/* 결제 내역 요약 */}
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">총 결제 금액</span>
+                    <span className="text-gray-900 font-semibold">{paymentAmounts.totalAmount.toLocaleString()}원</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">캐시 결제</span>
+                    <span className="text-blue-600">{paymentAmounts.useCash.toLocaleString()}원</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">포인트 결제</span>
+                    <span className="text-blue-600">{paymentAmounts.usePoint.toLocaleString()}P</span>
+                  </div>
+                  <hr className="my-2" />
+                  <div className="flex justify-between font-semibold">
+                    <span>실제 결제 금액</span>
+                    <span className="text-blue-600">{paymentAmounts.actualPaymentAmount.toLocaleString()}원</span>
+                  </div>
                 </div>
               </div>
 
               {/* 결제 버튼 */}
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (isFormValid) {
-                    // 토스페이먼츠 위젯의 결제 버튼 클릭
-                    const paymentButton = document.getElementById('payment-button');
-                    if (paymentButton) {
-                      paymentButton.click();
+                    // 토스페이먼츠 결제 핸들러 직접 호출
+                    if (window.tossPaymentHandler) {
+                      try {
+                        await window.tossPaymentHandler();
+                      } catch (error) {
+                        console.error('결제 요청 실패:', error);
+                        alert('결제 요청 중 오류가 발생했습니다.');
+                      }
+                    } else {
+                      alert('토스페이먼츠가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
                     }
                   } else {
                     // 폼 유효성 검사 실행
@@ -307,12 +468,12 @@ const UsedPaymentForm = ({ initialData }) => {
                 }}
                 className={`w-full py-3 px-4 rounded-lg font-medium transition-colors mb-4 ${
                   isFormValid
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                    ? 'bg-blue-500 hover:bg-blue-600 text-white'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
               >
                 {isFormValid 
-                  ? `${(paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1)).toLocaleString()}원 결제하기`
+                  ? `${paymentAmounts.actualPaymentAmount.toLocaleString()}원 카드 결제하기`
                   : '구매자 정보를 입력하세요'
                 }
               </button>

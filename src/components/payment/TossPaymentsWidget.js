@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Script from 'next/script';
 
 const TossPaymentsWidget = ({ 
   clientKey, 
@@ -20,55 +21,46 @@ const TossPaymentsWidget = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [scriptLoaded, setScriptLoaded] = useState(false);
+
+  // 토스페이먼츠 SDK 로드 완료 후 실행
   useEffect(() => {
-    const loadTossPayments = async () => {
+    if (!scriptLoaded) return;
+
+    const initializePaymentWidget = async () => {
       try {
-        console.log('토스페이먼츠 로딩 시작...', { clientKey, customerKey, amount });
+        console.log('토스페이먼츠 초기화 시작...', { clientKey, customerKey, amount });
         
-        // 토스페이먼츠 SDK를 CDN에서 로드
-        if (!window.TossPayments) {
-          const script = document.createElement('script');
-          script.src = 'https://js.tosspayments.com/v1/payment-widget';
-          script.async = true;
-          document.head.appendChild(script);
-          
-          await new Promise((resolve, reject) => {
-            script.onload = resolve;
-            script.onerror = reject;
-          });
-        }
-        
-        console.log('TossPayments 함수 타입:', typeof window.TossPayments);
-        
-        // 토스페이먼츠 초기화
+        // 토스페이먼츠 초기화 - 올바른 방법
         const tossPayments = window.TossPayments(clientKey);
+        console.log('토스페이먼츠 초기화 완료:', tossPayments);
+        console.log('사용 가능한 메서드:', Object.keys(tossPayments));
 
-        // 결제 위젯 생성
-        const paymentWidget = tossPayments.PaymentWidget(customerKey, {
-          brandColor: '#FF6B35', // 오렌지 컬러로 브랜드 색상 설정
-        });
-
-        console.log('토스페이먼츠 위젯 생성 완료');
-
-        // 결제 위젯을 DOM에 렌더링
-        await paymentWidget.renderPaymentMethods('#payment-method', amount);
-        
-        console.log('토스페이먼츠 위젯 렌더링 완료');
+        // 결제 위젯 대신 일반 결제 방식 사용
+        console.log('토스페이먼츠 초기화 완료 - 일반 결제 방식 사용');
         setIsLoading(false);
 
         // 결제 요청 처리
         const handlePayment = async () => {
           try {
             console.log('결제 요청 시작...');
-            const paymentResult = await paymentWidget.requestPayment({
+            
+            const paymentData = {
               orderId,
               orderName,
+              amount: amount,
               customerName,
               customerEmail,
               customerMobilePhone,
               successUrl: `${window.location.origin}/checkout/success`,
               failUrl: `${window.location.origin}/checkout/fail`,
-            });
+            };
+            
+            console.log('결제 데이터:', paymentData);
+            console.log('amount 타입:', typeof amount, '값:', amount);
+            
+            // 토스페이먼츠 결제 요청
+            const paymentResult = await tossPayments.requestPayment('카드', paymentData);
 
             console.log('결제 결과:', paymentResult);
             if (paymentResult && onSuccess) {
@@ -82,33 +74,32 @@ const TossPaymentsWidget = ({
           }
         };
 
-        // 결제 버튼 이벤트 리스너 등록
-        const paymentButton = document.getElementById('payment-button');
-        if (paymentButton) {
-          paymentButton.addEventListener('click', handlePayment);
-          console.log('결제 버튼 이벤트 리스너 등록 완료');
-        } else {
-          console.warn('결제 버튼을 찾을 수 없습니다');
-        }
+        // 결제 함수를 전역으로 노출하여 외부에서 호출 가능하도록 설정
+        window.tossPaymentHandler = handlePayment;
+        console.log('토스페이먼츠 결제 핸들러 등록 완료');
 
-        widgetRef.current = paymentWidget;
+        widgetRef.current = tossPayments;
 
       } catch (error) {
-        console.error('토스페이먼츠 로드 실패:', error);
-        setError(error.message || '토스페이먼츠 로드에 실패했습니다.');
+        console.error('토스페이먼츠 초기화 실패:', error);
+        setError(error.message || '토스페이먼츠 초기화에 실패했습니다.');
         setIsLoading(false);
       }
     };
 
-    loadTossPayments();
+    initializePaymentWidget();
 
     // 컴포넌트 언마운트 시 정리
     return () => {
       if (widgetRef.current) {
         widgetRef.current = null;
       }
+      // 전역 핸들러 정리
+      if (window.tossPaymentHandler) {
+        delete window.tossPaymentHandler;
+      }
     };
-  }, [clientKey, customerKey, amount, orderId, orderName, customerName, customerEmail, customerMobilePhone]); // 필요한 의존성만 포함
+  }, [scriptLoaded, clientKey, customerKey, amount, orderId, orderName, customerName, customerEmail, customerMobilePhone]);
 
   if (error) {
     return (
@@ -128,39 +119,52 @@ const TossPaymentsWidget = ({
   }
 
   return (
-    <div className="space-y-6">
-      {/* 결제 수단 선택 */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">결제 수단</h3>
-        <div id="payment-method" className="border border-gray-200 rounded-lg p-4 min-h-[200px]">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-48">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
-                <p className="text-gray-600">토스페이먼츠 로딩 중...</p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center text-gray-500">
-              결제 수단을 선택해주세요
-            </div>
-          )}
-        </div>
-      </div>
+    <>
+      {/* 토스페이먼츠 SDK 로드 */}
+      <Script
+        src="https://js.tosspayments.com/v1/payment"
+        strategy="afterInteractive"
+        onLoad={() => {
+          console.log('토스페이먼츠 SDK 로드 완료');
+          setScriptLoaded(true);
+        }}
+        onError={() => {
+          console.error('토스페이먼츠 SDK 로드 실패');
+          setError('토스페이먼츠 SDK 로드에 실패했습니다.');
+          setIsLoading(false);
+        }}
+      />
 
-      {/* 결제 버튼 */}
-      <button
-        id="payment-button"
-        disabled={isLoading}
-        className={`w-full font-medium py-3 px-4 rounded-lg transition-colors ${
-          isLoading
-            ? 'bg-gray-400 cursor-not-allowed text-white'
-            : 'bg-orange-500 hover:bg-orange-600 text-white'
-        }`}
-      >
-        {isLoading ? '로딩 중...' : `${amount.toLocaleString()}원 결제하기`}
-      </button>
-    </div>
+      <div className="space-y-6">
+        {/* 결제 수단 선택 */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">결제 수단</h3>
+          <div className="border border-gray-200 rounded-lg p-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
+                  <p className="text-gray-600">토스페이먼츠 로딩 중...</p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="w-12 h-8 bg-blue-500 rounded flex items-center justify-center mr-3">
+                    <span className="text-white text-sm font-bold">카드</span>
+                  </div>
+                  <span className="text-gray-700">카드 결제</span>
+                </div>
+                <p className="text-gray-500 text-sm">
+                  결제 버튼을 클릭하면 토스페이먼츠 결제창이 열립니다
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </>
   );
 };
 
