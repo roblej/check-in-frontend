@@ -156,7 +156,7 @@ const MemberHistory = () => {
       <div className="space-y-6">
         {/* 페이지 헤더 */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">회원 이력 관리</h2>
+          <h2 className="text-2xl font-bold text-gray-900">여기 테이블 하나 더 만들어야함(에바임)</h2>
           <p className="text-gray-600">회원들의 활동 이력을 모니터링하세요</p>
         </div>
 
