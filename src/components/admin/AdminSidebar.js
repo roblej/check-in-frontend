@@ -8,7 +8,9 @@ import {
   Bed, 
   Users, 
   TrendingUp, 
-  Settings 
+  Settings,
+  LogIn,
+  LogOut
 } from 'lucide-react';
 
 const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
@@ -27,9 +29,20 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       path: '/admin/reservations',
       submenu: [
         { id: 'reservation-list', name: '예약 현황', path: '/admin/reservations' },
-        { id: 'checkin-checkout', name: '체크인/체크아웃', path: '/admin/checkin-checkout' },
         { id: 'reservation-calendar', name: '예약 캘린더', path: '/admin/calendar' }
       ]
+    },
+    {
+      id: 'checkin',
+      name: '체크인 관리',
+      icon: <LogIn size={20} />,
+      path: '/admin/checkin'
+    },
+    {
+      id: 'checkout',
+      name: '체크아웃 관리',
+      icon: <LogOut size={20} />,
+      path: '/admin/checkout'
     },
     {
       id: 'rooms',

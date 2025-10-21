@@ -13,6 +13,7 @@ const AdminDashboard = () => {
   const [todayCheckoutCount, setTodayCheckoutCount] = useState(0); // 오늘 체크아웃 수
   const [reservationCount, setReservationCount] = useState(0); // 예약 확정 수
   const [thisMonthSales, setThisMonthSales] = useState(0); // 이번달 매출
+  const [roomReservationList, setRoomReservationList] = useState([]); // 최근 예약 목록
 
   function getData(){
     axios.get(api_url).then(res => {
@@ -21,6 +22,7 @@ const AdminDashboard = () => {
       setTodayCheckoutCount(res.data.todayCheckoutCount);
       setReservationCount(res.data.reservationCount);
       setThisMonthSales(res.data.thisMonthSales);
+      setRoomReservationList(res.data.roomReservationList);
     });
   }
 
@@ -60,28 +62,6 @@ const AdminDashboard = () => {
     }
   ];
 
-  // 최근 예약 데이터 (축소)
-  const recentReservations = [
-    {
-      id: 'R001',
-      guestName: '김철수',
-      roomType: '스위트룸',
-      checkIn: '2024-01-15',
-      checkOut: '2024-01-17',
-      status: 'confirmed',
-      amount: '₩450,000'
-    },
-    {
-      id: 'R002',
-      guestName: '이영희',
-      roomType: '디럭스룸',
-      checkIn: '2024-01-15',
-      checkOut: '2024-01-16',
-      status: 'checked-in',
-      amount: '₩280,000'
-    }
-  ];
-
   const getStatusColor = (status) => {
     switch (status) {
       case 'confirmed':
@@ -97,11 +77,11 @@ const AdminDashboard = () => {
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'confirmed':
+      case 1:
         return '확정';
-      case 'checked-in':
+      case 2:
         return '체크인';
-      case 'pending':
+      case 0:
         return '대기';
       default:
         return '알 수 없음';
@@ -178,19 +158,19 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {recentReservations.map((reservation) => (
-                  <tr key={reservation.id} className="hover:bg-gray-50">
+                {roomReservationList.map((reservation) => (
+                  <tr key={reservation.reservIdx} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {reservation.id}
+                      {reservation.reservIdx}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {reservation.guestName}
+                      {reservation.customer.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {reservation.roomType}
+                      {reservation.room.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {reservation.checkIn}
+                      {reservation.checkinDate}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {reservation.checkOut}
@@ -201,7 +181,7 @@ const AdminDashboard = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {reservation.amount}
+                      {reservation.room.basePrice}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button className="text-[#3B82F6] hover:text-blue-800">
