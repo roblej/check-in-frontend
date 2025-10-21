@@ -2,6 +2,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HeroSection from "@/components/HeroSection";
 import PopularHotels from "@/components/PopularHotels";
+import DartGameSection from "@/components/DartGameSection";
 
 /**
  * 체크인 호텔 메인 페이지 (SSR)
@@ -11,7 +12,7 @@ import PopularHotels from "@/components/PopularHotels";
  * - 클라이언트 컴포넌트들을 조합하여 구성
  */
 const CheckinHotel = () => {
-  // 여행 전 체크 아이템 데이터
+  // 여행 전 체크 아이템 데이터 (서버 컴포넌트에서 관리)
   const travelCheckItems = [
     {
       title: "출장 항공권",
@@ -46,6 +47,10 @@ const CheckinHotel = () => {
 
       {/* 메인 컨텐츠 */}
       <main className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        
+        {/* 다트 게임 섹션 (클라이언트 컴포넌트) */}
+        <DartGameSection />
+
         {/* 가장 인기있는 숙소 섹션 */}
         <PopularHotels />
 
@@ -81,6 +86,11 @@ const CheckinHotel = () => {
 
       {/* 푸터 */}
       <Footer />
+
+      {/* 
+        다트 게임 모달은 이제 DartGameSection 컴포넌트 내부에 렌더링됩니다.
+        하지만 position: fixed 속성으로 인해 최종 DOM에서는 페이지 전체를 기준으로 위치하게 됩니다.
+      */}
     </div>
   );
 };
