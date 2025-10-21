@@ -24,55 +24,7 @@ const CheckoutPage = () => {
     getData();
   }, []);
 
-  // 더미 데이터
-  const dummyData = [
-    {
-      reservIdx: 6,
-      customer: { name: '홍길동', phone: '010-1111-2222' },
-      roomIdx: 501,
-      checkinDate: '2024-01-14',
-      checkoutDate: '2024-01-15',
-      guest: 2
-    },
-    {
-      reservIdx: 7,
-      customer: { name: '김영수', phone: '010-3333-4444' },
-      roomIdx: 302,
-      checkinDate: '2024-01-14',
-      checkoutDate: '2024-01-15',
-      guest: 1
-    },
-    {
-      reservIdx: 8,
-      customer: { name: '이민정', phone: '010-5555-6666' },
-      roomIdx: 103,
-      checkinDate: '2024-01-13',
-      checkoutDate: '2024-01-15',
-      guest: 3
-    },
-    {
-      reservIdx: 9,
-      customer: { name: '박지훈', phone: '010-7777-8888' },
-      roomIdx: 402,
-      checkinDate: '2024-01-13',
-      checkoutDate: '2024-01-15',
-      guest: 2
-    },
-    {
-      reservIdx: 10,
-      customer: { name: '최수진', phone: '010-9999-0000' },
-      roomIdx: 204,
-      checkinDate: '2024-01-12',
-      checkoutDate: '2024-01-15',
-      guest: 1
-    }
-  ];
 
-  // 더미 데이터로 초기화
-  useEffect(() => {
-    setCheckoutList(dummyData);
-    setFilteredList(dummyData);
-  }, []);
 
   // 검색 필터링
   useEffect(() => {

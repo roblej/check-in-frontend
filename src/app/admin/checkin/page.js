@@ -24,50 +24,7 @@ const CheckinPage = () => {
     getData();
   }, []);
 
-  // 더미 데이터
-  const dummyData = [
-    {
-      reservIdx: 1,
-      customer: { name: '김철수', phone: '010-1234-5678' },
-      roomIdx: 301,
-      checkinDate: '2024-01-15',
-      guest: 2
-    },
-    {
-      reservIdx: 2,
-      customer: { name: '이영희', phone: '010-2345-6789' },
-      roomIdx: 205,
-      checkinDate: '2024-01-15',
-      guest: 1
-    },
-    {
-      reservIdx: 3,
-      customer: { name: '박민수', phone: '010-3456-7890' },
-      roomIdx: 102,
-      checkinDate: '2024-01-16',
-      guest: 3
-    },
-    {
-      reservIdx: 4,
-      customer: { name: '최지영', phone: '010-4567-8901' },
-      roomIdx: 401,
-      checkinDate: '2024-01-16',
-      guest: 2
-    },
-    {
-      reservIdx: 5,
-      customer: { name: '정수현', phone: '010-5678-9012' },
-      roomIdx: 203,
-      checkinDate: '2024-01-17',
-      guest: 1
-    }
-  ];
 
-  // 더미 데이터로 초기화
-  useEffect(() => {
-    setCheckinList(dummyData);
-    setFilteredList(dummyData);
-  }, []);
 
   // 검색 필터링
   useEffect(() => {
