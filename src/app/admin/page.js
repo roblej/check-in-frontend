@@ -1,21 +1,45 @@
 'use client';
 
 import AdminLayout from '@/components/admin/AdminLayout';
+import axios from 'axios';
 import { Building2, LogOut, Calendar, DollarSign, Users, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const AdminDashboard = () => {
+
+  const api_url = "/api/admin/dashboard";
+
+  const [todayCheckinCount, setTodayCheckinCount] = useState(0); // 오늘 체크인 수
+  const [todayCheckoutCount, setTodayCheckoutCount] = useState(0); // 오늘 체크아웃 수
+  const [reservationCount, setReservationCount] = useState(0); // 예약 확정 수
+  const [thisMonthSales, setThisMonthSales] = useState(0); // 이번달 매출
+
+  function getData(){
+    axios.get(api_url).then(res => {
+      console.log(res.data);
+      setTodayCheckinCount(res.data.todayCheckinCount);
+      setTodayCheckoutCount(res.data.todayCheckoutCount);
+      setReservationCount(res.data.reservationCount);
+      setThisMonthSales(res.data.thisMonthSales);
+    });
+  }
+
+  useEffect(() => {
+    getData();
+  }, []);
+
   // 통계 데이터
   const stats = [
     {
       title: '오늘 체크인',
-      value: '24',
+      value: `${todayCheckinCount}`,
       change: '+12%',
       changeType: 'positive',
       icon: <Building2 size={40} />
     },
     {
       title: '오늘 체크아웃',
-      value: '18',
+      value: `${todayCheckoutCount}`,
       change: '+8%',
       changeType: 'positive',
       icon: <LogOut size={40} />
