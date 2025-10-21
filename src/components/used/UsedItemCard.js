@@ -1,9 +1,12 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Button from '../Button';
 
 const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
+  const router = useRouter();
+  
   const formatPrice = (price) => {
     return new Intl.NumberFormat('ko-KR').format(price);
   };
@@ -18,9 +21,22 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
   };
 
   const handleInquire = () => {
-    if (onInquire) {
-      onInquire(item);
-    }
+    // 중고 호텔 결제 페이지로 이동
+    const params = new URLSearchParams({
+      usedItemIdx: item.usedItemIdx || item.id,
+      hotelName: item.hotelName || '호텔명',
+      hotelImage: item.image || '',
+      hotelAddress: item.location || '호텔 주소',
+      roomType: item.roomType || '객실 정보 없음',
+      checkIn: item.checkIn || '',
+      checkOut: item.checkOut || '',
+      guests: item.guests || 2,
+      originalPrice: item.originalPrice || 0,
+      salePrice: item.salePrice || 0,
+      seller: item.seller || '판매자'
+    });
+
+    router.push(`/used-payment?${params.toString()}`);
   };
 
   const handleBookmark = () => {
