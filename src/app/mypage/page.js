@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { mypageAPI } from '@/lib/api/mypage';
+
 import { 
   Calendar, Heart, MapPin, Gift, User,
   MessageSquare, ChevronRight, Star, Clock,
@@ -12,10 +14,123 @@ import Footer from '@/components/Footer';
 
 export default function MyPage() {
   const router = useRouter();
+  
   // 탭 상태 관리
   const [reservationTab, setReservationTab] = useState('upcoming'); // upcoming, completed, cancelled
   const [couponTab, setCouponTab] = useState('available'); // available, used, expired
   const [reviewTab, setReviewTab] = useState('writable'); // writable, written
+
+  // 로딩 상태
+  const [isLoading, setIsLoading] = useState(true);
+  const [reservationsLoading, setReservationsLoading] = useState(false);
+
+  // 데이터 상태 (더미 데이터에서 상태로 변경)
+  const [reservations, setReservations] = useState({
+    upcoming: [],
+    completed: [],
+    cancelled: []
+  });
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    loadReservations('upcoming'); // 페이지 로드 시 '이용 예정' 탭 데이터 불러오기
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 예약 내역 API 호출
+  const loadReservations = async (status) => {
+    setReservationsLoading(true);
+    try {
+      console.log('📤 예약 내역 요청:', status);
+      
+      // 백엔드 API 호출
+      const response = await mypageAPI.getReservations(status);
+      
+      console.log('📥 받은 데이터:', response);
+      
+      // 상태 업데이트
+      setReservations(prev => ({
+        ...prev,
+        [status]: response.reservations || []
+      }));
+      
+      setIsLoading(false);
+      
+    } catch (error) {
+      console.error('❌ 예약 내역 로드 실패:', error);
+      
+      // Network Error 처리 (백엔드 미연결)
+      if (error.message === 'Network Error') {
+        console.warn('⚠️ 백엔드 서버에 연결할 수 없습니다. 더미 데이터를 사용합니다.');
+        // 더미 데이터 사용
+        loadDummyData(status);
+      } else {
+        alert('예약 내역을 불러오는데 실패했습니다.');
+      }
+      
+      setIsLoading(false);
+    } finally {
+      setReservationsLoading(false);
+    }
+  };
+
+  // 더미 데이터 로드 (백엔드 미연결 시)
+  const loadDummyData = (status) => {
+    const dummyReservations = {
+      upcoming: [
+        {
+          id: 1,
+          hotelName: '그랜드 하얏트 서울',
+          location: '서울 강남구',
+          checkIn: '2025.10.20',
+          checkOut: '2025.10.22',
+          roomType: '디럭스 트윈',
+          price: 450000,
+          status: '예약확정'
+        },
+        {
+          id: 2,
+          hotelName: '신라호텔 제주',
+          location: '제주 제주시',
+          checkIn: '2025.11.05',
+          checkOut: '2025.11.07',
+          roomType: '오션뷰 킹',
+          price: 380000,
+          status: '예약확정'
+        }
+      ],
+      completed: [
+        {
+          id: 3,
+          hotelName: '롯데호텔 부산',
+          location: '부산 해운대구',
+          checkIn: '2025.09.15',
+          checkOut: '2025.09.17',
+          roomType: '스탠다드 더블',
+          price: 280000,
+          status: '이용완료'
+        }
+      ],
+      cancelled: [
+        {
+          id: 4,
+          hotelName: '파크 하얏트 서울',
+          location: '서울 용산구',
+          checkIn: '2025.10.01',
+          checkOut: '2025.10.03',
+          roomType: '디럭스 킹',
+          price: 420000,
+          status: '취소완료',
+          refundAmount: 378000
+        }
+      ]
+    };
+
+    setReservations(prev => ({
+      ...prev,
+      [status]: dummyReservations[status] || []
+    }));
+  };
 
   // 예약 관련 핸들러
   const handleReservationDetail = (reservationId) => {
@@ -43,57 +158,7 @@ export default function MyPage() {
     router.push(`/hotel/${reservation.id}`);
   };
 
-  // 더미 데이터
-  const reservations = {
-    upcoming: [
-      {
-        id: 1,
-        hotelName: '그랜드 하얏트 서울',
-        location: '서울 강남구',
-        checkIn: '2025.10.20',
-        checkOut: '2025.10.22',
-        roomType: '디럭스 트윈',
-        price: 450000,
-        status: '예약확정'
-      },
-      {
-        id: 2,
-        hotelName: '신라호텔 제주',
-        location: '제주 제주시',
-        checkIn: '2025.11.05',
-        checkOut: '2025.11.07',
-        roomType: '오션뷰 킹',
-        price: 380000,
-        status: '예약확정'
-      }
-    ],
-    completed: [
-      {
-        id: 3,
-        hotelName: '롯데호텔 부산',
-        location: '부산 해운대구',
-        checkIn: '2025.09.15',
-        checkOut: '2025.09.17',
-        roomType: '스탠다드 더블',
-        price: 280000,
-        status: '이용완료'
-      }
-    ],
-    cancelled: [
-      {
-        id: 4,
-        hotelName: '파크 하얏트 서울',
-        location: '서울 용산구',
-        checkIn: '2025.10.01',
-        checkOut: '2025.10.03',
-        roomType: '디럭스 킹',
-        price: 420000,
-        status: '취소완료',
-        refundAmount: 378000
-      }
-    ]
-  };
-
+  // 더미 데이터 (쿠폰, 리뷰 등)
   const coupons = {
     available: [
       { id: 1, name: '신규가입 웰컴 쿠폰', discount: '10%', condition: '최소 10만원 이상 예약시', expiry: '2025.12.31' },
@@ -201,7 +266,10 @@ export default function MyPage() {
           {/* 탭 */}
           <div className="flex gap-2 mb-6 border-b border-gray-200">
             <button
-              onClick={() => setReservationTab('upcoming')}
+              onClick={() => {
+                setReservationTab('upcoming');
+                loadReservations('upcoming'); // API 호출 ('upcoming' 상태를 인자로 넘김)
+              }}
               className={`px-6 py-3 font-medium transition-all border-b-2 ${
                 reservationTab === 'upcoming'
                   ? 'border-blue-600 text-blue-600'
@@ -211,7 +279,10 @@ export default function MyPage() {
               이용 예정 ({reservations.upcoming.length})
             </button>
             <button
-              onClick={() => setReservationTab('completed')}
+              onClick={() => {
+                setReservationTab('completed');
+                loadReservations('completed'); // API 호출 ('completed' 상태를 인자로 넘김)
+              }}
               className={`px-6 py-3 font-medium transition-all border-b-2 ${
                 reservationTab === 'completed'
                   ? 'border-blue-600 text-blue-600'
@@ -221,7 +292,10 @@ export default function MyPage() {
               이용 완료 ({reservations.completed.length})
             </button>
             <button
-              onClick={() => setReservationTab('cancelled')}
+              onClick={() => {
+                setReservationTab('cancelled');
+                loadReservations('cancelled'); // API 호출
+              }}
               className={`px-6 py-3 font-medium transition-all border-b-2 ${
                 reservationTab === 'cancelled'
                   ? 'border-blue-600 text-blue-600'
@@ -234,7 +308,23 @@ export default function MyPage() {
 
           {/* 예약 카드 */}
           <div className="space-y-4">
-            {reservations[reservationTab].map((reservation) => (
+            {/* 로딩 중 */}
+            {reservationsLoading && (
+              <div className="flex justify-center items-center py-12">
+                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <span className="ml-3 text-gray-600">데이터를 불러오는 중...</span>
+              </div>
+            )}
+            
+            {/* 데이터 없음 */}
+            {!reservationsLoading && reservations[reservationTab].length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-500">예약 내역이 없습니다.</p>
+              </div>
+            )}
+            
+            {/* 예약 목록 */}
+            {!reservationsLoading && reservations[reservationTab].map((reservation) => (
               <div key={reservation.id} className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all">
                 <div className="flex justify-between items-start mb-4">
                   <div>
@@ -394,12 +484,12 @@ export default function MyPage() {
           </div>
         </section>
 
-        {/* 내 리뷰 관리 */}
+        {/* 내 후기 관리 */}
         <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Star className="w-6 h-6 text-blue-600" />
-              내 리뷰 관리
+              내 리뷰
             </h2>
           </div>
 
@@ -441,8 +531,8 @@ export default function MyPage() {
                       {review.daysLeft}일 남음
                     </span>
                   </div>
-                  <button className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-                    리뷰 작성하고 포인트 받기
+                  <button className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+                    리뷰 작성
                   </button>
                 </div>
               ))
