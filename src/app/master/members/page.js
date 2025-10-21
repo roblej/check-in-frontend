@@ -1,67 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
+import axios from 'axios';
 
 const MemberManagement = () => {
+
+  const api_url = "/api/master/customers"
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedMembers, setSelectedMembers] = useState([]);
 
-  // 회원 목록 데이터 (축소)
-  const members = [
-    {
-      id: 'M001',
-      name: '김고객',
-      email: 'customer1@email.com',
-      phone: '010-1234-5678',
-      joinDate: '2024-01-10',
-      lastLogin: '2024-01-15',
-      status: 'active',
-      totalReservations: 12,
-      totalSpent: '₩2,450,000',
-      grade: 'VIP',
-      birthDate: '1985-03-15',
-      gender: '남성'
-    },
-    {
-      id: 'M002',
-      name: '이여행',
-      email: 'travel2@email.com',
-      phone: '010-9876-5432',
-      joinDate: '2024-01-08',
-      lastLogin: '2024-01-14',
-      status: 'active',
-      totalReservations: 5,
-      totalSpent: '₩890,000',
-      grade: 'GOLD',
-      birthDate: '1990-07-22',
-      gender: '여성'
-    },
-    {
-      id: 'M003',
-      name: '박휴가',
-      email: 'vacation3@email.com',
-      phone: '010-5555-6666',
-      joinDate: '2024-01-05',
-      lastLogin: '2024-01-12',
-      status: 'inactive',
-      totalReservations: 2,
-      totalSpent: '₩320,000',
-      grade: 'SILVER',
-      birthDate: '1988-11-08',
-      gender: '남성'
-    }
-  ];
+  const [customers, setCustomers] = useState([]);
+  const [customerCount, setCustomerCount] = useState("0");
+
+  function getData(){
+    axios.get(api_url).then(res => {
+      console.log(res.data.content)
+      if(res.data.content){
+        setCustomers(res.data.content)
+        setCustomerCount(res.data.content.length)
+      }
+    })
+  }
+
+  useEffect(() => {
+    getData();
+  }, [])
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active':
+      case 0:
         return 'bg-green-100 text-green-800';
-      case 'inactive':
+      case 1:
         return 'bg-gray-100 text-gray-800';
-      case 'suspended':
-        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -69,109 +42,30 @@ const MemberManagement = () => {
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'active':
+      case 0:
         return '활성';
-      case 'inactive':
+      case 1:
         return '비활성';
-      case 'suspended':
-        return '정지됨';
       default:
         return '알 수 없음';
     }
   };
 
-  const getGradeColor = (grade) => {
-    switch (grade) {
+  const getRankColor = (rank) => {
+    switch (rank) {
       case 'VIP':
         return 'bg-purple-100 text-purple-800';
-      case 'GOLD':
+      case 'Traveler':
         return 'bg-yellow-100 text-yellow-800';
-      case 'SILVER':
+      case 'Sky Suite':
         return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-blue-100 text-blue-800';
+      case 'First Class':
+        return 'bg-purple-100 text-purple-800';
+      case 'Explorer':
+        return 'bg-purple-100 text-purple-800';
     }
   };
 
-  const filteredMembers = members.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.phone.includes(searchTerm);
-    const matchesStatus = statusFilter === 'all' || member.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  const handleSelectMember = (memberId) => {
-    setSelectedMembers(prev => 
-      prev.includes(memberId) 
-        ? prev.filter(id => id !== memberId)
-        : [...prev, memberId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedMembers.length === filteredMembers.length) {
-      setSelectedMembers([]);
-    } else {
-      setSelectedMembers(filteredMembers.map(member => member.id));
-    }
-  };
-
-  const handleBulkAction = (action) => {
-    if (selectedMembers.length === 0) {
-      alert('회원을 선택해주세요.');
-      return;
-    }
-    
-    switch (action) {
-      case 'activate':
-        alert(`${selectedMembers.length}명의 회원을 활성화했습니다.`);
-        break;
-      case 'deactivate':
-        alert(`${selectedMembers.length}명의 회원을 비활성화했습니다.`);
-        break;
-      case 'suspend':
-        const reason = prompt('정지 사유를 입력해주세요:');
-        if (reason) {
-          alert(`${selectedMembers.length}명의 회원을 정지했습니다.\n사유: ${reason}`);
-        }
-        break;
-      case 'withdraw':
-        if (confirm(`${selectedMembers.length}명의 회원을 탈퇴 처리하시겠습니까?`)) {
-          alert(`${selectedMembers.length}명의 회원을 탈퇴 처리했습니다.`);
-        }
-        break;
-      case 'message':
-        alert(`${selectedMembers.length}명의 회원에게 메시지를 전송합니다.`);
-        break;
-      default:
-        break;
-    }
-    setSelectedMembers([]);
-  };
-
-  const handleMemberAction = (memberId, action) => {
-    const member = members.find(m => m.id === memberId);
-    
-    switch (action) {
-      case 'suspend':
-        const reason = prompt(`${member.name}님을 정지하는 사유를 입력해주세요:`);
-        if (reason) {
-          alert(`${member.name}님을 정지했습니다.\n사유: ${reason}`);
-        }
-        break;
-      case 'withdraw':
-        if (confirm(`${member.name}님을 탈퇴 처리하시겠습니까?`)) {
-          alert(`${member.name}님을 탈퇴 처리했습니다.`);
-        }
-        break;
-      case 'message':
-        alert(`${member.name}님에게 메시지를 전송합니다.`);
-        break;
-      default:
-        break;
-    }
-  };
 
   return (
     <MasterLayout>
@@ -185,15 +79,15 @@ const MemberManagement = () => {
         {/* 통계 카드 */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-gray-900">{members.filter(m => m.status === 'active').length}</div>
+            <div className="text-2xl font-bold text-gray-900"></div>
             <div className="text-sm text-gray-600">활성 회원</div>
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-gray-900">{members.filter(m => m.grade === 'VIP').length}</div>
+            <div className="text-2xl font-bold text-gray-900"></div>
             <div className="text-sm text-gray-600">VIP 회원</div>
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-gray-900">{members.reduce((sum, m) => sum + m.totalReservations, 0)}</div>
+            <div className="text-2xl font-bold text-gray-900"></div>
             <div className="text-sm text-gray-600">총 예약</div>
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -201,7 +95,7 @@ const MemberManagement = () => {
             <div className="text-sm text-gray-600">총 결제액</div>
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-gray-900">{members.filter(m => m.status === 'suspended').length}</div>
+            <div className="text-2xl font-bold text-gray-900"></div>
             <div className="text-sm text-gray-600">정지 회원</div>
           </div>
         </div>
@@ -213,14 +107,12 @@ const MemberManagement = () => {
               <input
                 type="text"
                 placeholder="회원명, 이메일, 전화번호로 검색..."
-                value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div className="sm:w-48">
               <select
-                value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
@@ -285,8 +177,6 @@ const MemberManagement = () => {
                   <th className="px-6 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={selectedMembers.length === filteredMembers.length && filteredMembers.length > 0}
-                      onChange={handleSelectAll}
                       className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     />
                   </th>
@@ -311,13 +201,13 @@ const MemberManagement = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredMembers.map((member) => (
-                  <tr key={member.id} className="hover:bg-gray-50">
+                {customers.map((member) => (
+                  <tr key={member.customerIdx} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <input
                         type="checkbox"
-                        checked={selectedMembers.includes(member.id)}
-                        onChange={() => handleSelectMember(member.id)}
+                        checked={selectedMembers.includes(member.customerIdx)}
+                        onChange={() => handleSelectMember(member.customerIdx)}
                         className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                       />
                     </td>
@@ -325,7 +215,7 @@ const MemberManagement = () => {
                       <div>
                         <div className="text-sm font-medium text-gray-900">{member.name}</div>
                         <div className="text-sm text-gray-500">{member.email}</div>
-                        <div className="text-sm text-gray-500">{member.gender} • {member.birthDate}</div>
+                        <div className="text-sm text-gray-500">{member.gender} • {member.birthday}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -345,8 +235,8 @@ const MemberManagement = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getGradeColor(member.grade)}`}>
-                          {member.grade}
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRankColor(member.rank)}`}>
+                          {member.rank}
                         </span>
                         <br />
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(member.status)}`}>
