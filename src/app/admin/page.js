@@ -46,14 +46,14 @@ const AdminDashboard = () => {
     },
     {
       title: '예약 대기',
-      value: '156',
+      value: `${reservationCount}`,
       change: '+23%',
       changeType: 'positive',
       icon: <Calendar size={40} />
     },
     {
       title: '오늘 매출',
-      value: '₩2,450,000',
+      value: `₩${thisMonthSales}`,
       change: '+15%',
       changeType: 'positive',
       icon: <DollarSign size={40} />
