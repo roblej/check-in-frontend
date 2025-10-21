@@ -1,13 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { ClipboardList, Calendar, Building2 } from 'lucide-react';
+import axios from 'axios';
 
 const ReservationsPage = () => {
+
+  const api_url = "/api/admin/roomReservationList";
+
   const [selectedTab, setSelectedTab] = useState('list');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [roomReservationList, setRoomReservationList] = useState([]);
+
+  function getData(){
+    axios.get(api_url).then(res => {
+      console.log(res.data);
+      setRoomReservationList(res.data.content);
+    });
+  }
+
+  useEffect(() => {
+    getData();
+  }, []);
 
   // 예약 데이터
   const reservations = [
@@ -125,10 +141,10 @@ const ReservationsPage = () => {
     }
   };
 
-  const filteredReservations = reservations.filter(reservation => {
-    const matchesSearch = reservation.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         reservation.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         reservation.roomNumber.includes(searchTerm);
+  const filteredReservations = roomReservationList.filter(reservation => {
+    const matchesSearch = (reservation.customer?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (reservation.reservIdx?.toString() || '').includes(searchTerm) ||
+                         (reservation.room?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || reservation.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -251,28 +267,28 @@ const ReservationsPage = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredReservations.map((reservation) => (
-                  <tr key={reservation.id} className="hover:bg-gray-50">
+                {roomReservationList.map((reservation) => (
+                  <tr key={reservation.reservIdx} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {reservation.id}
+                      {reservation.reservIdx}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{reservation.guestName}</div>
-                        <div className="text-sm text-gray-500">{reservation.guestPhone}</div>
-                        <div className="text-xs text-gray-400">{reservation.guests}명</div>
+                        <div className="text-sm font-medium text-gray-900">{reservation.customer.name}</div>
+                        <div className="text-sm text-gray-500">{reservation.customer.phone}</div>
+                        <div className="text-xs text-gray-400">{reservation.guest}명</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{reservation.roomNumber}호</div>
-                        <div className="text-sm text-gray-500">{reservation.roomType}</div>
+                        <div className="text-sm font-medium text-gray-900">{reservation.roomIdx}호</div>
+                        <div className="text-sm text-gray-500">{reservation.room.name}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="text-sm text-gray-900">{reservation.checkIn}</div>
-                        <div className="text-sm text-gray-500">~ {reservation.checkOut}</div>
+                        <div className="text-sm text-gray-900">{reservation.checkinDate}</div>
+                        <div className="text-sm text-gray-500">~ {reservation.checkoutDate}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -286,7 +302,7 @@ const ReservationsPage = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {reservation.amount}
+                      ₩{reservation.totalPrice?.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       <button className="text-[#3B82F6] hover:text-blue-800">
