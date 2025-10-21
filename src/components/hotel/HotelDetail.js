@@ -10,28 +10,43 @@ import HotelReviews from "./HotelReviews";
 import HotelLocation from "./HotelLocation";
 import HotelPolicy from "./HotelPolicy";
 import { hotelAPI } from "@/lib/api/hotel";
+import SearchConditionModal from "./SearchConditionModal";
+import { useSearchStore } from "@/stores/searchStore";
 
 /**
  * @typedef {Object} SearchParams
  * @property {string} [roomName] - 객실 이름 검색
  * @property {string} [checkIn] - 체크인 날짜
  * @property {string} [checkOut] - 체크아웃 날짜
+ * @property {number} [adults] - 성인 인원
+ * @property {number} [children] - 어린이 인원
+ * @property {number} [nights] - 숙박 일수
+ * @property {string} [destination] - 목적지
+ * @property {string|number} [roomIdx] - 특정 객실 인덱스
  */
 
 /**
  * @typedef {Object} Room
  * @property {string} id - 객실 고유 ID
+ * @property {string|number} roomIdx - 객실 인덱스
+ * @property {string|number} contentId - 호텔 콘텐츠 ID
  * @property {string} name - 객실 이름
  * @property {string} description - 객실 설명
  * @property {string} size - 객실 크기
  * @property {string} bedType - 침대 타입
- * @property {number} maxOccupancy - 최대 수용 인원
+ * @property {number} capacity - 수용 인원
+ * @property {number} maxOccupancy - 최대 수용 인원 (하위 호환성)
  * @property {string[]} amenities - 편의시설 목록
  * @property {string} checkInInfo - 체크인 정보
  * @property {number} originalPrice - 원가
  * @property {number} price - 판매가
+ * @property {number} basePrice - 기본 가격
  * @property {number} discount - 할인율
  * @property {string} imageUrl - 객실 이미지 URL
+ * @property {boolean} refundable - 환불 가능 여부
+ * @property {boolean} breakfastIncluded - 조식 포함 여부
+ * @property {boolean} smoking - 흡연실 여부
+ * @property {number} roomCount - 객실 개수
  */
 
 /**
@@ -71,11 +86,13 @@ const HotelDetail = ({
   const [rooms, setRooms] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   const navRef = useRef(null);
   const headerRef = useRef(null);
   const sectionsRef = useRef({});
   const internalScrollRef = useRef(null);
+  const { updateSearchParams } = useSearchStore();
 
   // 외부에서 전달된 scrollContainerRef가 있으면 사용, 없으면 내부 ref 사용
   const scrollContainerRef = externalScrollRef || internalScrollRef;
@@ -132,25 +149,33 @@ const HotelDetail = ({
     const safeRoomList = Array.isArray(roomList) ? roomList : [];
 
     // roomIdx가 있으면 해당 객실만 필터링
-    const filteredRooms = roomIdx 
-      ? safeRoomList.filter(room => room.roomIdx == roomIdx)
+    const filteredRooms = roomIdx
+      ? safeRoomList.filter((room) => room.roomIdx == roomIdx)
       : safeRoomList;
 
     return filteredRooms.map((room, index) => ({
       id: room.roomIdx
         ? `${room.contentId}-${room.roomIdx}`
         : `${room.contentId}-${room.name}-${index}`,
+      roomIdx: room.roomIdx,
+      contentId: room.contentId,
       name: room.name || "",
       description: room.description || "",
       size: room.size || "",
       bedType: room.bedType || "",
-      maxOccupancy: room.capacity ?? 2,
+      capacity: room.capacity || 2,
+      maxOccupancy: room.capacity || 2, // 하위 호환성을 위해 유지
       amenities: Array.isArray(room.amenities) ? room.amenities : [],
       checkInInfo: checkInTime ? `${checkInTime} 이후 체크인` : "",
       originalPrice: Number(room.basePrice ?? 0),
       price: Number(room.basePrice ?? 0),
+      basePrice: Number(room.basePrice ?? 0),
       discount: 0,
       imageUrl: room.imageUrl || "",
+      refundable: room.refundable || false,
+      breakfastIncluded: room.breakfastIncluded || false,
+      smoking: room.smoking || false,
+      roomCount: room.roomCount || 1,
     }));
   }, []);
 
@@ -167,6 +192,9 @@ const HotelDetail = ({
           hotelAPI.getHotelDetail(contentId),
           hotelAPI.getHotelRooms(contentId, {
             name: searchParams?.roomName || undefined,
+            checkIn: searchParams?.checkIn,
+            checkOut: searchParams?.checkOut,
+            adults: searchParams?.adults,
           }),
         ]);
 
@@ -176,14 +204,18 @@ const HotelDetail = ({
 
         // 데이터 매핑
         const mappedHotel = mapHotelData(hotel);
-        const mappedRooms = mapRoomData(roomList, mappedHotel?.checkInTime, searchParams?.roomIdx);
+        const mappedRooms = mapRoomData(
+          roomList,
+          mappedHotel?.checkInTime,
+          searchParams?.roomIdx
+        );
 
-        console.log('HotelDetail 데이터 로드:', {
+        console.log("HotelDetail 데이터 로드:", {
           contentId,
           roomIdx: searchParams?.roomIdx,
           originalRoomCount: roomList?.length,
           filteredRoomCount: mappedRooms?.length,
-          searchParams
+          searchParams,
         });
 
         if (isMounted) {
@@ -205,7 +237,7 @@ const HotelDetail = ({
     return () => {
       isMounted = false;
     };
-  }, [contentId, searchParams?.roomName, searchParams?.roomIdx, mapHotelData, mapRoomData]);
+  }, [contentId, searchParams, mapHotelData, mapRoomData]);
 
   // 네비게이션 섹션
   const navSections = [
@@ -223,9 +255,10 @@ const HotelDetail = ({
    */
   useEffect(() => {
     const updateHeaderHeight = () => {
-      if (!headerRef.current) return;
+      if (!headerRef.current || !navRef.current) return;
 
-      let totalHeight = headerRef.current.offsetHeight;
+      let totalHeight =
+        headerRef.current.offsetHeight + navRef.current.offsetHeight;
 
       // 전체 페이지 모드에서는 메인 Header 높이도 포함
       if (!isModal) {
@@ -262,7 +295,7 @@ const HotelDetail = ({
 
       ticking = true;
       requestAnimationFrame(() => {
-        const scrollElement = isModal ? scrollContainerRef.current : window;
+        const scrollElement = scrollContainerRef.current;
         if (!scrollElement || !navRef.current) {
           ticking = false;
           return;
@@ -274,10 +307,8 @@ const HotelDetail = ({
           return;
         }
 
-        const scrollY = isModal ? scrollElement.scrollTop : window.scrollY;
-        const headerHeight = headerRef.current?.offsetHeight ?? 0;
-        const navHeight = navRef.current?.offsetHeight ?? 0;
-        const threshold = headerHeight + navHeight + 10;
+        const scrollY = scrollElement.scrollTop;
+        const threshold = 10; // 헤더와 네비게이션이 고정되어 있으므로 간단한 오프셋만 사용
 
         let currentSection = "rooms";
         let closestDistance = Infinity;
@@ -296,11 +327,9 @@ const HotelDetail = ({
         });
 
         // 스크롤이 바닥에 닿으면 마지막 섹션 활성화
-        const root = isModal
-          ? scrollContainerRef.current
-          : document.documentElement;
-        const scrollTop = root.scrollTop;
-        const maxScroll = root.scrollHeight - root.clientHeight;
+        const scrollTop = scrollElement.scrollTop;
+        const maxScroll =
+          scrollElement.scrollHeight - scrollElement.clientHeight;
 
         if (scrollTop >= maxScroll - 20) {
           currentSection = "policy";
@@ -311,7 +340,7 @@ const HotelDetail = ({
       });
     };
 
-    const scrollElement = isModal ? scrollContainerRef.current : window;
+    const scrollElement = scrollContainerRef.current;
     if (scrollElement) {
       scrollElement.addEventListener("scroll", handleScroll, { passive: true });
     }
@@ -321,7 +350,7 @@ const HotelDetail = ({
         scrollElement.removeEventListener("scroll", handleScroll);
       }
     };
-  }, [isModal, scrollContainerRef, isScrollingToSection]);
+  }, [scrollContainerRef, isScrollingToSection]);
 
   /**
    * 섹션 클릭 시 해당 섹션으로 스크롤
@@ -330,26 +359,22 @@ const HotelDetail = ({
   const scrollToSection = useCallback(
     (sectionId) => {
       const element = sectionsRef.current[sectionId];
-      if (!element) return;
+      const scrollElement = scrollContainerRef.current;
+
+      if (!element || !scrollElement) return;
 
       setActiveSection(sectionId);
       setIsScrollingToSection(true);
 
-      const scrollElement = isModal ? scrollContainerRef.current : window;
-      const headerHeight = headerRef.current?.offsetHeight ?? 0;
-      const navHeight = navRef.current?.offsetHeight ?? 0;
-      const offsetTop = element.offsetTop - (headerHeight + navHeight + 10);
+      // 헤더와 네비게이션이 고정되어 있으므로 간단한 오프셋만 사용
+      const offsetTop = element.offsetTop - 10;
 
-      if (isModal && scrollElement) {
-        scrollElement.scrollTo({ top: offsetTop, behavior: "smooth" });
-      } else {
-        window.scrollTo({ top: offsetTop, behavior: "smooth" });
-      }
+      scrollElement.scrollTo({ top: offsetTop, behavior: "smooth" });
 
       // 스크롤 완료 후 플래그 해제 (600ms는 smooth scroll 완료 시간)
       setTimeout(() => setIsScrollingToSection(false), 600);
     },
-    [isModal, scrollContainerRef]
+    [scrollContainerRef]
   );
 
   // 로딩 상태
@@ -393,15 +418,26 @@ const HotelDetail = ({
   }
 
   return (
-    <div id={`hotel-${hotelData.id}`} className="bg-gray-50 min-h-screen">
-      {/* Sticky 헤더 */}
+    <div
+      id={`hotel-${hotelData.id}`}
+      className={`bg-gray-50 ${
+        isModal
+          ? "flex flex-col h-full max-h-screen"
+          : "min-h-screen max-w-6xl mx-auto"
+      }`}
+    >
+      {/* 고정 헤더 */}
       <div
         ref={headerRef}
-        className={`bg-white border-b sticky z-40 shadow-sm ${
-          isModal ? "top-0" : "top-[56px]"
+        className={`bg-white border-b z-40 shadow-sm flex-shrink-0 ${
+          isModal ? "relative" : "sticky top-[56px]"
         }`}
       >
-        <div className={`${isModal ? "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" : "max-w-7xl mx-auto px-4"} py-3`}>
+        <div
+          className={`${
+            isModal ? "px-4 sm:px-6 lg:px-8" : "px-4 sm:px-6 lg:px-8"
+          } py-3`}
+        >
           <div className="flex items-center justify-between">
             {/* 호텔 기본 정보 */}
             <div className="flex-1 min-w-0">
@@ -439,7 +475,8 @@ const HotelDetail = ({
                 ₩
                 {formatPrice(
                   Array.isArray(rooms) && rooms.length > 0
-                    ? rooms[0]?.price || 0
+                    ? (rooms[0]?.basePrice || rooms[0]?.price || 0) *
+                        (searchParams?.nights || 1)
                     : 0
                 )}
               </p>
@@ -447,15 +484,100 @@ const HotelDetail = ({
             </div>
           </div>
         </div>
+
+        {/* 검색 조건 표시 */}
+        {searchParams &&
+          (searchParams.checkIn ||
+            searchParams.checkOut ||
+            searchParams.adults) && (
+            <div className="border-t bg-gray-50 px-4 sm:px-6 lg:px-8 py-3">
+              {/* 첫 번째 이미지 스타일의 검색 조건 표시 */}
+              <div
+                className="flex items-center justify-between bg-white rounded-lg border border-gray-300 px-4 py-3 cursor-pointer hover:border-blue-500 transition-colors"
+                onClick={() => setIsSearchModalOpen(true)}
+              >
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600">체크인:</span>
+                    <span className="font-medium text-gray-900">
+                      {searchParams.checkIn
+                        ? new Date(searchParams.checkIn).toLocaleDateString(
+                            "ko-KR",
+                            {
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              weekday: "short",
+                            }
+                          )
+                        : "미선택"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600">체크아웃:</span>
+                    <span className="font-medium text-gray-900">
+                      {searchParams.checkOut
+                        ? new Date(searchParams.checkOut).toLocaleDateString(
+                            "ko-KR",
+                            {
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              weekday: "short",
+                            }
+                          )
+                        : "미선택"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600">숙박:</span>
+                    <span className="font-medium text-gray-900">
+                      {searchParams.nights || 1}박
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600">인원:</span>
+                    <span className="font-medium text-gray-900">
+                      성인 {searchParams.adults || 2}명
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* 세금 포함 가격 안내 */}
+              <div className="flex items-center gap-1 mt-2 text-xs text-red-600">
+                <span>①</span>
+                <span>{searchParams.nights || 1}박 세금포함 가격</span>
+              </div>
+            </div>
+          )}
       </div>
 
-      {/* Sticky 네비게이션 */}
+      {/* 고정 네비게이션 */}
       <div
         ref={navRef}
-        className="bg-white border-b shadow-md sticky z-30"
-        style={{ top: `${headerHeight}px` }}
+        className="bg-white border-b shadow-md z-30 flex-shrink-0"
       >
-        <div className={`${isModal ? "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" : "max-w-7xl mx-auto px-4"}`}>
+        <div
+          className={`${
+            isModal ? "px-4 sm:px-6 lg:px-8" : "px-4 sm:px-6 lg:px-8"
+          }`}
+        >
           <div className="flex gap-1 overflow-x-auto scrollbar-hide">
             {navSections.map((section) => (
               <button
@@ -477,11 +599,18 @@ const HotelDetail = ({
         </div>
       </div>
 
-      {/* 메인 컨텐츠 */}
+      {/* 스크롤 가능한 메인 컨텐츠 */}
       <div
-        className={`${
-          isModal ? "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 pb-8" : "max-w-7xl mx-auto px-4 py-6 pt-6"
+        ref={scrollContainerRef}
+        className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 ${
+          isModal
+            ? "px-4 sm:px-6 lg:px-8 py-4 pb-8"
+            : "px-4 sm:px-6 lg:px-8 py-6 pt-6"
         }`}
+        style={{
+          scrollbarWidth: "thin",
+          scrollbarColor: "#d1d5db #f3f4f6",
+        }}
       >
         {/* 이미지 갤러리 */}
         <HotelGallery contentId={contentId} isModal={isModal} />
@@ -496,7 +625,7 @@ const HotelDetail = ({
           aria-labelledby="rooms-heading"
         >
           <h2 id="rooms-heading" className="text-2xl font-bold mb-4">
-            {searchParams?.roomIdx ? '객실 확인' : '객실 선택'}
+            {searchParams?.roomIdx ? "객실 확인" : "객실 선택"}
           </h2>
           <div className="space-y-4">
             {Array.isArray(rooms) && rooms.length > 0 ? (
@@ -555,6 +684,16 @@ const HotelDetail = ({
           />
         </section>
       </div>
+
+      {/* 검색 조건 변경 모달 */}
+      {isSearchModalOpen && (
+        <SearchConditionModal
+          isOpen={isSearchModalOpen}
+          onClose={() => setIsSearchModalOpen(false)}
+          searchParams={searchParams}
+          isPanelMode={isModal}
+        />
+      )}
     </div>
   );
 };
