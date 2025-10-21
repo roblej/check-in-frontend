@@ -14,7 +14,7 @@ import HotelDetail from "./HotelDetail";
  * @param {Object} props.searchParams - 검색 파라미터
  * @param {Function} props.onClose - 패널 닫기 함수
  */
-const HotelDetailPanel = ({ contentId , searchParams, onClose }) => {
+const HotelDetailPanel = ({ contentId, searchParams, onClose }) => {
   const scrollContainerRef = useRef(null);
 
   // ESC 키로 패널 닫기
@@ -45,6 +45,7 @@ const HotelDetailPanel = ({ contentId , searchParams, onClose }) => {
       <div
         className="fixed top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in-right
                    w-full 
+                   sm:top-16 sm:h-[calc(100vh-4rem)]
                    lg:left-[calc(30%+1rem)] lg:right-auto lg:w-[555px] 
                    lg:top-[120px] lg:h-[calc(100vh-140px)] 
                    lg:rounded-xl lg:max-w-[555px]"
@@ -84,7 +85,7 @@ const HotelDetailPanel = ({ contentId , searchParams, onClose }) => {
           style={{ scrollBehavior: "smooth" }}
         >
           <HotelDetail
-            contentId ={contentId }
+            contentId={contentId}
             searchParams={searchParams}
             isModal={true}
             scrollContainerRef={scrollContainerRef}
