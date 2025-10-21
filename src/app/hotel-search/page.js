@@ -129,11 +129,11 @@ const HotelSearchPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 overflow-hidden flex flex-col">
       <Header />
       
       {/* 검색 조건 바 */}
-      <div className="bg-white border-b">
+      <div className="bg-white border-b flex-shrink-0">
         <div className="max-w-[1200px] mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -162,7 +162,7 @@ const HotelSearchPage = () => {
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="flex h-[calc(100vh-4rem)] relative">
+      <div className="flex flex-1 relative overflow-hidden">
         {/* 좌측: 호텔 검색 결과 */}
         <HotelSearchResults
           hotels={filteredHotels}
