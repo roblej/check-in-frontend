@@ -10,6 +10,7 @@ const UsedHotelPaymentPage = async ({ searchParams }) => {
   // 초기 데이터 생성 (한 번만 실행)
   const initialData = {
     usedItemIdx: params.usedItemIdx || '',
+    usedTradeIdx: params.usedTradeIdx || null, // 거래 ID 추가
     hotelName: params.hotelName || '호텔명',
     hotelImage: params.hotelImage || null,
     hotelAddress: params.hotelAddress || '호텔 주소',
