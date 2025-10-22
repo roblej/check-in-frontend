@@ -20,23 +20,59 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
     });
   };
 
-  const handleInquire = () => {
-    // 중고 호텔 결제 페이지로 이동
-    const params = new URLSearchParams({
-      usedItemIdx: item.usedItemIdx || item.id,
-      hotelName: item.hotelName || '호텔명',
-      hotelImage: item.image || '',
-      hotelAddress: item.location || '호텔 주소',
-      roomType: item.roomType || '객실 정보 없음',
-      checkIn: item.checkIn || '',
-      checkOut: item.checkOut || '',
-      guests: item.guests || 2,
-      originalPrice: item.originalPrice || 0,
-      salePrice: item.salePrice || 0,
-      seller: item.seller || '판매자'
-    });
+  const handleInquire = async () => {
+    try {
+      // 1. 거래 가능성 체크
+      const availabilityResponse = await fetch(`/api/used-hotels/${item.usedItemIdx || item.id}/availability`);
+      const availabilityData = await availabilityResponse.json();
+      
+      if (!availabilityData.available) {
+        alert('이미 다른 고객이 거래한 아이템입니다.');
+        return;
+      }
 
-    router.push(`/used-payment?${params.toString()}`);
+      // 2. 거래 생성
+      const tradeResponse = await fetch('/api/used-hotels/trade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usedItemIdx: item.usedItemIdx || item.id,
+          buyerIdx: 2, // 실제로는 로그인한 사용자 ID
+          sellerIdx: item.sellerIdx || 1, // 실제로는 판매자 ID
+          price: item.salePrice || 0,
+          reservIdx: item.reservIdx || 1 // 실제로는 예약 ID
+        })
+      });
+
+      const tradeData = await tradeResponse.json();
+      
+      if (!tradeResponse.ok) {
+        alert(tradeData.message || '거래 생성에 실패했습니다.');
+        return;
+      }
+
+      // 3. 거래 생성 성공 시 결제 페이지로 이동
+      const params = new URLSearchParams({
+        usedItemIdx: item.usedItemIdx || item.id,
+        usedTradeIdx: tradeData.usedTradeIdx, // 거래 ID 추가
+        hotelName: item.hotelName || '호텔명',
+        hotelImage: item.image || '',
+        hotelAddress: item.location || '호텔 주소',
+        roomType: item.roomType || '객실 정보 없음',
+        checkIn: item.checkIn || '',
+        checkOut: item.checkOut || '',
+        guests: item.guests || 2,
+        originalPrice: item.originalPrice || 0,
+        salePrice: item.salePrice || 0,
+        seller: item.seller || '판매자'
+      });
+
+      router.push(`/used-payment?${params.toString()}`);
+      
+    } catch (error) {
+      console.error('거래 생성 오류:', error);
+      alert('거래 생성 중 오류가 발생했습니다.');
+    }
   };
 
   const handleBookmark = () => {
