@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
   User, Mail, Phone, Lock, Shield, Camera, 
   Save, ArrowLeft, Check, X, Eye, EyeOff
@@ -8,6 +8,7 @@ import {
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useRouter } from 'next/navigation';
+import { userAPI } from '@/lib/api/user';
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -15,11 +16,14 @@ export default function EditProfilePage() {
   // 탭 상태
   const [activeTab, setActiveTab] = useState('basic'); // basic, security, profile
   
+  // 로딩 상태
+  const [isLoading, setIsLoading] = useState(true);
+  
   // 기본정보 상태
   const [basicInfo, setBasicInfo] = useState({
-    nickname: '홍길동',
-    phone: '010-1234-5678',
-    email: 'gildong@example.com'
+    nickname: '',
+    phone: '',
+    email: ''
   });
   
   // 보안 상태
@@ -28,7 +32,7 @@ export default function EditProfilePage() {
     newPassword: '',
     confirmPassword: '',
     twoFactorEnabled: false,
-    twoFactorEmail: 'gildong@example.com'
+    twoFactorEmail: ''
   });
   
   // 패스워드 표시 상태
@@ -46,6 +50,44 @@ export default function EditProfilePage() {
   // 저장 상태
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState({ type: '', text: '' });
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    loadUserProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 사용자 프로필 로드
+  const loadUserProfile = async () => {
+    setIsLoading(true);
+    try {
+      const data = await userAPI.getProfile();
+      
+      console.log('📥 프로필 데이터 로드:', data);
+      
+      // 기본정보 설정
+      setBasicInfo({
+        nickname: data.nickname || '',
+        phone: data.phone || '',
+        email: data.email || ''
+      });
+      
+    } catch (error) {
+      console.error('❌ 프로필 로드 실패:', error);
+      setSaveMessage({ 
+        type: 'error', 
+        text: '프로필 정보를 불러오는데 실패했습니다.' 
+      });
+      
+      // 인증 오류 시 로그인 페이지로 리다이렉트
+      if (error.response?.status === 401) {
+        alert('로그인이 필요합니다.');
+        setTimeout(() => router.push('/login'), 1000);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // 기본정보 입력 핸들러
   const handleBasicInfoChange = (field, value) => {
@@ -115,14 +157,48 @@ export default function EditProfilePage() {
       return;
     }
     
-    // API 호출 시뮬레이션
-    setTimeout(() => {
-      setSaveMessage({ type: 'success', text: '기본정보가 성공적으로 저장되었습니다.' });
-      setIsSaving(false);
+    try {
+      console.log('📤 기본정보 저장 요청:', basicInfo);
+      
+      // 실제 API 호출 - DB에 저장
+      const response = await userAPI.updateBasicInfo({
+        nickname: basicInfo.nickname.trim(),
+        phone: basicInfo.phone.trim(),
+        email: basicInfo.email.trim()
+      });
+      
+      console.log('✅ 기본정보 저장 성공:', response);
+      
+      setSaveMessage({ 
+        type: 'success', 
+        text: '기본정보가 성공적으로 DB에 저장되었습니다.' 
+      });
       
       // 3초 후 메시지 제거
       setTimeout(() => setSaveMessage({ type: '', text: '' }), 3000);
-    }, 1000);
+      
+    } catch (error) {
+      console.error('❌ 기본정보 저장 실패:', error);
+      
+      // 에러 메시지 처리
+      let errorMessage = '저장에 실패했습니다. 다시 시도해주세요.';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error?.message) {
+        errorMessage = error.response.data.error.message;
+      }
+      
+      setSaveMessage({ type: 'error', text: errorMessage });
+      
+      // 인증 오류 시 로그인 페이지로 리다이렉트
+      if (error.response?.status === 401) {
+        alert('로그인이 필요합니다.');
+        setTimeout(() => router.push('/login'), 2000);
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // 보안정보 저장
@@ -235,6 +311,16 @@ export default function EditProfilePage() {
           </div>
         </div>
 
+        {/* 로딩 상태 */}
+        {isLoading ? (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-12">
+            <div className="flex flex-col items-center justify-center">
+              <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-gray-600 text-lg">프로필 정보를 불러오는 중...</p>
+            </div>
+          </div>
+        ) : (
+          <>
         {/* 저장 메시지 */}
         {saveMessage.text && (
           <div className={`mb-4 p-4 rounded-lg flex items-center gap-2 ${
@@ -599,6 +685,8 @@ export default function EditProfilePage() {
             <li>• 비밀번호는 8자 이상으로 설정해주세요.</li>
           </ul>
         </div>
+        </>
+        )}
       </div>
 
       <Footer />
