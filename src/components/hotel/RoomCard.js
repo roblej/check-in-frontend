@@ -1,9 +1,50 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { usePaymentStore } from "@/stores/paymentStore";
+
 const RoomCard = ({ room, searchParams, formatPrice }) => {
+  const router = useRouter();
+  const { setPaymentDraft } = usePaymentStore();
   const isReadOnly = !!searchParams?.roomIdx; // roomIdx가 있으면 읽기 전용
 
   // 숙박 일수에 따른 총 가격 계산
   const nights = searchParams?.nights || 1;
   const totalPrice = (room.basePrice || room.price) * nights;
+
+  // 예약 버튼 클릭 핸들러
+  const handleReservation = () => {
+    const reservationData = {
+      orderId: `hotel_${room.id || Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`,
+      orderName: `${searchParams?.hotelName || "호텔"} - ${room.name}`,
+      customerId: "guest", // 로그인된 사용자 ID로 변경 필요
+      email: "", // 사용자 이메일로 변경 필요
+      finalAmount: totalPrice,
+      meta: {
+        type: "hotel_reservation",
+        contentId: searchParams?.contentId || searchParams?.hotelId,
+        hotelName: searchParams?.hotelName,
+        roomId: room.id,
+        roomName: room.name,
+        checkIn: searchParams?.checkIn,
+        checkOut: searchParams?.checkOut,
+        guests: searchParams?.guests || 2,
+        nights: nights,
+        roomPrice: room.basePrice || room.price,
+        totalPrice: totalPrice,
+        roomImage: room.imageUrl,
+        amenities: room.amenities || [],
+      },
+    };
+
+    // 결제 정보를 스토어에 저장
+    setPaymentDraft(reservationData);
+
+    // 결제 페이지로 이동
+    router.push("/reservation");
+  };
 
   return (
     <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
@@ -82,7 +123,10 @@ const RoomCard = ({ room, searchParams, formatPrice }) => {
                 <span className="text-sm text-gray-500">/ {nights}박</span>
               </div>
               {!isReadOnly && (
-                <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-md">
+                <button
+                  onClick={handleReservation}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-md"
+                >
                   예약하기
                 </button>
               )}
@@ -120,7 +164,10 @@ const RoomCard = ({ room, searchParams, formatPrice }) => {
               </div>
             </div>
             {!isReadOnly && (
-              <button className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-2 rounded-lg font-medium transition-colors shadow-md">
+              <button
+                onClick={handleReservation}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-2 rounded-lg font-medium transition-colors shadow-md"
+              >
                 예약하기
               </button>
             )}
