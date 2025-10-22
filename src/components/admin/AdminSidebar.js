@@ -10,7 +10,8 @@ import {
   TrendingUp, 
   Settings,
   LogIn,
-  LogOut
+  LogOut,
+  Gift
 } from 'lucide-react';
 
 const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
@@ -65,6 +66,12 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
         { id: 'customer-history', name: '이용 이력', path: '/admin/customer-history' },
         { id: 'customer-feedback', name: '고객 피드백', path: '/admin/feedback' }
       ]
+    },
+    {
+      id: 'coupon-issue',
+      name: '쿠폰 발급',
+      icon: <Gift size={20} />,
+      path: '/admin/coupon-issue'
     },
     {
       id: 'revenue',

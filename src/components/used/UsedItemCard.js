@@ -3,9 +3,11 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Button from '../Button';
+import { useCustomerStore } from '@/stores/customerStore';
 
 const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
   const router = useRouter();
+  const { customer } = useCustomerStore();
   
   const formatPrice = (price) => {
     return new Intl.NumberFormat('ko-KR').format(price);
@@ -37,7 +39,7 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           usedItemIdx: item.usedItemIdx || item.id,
-          buyerIdx: 2, // 실제로는 로그인한 사용자 ID
+          buyerIdx: customer.customerIdx || 2, // store에서 가져온 사용자 ID
           sellerIdx: item.sellerIdx || 1, // 실제로는 판매자 ID
           price: item.salePrice || 0,
           reservIdx: item.reservIdx || 1 // 실제로는 예약 ID
