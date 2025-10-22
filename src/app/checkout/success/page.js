@@ -24,7 +24,23 @@ const SuccessPage = () => {
         setLoading(false);
         return;
       }
+<<<<<<< HEAD
 
+=======
+      
+      // 중고 호텔의 경우 이미 UsedPaymentForm에서 API 호출 완료
+      if (type === 'used_hotel') {
+        setResult({
+          orderId,
+          amount,
+          type,
+          message: "중고 호텔 결제가 완료되었습니다."
+        });
+        setLoading(false);
+        return;
+      }
+      
+>>>>>>> dev
       try {
         // URL 파라미터에서 직접 정보를 가져와서 표시
         setResult({
