@@ -96,7 +96,7 @@ const UsedPaymentForm = ({ initialData }) => {
         
         console.log(`${reason} 감지 - 거래 삭제 시작:`, paymentInfo.usedTradeIdx);
         
-        fetch(`/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/delete`, {
+        fetch(`/api/used/trade/${paymentInfo.usedTradeIdx}/delete`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -132,7 +132,7 @@ const UsedPaymentForm = ({ initialData }) => {
           timestamp: new Date().toISOString()
         });
         
-        navigator.sendBeacon(`/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/delete`, deleteData);
+        navigator.sendBeacon(`/api/used/trade/${paymentInfo.usedTradeIdx}/delete`, deleteData);
       }
     };
 
@@ -281,14 +281,14 @@ const UsedPaymentForm = ({ initialData }) => {
   // 토스페이먼츠 결제 성공 처리
   const handlePaymentSuccess = async (paymentResult) => {
     try {
-      // 1. 거래 확정 (중요: 결제 완료 후 거래 확정)
-      if (paymentInfo.usedTradeIdx) {
-        const tradeConfirmResponse = await fetch(
-          `/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/confirm`,
-          {
-            method: "POST",
-          }
-        );
+        // 1. 거래 확정 (중요: 결제 완료 후 거래 확정)
+        if (paymentInfo.usedTradeIdx) {
+          const tradeConfirmResponse = await fetch(
+            `/api/used/trade/${paymentInfo.usedTradeIdx}/confirm`,
+            {
+              method: "POST",
+            }
+          );
 
         if (!tradeConfirmResponse.ok) {
           const errorData = await tradeConfirmResponse.json();
@@ -314,7 +314,7 @@ const UsedPaymentForm = ({ initialData }) => {
         approvedAt: new Date().toISOString(),
       };
 
-      const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used-hotels/payment`, {
+      const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/payment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -362,7 +362,7 @@ const UsedPaymentForm = ({ initialData }) => {
     console.error('결제 실패:', error);
     // 결제 실패 시에도 거래 삭제
     if (paymentInfo.usedTradeIdx) {
-      fetch(`/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/delete`, {
+      fetch(`/api/used/trade/${paymentInfo.usedTradeIdx}/delete`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

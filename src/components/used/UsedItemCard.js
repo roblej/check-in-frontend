@@ -25,7 +25,7 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
   const handleInquire = async () => {
     try {
       // 1. 거래 가능성 체크
-      const availabilityResponse = await fetch(`/api/used-hotels/${item.usedItemIdx || item.id}/availability`);
+      const availabilityResponse = await fetch(`/api/used/${item.usedItemIdx || item.id}/availability`);
       const availabilityData = await availabilityResponse.json();
       
       if (!availabilityData.available) {
@@ -34,7 +34,7 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
       }
 
       // 2. 거래 생성
-      const tradeResponse = await fetch('/api/used-hotels/trade', {
+      const tradeResponse = await fetch('/api/used/trade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
