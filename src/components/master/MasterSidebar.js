@@ -8,7 +8,8 @@ import {
   Users, 
   MessageSquare, 
   TrendingUp, 
-  Settings 
+  Settings,
+  Gift
 } from 'lucide-react';
 
 const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
@@ -73,6 +74,12 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
         { id: 'statistics-analysis', name: '분석 리포트', path: '/master/statistics-analysis' },
         { id: 'statistics-export', name: '데이터 내보내기', path: '/master/statistics-export' }
       ]
+    },
+    {
+      id: 'coupon-templates',
+      name: '쿠폰 템플릿',
+      icon: <Gift size={20} />,
+      path: '/master/coupon-templates'
     },
     {
       id: 'settings',
