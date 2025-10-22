@@ -166,53 +166,18 @@ async function handleUsedHotelPayment({
       qrPayload
     )}`;
 
-    // 중고 호텔 결제인 경우 UsedPay 테이블에 저장
-    try {
-      console.log("중고 호텔 결제 처리 시작:", {
+    // 중고 호텔 결제인 경우 로그만 남기고 백엔드에서 처리하도록 함
+    if (usedTradeIdx) {
+      console.log("중고 호텔 결제 완료 - 백엔드에서 UsedPay 저장 처리:", {
         usedTradeIdx,
         paymentKey,
         orderId,
         amount,
-      });
-
-      const paymentData = {
-        usedTradeIdx: usedTradeIdx,
-        paymentKey: paymentKey,
-        orderId: orderId,
         totalAmount: totalAmount || amount,
         cashAmount: paymentInfo?.useCash || 0,
         pointAmount: paymentInfo?.usePoint || 0,
         cardAmount: paymentInfo?.actualPaymentAmount || amount,
-        paymentMethod: paymentInfo?.paymentMethod || "card",
-        status: 1, // 결제 완료
-        receiptUrl: `https://toss.im/payments/receipt/${orderId}`,
-        qrUrl: qrUrl,
-        approvedAt: now.toISOString(),
-      };
-
-      // 백엔드 API 호출하여 UsedPay 테이블에 저장
-      const backendUrl = `${
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
-      }/api/used-hotels/payment`;
-
-      const backendResponse = await fetch(backendUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(paymentData),
       });
-
-      if (!backendResponse.ok) {
-        const errorData = await backendResponse.json();
-        console.error("UsedPay 저장 실패:", errorData.message);
-        throw new Error(`결제 내역 저장 실패: ${errorData.message}`);
-      }
-
-      const savedPayment = await backendResponse.json();
-    } catch (dbError) {
-      console.error("데이터베이스 저장 오류:", dbError);
-      // DB 저장 실패해도 결제는 완료된 상태이므로 계속 진행
     }
 
     // Send email via SendGrid SMTP (using nodemailer) - 선택적 실행

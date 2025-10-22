@@ -1,24 +1,25 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import TossPaymentsWidget from "@/components/payment/TossPaymentsWidget";
-import { usePaymentStore } from "@/stores/paymentStore";
+import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import TossPaymentsWidget from '@/components/payment/TossPaymentsWidget';
+import { usePaymentStore } from '@/stores/paymentStore';
+import { useCustomerStore } from '@/stores/customerStore';
 
 const UsedPaymentForm = ({ initialData }) => {
   const router = useRouter();
   const { loadFromStorage, clearPaymentDraft } = usePaymentStore();
-
+  const { customer } = useCustomerStore();
   // 결제 정보 상태
   const [paymentInfo, setPaymentInfo] = useState({
     ...initialData,
     usedTradeIdx: initialData.usedTradeIdx, // 거래 ID 추가
-    customerIdx: 2,
-    customerName: "주르",
-    customerEmail: "jururu@gmail.com",
-    customerPhone: "01012345678",
-    customerCash: 1000000,
-    customerPoint: 1000000,
+    customerIdx: customer.customerIdx,
+    customerName: customer.nickname,
+    customerEmail: customer.email,
+    customerPhone: customer.phone,
+    customerCash: parseInt(customer.cash),
+    customerPoint: parseInt(customer.point),
     // 결제 방식 관련 필드 추가
     useCash: 0, // 사용할 캐시 금액
     usePoint: 0, // 사용할 포인트 금액
@@ -71,13 +72,118 @@ const UsedPaymentForm = ({ initialData }) => {
     loadFromStorage();
   }, [loadFromStorage]); // loadFromStorage 의존성 추가
 
+  // customer 정보가 변경될 때 paymentInfo 업데이트
+  useEffect(() => {
+    setPaymentInfo(prev => ({
+      ...prev,
+      customerIdx: customer.customerIdx,
+      customerName: customer.nickname,
+      customerEmail: customer.email,
+      customerPhone: customer.phone,
+      customerCash: parseInt(customer.cash),
+      customerPoint: parseInt(customer.point),
+    }));
+  }, [customer]);
+
+  // 페이지 이탈 시 거래 삭제 (최적화된 버전)
+  useEffect(() => {
+    let isDeleting = false; // 삭제 중 플래그
+    let deleteTimeout = null; // 디바운싱 타이머
+
+    const deleteTradeOnExit = (reason) => {
+      if (paymentInfo.usedTradeIdx && !isDeleting) {
+        isDeleting = true; // 삭제 시작 플래그 설정
+        
+        console.log(`${reason} 감지 - 거래 삭제 시작:`, paymentInfo.usedTradeIdx);
+        
+        fetch(`/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/delete`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            reason: reason,
+            timestamp: new Date().toISOString()
+          })
+        }).then(() => {
+          console.log('거래 삭제 완료:', paymentInfo.usedTradeIdx);
+        }).catch(error => {
+          console.error('거래 삭제 실패:', error);
+          isDeleting = false; // 실패 시 플래그 리셋
+        });
+      }
+    };
+
+    const debouncedDeleteTrade = (reason) => {
+      if (deleteTimeout) {
+        clearTimeout(deleteTimeout);
+      }
+      
+      deleteTimeout = setTimeout(() => {
+        deleteTradeOnExit(reason);
+      }, 100); // 100ms 디바운싱
+    };
+
+    const handleBeforeUnload = (event) => {
+      if (paymentInfo.usedTradeIdx && !isDeleting) {
+        console.log('페이지 이탈 감지 - 거래 삭제 시작:', paymentInfo.usedTradeIdx);
+        
+        // navigator.sendBeacon으로 안전한 비동기 요청
+        const deleteData = JSON.stringify({ 
+          reason: '사용자 페이지 이탈',
+          timestamp: new Date().toISOString()
+        });
+        
+        navigator.sendBeacon(`/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/delete`, deleteData);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && paymentInfo.usedTradeIdx) {
+        debouncedDeleteTrade('사용자 페이지 숨김');
+      }
+    };
+
+    // 뒤로가기 버튼 감지
+    const handlePopState = () => {
+      debouncedDeleteTrade('사용자 뒤로가기');
+    };
+
+    // 링크 클릭 감지 (App Router용)
+    const handleLinkClick = (event) => {
+      const target = event.target.closest('a');
+      if (target && target.href && !target.href.startsWith('javascript:')) {
+        // 외부 링크가 아닌 경우에만 거래 삭제
+        if (target.href.startsWith(window.location.origin)) {
+          debouncedDeleteTrade('사용자 링크 클릭');
+        }
+      }
+    };
+
+    // 브라우저 이벤트 리스너
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('popstate', handlePopState);
+    document.addEventListener('click', handleLinkClick);
+
+    return () => {
+      // 타이머 정리
+      if (deleteTimeout) {
+        clearTimeout(deleteTimeout);
+      }
+      
+      // 브라우저 이벤트 리스너 제거
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('popstate', handlePopState);
+      document.removeEventListener('click', handleLinkClick);
+    };
+  }, [paymentInfo.usedTradeIdx]);
+
   // 폼 유효성 검사 (useMemo로 최적화)
   const isFormValid = useMemo(() => {
-    if (!paymentInfo.customerName.trim()) return false;
-    if (!paymentInfo.customerEmail.trim()) return false;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentInfo.customerEmail))
-      return false;
-    if (!paymentInfo.customerPhone.trim()) return false;
+    if (!paymentInfo.customerName) return false;
+    if (!paymentInfo.customerEmail) return false;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentInfo.customerEmail)) return false;
+    if (!paymentInfo.customerPhone) return false;
     if (!/^[0-9-+\s]+$/.test(paymentInfo.customerPhone)) return false;
     return true;
   }, [
@@ -90,18 +196,18 @@ const UsedPaymentForm = ({ initialData }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!paymentInfo.customerName.trim()) {
-      newErrors.customerName = "구매자 이름을 입력해주세요.";
+    if (!paymentInfo.customerName) {
+      newErrors.customerName = '구매자 이름을 입력해주세요.';
     }
 
-    if (!paymentInfo.customerEmail.trim()) {
-      newErrors.customerEmail = "이메일을 입력해주세요.";
+    if (!paymentInfo.customerEmail) {
+      newErrors.customerEmail = '이메일을 입력해주세요.';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentInfo.customerEmail)) {
       newErrors.customerEmail = "올바른 이메일 형식을 입력해주세요.";
     }
 
-    if (!paymentInfo.customerPhone.trim()) {
-      newErrors.customerPhone = "전화번호를 입력해주세요.";
+    if (!paymentInfo.customerPhone) {
+      newErrors.customerPhone = '전화번호를 입력해주세요.';
     } else if (!/^[0-9-+\s]+$/.test(paymentInfo.customerPhone)) {
       newErrors.customerPhone = "올바른 전화번호 형식을 입력해주세요.";
     }
@@ -192,68 +298,57 @@ const UsedPaymentForm = ({ initialData }) => {
         }
       }
 
-      // 2. 서버에 결제 완료 알림
-      const response = await fetch("/api/payments", {
+      // 2. 백엔드에 결제 내역 저장
+      const paymentData = {
+        usedTradeIdx: paymentInfo.usedTradeIdx,
+        paymentKey: paymentResult.paymentKey,
+        orderId: paymentResult.orderId,
+        totalAmount: paymentAmounts.totalAmount,
+        cashAmount: paymentAmounts.useCash,
+        pointAmount: paymentAmounts.usePoint,
+        cardAmount: paymentAmounts.actualPaymentAmount,
+        paymentMethod: paymentAmounts.actualPaymentAmount > 0 ? "mixed" : "cash_point_only",
+        status: 1, // 결제 완료
+        receiptUrl: `https://toss.im/payments/receipt/${paymentResult.orderId}`,
+        qrUrl: `https://chart.googleapis.com/chart?chs=240x240&cht=qr&chl=${encodeURIComponent(JSON.stringify({ orderId: paymentResult.orderId, paymentKey: paymentResult.paymentKey, amount: paymentAmounts.totalAmount, usedTradeIdx: paymentInfo.usedTradeIdx }))}`,
+        approvedAt: new Date().toISOString(),
+      };
+
+      const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used-hotels/payment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          paymentKey: paymentResult.paymentKey,
-          orderId: paymentResult.orderId,
-          amount: paymentAmounts.actualPaymentAmount, // 실제 결제 금액
-          totalAmount: paymentAmounts.totalAmount, // 총 결제 금액
-          usedItemIdx: paymentInfo.usedItemIdx,
-          usedTradeIdx: paymentInfo.usedTradeIdx, // 거래 ID 추가
-          paymentInfo: {
-            useCash: paymentAmounts.useCash,
-            usePoint: paymentAmounts.usePoint,
-            actualPaymentAmount: paymentAmounts.actualPaymentAmount,
-            paymentMethod:
-              paymentAmounts.actualPaymentAmount > 0
-                ? "mixed"
-                : "cash_point_only",
-          },
-          hotelInfo: {
-            hotelName: paymentInfo.hotelName,
-            roomType: paymentInfo.roomType,
-            checkIn: paymentInfo.checkIn,
-            checkOut: paymentInfo.checkOut,
-            guests: paymentInfo.guests,
-            originalPrice: paymentInfo.originalPrice,
-            salePrice: paymentInfo.salePrice,
-            discountAmount: paymentInfo.discountAmount,
-            seller: paymentInfo.seller,
-          },
-          customerInfo: {
-            name: paymentInfo.customerName,
-            email: paymentInfo.customerEmail,
-            phone: paymentInfo.customerPhone,
-            cashBalance: paymentInfo.customerCash - paymentAmounts.useCash,
-            pointBalance: paymentInfo.customerPoint - paymentAmounts.usePoint,
-          },
-        }),
+        body: JSON.stringify(paymentData),
       });
 
-      if (response.ok) {
-        clearPaymentDraft();
-        // 중고 호텔 전용 성공 페이지로 리다이렉트
-        const successParams = new URLSearchParams({
-          orderId: paymentResult.orderId,
-          amount: paymentAmounts.totalAmount,
-          type: "used_hotel",
-          cash: paymentAmounts.useCash,
-          point: paymentAmounts.usePoint,
-          card: paymentAmounts.actualPaymentAmount,
-          tradeIdx: paymentInfo.usedTradeIdx,
-          hotelName: paymentInfo.hotelName,
-          roomType: paymentInfo.roomType,
-          checkIn: paymentInfo.checkIn,
-          checkOut: paymentInfo.checkOut,
-        });
-
-        router.push(`/used-payment/success?${successParams.toString()}`);
+      if (!backendResponse.ok) {
+        const errorData = await backendResponse.json();
+        console.error("결제 내역 저장 실패:", errorData.message);
+        alert("결제 내역 저장에 실패했습니다. 고객센터에 문의해주세요.");
+        return;
       }
+
+      const savedPayment = await backendResponse.json();
+      console.log("결제 내역 저장 성공:", savedPayment);
+
+      // 3. 성공 페이지로 리다이렉트
+      clearPaymentDraft();
+      const successParams = new URLSearchParams({
+        orderId: paymentResult.orderId,
+        amount: paymentAmounts.totalAmount,
+        type: "used_hotel",
+        cash: paymentAmounts.useCash,
+        point: paymentAmounts.usePoint,
+        card: paymentAmounts.actualPaymentAmount,
+        tradeIdx: paymentInfo.usedTradeIdx,
+        hotelName: paymentInfo.hotelName,
+        roomType: paymentInfo.roomType,
+        checkIn: paymentInfo.checkIn,
+        checkOut: paymentInfo.checkOut,
+      });
+
+      router.push(`/used-payment/success?${successParams.toString()}`);
     } catch (error) {
       console.error("결제 완료 처리 오류:", error);
       alert(
@@ -264,12 +359,22 @@ const UsedPaymentForm = ({ initialData }) => {
 
   // 토스페이먼츠 결제 실패 처리
   const handlePaymentFail = (error) => {
-    console.error("결제 실패:", error);
-    router.push(
-      `/checkout/fail?error=${encodeURIComponent(
-        error.message || "결제가 취소되었습니다."
-      )}`
-    );
+    console.error('결제 실패:', error);
+    // 결제 실패 시에도 거래 삭제
+    if (paymentInfo.usedTradeIdx) {
+      fetch(`/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          reason: '결제 실패',
+          timestamp: new Date().toISOString()
+        })
+      }).catch(deleteError => {
+        console.error('결제 실패 시 거래 삭제 실패:', deleteError);
+      });
+    }
+    
+    router.push(`/checkout/fail?error=${encodeURIComponent(error.message || '결제가 취소되었습니다.')}`);
   };
 
   return (
@@ -503,8 +608,7 @@ const UsedPaymentForm = ({ initialData }) => {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="text-sm font-medium text-gray-700">
-                      캐시 사용 (보유:{" "}
-                      {paymentInfo.customerCash.toLocaleString()}원)
+                      캐시 사용 (보유: {paymentInfo.customerCash.toString()}원)
                     </label>
                     <button
                       onClick={useAllCash}
