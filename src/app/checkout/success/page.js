@@ -18,32 +18,32 @@ const SuccessPage = () => {
       const orderId = search.get("orderId");
       const amount = Number(search.get("amount"));
       const type = search.get("type");
-      
+
       if (!paymentKey || !orderId || !amount) {
         setError("필수 결제 파라미터가 없습니다.");
         setLoading(false);
         return;
       }
-      
+
       // 중고 호텔의 경우 이미 UsedPaymentForm에서 API 호출 완료
-      if (type === 'used_hotel') {
+      if (type === "used_hotel") {
         setResult({
           orderId,
           amount,
           type,
-          message: "중고 호텔 결제가 완료되었습니다."
+          message: "중고 호텔 결제가 완료되었습니다.",
         });
         setLoading(false);
         return;
       }
-      
+
       try {
         const res = await fetch("/api/payments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ paymentKey, orderId, amount, type }),
         });
-        
+
         if (!res.ok) throw new Error("결제 처리 실패");
         const data = await res.json();
         setResult(data);
@@ -78,7 +78,9 @@ const SuccessPage = () => {
         <div className="max-w-2xl mx-auto px-4 py-20">
           <div className="bg-white rounded-lg shadow-sm p-8 text-center">
             <div className="text-red-500 text-6xl mb-4">❌</div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">결제 처리 실패</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              결제 처리 실패
+            </h1>
             <p className="text-red-600 mb-6">{error}</p>
             <button
               onClick={() => router.push("/")}
@@ -100,29 +102,30 @@ const SuccessPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       <div className="max-w-2xl mx-auto px-4 py-20">
         <div className="bg-white rounded-lg shadow-sm p-8 text-center">
           {/* 성공 아이콘 */}
           <div className="text-green-500 text-6xl mb-6">✅</div>
-          
+
           {/* 제목 */}
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
             {isUsedHotel ? "중고 호텔 예약 완료!" : "결제가 완료되었습니다"}
           </h1>
-          
+
           {/* 설명 */}
           <p className="text-gray-600 mb-8">
-            {isUsedHotel 
+            {isUsedHotel
               ? "중고 호텔 예약이 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."
-              : "결제가 성공적으로 완료되었습니다."
-            }
+              : "결제가 성공적으로 완료되었습니다."}
           </p>
 
           {/* QR 코드 */}
           {qrUrl && (
             <div className="mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">예약 확인서</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                예약 확인서
+              </h2>
               <div className="bg-gray-50 p-4 rounded-lg inline-block">
                 <img src={qrUrl} alt="예약 QR" className="w-48 h-48 mx-auto" />
               </div>
@@ -131,7 +134,9 @@ const SuccessPage = () => {
 
           {/* 결제 정보 */}
           <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">결제 정보</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              결제 정보
+            </h2>
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600">주문번호:</span>
@@ -145,7 +150,7 @@ const SuccessPage = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">결제일시:</span>
-                <span>{new Date().toLocaleString('ko-KR')}</span>
+                <span>{new Date().toLocaleString("ko-KR")}</span>
               </div>
               {receipt && (
                 <div className="flex justify-between">
@@ -166,10 +171,12 @@ const SuccessPage = () => {
           {/* 안내 메시지 */}
           {isUsedHotel && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
-              <h3 className="font-semibold text-blue-900 mb-2">📧 예약 확인서 발송</h3>
+              <h3 className="font-semibold text-blue-900 mb-2">
+                📧 예약 확인서 발송
+              </h3>
               <p className="text-blue-800 text-sm">
-                예약 확인서가 입력하신 이메일 주소로 발송됩니다. 
-                호텔 체크인 시 예약 확인서를 제시해주세요.
+                예약 확인서가 입력하신 이메일 주소로 발송됩니다. 호텔 체크인 시
+                예약 확인서를 제시해주세요.
               </p>
             </div>
           )}

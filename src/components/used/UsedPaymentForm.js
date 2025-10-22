@@ -1,59 +1,71 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import TossPaymentsWidget from '@/components/payment/TossPaymentsWidget';
-import { usePaymentStore } from '@/stores/paymentStore';
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import TossPaymentsWidget from "@/components/payment/TossPaymentsWidget";
+import { usePaymentStore } from "@/stores/paymentStore";
 
 const UsedPaymentForm = ({ initialData }) => {
   const router = useRouter();
   const { loadFromStorage, clearPaymentDraft } = usePaymentStore();
-  
+
   // 결제 정보 상태
   const [paymentInfo, setPaymentInfo] = useState({
     ...initialData,
     usedTradeIdx: initialData.usedTradeIdx, // 거래 ID 추가
     customerIdx: 2,
-    customerName: '주르',
-    customerEmail: 'jururu@gmail.com',
-    customerPhone: '01012345678',
+    customerName: "주르",
+    customerEmail: "jururu@gmail.com",
+    customerPhone: "01012345678",
     customerCash: 1000000,
     customerPoint: 1000000,
     // 결제 방식 관련 필드 추가
-    useCash: 0,        // 사용할 캐시 금액
-    usePoint: 0,       // 사용할 포인트 금액
-    paymentMethod: 'card' // 결제 방식: 'card', 'cash', 'point', 'mixed'
+    useCash: 0, // 사용할 캐시 금액
+    usePoint: 0, // 사용할 포인트 금액
+    paymentMethod: "card", // 결제 방식: 'card', 'cash', 'point', 'mixed'
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
   // 고정된 키들 생성 (useMemo로 최적화)
-  const paymentKeys = useMemo(() => ({
-    customerKey: `customer_${paymentInfo.usedItemIdx || 'default'}`,
-    orderId: `used_hotel_${paymentInfo.usedItemIdx || Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  }), [paymentInfo.usedItemIdx]);
+  const paymentKeys = useMemo(
+    () => ({
+      customerKey: `customer_${paymentInfo.usedItemIdx || "default"}`,
+      orderId: `used_hotel_${
+        paymentInfo.usedItemIdx || Date.now()
+      }_${Math.random().toString(36).substr(2, 9)}`,
+    }),
+    [paymentInfo.usedItemIdx]
+  );
 
   // 결제 금액 계산 (useMemo로 최적화)
   const paymentAmounts = useMemo(() => {
-    const totalAmount = paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1); // 세금 포함
+    const totalAmount =
+      paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1); // 세금 포함
     const maxCash = Math.min(paymentInfo.useCash, paymentInfo.customerCash);
     const maxPoint = Math.min(paymentInfo.usePoint, paymentInfo.customerPoint);
-    
+
     // 사용 가능한 캐시와 포인트 합계
     const availableCashPoint = maxCash + maxPoint;
-    
+
     // 실제 결제 금액 (총 금액 - 캐시 - 포인트)
     const actualPaymentAmount = Math.max(0, totalAmount - availableCashPoint);
-    
+
     return {
       totalAmount,
       useCash: maxCash,
       usePoint: maxPoint,
       actualPaymentAmount,
-      availableCashPoint
+      availableCashPoint,
     };
-  }, [paymentInfo.salePrice, paymentInfo.useCash, paymentInfo.usePoint, paymentInfo.customerCash, paymentInfo.customerPoint]);
+  }, [
+    paymentInfo.salePrice,
+    paymentInfo.useCash,
+    paymentInfo.usePoint,
+    paymentInfo.customerCash,
+    paymentInfo.customerPoint,
+  ]);
 
   useEffect(() => {
     loadFromStorage();
@@ -63,30 +75,35 @@ const UsedPaymentForm = ({ initialData }) => {
   const isFormValid = useMemo(() => {
     if (!paymentInfo.customerName.trim()) return false;
     if (!paymentInfo.customerEmail.trim()) return false;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentInfo.customerEmail)) return false;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentInfo.customerEmail))
+      return false;
     if (!paymentInfo.customerPhone.trim()) return false;
     if (!/^[0-9-+\s]+$/.test(paymentInfo.customerPhone)) return false;
     return true;
-  }, [paymentInfo.customerName, paymentInfo.customerEmail, paymentInfo.customerPhone]);
+  }, [
+    paymentInfo.customerName,
+    paymentInfo.customerEmail,
+    paymentInfo.customerPhone,
+  ]);
 
   // 폼 유효성 검사 (에러 메시지 포함)
   const validateForm = () => {
     const newErrors = {};
 
     if (!paymentInfo.customerName.trim()) {
-      newErrors.customerName = '구매자 이름을 입력해주세요.';
+      newErrors.customerName = "구매자 이름을 입력해주세요.";
     }
 
     if (!paymentInfo.customerEmail.trim()) {
-      newErrors.customerEmail = '이메일을 입력해주세요.';
+      newErrors.customerEmail = "이메일을 입력해주세요.";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentInfo.customerEmail)) {
-      newErrors.customerEmail = '올바른 이메일 형식을 입력해주세요.';
+      newErrors.customerEmail = "올바른 이메일 형식을 입력해주세요.";
     }
 
     if (!paymentInfo.customerPhone.trim()) {
-      newErrors.customerPhone = '전화번호를 입력해주세요.';
+      newErrors.customerPhone = "전화번호를 입력해주세요.";
     } else if (!/^[0-9-+\s]+$/.test(paymentInfo.customerPhone)) {
-      newErrors.customerPhone = '올바른 전화번호 형식을 입력해주세요.';
+      newErrors.customerPhone = "올바른 전화번호 형식을 입력해주세요.";
     }
 
     setErrors(newErrors);
@@ -95,55 +112,63 @@ const UsedPaymentForm = ({ initialData }) => {
 
   // 입력 필드 변경 핸들러
   const handleInputChange = (field, value) => {
-    setPaymentInfo(prev => ({
+    setPaymentInfo((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
-    
+
     // 에러 메시지 제거
     if (errors[field]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [field]: ''
+        [field]: "",
       }));
     }
   };
 
   // 캐시 사용량 변경 핸들러
   const handleCashChange = (value) => {
-    const cashAmount = Math.max(0, Math.min(parseInt(value) || 0, paymentInfo.customerCash));
-    setPaymentInfo(prev => ({
+    const cashAmount = Math.max(
+      0,
+      Math.min(parseInt(value) || 0, paymentInfo.customerCash)
+    );
+    setPaymentInfo((prev) => ({
       ...prev,
-      useCash: cashAmount
+      useCash: cashAmount,
     }));
   };
 
   // 포인트 사용량 변경 핸들러
   const handlePointChange = (value) => {
-    const pointAmount = Math.max(0, Math.min(parseInt(value) || 0, paymentInfo.customerPoint));
-    setPaymentInfo(prev => ({
+    const pointAmount = Math.max(
+      0,
+      Math.min(parseInt(value) || 0, paymentInfo.customerPoint)
+    );
+    setPaymentInfo((prev) => ({
       ...prev,
-      usePoint: pointAmount
+      usePoint: pointAmount,
     }));
   };
 
   // 전체 캐시 사용
   const useAllCash = () => {
-    const totalAmount = paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1);
+    const totalAmount =
+      paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1);
     const maxCash = Math.min(paymentInfo.customerCash, totalAmount);
-    setPaymentInfo(prev => ({
+    setPaymentInfo((prev) => ({
       ...prev,
-      useCash: maxCash
+      useCash: maxCash,
     }));
   };
 
   // 전체 포인트 사용
   const useAllPoint = () => {
-    const totalAmount = paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1);
+    const totalAmount =
+      paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1);
     const maxPoint = Math.min(paymentInfo.customerPoint, totalAmount);
-    setPaymentInfo(prev => ({
+    setPaymentInfo((prev) => ({
       ...prev,
-      usePoint: maxPoint
+      usePoint: maxPoint,
     }));
   };
 
@@ -152,23 +177,26 @@ const UsedPaymentForm = ({ initialData }) => {
     try {
       // 1. 거래 확정 (중요: 결제 완료 후 거래 확정)
       if (paymentInfo.usedTradeIdx) {
-        const tradeConfirmResponse = await fetch(`/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/confirm`, {
-          method: 'POST'
-        });
+        const tradeConfirmResponse = await fetch(
+          `/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/confirm`,
+          {
+            method: "POST",
+          }
+        );
 
         if (!tradeConfirmResponse.ok) {
           const errorData = await tradeConfirmResponse.json();
-          console.error('거래 확정 실패:', errorData.message);
-          alert('거래 확정에 실패했습니다. 고객센터에 문의해주세요.');
+          console.error("거래 확정 실패:", errorData.message);
+          alert("거래 확정에 실패했습니다. 고객센터에 문의해주세요.");
           return;
         }
       }
 
       // 2. 서버에 결제 완료 알림
-      const response = await fetch('/api/payments', {
-        method: 'POST',
+      const response = await fetch("/api/payments", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           paymentKey: paymentResult.paymentKey,
@@ -181,7 +209,10 @@ const UsedPaymentForm = ({ initialData }) => {
             useCash: paymentAmounts.useCash,
             usePoint: paymentAmounts.usePoint,
             actualPaymentAmount: paymentAmounts.actualPaymentAmount,
-            paymentMethod: paymentAmounts.actualPaymentAmount > 0 ? 'mixed' : 'cash_point_only'
+            paymentMethod:
+              paymentAmounts.actualPaymentAmount > 0
+                ? "mixed"
+                : "cash_point_only",
           },
           hotelInfo: {
             hotelName: paymentInfo.hotelName,
@@ -192,15 +223,15 @@ const UsedPaymentForm = ({ initialData }) => {
             originalPrice: paymentInfo.originalPrice,
             salePrice: paymentInfo.salePrice,
             discountAmount: paymentInfo.discountAmount,
-            seller: paymentInfo.seller
+            seller: paymentInfo.seller,
           },
           customerInfo: {
             name: paymentInfo.customerName,
             email: paymentInfo.customerEmail,
             phone: paymentInfo.customerPhone,
             cashBalance: paymentInfo.customerCash - paymentAmounts.useCash,
-            pointBalance: paymentInfo.customerPoint - paymentAmounts.usePoint
-          }
+            pointBalance: paymentInfo.customerPoint - paymentAmounts.usePoint,
+          },
         }),
       });
 
@@ -210,7 +241,7 @@ const UsedPaymentForm = ({ initialData }) => {
         const successParams = new URLSearchParams({
           orderId: paymentResult.orderId,
           amount: paymentAmounts.totalAmount,
-          type: 'used_hotel',
+          type: "used_hotel",
           cash: paymentAmounts.useCash,
           point: paymentAmounts.usePoint,
           card: paymentAmounts.actualPaymentAmount,
@@ -218,30 +249,39 @@ const UsedPaymentForm = ({ initialData }) => {
           hotelName: paymentInfo.hotelName,
           roomType: paymentInfo.roomType,
           checkIn: paymentInfo.checkIn,
-          checkOut: paymentInfo.checkOut
+          checkOut: paymentInfo.checkOut,
         });
-        
+
         router.push(`/used-payment/success?${successParams.toString()}`);
       }
     } catch (error) {
-      console.error('결제 완료 처리 오류:', error);
-      alert('결제는 완료되었지만 처리 중 오류가 발생했습니다. 고객센터에 문의해주세요.');
+      console.error("결제 완료 처리 오류:", error);
+      alert(
+        "결제는 완료되었지만 처리 중 오류가 발생했습니다. 고객센터에 문의해주세요."
+      );
     }
   };
 
   // 토스페이먼츠 결제 실패 처리
   const handlePaymentFail = (error) => {
-    console.error('결제 실패:', error);
-    router.push(`/checkout/fail?error=${encodeURIComponent(error.message || '결제가 취소되었습니다.')}`);
+    console.error("결제 실패:", error);
+    router.push(
+      `/checkout/fail?error=${encodeURIComponent(
+        error.message || "결제가 취소되었습니다."
+      )}`
+    );
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">중고 호텔 결제</h1>
-          <p className="text-gray-600">중고 호텔 예약 정보를 확인하고 결제를 진행해주세요.</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            중고 호텔 결제
+          </h1>
+          <p className="text-gray-600">
+            중고 호텔 예약 정보를 확인하고 결제를 진행해주세요.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -249,11 +289,13 @@ const UsedPaymentForm = ({ initialData }) => {
           <div className="lg:col-span-2 space-y-6">
             {/* 중고 호텔 정보 */}
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">중고 호텔 정보</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                중고 호텔 정보
+              </h2>
               <div className="flex gap-4">
                 {paymentInfo.hotelImage ? (
-                  <img 
-                    src={paymentInfo.hotelImage} 
+                  <img
+                    src={paymentInfo.hotelImage}
                     alt={paymentInfo.hotelName}
                     className="w-32 h-24 object-cover rounded-lg"
                   />
@@ -266,25 +308,33 @@ const UsedPaymentForm = ({ initialData }) => {
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     {paymentInfo.hotelName}
                   </h3>
-                  <p className="text-gray-600 mb-2">{paymentInfo.hotelAddress}</p>
+                  <p className="text-gray-600 mb-2">
+                    {paymentInfo.hotelAddress}
+                  </p>
                   <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
                     <div>
-                      <span className="font-medium">객실 타입:</span> {paymentInfo.roomType}
+                      <span className="font-medium">객실 타입:</span>{" "}
+                      {paymentInfo.roomType}
                     </div>
                     <div>
-                      <span className="font-medium">게스트:</span> {paymentInfo.guests}명
+                      <span className="font-medium">게스트:</span>{" "}
+                      {paymentInfo.guests}명
                     </div>
                     <div>
-                      <span className="font-medium">체크인:</span> {paymentInfo.checkIn}
+                      <span className="font-medium">체크인:</span>{" "}
+                      {paymentInfo.checkIn}
                     </div>
                     <div>
-                      <span className="font-medium">체크아웃:</span> {paymentInfo.checkOut}
+                      <span className="font-medium">체크아웃:</span>{" "}
+                      {paymentInfo.checkOut}
                     </div>
                     <div>
-                      <span className="font-medium">숙박 일수:</span> {paymentInfo.nights}박
+                      <span className="font-medium">숙박 일수:</span>{" "}
+                      {paymentInfo.nights}박
                     </div>
                     <div>
-                      <span className="font-medium">판매자:</span> {paymentInfo.seller}
+                      <span className="font-medium">판매자:</span>{" "}
+                      {paymentInfo.seller}
                     </div>
                   </div>
                 </div>
@@ -293,7 +343,9 @@ const UsedPaymentForm = ({ initialData }) => {
 
             {/* 구매자 정보 */}
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">구매자 정보</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                구매자 정보
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -302,14 +354,18 @@ const UsedPaymentForm = ({ initialData }) => {
                   <input
                     type="text"
                     value={paymentInfo.customerName}
-                    onChange={(e) => handleInputChange('customerName', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("customerName", e.target.value)
+                    }
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.customerName ? 'border-red-500' : 'border-gray-300'
+                      errors.customerName ? "border-red-500" : "border-gray-300"
                     }`}
                     placeholder="구매자 이름을 입력하세요"
                   />
                   {errors.customerName && (
-                    <p className="text-red-500 text-sm mt-1">{errors.customerName}</p>
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.customerName}
+                    </p>
                   )}
                 </div>
 
@@ -320,14 +376,20 @@ const UsedPaymentForm = ({ initialData }) => {
                   <input
                     type="email"
                     value={paymentInfo.customerEmail}
-                    onChange={(e) => handleInputChange('customerEmail', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("customerEmail", e.target.value)
+                    }
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.customerEmail ? 'border-red-500' : 'border-gray-300'
+                      errors.customerEmail
+                        ? "border-red-500"
+                        : "border-gray-300"
                     }`}
                     placeholder="이메일을 입력하세요"
                   />
                   {errors.customerEmail && (
-                    <p className="text-red-500 text-sm mt-1">{errors.customerEmail}</p>
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.customerEmail}
+                    </p>
                   )}
                 </div>
 
@@ -338,14 +400,20 @@ const UsedPaymentForm = ({ initialData }) => {
                   <input
                     type="tel"
                     value={paymentInfo.customerPhone}
-                    onChange={(e) => handleInputChange('customerPhone', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("customerPhone", e.target.value)
+                    }
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.customerPhone ? 'border-red-500' : 'border-gray-300'
+                      errors.customerPhone
+                        ? "border-red-500"
+                        : "border-gray-300"
                     }`}
                     placeholder="전화번호를 입력하세요"
                   />
                   {errors.customerPhone && (
-                    <p className="text-red-500 text-sm mt-1">{errors.customerPhone}</p>
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.customerPhone}
+                    </p>
                   )}
                 </div>
               </div>
@@ -354,7 +422,9 @@ const UsedPaymentForm = ({ initialData }) => {
             {/* 토스페이먼츠 결제 위젯 */}
             {isFormValid && (
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">결제 정보</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  결제 정보
+                </h2>
                 <TossPaymentsWidget
                   clientKey={process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY}
                   customerKey={paymentKeys.customerKey}
@@ -364,6 +434,23 @@ const UsedPaymentForm = ({ initialData }) => {
                   customerName={paymentInfo.customerName}
                   customerEmail={paymentInfo.customerEmail}
                   customerMobilePhone={paymentInfo.customerPhone}
+                  hotelInfo={{
+                    usedItemIdx: paymentInfo.usedItemIdx,
+                    usedTradeIdx: paymentInfo.usedTradeIdx,
+                    hotelName: paymentInfo.hotelName,
+                    roomType: paymentInfo.roomType,
+                    checkIn: paymentInfo.checkIn,
+                    checkOut: paymentInfo.checkOut,
+                    guests: paymentInfo.guests,
+                    salePrice: paymentInfo.salePrice,
+                    totalPrice: paymentAmounts.totalAmount,
+                  }}
+                  customerInfo={{
+                    name: paymentInfo.customerName,
+                    email: paymentInfo.customerEmail,
+                    phone: paymentInfo.customerPhone,
+                    specialRequests: paymentInfo.specialRequests,
+                  }}
                   onSuccess={handlePaymentSuccess}
                   onFail={handlePaymentFail}
                 />
@@ -374,37 +461,50 @@ const UsedPaymentForm = ({ initialData }) => {
           {/* 가격 요약 */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">가격 요약</h2>
-              
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                가격 요약
+              </h2>
+
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">원가</span>
-                  <span className="line-through text-gray-400">{paymentInfo.originalPrice.toLocaleString()}원</span>
+                  <span className="line-through text-gray-400">
+                    {paymentInfo.originalPrice.toLocaleString()}원
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">할인 금액</span>
-                  <span className="text-red-500">-{paymentInfo.discountAmount.toLocaleString()}원</span>
+                  <span className="text-red-500">
+                    -{paymentInfo.discountAmount.toLocaleString()}원
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">세금 및 수수료</span>
-                  <span>{Math.round(paymentInfo.salePrice * 0.1).toLocaleString()}원</span>
+                  <span>
+                    {Math.round(paymentInfo.salePrice * 0.1).toLocaleString()}원
+                  </span>
                 </div>
                 <hr className="my-3" />
                 <div className="flex justify-between text-lg font-semibold">
                   <span>총 결제 금액</span>
-                  <span className="text-blue-600">{paymentAmounts.totalAmount.toLocaleString()}원</span>
+                  <span className="text-blue-600">
+                    {paymentAmounts.totalAmount.toLocaleString()}원
+                  </span>
                 </div>
               </div>
 
               {/* 캐시 및 포인트 사용 */}
               <div className="space-y-4 mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">결제 방식</h3>
-                
+                <h3 className="text-lg font-semibold text-gray-900">
+                  결제 방식
+                </h3>
+
                 {/* 캐시 사용 */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="text-sm font-medium text-gray-700">
-                      캐시 사용 (보유: {paymentInfo.customerCash.toLocaleString()}원)
+                      캐시 사용 (보유:{" "}
+                      {paymentInfo.customerCash.toLocaleString()}원)
                     </label>
                     <button
                       onClick={useAllCash}
@@ -423,7 +523,9 @@ const UsedPaymentForm = ({ initialData }) => {
                       min="0"
                       max={paymentInfo.customerCash}
                     />
-                    <span className="text-sm text-gray-500 self-center">원</span>
+                    <span className="text-sm text-gray-500 self-center">
+                      원
+                    </span>
                   </div>
                 </div>
 
@@ -431,7 +533,8 @@ const UsedPaymentForm = ({ initialData }) => {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="text-sm font-medium text-gray-700">
-                      포인트 사용 (보유: {paymentInfo.customerPoint.toLocaleString()}P)
+                      포인트 사용 (보유:{" "}
+                      {paymentInfo.customerPoint.toLocaleString()}P)
                     </label>
                     <button
                       onClick={useAllPoint}
@@ -458,20 +561,28 @@ const UsedPaymentForm = ({ initialData }) => {
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">총 결제 금액</span>
-                    <span className="text-gray-900 font-semibold">{paymentAmounts.totalAmount.toLocaleString()}원</span>
+                    <span className="text-gray-900 font-semibold">
+                      {paymentAmounts.totalAmount.toLocaleString()}원
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">캐시 결제</span>
-                    <span className="text-blue-600">{paymentAmounts.useCash.toLocaleString()}원</span>
+                    <span className="text-blue-600">
+                      {paymentAmounts.useCash.toLocaleString()}원
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">포인트 결제</span>
-                    <span className="text-blue-600">{paymentAmounts.usePoint.toLocaleString()}P</span>
+                    <span className="text-blue-600">
+                      {paymentAmounts.usePoint.toLocaleString()}P
+                    </span>
                   </div>
                   <hr className="my-2" />
                   <div className="flex justify-between font-semibold">
                     <span>실제 결제 금액</span>
-                    <span className="text-blue-600">{paymentAmounts.actualPaymentAmount.toLocaleString()}원</span>
+                    <span className="text-blue-600">
+                      {paymentAmounts.actualPaymentAmount.toLocaleString()}원
+                    </span>
                   </div>
                 </div>
               </div>
@@ -485,28 +596,29 @@ const UsedPaymentForm = ({ initialData }) => {
                       try {
                         await window.tossPaymentHandler();
                       } catch (error) {
-                        console.error('결제 요청 실패:', error);
-                        alert('결제 요청 중 오류가 발생했습니다.');
+                        console.error("결제 요청 실패:", error);
+                        alert("결제 요청 중 오류가 발생했습니다.");
                       }
                     } else {
-                      alert('토스페이먼츠가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+                      alert(
+                        "토스페이먼츠가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요."
+                      );
                     }
                   } else {
                     // 폼 유효성 검사 실행
                     validateForm();
-                    alert('구매자 정보를 모두 입력해주세요.');
+                    alert("구매자 정보를 모두 입력해주세요.");
                   }
                 }}
                 className={`w-full py-3 px-4 rounded-lg font-medium transition-colors mb-4 ${
                   isFormValid
-                    ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    ? "bg-blue-500 hover:bg-blue-600 text-white"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
               >
-                {isFormValid 
+                {isFormValid
                   ? `${paymentAmounts.actualPaymentAmount.toLocaleString()}원 카드 결제하기`
-                  : '구매자 정보를 입력하세요'
-                }
+                  : "구매자 정보를 입력하세요"}
               </button>
 
               <div className="text-xs text-gray-500 text-center">
@@ -516,7 +628,6 @@ const UsedPaymentForm = ({ initialData }) => {
           </div>
         </div>
       </div>
-
     </div>
   );
 };

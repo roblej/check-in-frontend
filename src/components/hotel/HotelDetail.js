@@ -11,7 +11,6 @@ import HotelLocation from "./HotelLocation";
 import HotelPolicy from "./HotelPolicy";
 import { hotelAPI } from "@/lib/api/hotel";
 import SearchConditionModal from "./SearchConditionModal";
-import { useSearchStore } from "@/stores/searchStore";
 
 /**
  * @typedef {Object} SearchParams
@@ -87,15 +86,23 @@ const HotelDetail = ({
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [localSearchParams, setLocalSearchParams] = useState(searchParams);
 
   const navRef = useRef(null);
   const headerRef = useRef(null);
   const sectionsRef = useRef({});
   const internalScrollRef = useRef(null);
-  const { updateSearchParams } = useSearchStore();
 
   // 외부에서 전달된 scrollContainerRef가 있으면 사용, 없으면 내부 ref 사용
   const scrollContainerRef = externalScrollRef || internalScrollRef;
+
+  /**
+   * 로컬 검색 조건 업데이트 함수
+   * @param {SearchParams} newParams - 새로운 검색 조건
+   */
+  const updateLocalSearchParams = useCallback((newParams) => {
+    setLocalSearchParams((prev) => ({ ...prev, ...newParams }));
+  }, []);
 
   /**
    * 가격 포맷팅 함수
@@ -191,10 +198,10 @@ const HotelDetail = ({
         const [hotelRes, roomsRes] = await Promise.all([
           hotelAPI.getHotelDetail(contentId),
           hotelAPI.getHotelRooms(contentId, {
-            name: searchParams?.roomName || undefined,
-            checkIn: searchParams?.checkIn,
-            checkOut: searchParams?.checkOut,
-            adults: searchParams?.adults,
+            name: localSearchParams?.roomName || undefined,
+            checkIn: localSearchParams?.checkIn,
+            checkOut: localSearchParams?.checkOut,
+            adults: localSearchParams?.adults,
           }),
         ]);
 
@@ -207,15 +214,15 @@ const HotelDetail = ({
         const mappedRooms = mapRoomData(
           roomList,
           mappedHotel?.checkInTime,
-          searchParams?.roomIdx
+          localSearchParams?.roomIdx
         );
 
         console.log("HotelDetail 데이터 로드:", {
           contentId,
-          roomIdx: searchParams?.roomIdx,
+          roomIdx: localSearchParams?.roomIdx,
           originalRoomCount: roomList?.length,
           filteredRoomCount: mappedRooms?.length,
-          searchParams,
+          localSearchParams,
         });
 
         if (isMounted) {
@@ -237,7 +244,7 @@ const HotelDetail = ({
     return () => {
       isMounted = false;
     };
-  }, [contentId, searchParams, mapHotelData, mapRoomData]);
+  }, [contentId, localSearchParams, mapHotelData, mapRoomData]);
 
   // 네비게이션 섹션
   const navSections = [
@@ -470,13 +477,13 @@ const HotelDetail = ({
 
             {/* 가격 및 조회수 */}
             <div className="text-right ml-4 flex-shrink-0">
-              <p className="text-sm text-gray-500">최저가</p>
+              <p className="text-sm text-gray-500">평균가</p>
               <p className="text-xl font-bold text-blue-600">
                 ₩
                 {formatPrice(
                   Array.isArray(rooms) && rooms.length > 0
                     ? (rooms[0]?.basePrice || rooms[0]?.price || 0) *
-                        (searchParams?.nights || 1)
+                        (localSearchParams?.nights || 1)
                     : 0
                 )}
               </p>
@@ -486,10 +493,10 @@ const HotelDetail = ({
         </div>
 
         {/* 검색 조건 표시 */}
-        {searchParams &&
-          (searchParams.checkIn ||
-            searchParams.checkOut ||
-            searchParams.adults) && (
+        {localSearchParams &&
+          (localSearchParams.checkIn ||
+            localSearchParams.checkOut ||
+            localSearchParams.adults) && (
             <div className="border-t bg-gray-50 px-4 sm:px-6 lg:px-8 py-3">
               {/* 첫 번째 이미지 스타일의 검색 조건 표시 */}
               <div
@@ -500,45 +507,43 @@ const HotelDetail = ({
                   <div className="flex items-center gap-2">
                     <span className="text-gray-600">체크인:</span>
                     <span className="font-medium text-gray-900">
-                      {searchParams.checkIn
-                        ? new Date(searchParams.checkIn).toLocaleDateString(
-                            "ko-KR",
-                            {
-                              year: "numeric",
-                              month: "2-digit",
-                              day: "2-digit",
-                              weekday: "short",
-                            }
-                          )
+                      {localSearchParams.checkIn
+                        ? new Date(
+                            localSearchParams.checkIn
+                          ).toLocaleDateString("ko-KR", {
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            weekday: "short",
+                          })
                         : "미선택"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-gray-600">체크아웃:</span>
                     <span className="font-medium text-gray-900">
-                      {searchParams.checkOut
-                        ? new Date(searchParams.checkOut).toLocaleDateString(
-                            "ko-KR",
-                            {
-                              year: "numeric",
-                              month: "2-digit",
-                              day: "2-digit",
-                              weekday: "short",
-                            }
-                          )
+                      {localSearchParams.checkOut
+                        ? new Date(
+                            localSearchParams.checkOut
+                          ).toLocaleDateString("ko-KR", {
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            weekday: "short",
+                          })
                         : "미선택"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-gray-600">숙박:</span>
                     <span className="font-medium text-gray-900">
-                      {searchParams.nights || 1}박
+                      {localSearchParams.nights || 1}박
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-gray-600">인원:</span>
                     <span className="font-medium text-gray-900">
-                      성인 {searchParams.adults || 2}명
+                      성인 {localSearchParams.adults || 2}명
                     </span>
                   </div>
                 </div>
@@ -562,7 +567,7 @@ const HotelDetail = ({
               {/* 세금 포함 가격 안내 */}
               <div className="flex items-center gap-1 mt-2 text-xs text-red-600">
                 <span>①</span>
-                <span>{searchParams.nights || 1}박 세금포함 가격</span>
+                <span>{localSearchParams.nights || 1}박 세금포함 가격</span>
               </div>
             </div>
           )}
@@ -625,7 +630,7 @@ const HotelDetail = ({
           aria-labelledby="rooms-heading"
         >
           <h2 id="rooms-heading" className="text-2xl font-bold mb-4">
-            {searchParams?.roomIdx ? "객실 확인" : "객실 선택"}
+            {localSearchParams?.roomIdx ? "객실 확인" : "객실 선택"}
           </h2>
           <div className="space-y-4">
             {Array.isArray(rooms) && rooms.length > 0 ? (
@@ -633,7 +638,7 @@ const HotelDetail = ({
                 <RoomCard
                   key={room.id}
                   room={room}
-                  searchParams={searchParams}
+                  searchParams={localSearchParams}
                   formatPrice={formatPrice}
                 />
               ))
@@ -690,7 +695,8 @@ const HotelDetail = ({
         <SearchConditionModal
           isOpen={isSearchModalOpen}
           onClose={() => setIsSearchModalOpen(false)}
-          searchParams={searchParams}
+          searchParams={localSearchParams}
+          onSearchParamsChange={updateLocalSearchParams}
           isPanelMode={isModal}
         />
       )}
