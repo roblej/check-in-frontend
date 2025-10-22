@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import SearchCondition from "@/components/hotelSearch/SearchCondition";
-import { useSearchStore } from "@/stores/searchStore";
 import { useRouter } from "next/navigation";
 
 /**
@@ -11,12 +10,14 @@ import { useRouter } from "next/navigation";
  * @param {boolean} props.isOpen - 모달 열림 상태
  * @param {Function} props.onClose - 모달 닫기 함수
  * @param {Object} props.searchParams - 현재 검색 조건
+ * @param {Function} [props.onSearchParamsChange] - 검색 조건 변경 콜백 (호텔 디테일용)
  * @param {boolean} [props.isPanelMode=false] - 패널 모드 여부
  */
 const SearchConditionModal = ({
   isOpen,
   onClose,
   searchParams,
+  onSearchParamsChange,
   isPanelMode = false,
 }) => {
   const [localCheckIn, setLocalCheckIn] = useState(searchParams?.checkIn || "");
@@ -26,7 +27,6 @@ const SearchConditionModal = ({
   const [localAdults, setLocalAdults] = useState(searchParams?.adults || 2);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
-  const { updateSearchParams } = useSearchStore();
   const router = useRouter();
 
   const formatDateDisplay = (date) => {
@@ -60,16 +60,18 @@ const SearchConditionModal = ({
       adults: localAdults,
     };
 
-    // Zustand 스토어 업데이트
-    updateSearchParams(newParams);
-
-    // URL 업데이트 (호텔 검색 페이지인 경우)
-    if (window.location.pathname.includes("/hotel-search")) {
-      const url = new URL(window.location);
-      url.searchParams.set("checkIn", localCheckIn);
-      url.searchParams.set("checkOut", localCheckOut);
-      url.searchParams.set("adults", localAdults);
-      router.push(url.pathname + url.search);
+    // 호텔 디테일에서 사용하는 경우 로컬 콜백 사용
+    if (onSearchParamsChange) {
+      onSearchParamsChange(newParams);
+    } else {
+      // 호텔 검색 페이지에서 사용하는 경우 URL 업데이트
+      if (window.location.pathname.includes("/hotel-search")) {
+        const url = new URL(window.location);
+        url.searchParams.set("checkIn", localCheckIn);
+        url.searchParams.set("checkOut", localCheckOut);
+        url.searchParams.set("adults", localAdults);
+        router.push(url.pathname + url.search);
+      }
     }
 
     console.log("검색 조건 변경:", newParams);
