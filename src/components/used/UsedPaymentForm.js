@@ -3,22 +3,24 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import TossPaymentsWidget from '@/components/payment/TossPaymentsWidget';
+import { useCustomerStore } from '@/stores/customerStore';
 import { usePaymentStore } from '@/stores/paymentStore';
 
 const UsedPaymentForm = ({ initialData }) => {
   const router = useRouter();
   const { loadFromStorage, clearPaymentDraft } = usePaymentStore();
+  const { customer } = useCustomerStore();
   
   // 결제 정보 상태
   const [paymentInfo, setPaymentInfo] = useState({
     ...initialData,
     usedTradeIdx: initialData.usedTradeIdx, // 거래 ID 추가
-    customerIdx: 2,
-    customerName: '주르',
-    customerEmail: 'jururu@gmail.com',
-    customerPhone: '01012345678',
-    customerCash: 1000000,
-    customerPoint: 1000000,
+    customerIdx: customer.customerIdx || 2, // 기본값 설정
+    customerName: customer.nickname,
+    customerEmail: customer.email,
+    customerPhone: customer.phone,
+    customerCash: parseInt(customer.cash),
+    customerPoint: parseInt(customer.point),
     // 결제 방식 관련 필드 추가
     useCash: 0,        // 사용할 캐시 금액
     usePoint: 0,       // 사용할 포인트 금액
@@ -58,6 +60,19 @@ const UsedPaymentForm = ({ initialData }) => {
   useEffect(() => {
     loadFromStorage();
   }, [loadFromStorage]); // loadFromStorage 의존성 추가
+
+  // customer 정보가 변경될 때 paymentInfo 업데이트
+  useEffect(() => {
+    setPaymentInfo(prev => ({
+      ...prev,
+      customerIdx: customer.customerIdx,
+      customerName: customer.nickname,
+      customerEmail: customer.email,
+      customerPhone: customer.phone,
+      customerCash: parseInt(customer.cash),
+      customerPoint: parseInt(customer.point),
+    }));
+  }, [customer]);
 
   // 페이지 이탈 시 거래 삭제 (최적화된 버전)
   useEffect(() => {
@@ -154,10 +169,10 @@ const UsedPaymentForm = ({ initialData }) => {
 
   // 폼 유효성 검사 (useMemo로 최적화)
   const isFormValid = useMemo(() => {
-    if (!paymentInfo.customerName.trim()) return false;
-    if (!paymentInfo.customerEmail.trim()) return false;
+    if (!paymentInfo.customerName) return false;
+    if (!paymentInfo.customerEmail) return false;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentInfo.customerEmail)) return false;
-    if (!paymentInfo.customerPhone.trim()) return false;
+    if (!paymentInfo.customerPhone) return false;
     if (!/^[0-9-+\s]+$/.test(paymentInfo.customerPhone)) return false;
     return true;
   }, [paymentInfo.customerName, paymentInfo.customerEmail, paymentInfo.customerPhone]);
@@ -166,17 +181,17 @@ const UsedPaymentForm = ({ initialData }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!paymentInfo.customerName.trim()) {
+    if (!paymentInfo.customerName) {
       newErrors.customerName = '구매자 이름을 입력해주세요.';
     }
 
-    if (!paymentInfo.customerEmail.trim()) {
+    if (!paymentInfo.customerEmail) {
       newErrors.customerEmail = '이메일을 입력해주세요.';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentInfo.customerEmail)) {
       newErrors.customerEmail = '올바른 이메일 형식을 입력해주세요.';
     }
 
-    if (!paymentInfo.customerPhone.trim()) {
+    if (!paymentInfo.customerPhone) {
       newErrors.customerPhone = '전화번호를 입력해주세요.';
     } else if (!/^[0-9-+\s]+$/.test(paymentInfo.customerPhone)) {
       newErrors.customerPhone = '올바른 전화번호 형식을 입력해주세요.';
@@ -512,7 +527,7 @@ const UsedPaymentForm = ({ initialData }) => {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="text-sm font-medium text-gray-700">
-                      캐시 사용 (보유: {paymentInfo.customerCash.toLocaleString()}원)
+                      캐시 사용 (보유: {paymentInfo.customerCash.toString()}원)
                     </label>
                     <button
                       onClick={useAllCash}
