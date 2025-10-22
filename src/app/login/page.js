@@ -6,9 +6,10 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import styles from "./login.module.css";
 import axios from "axios";
-
+import { useCustomerStore } from "@/stores/customerStore"
 export default function LoginPage() {
   const router = useRouter();
+  const { setCustomer } = useCustomerStore();
   const [formData, setFormData] = useState({
     id: "",
     password: "",
@@ -17,6 +18,8 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  let customer = {};
+
   const login_url = "/api/login";
   // 입력 필드 변경 핸들러
   const handleChange = (e) => {
@@ -37,9 +40,15 @@ export default function LoginPage() {
     }
   };
 
-  function login(){
-    axios.post(login_url, formData).then(function(res){
+  async function login(){
+    await axios.post(login_url, formData).then(function(res){
+      console.log("res.data");
       console.log(res.data);
+      if(res.data){
+        customer = res.data;
+        console.log("customer");
+        console.log(customer);
+      }
     })
   };
 
@@ -66,10 +75,10 @@ export default function LoginPage() {
     if (!validateForm()) {
       return;
     }
-    login();
+    await login();
     setIsSubmitting(true);
 
-    try {
+    if(customer.customerIdx) {
       // TODO: API 연동
       // const response = await axios.post('/api/auth/login', {
       //   id: formData.id,
@@ -80,17 +89,22 @@ export default function LoginPage() {
       // 임시: 콘솔에 데이터 출력
       console.log("로그인 데이터:", { ...formData, rememberMe });
 
+      //zustand에 사용자 정보 저장
+
+      //로그인 버튼 로그아웃으로 변경
+      
       // 성공 시 메인 페이지로 이동
-      alert("로그인 성공!");
+      alert("로그인 성공");
+      setCustomer(customer);
+
       router.push("/");
-    } catch (error) {
-      console.error("로그인 실패:", error);
+    } else {
       setErrors({
         general: "아이디 또는 비밀번호가 올바르지 않습니다.",
       });
-    } finally {
-      setIsSubmitting(false);
     }
+      setIsSubmitting(false);
+    
   };
 
   // Enter 키 처리
