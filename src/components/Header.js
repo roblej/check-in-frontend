@@ -1,8 +1,9 @@
 'use client';
 
 import Link from "next/link";
-
+import { useCustomerStore } from "@/stores/customerStore";
 const Header = () => {
+  const { customer } = useCustomerStore();
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">

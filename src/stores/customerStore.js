@@ -19,7 +19,9 @@ export const useCustomerStore = create(
             totalPrice: "",
             point: "",
             provider: "",
-            joinDate: ""},
+            joinDate: "",
+            inlogged: false,
+        },
 
             setCustomer: (customerData) => {
                 // 구조 분해 할당을 이용해 필요한 필드만 추출 (password는 버림)
