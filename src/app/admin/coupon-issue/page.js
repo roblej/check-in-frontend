@@ -3,8 +3,12 @@
 import { useState, useEffect } from 'react';
 import { Search, Gift, User, Calendar, DollarSign, CheckCircle, XCircle } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import axios from 'axios';
 
 const CouponIssueManagement = () => {
+
+  const api_url = "/api/admin/couponIssue";
+
   const [templates, setTemplates] = useState([]);
   const [issuedCoupons, setIssuedCoupons] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,6 +17,17 @@ const CouponIssueManagement = () => {
   const [customers, setCustomers] = useState([]);
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+
+  function getDate(){
+    axios.get(api_url).then(res => {
+      console.log(res.data);
+      setTemplates(res.data);
+    });
+  }
+
+  useEffect(() => {
+    getDate();
+  }, []);
 
   // 더미 데이터
   useEffect(() => {

@@ -3,8 +3,12 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import MasterLayout from '@/components/master/MasterLayout';
+import axios from 'axios';
 
 const CouponTemplateManagement = () => {
+
+  const api_url = "/api/master/couponTemplates";
+
   const [templates, setTemplates] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
@@ -15,61 +19,15 @@ const CouponTemplateManagement = () => {
     status: true
   });
 
-  // 더미 데이터
+  function getDate(){
+    axios.get(api_url).then(res => {
+      console.log(res.data);
+      setTemplates(res.data);
+    });
+  }
+
   useEffect(() => {
-    const dummyTemplates = [
-      {
-        templateIdx: 1,
-        templateName: '여름휴가 쿠폰',
-        discount: 10000,
-        validDays: 30,
-        status: true,
-        adminIdx: 1,
-        createdAt: '2024-10-01T09:00:00',
-        updatedAt: '2024-10-01T09:00:00'
-      },
-      {
-        templateIdx: 2,
-        templateName: '겨울휴가 쿠폰',
-        discount: 15000,
-        validDays: 30,
-        status: true,
-        adminIdx: 1,
-        createdAt: '2024-10-05T10:30:00',
-        updatedAt: '2024-10-05T10:30:00'
-      },
-      {
-        templateIdx: 3,
-        templateName: '추석 특별 쿠폰',
-        discount: 20000,
-        validDays: 30,
-        status: false,
-        adminIdx: 1,
-        createdAt: '2024-09-15T14:20:00',
-        updatedAt: '2024-09-15T14:20:00'
-      },
-      {
-        templateIdx: 4,
-        templateName: '브론즈 생일 쿠폰',
-        discount: 3000,
-        validDays: 30,
-        status: true,
-        adminIdx: 1,
-        createdAt: '2024-10-10T11:15:00',
-        updatedAt: '2024-10-10T11:15:00'
-      },
-      {
-        templateIdx: 5,
-        templateName: '골드 생일 쿠폰',
-        discount: 10000,
-        validDays: 30,
-        status: true,
-        adminIdx: 1,
-        createdAt: '2024-10-12T16:45:00',
-        updatedAt: '2024-10-12T16:45:00'
-      }
-    ];
-    setTemplates(dummyTemplates);
+    getDate();
   }, []);
 
   const handleSubmit = (e) => {
