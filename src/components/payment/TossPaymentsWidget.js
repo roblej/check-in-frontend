@@ -4,17 +4,19 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Script from 'next/script';
 
-const TossPaymentsWidget = ({ 
-  clientKey, 
-  customerKey, 
-  amount, 
-  orderId, 
-  orderName, 
-  customerName, 
-  customerEmail, 
+const TossPaymentsWidget = ({
+  clientKey,
+  customerKey,
+  amount,
+  orderId,
+  orderName,
+  customerName,
+  customerEmail,
   customerMobilePhone,
   onSuccess,
-  onFail 
+  onFail,
+  successUrl,
+  failUrl
 }) => {
   const widgetRef = useRef(null);
   const router = useRouter();
@@ -52,8 +54,9 @@ const TossPaymentsWidget = ({
               customerName,
               customerEmail,
               customerMobilePhone,
-              successUrl: `${window.location.origin}/checkout/success`,
-              failUrl: `${window.location.origin}/checkout/fail`,
+              // JavaScript 콜백을 사용하므로 URL 리다이렉트 비활성화
+              // successUrl: successUrl || `${window.location.origin}/checkout/success`,
+              // failUrl: failUrl || `${window.location.origin}/checkout/fail`,
             };
             
             console.log('결제 데이터:', paymentData);
