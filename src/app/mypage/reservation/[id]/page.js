@@ -1,41 +1,94 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Calendar, MapPin, User, Phone, Mail, CreditCard, Home } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { mypageAPI } from '@/lib/api/mypage';
 
 export default function ReservationDetailPage() {
   const router = useRouter();
   const params = useParams();
   const reservationId = params.id;
 
-  // 더미 예약 상세 데이터
-  const reservation = {
-    id: reservationId,
-    reservationNumber: 'RES202510001',
-    hotelName: '그랜드 하얏트 서울',
-    hotelAddress: '서울특별시 용산구 이태원로 322',
-    location: '서울 강남구',
-    checkIn: '2025.10.20',
-    checkInTime: '15:00',
-    checkOut: '2025.10.22',
-    checkOutTime: '11:00',
-    nights: 2,
-    roomType: '디럭스 트윈',
-    roomCount: 1,
-    guestCount: 2,
-    price: 450000,
-    discount: 50000,
-    totalPrice: 400000,
-    status: '예약확정',
-    paymentMethod: '신용카드',
-    paymentDate: '2025.10.15',
-    guestName: '홍길동',
-    guestPhone: '010-1234-5678',
-    guestEmail: 'gildong@example.com',
-    specialRequest: '높은 층 객실 요청',
+  // 상태 관리
+  const [reservation, setReservation] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // 예약 상세 정보 불러오기
+  useEffect(() => {
+    const loadReservationDetail = async () => {
+      setIsLoading(true);
+      try {
+        console.log('📤 예약 상세 조회:', reservationId);
+        
+        // 백엔드 API 호출
+        const data = await mypageAPI.getReservationDetail(reservationId);
+        
+        console.log('📥 받은 상세 데이터:', data);
+        
+        setReservation(data);
+        setError(null);
+        
+      } catch (err) {
+        console.error('❌ 예약 상세 조회 실패:', err);
+        setError(err.response?.data?.message || '예약 정보를 불러올 수 없습니다.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (reservationId) {
+      loadReservationDetail();
+    }
+  }, [reservationId]);
+
+  // 숙박 일수 계산
+  const calculateNights = (checkIn, checkOut) => {
+    if (!checkIn || !checkOut) return 0;
+    const start = new Date(checkIn.replace(/\./g, '-'));
+    const end = new Date(checkOut.replace(/\./g, '-'));
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   };
+
+  // 로딩 중
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex justify-center items-center py-20">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="ml-3 text-gray-600">예약 정보를 불러오는 중...</span>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // 에러 발생
+  if (error || !reservation) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <p className="text-red-600 mb-4">{error || '예약 정보를 찾을 수 없습니다.'}</p>
+            <button
+              onClick={() => router.push('/mypage')}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
+              마이페이지로 돌아가기
+            </button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -58,9 +111,14 @@ export default function ReservationDetailPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm text-gray-500 mb-1">예약번호</p>
-              <p className="text-xl font-bold text-gray-900">{reservation.reservationNumber}</p>
+              <p className="text-xl font-bold text-gray-900">{reservation.reservationNumber || `R${reservation.id}`}</p>
             </div>
-            <span className="px-4 py-2 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
+            <span className={`px-4 py-2 text-sm font-medium rounded-full ${
+              reservation.status === '예약확정' ? 'bg-blue-100 text-blue-700' :
+              reservation.status === '이용완료' ? 'bg-green-100 text-green-700' :
+              reservation.status === '취소완료' ? 'bg-red-100 text-red-700' :
+              'bg-gray-100 text-gray-700'
+            }`}>
               {reservation.status}
             </span>
           </div>
@@ -80,9 +138,9 @@ export default function ReservationDetailPage() {
             <div>
               <p className="text-sm text-gray-500 flex items-center gap-1">
                 <MapPin className="w-4 h-4" />
-                주소
+                위치
               </p>
-              <p className="text-gray-900">{reservation.hotelAddress}</p>
+              <p className="text-gray-900">{reservation.location}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">객실 타입</p>
@@ -101,61 +159,20 @@ export default function ReservationDetailPage() {
             <div>
               <p className="text-sm text-gray-500">체크인</p>
               <p className="text-lg font-medium text-gray-900">{reservation.checkIn}</p>
-              <p className="text-sm text-gray-500">{reservation.checkInTime} 이후</p>
+              <p className="text-sm text-gray-500">15:00 이후</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">체크아웃</p>
               <p className="text-lg font-medium text-gray-900">{reservation.checkOut}</p>
-              <p className="text-sm text-gray-500">{reservation.checkOutTime} 까지</p>
+              <p className="text-sm text-gray-500">11:00 까지</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">숙박 일수</p>
-              <p className="text-gray-900">{reservation.nights}박</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">객실 수</p>
-              <p className="text-gray-900">{reservation.roomCount}개</p>
+              <p className="text-gray-900">{calculateNights(reservation.checkIn, reservation.checkOut)}박</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">투숙 인원</p>
-              <p className="text-gray-900">{reservation.guestCount}명</p>
-            </div>
-          </div>
-          {reservation.specialRequest && (
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-gray-500 mb-1">특별 요청사항</p>
-              <p className="text-gray-900">{reservation.specialRequest}</p>
-            </div>
-          )}
-        </div>
-
-        {/* 투숙객 정보 */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <User className="w-6 h-6 text-blue-600" />
-            투숙객 정보
-          </h2>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <User className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">이름</p>
-                <p className="text-gray-900">{reservation.guestName}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Phone className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">연락처</p>
-                <p className="text-gray-900">{reservation.guestPhone}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Mail className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">이메일</p>
-                <p className="text-gray-900">{reservation.guestEmail}</p>
-              </div>
+              <p className="text-gray-900">{reservation.guest || 0}명</p>
             </div>
           </div>
         </div>
@@ -167,25 +184,19 @@ export default function ReservationDetailPage() {
             결제 정보
           </h2>
           <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">객실 요금</span>
-              <span className="text-gray-900">{reservation.price.toLocaleString()}원</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">할인</span>
-              <span className="text-red-600">-{reservation.discount.toLocaleString()}원</span>
-            </div>
             <div className="border-t border-gray-200 pt-3 flex justify-between">
               <span className="text-lg font-bold text-gray-900">총 결제금액</span>
-              <span className="text-2xl font-bold text-blue-600">{reservation.totalPrice.toLocaleString()}원</span>
+              <span className="text-2xl font-bold text-blue-600">{(reservation.totalprice || 0).toLocaleString()}원</span>
             </div>
+            {reservation.refundAmount && (
+              <div className="flex justify-between pt-3 border-t border-gray-200">
+                <span className="text-gray-600">환불 금액</span>
+                <span className="text-red-600">{reservation.refundAmount.toLocaleString()}원</span>
+              </div>
+            )}
             <div className="flex justify-between pt-3 border-t border-gray-200">
-              <span className="text-gray-600">결제 수단</span>
-              <span className="text-gray-900">{reservation.paymentMethod}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">결제 일시</span>
-              <span className="text-gray-900">{reservation.paymentDate}</span>
+              <span className="text-gray-600">예약 일시</span>
+              <span className="text-gray-900">{reservation.createdAt}</span>
             </div>
           </div>
         </div>
@@ -193,21 +204,23 @@ export default function ReservationDetailPage() {
         {/* 액션 버튼 */}
         <div className="flex gap-3">
           <button
-            onClick={() => router.push(`/hotel/${reservation.id}?tab=location`)}
+            onClick={() => router.push(`/hotel/${reservation.contentId}?tab=location`)}
             className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
           >
             호텔 위치 보기
           </button>
-          <button
-            onClick={() => {
-              if (confirm('예약을 취소하시겠습니까?')) {
-                router.push(`/mypage/reservation/${reservationId}/cancel`);
-              }
-            }}
-            className="flex-1 px-6 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors"
-          >
-            예약 취소
-          </button>
+          {reservation.status === '예약확정' && (
+            <button
+              onClick={() => {
+                if (confirm('예약을 취소하시겠습니까?')) {
+                  router.push(`/mypage/reservation/${reservationId}/cancel`);
+                }
+              }}
+              className="flex-1 px-6 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors"
+            >
+              예약 취소
+            </button>
+          )}
         </div>
       </div>
 

@@ -33,9 +33,44 @@ export default function MyPage() {
 
   // 초기 데이터 로드
   useEffect(() => {
-    loadReservations('upcoming'); // 페이지 로드 시 '이용 예정' 탭 데이터 불러오기
+    // 페이지 로드 시 모든 탭의 데이터를 불러와서 카운트를 정확히 표시
+    loadAllReservations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 모든 예약 상태 데이터 불러오기 (초기 로드용)
+  const loadAllReservations = async () => {
+    setIsLoading(true);
+    try {
+      // 세 가지 상태를 병렬로 불러오기
+      const [upcomingData, completedData, cancelledData] = await Promise.all([
+        mypageAPI.getReservations('upcoming'),
+        mypageAPI.getReservations('completed'),
+        mypageAPI.getReservations('cancelled')
+      ]);
+
+      setReservations({
+        upcoming: upcomingData.reservations || [],
+        completed: completedData.reservations || [],
+        cancelled: cancelledData.reservations || []
+      });
+
+      console.log('📥 전체 예약 데이터 로드 완료:', {
+        upcoming: upcomingData.reservations?.length || 0,
+        completed: completedData.reservations?.length || 0,
+        cancelled: cancelledData.reservations?.length || 0
+      });
+
+    } catch (error) {
+      console.error('❌ 예약 내역 로드 실패:', error);
+      
+      if (error.message === 'Network Error') {
+        console.warn('⚠️ 백엔드 서버에 연결할 수 없습니다.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // 예약 내역 API 호출
   const loadReservations = async (status) => {
@@ -325,7 +360,7 @@ export default function MyPage() {
             
             {/* 예약 목록 */}
             {!reservationsLoading && reservations[reservationTab].map((reservation) => (
-              <div key={reservation.id} className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all">
+              <div key={reservation.id || reservation.reservationNumber} className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all">
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">{reservation.hotelName}</h3>
@@ -358,7 +393,7 @@ export default function MyPage() {
                   </div>
                   <div>
                     <span className="text-gray-500">총 결제금액</span>
-                    <p className="font-bold text-blue-600">{reservation.price.toLocaleString()}원</p>
+                    <p className="font-bold text-blue-600">{(reservation.totalprice ?? 0).toLocaleString()}원</p>
                   </div>
                 </div>
 
