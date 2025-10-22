@@ -32,25 +32,21 @@ const SuccessPage = () => {
           amount,
           type,
           message: "중고 호텔 결제가 완료되었습니다.",
-          qrUrl: `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${orderId}`,
-          receiptUrl: `https://api.tosspayments.com/v1/payments/${paymentKey}/receipt`,
-          emailSent: true,
         });
         setLoading(false);
         return;
       }
 
       try {
-        // 호텔 예약의 경우 URL 파라미터에서 직접 정보를 가져와서 표시
-        setResult({
-          orderId,
-          paymentKey,
-          amount,
-          type,
-          qrUrl: `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${orderId}`,
-          receiptUrl: `https://api.tosspayments.com/v1/payments/${paymentKey}/receipt`,
-          emailSent: true,
+        const res = await fetch("/api/payments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentKey, orderId, amount, type }),
         });
+
+        if (!res.ok) throw new Error("결제 처리 실패");
+        const data = await res.json();
+        setResult(data);
       } catch (e) {
         setError(e?.message || "서버 오류가 발생했습니다.");
       } finally {
@@ -102,7 +98,6 @@ const SuccessPage = () => {
   const qrUrl = result?.qrUrl;
   const receipt = result?.receiptUrl;
   const isUsedHotel = search.get("type") === "used_hotel";
-  const isHotelReservation = search.get("type") === "hotel_reservation";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -115,19 +110,13 @@ const SuccessPage = () => {
 
           {/* 제목 */}
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            {isUsedHotel
-              ? "중고 호텔 예약 완료!"
-              : isHotelReservation
-              ? "호텔 예약 완료!"
-              : "결제가 완료되었습니다"}
+            {isUsedHotel ? "중고 호텔 예약 완료!" : "결제가 완료되었습니다"}
           </h1>
 
           {/* 설명 */}
           <p className="text-gray-600 mb-8">
             {isUsedHotel
               ? "중고 호텔 예약이 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."
-              : isHotelReservation
-              ? "호텔 예약이 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."
               : "결제가 성공적으로 완료되었습니다."}
           </p>
 
@@ -180,7 +169,7 @@ const SuccessPage = () => {
           </div>
 
           {/* 안내 메시지 */}
-          {(isUsedHotel || isHotelReservation) && (
+          {isUsedHotel && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
               <h3 className="font-semibold text-blue-900 mb-2">
                 📧 예약 확인서 발송

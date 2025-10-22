@@ -68,8 +68,12 @@ const TossPaymentsWidget = ({
               // failUrl: failUrl || `${window.location.origin}/checkout/fail`,
             };
 
-            console.log("결제 데이터:", paymentData);
-            console.log("amount 타입:", typeof amount, "값:", amount);
+            console.log("결제 데이터 (민감정보 제외):", {
+              orderId: paymentData.orderId,
+              orderName: paymentData.orderName,
+              amount: paymentData.amount,
+              customerName: paymentData.customerName ? "***" : undefined,
+            });
 
             // 토스페이먼츠 결제 요청
             const paymentResult = await tossPayments.requestPayment(
@@ -77,7 +81,11 @@ const TossPaymentsWidget = ({
               paymentData
             );
 
-            console.log("결제 결과:", paymentResult);
+            console.log("결제 결과 (민감정보 제외):", {
+              paymentKey: paymentResult.paymentKey ? "***" : undefined,
+              orderId: paymentResult.orderId,
+              amount: paymentResult.amount,
+            });
 
             // 결제 성공 시 백엔드로 검증 요청
             if (paymentResult && paymentResult.paymentKey) {
@@ -95,6 +103,11 @@ const TossPaymentsWidget = ({
         const verifyPaymentWithBackend = async (paymentResult) => {
           try {
             console.log("백엔드 결제 검증 시작...");
+            console.log("paymentResult (민감정보 제외):", {
+              paymentKey: paymentResult.paymentKey ? "***" : undefined,
+              orderId: paymentResult.orderId,
+              amount: paymentResult.amount,
+            });
 
             // TODO: 로그인 상태 확인 및 사용자 인증 토큰 추가
             // TODO: 결제 전 예약 가능 여부 사전 체크 API 호출
@@ -102,35 +115,73 @@ const TossPaymentsWidget = ({
             // TODO: 포인트 사용 로직 추가
             // TODO: 결제 금액 검증 로직 추가
 
-            const response = await fetch("/api/payments/confirm", {
+            // 중고 호텔 결제인지 확인 (orderId에 'used_hotel'이 포함된 경우)
+            const isUsedHotelPayment =
+              orderId && orderId.includes("used_hotel");
+
+            const requestData = {
+              paymentKey: paymentResult.paymentKey,
+              orderId: paymentResult.orderId,
+              amount:
+                paymentResult.amount || paymentResult.totalAmount || amount, // amount 우선 사용
+              type: isUsedHotelPayment ? "used_hotel" : "hotel_reservation",
+              customerIdx: 1, // TODO: 실제 로그인된 사용자 ID 사용
+              contentId: hotelInfo?.contentId || hotelInfo?.hotelId?.toString(),
+              roomId: hotelInfo?.roomId,
+              checkIn: hotelInfo?.checkIn,
+              checkOut: hotelInfo?.checkOut,
+              guests: hotelInfo?.guests,
+              nights: hotelInfo?.nights,
+              roomPrice: hotelInfo?.roomPrice,
+              totalPrice: hotelInfo?.totalPrice,
+              customerName: customerInfo?.name || customerName,
+              customerEmail: customerInfo?.email || customerEmail,
+              customerPhone: customerInfo?.phone || customerMobilePhone,
+              specialRequests: customerInfo?.specialRequests,
+              method: "card",
+              pointsUsed: 0, // TODO: 실제 포인트 사용량 계산
+              cashUsed: 0, // TODO: 현금 결제 로직 추가
+              // 중고 호텔 결제를 위한 추가 필드
+              ...(isUsedHotelPayment && {
+                usedItemIdx: hotelInfo?.usedItemIdx,
+                usedTradeIdx: hotelInfo?.usedTradeIdx,
+                hotelName: hotelInfo?.hotelName,
+                roomType: hotelInfo?.roomType,
+                salePrice: hotelInfo?.salePrice,
+                paymentInfo: {
+                  useCash: 0, // TODO: 실제 캐시 사용량
+                  usePoint: 0, // TODO: 실제 포인트 사용량
+                  actualPaymentAmount:
+                    paymentResult.amount || paymentResult.totalAmount || amount,
+                  paymentMethod: "card",
+                },
+              }),
+            };
+
+            console.log("백엔드로 전송할 데이터 (민감정보 제외):", {
+              paymentKey: requestData.paymentKey ? "***" : undefined,
+              orderId: requestData.orderId,
+              amount: requestData.amount,
+              type: requestData.type,
+              customerIdx: requestData.customerIdx,
+            });
+
+            // 중고 호텔 결제인 경우 다른 엔드포인트 사용
+            const apiEndpoint = isUsedHotelPayment
+              ? "/api/payments" // 중고 호텔은 프론트엔드 API 라우트 사용
+              : `${
+                  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
+                }/api/payments/confirm`; // 일반 호텔은 백엔드 직접 호출
+
+            console.log("API 엔드포인트:", apiEndpoint);
+
+            const response = await fetch(apiEndpoint, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 // TODO: Authorization 헤더 추가 (JWT 토큰)
               },
-              body: JSON.stringify({
-                paymentKey: paymentResult.paymentKey,
-                orderId: paymentResult.orderId,
-                amount: paymentResult.totalAmount,
-                type: "hotel_reservation",
-                customerIdx: 1, // TODO: 실제 로그인된 사용자 ID 사용
-                contentId:
-                  hotelInfo?.contentId || hotelInfo?.hotelId?.toString(),
-                roomId: hotelInfo?.roomId,
-                checkIn: hotelInfo?.checkIn,
-                checkOut: hotelInfo?.checkOut,
-                guests: hotelInfo?.guests,
-                nights: hotelInfo?.nights,
-                roomPrice: hotelInfo?.roomPrice,
-                totalPrice: hotelInfo?.totalPrice,
-                customerName: customerInfo?.name || customerName,
-                customerEmail: customerInfo?.email || customerEmail,
-                customerPhone: customerInfo?.phone || customerMobilePhone,
-                specialRequests: customerInfo?.specialRequests,
-                method: "card",
-                pointsUsed: 0, // TODO: 실제 포인트 사용량 계산
-                cashUsed: 0, // TODO: 현금 결제 로직 추가
-              }),
+              body: JSON.stringify(requestData),
             });
 
             const result = await response.json();

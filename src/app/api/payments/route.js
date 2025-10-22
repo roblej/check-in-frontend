@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
+import nodemailer from "nodemailer";
 
-/**
- * 결제 처리 API 라우트
- * 호텔 예약은 백엔드로 전달, 중고 호텔은 직접 처리합니다.
- */
-export async function POST(request) {
+export async function POST(req) {
   try {
-    const body = await request.json();
+    const body = await req.json();
+    console.log("결제 API 요청 받음 (민감정보 제외):", {
+      paymentKey: body.paymentKey ? "***" : undefined,
+      orderId: body.orderId,
+      amount: body.amount,
+      type: body.type,
+    });
+
     const {
       paymentKey,
       orderId,
       amount,
-      type,
       // 중고 호텔 관련 필드들
       usedItemIdx,
       usedTradeIdx,
@@ -19,14 +22,25 @@ export async function POST(request) {
       paymentInfo,
       hotelInfo,
       customerInfo,
-    } = body;
+    } = body || {};
+
+    console.log("파싱된 데이터 (민감정보 제외):", {
+      paymentKey: paymentKey ? "***" : undefined,
+      orderId,
+      amount,
+      usedItemIdx,
+      usedTradeIdx,
+      totalAmount,
+      type: body.type,
+    });
 
     if (!paymentKey || !orderId || !amount) {
+      console.error("필수 파라미터 누락:", { paymentKey, orderId, amount });
       return NextResponse.json({ message: "invalid params" }, { status: 400 });
     }
 
     // 중고 호텔 결제인 경우 직접 처리 (팀원 기능 보존)
-    if (type === "used_hotel" || usedTradeIdx) {
+    if (usedTradeIdx) {
       return await handleUsedHotelPayment({
         paymentKey,
         orderId,
@@ -40,32 +54,82 @@ export async function POST(request) {
     }
 
     // 호텔 예약인 경우 백엔드로 전달 (당신 기능)
-    const backendResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/payments/confirm`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          paymentKey,
-          orderId,
-          amount,
-          type,
-        }),
+    try {
+      const backendRequestData = {
+        paymentKey,
+        orderId,
+        amount,
+        type: "hotel_reservation",
+        customerIdx: body.customerIdx || 1, // 기본값 설정
+        contentId: body.contentId,
+        roomId: body.roomId,
+        checkIn: body.checkIn,
+        checkOut: body.checkOut,
+        guests: body.guests,
+        nights: body.nights,
+        roomPrice: body.roomPrice,
+        totalPrice: body.totalPrice,
+        customerName: body.customerName,
+        customerEmail: body.customerEmail,
+        customerPhone: body.customerPhone,
+        specialRequests: body.specialRequests,
+        method: body.method || "card",
+        pointsUsed: body.pointsUsed || 0,
+        cashUsed: body.cashUsed || 0,
+      };
+
+      console.log("백엔드로 전송할 데이터 (민감정보 제외):", {
+        paymentKey: backendRequestData.paymentKey ? "***" : undefined,
+        orderId: backendRequestData.orderId,
+        amount: backendRequestData.amount,
+        type: backendRequestData.type,
+      });
+      console.log(
+        "백엔드 URL:",
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
+        }/api/payments/confirm`
+      );
+
+      const backendResponse = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
+        }/api/payments/confirm`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(backendRequestData),
+        }
+      );
+
+      console.log("백엔드 응답 상태:", backendResponse.status);
+      console.log(
+        "백엔드 응답 헤더:",
+        Object.fromEntries(backendResponse.headers.entries())
+      );
+
+      if (!backendResponse.ok) {
+        const errorText = await backendResponse.text();
+        console.error("백엔드 오류 응답:", errorText);
+        throw new Error(`백엔드 결제 검증 실패: ${errorText}`);
       }
-    );
 
-    if (!backendResponse.ok) {
-      throw new Error("백엔드 결제 검증 실패");
+      const result = await backendResponse.json();
+      console.log("백엔드 응답 데이터:", result);
+      return NextResponse.json(result);
+    } catch (error) {
+      console.error("호텔 예약 결제 처리 오류:", error);
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: 500 }
+      );
     }
-
-    const result = await backendResponse.json();
-    return NextResponse.json(result);
-  } catch (error) {
-    console.error("결제 처리 오류:", error);
+  } catch (e) {
+    console.error("결제 처리 오류:", e);
     return NextResponse.json(
-      { success: false, message: error.message },
+      { message: e?.message || "server error" },
       { status: 500 }
     );
   }
@@ -85,13 +149,7 @@ async function handleUsedHotelPayment({
   customerInfo,
 }) {
   try {
-    console.log("중고 호텔 결제 처리 시작:", {
-      usedTradeIdx,
-      paymentKey,
-      orderId,
-      amount,
-    });
-
+    // TODO: Verify with Toss Payments server API here (omitted/mocked)
     const now = new Date();
     const orderIdx =
       Number(orderId.replace(/\D/g, "").slice(-5)) ||
@@ -109,45 +167,52 @@ async function handleUsedHotelPayment({
     )}`;
 
     // 중고 호텔 결제인 경우 UsedPay 테이블에 저장
-    if (usedTradeIdx) {
-      try {
-        const paymentData = {
-          usedTradeIdx: usedTradeIdx,
-          paymentKey: paymentKey,
-          orderId: orderId,
-          totalAmount: totalAmount || amount,
-          cashAmount: paymentInfo?.useCash || 0,
-          pointAmount: paymentInfo?.usePoint || 0,
-          cardAmount: paymentInfo?.actualPaymentAmount || amount,
-          paymentMethod: paymentInfo?.paymentMethod || "card",
-          status: 1, // 결제 완료
-          receiptUrl: `https://toss.im/payments/receipt/${orderId}`,
-          qrUrl: qrUrl,
-          approvedAt: now.toISOString(),
-        };
+    try {
+      console.log("중고 호텔 결제 처리 시작:", {
+        usedTradeIdx,
+        paymentKey,
+        orderId,
+        amount,
+      });
 
-        // 백엔드 API 호출하여 UsedPay 테이블에 저장
-        const backendUrl = "http://localhost:8888/api/used-hotels/payment";
-        const backendResponse = await fetch(backendUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(paymentData),
-        });
+      const paymentData = {
+        usedTradeIdx: usedTradeIdx,
+        paymentKey: paymentKey,
+        orderId: orderId,
+        totalAmount: totalAmount || amount,
+        cashAmount: paymentInfo?.useCash || 0,
+        pointAmount: paymentInfo?.usePoint || 0,
+        cardAmount: paymentInfo?.actualPaymentAmount || amount,
+        paymentMethod: paymentInfo?.paymentMethod || "card",
+        status: 1, // 결제 완료
+        receiptUrl: `https://toss.im/payments/receipt/${orderId}`,
+        qrUrl: qrUrl,
+        approvedAt: now.toISOString(),
+      };
 
-        if (!backendResponse.ok) {
-          const errorData = await backendResponse.json();
-          console.error("UsedPay 저장 실패:", errorData.message);
-          throw new Error(`결제 내역 저장 실패: ${errorData.message}`);
-        }
+      // 백엔드 API 호출하여 UsedPay 테이블에 저장
+      const backendUrl = `${
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
+      }/api/used-hotels/payment`;
 
-        const savedPayment = await backendResponse.json();
-        console.log("UsedPay 저장 완료:", savedPayment);
-      } catch (dbError) {
-        console.error("데이터베이스 저장 오류:", dbError);
-        // DB 저장 실패해도 결제는 완료된 상태이므로 계속 진행
+      const backendResponse = await fetch(backendUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(paymentData),
+      });
+
+      if (!backendResponse.ok) {
+        const errorData = await backendResponse.json();
+        console.error("UsedPay 저장 실패:", errorData.message);
+        throw new Error(`결제 내역 저장 실패: ${errorData.message}`);
       }
+
+      const savedPayment = await backendResponse.json();
+    } catch (dbError) {
+      console.error("데이터베이스 저장 오류:", dbError);
+      // DB 저장 실패해도 결제는 완료된 상태이므로 계속 진행
     }
 
     // Send email via SendGrid SMTP (using nodemailer) - 선택적 실행
@@ -162,16 +227,21 @@ async function handleUsedHotelPayment({
         smtpUser !== "apikey" &&
         smtpPass !== "your_sendgrid_api_key_here"
       ) {
-        const transporter = nodemailer.createTransporter({
+        const transporter = nodemailer.createTransport({
           host: "smtp.sendgrid.net",
           port: 587,
           secure: false,
           auth: { user: smtpUser, pass: smtpPass },
         });
 
-        const subject = `🎉 중고 호텔 결제 완료 - ${orderId}`;
+        // 중고 호텔과 일반 호텔 이메일 구분
+        const isUsedHotel = !!usedTradeIdx;
+        const subject = isUsedHotel
+          ? `🎉 중고 호텔 결제 완료 - ${orderId}`
+          : `결제 완료 안내 - ${orderId}`;
 
-        const emailHtml = `
+        const emailHtml = isUsedHotel
+          ? `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #3b82f6;">🎉 중고 호텔 결제 완료</h2>
             <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px;">
@@ -189,6 +259,12 @@ async function handleUsedHotelPayment({
               <p style="font-size: 12px; color: #666;">QR 코드로 예약 확인이 가능합니다.</p>
             </div>
           </div>
+        `
+          : `
+          <p>결제가 완료되었습니다.</p>
+          <p>주문번호: <b>${orderId}</b></p>
+          <p>금액: <b>${amount.toLocaleString()}원</b></p>
+          <p><img src="${qrUrl}" alt="QR" /></p>
         `;
 
         await transporter.sendMail({
@@ -206,28 +282,51 @@ async function handleUsedHotelPayment({
       // 이메일 발송 실패해도 결제는 계속 진행
     }
 
-    // 중고 호텔 결제 응답
-    const response = {
-      success: true,
-      usedTradeIdx,
-      orderId,
-      paymentKey,
-      totalAmount: totalAmount || amount,
-      cashAmount: paymentInfo?.useCash || 0,
-      pointAmount: paymentInfo?.usePoint || 0,
-      cardAmount: paymentInfo?.actualPaymentAmount || amount,
-      paymentMethod: paymentInfo?.paymentMethod || "card",
-      receiptUrl: `https://toss.im/payments/receipt/${orderId}`,
-      qrUrl,
-      approvedAt: now.toISOString(),
-      message: "중고 호텔 결제가 완료되었습니다.",
-    };
+    // 응답 데이터 구성 (중고 호텔과 일반 호텔 구분)
+    const isUsedHotel = !!usedTradeIdx;
+
+    const response = isUsedHotel
+      ? {
+          // 중고 호텔 결제 응답
+          success: true,
+          usedTradeIdx,
+          orderId,
+          paymentKey,
+          totalAmount: totalAmount || amount,
+          cashAmount: paymentInfo?.useCash || 0,
+          pointAmount: paymentInfo?.usePoint || 0,
+          cardAmount: paymentInfo?.actualPaymentAmount || amount,
+          paymentMethod: paymentInfo?.paymentMethod || "card",
+          receiptUrl: `https://toss.im/payments/receipt/${orderId}`,
+          qrUrl,
+          approvedAt: now.toISOString(),
+          message: "중고 호텔 결제가 완료되었습니다.",
+        }
+      : {
+          // 일반 호텔 결제 응답 (기존)
+          orderIdx,
+          customerIdx: "userA01",
+          promotionPayIdx: 15,
+          couponIdx: 32,
+          price: amount,
+          status: 1,
+          paymentKey,
+          pointsUsed: 3000,
+          createdAt: now.toISOString(),
+          method: "카드",
+          receiptUrl: `https://toss.im/payments/receipt/${orderIdx}`,
+          approvedAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+          adminIdx: 3,
+          orderId,
+          qrUrl,
+        };
 
     return NextResponse.json(response);
-  } catch (error) {
-    console.error("중고 호텔 결제 처리 오류:", error);
+  } catch (e) {
+    console.error("결제 처리 오류:", e);
     return NextResponse.json(
-      { success: false, message: error.message },
+      { message: e?.message || "server error" },
       { status: 500 }
     );
   }
