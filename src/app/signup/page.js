@@ -20,7 +20,7 @@ export default function SignupPage() {
     nickname: "",
     phone: "",
     name: "",
-    birthdate: "",
+    birthday: "",
     gender: "",
   });
 
@@ -36,6 +36,7 @@ export default function SignupPage() {
     }
   },[formData.id]);
 
+  
 
   function signUp(){
     axios.post(signUp_url, formData)
@@ -137,8 +138,8 @@ export default function SignupPage() {
     }
 
     // 생년월일 검사
-    if (!formData.birthdate) {
-      newErrors.birthdate = "생년월일을 입력해주세요.";
+    if (!formData.birthday) {
+      newErrors.birthday = "생년월일을 입력해주세요.";
     }
 
     // 성별 검사
@@ -324,19 +325,19 @@ export default function SignupPage() {
 
             {/* 생년월일 */}
             <div className={styles.formGroup}>
-              <label htmlFor="birthdate" className={styles.label}>
+              <label htmlFor="birthday" className={styles.label}>
                 생년월일 <span className={styles.required}>*</span>
               </label>
               <input
                 type="date"
-                id="birthdate"
-                name="birthdate"
-                value={formData.birthdate}
+                id="birthday"
+                name="birthday"
+                value={formData.birthday}
                 onChange={handleChange}
-                className={`${styles.input} ${errors.birthdate ? styles.inputError : ""}`}
+                className={`${styles.input} ${errors.birthday ? styles.inputError : ""}`}
               />
-              {errors.birthdate && (
-                <span className={styles.errorMessage}>{errors.birthdate}</span>
+              {errors.birthday && (
+                <span className={styles.errorMessage}>{errors.birthday}</span>
               )}
             </div>
 
@@ -389,6 +390,7 @@ export default function SignupPage() {
             <button
               type="submit"
               className={styles.submitButton}
+              onClick={signUp}
               disabled={isSubmitting}
             >
               {isSubmitting ? "처리 중..." : "회원가입"}
