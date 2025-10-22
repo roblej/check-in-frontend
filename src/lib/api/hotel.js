@@ -78,7 +78,7 @@ export const hotelAPI = {
 
   // 지역코드로 호텔 목록 조회
   getHotelsByAreaCode: async (areaCode, limit = 10) => {
-    const response = await axiosInstance.get("/api/hotel/area", {
+    const response = await axiosInstance.get("hotel/area", {
       params: { areaCode, limit },
     });
     return response.data;
