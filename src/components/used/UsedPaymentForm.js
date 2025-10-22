@@ -59,6 +59,99 @@ const UsedPaymentForm = ({ initialData }) => {
     loadFromStorage();
   }, [loadFromStorage]); // loadFromStorage 의존성 추가
 
+  // 페이지 이탈 시 거래 삭제 (최적화된 버전)
+  useEffect(() => {
+    let isDeleting = false; // 삭제 중 플래그
+    let deleteTimeout = null; // 디바운싱 타이머
+
+    const deleteTradeOnExit = (reason) => {
+      if (paymentInfo.usedTradeIdx && !isDeleting) {
+        isDeleting = true; // 삭제 시작 플래그 설정
+        
+        console.log(`${reason} 감지 - 거래 삭제 시작:`, paymentInfo.usedTradeIdx);
+        
+        fetch(`/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/delete`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            reason: reason,
+            timestamp: new Date().toISOString()
+          })
+        }).then(() => {
+          console.log('거래 삭제 완료:', paymentInfo.usedTradeIdx);
+        }).catch(error => {
+          console.error('거래 삭제 실패:', error);
+          isDeleting = false; // 실패 시 플래그 리셋
+        });
+      }
+    };
+
+    const debouncedDeleteTrade = (reason) => {
+      if (deleteTimeout) {
+        clearTimeout(deleteTimeout);
+      }
+      
+      deleteTimeout = setTimeout(() => {
+        deleteTradeOnExit(reason);
+      }, 100); // 100ms 디바운싱
+    };
+
+    const handleBeforeUnload = (event) => {
+      if (paymentInfo.usedTradeIdx && !isDeleting) {
+        console.log('페이지 이탈 감지 - 거래 삭제 시작:', paymentInfo.usedTradeIdx);
+        
+        // navigator.sendBeacon으로 안전한 비동기 요청
+        const deleteData = JSON.stringify({ 
+          reason: '사용자 페이지 이탈',
+          timestamp: new Date().toISOString()
+        });
+        
+        navigator.sendBeacon(`/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/delete`, deleteData);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && paymentInfo.usedTradeIdx) {
+        debouncedDeleteTrade('사용자 페이지 숨김');
+      }
+    };
+
+    // 뒤로가기 버튼 감지
+    const handlePopState = () => {
+      debouncedDeleteTrade('사용자 뒤로가기');
+    };
+
+    // 링크 클릭 감지 (App Router용)
+    const handleLinkClick = (event) => {
+      const target = event.target.closest('a');
+      if (target && target.href && !target.href.startsWith('javascript:')) {
+        // 외부 링크가 아닌 경우에만 거래 삭제
+        if (target.href.startsWith(window.location.origin)) {
+          debouncedDeleteTrade('사용자 링크 클릭');
+        }
+      }
+    };
+
+    // 브라우저 이벤트 리스너
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('popstate', handlePopState);
+    document.addEventListener('click', handleLinkClick);
+
+    return () => {
+      // 타이머 정리
+      if (deleteTimeout) {
+        clearTimeout(deleteTimeout);
+      }
+      
+      // 브라우저 이벤트 리스너 제거
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('popstate', handlePopState);
+      document.removeEventListener('click', handleLinkClick);
+    };
+  }, [paymentInfo.usedTradeIdx]);
+
   // 폼 유효성 검사 (useMemo로 최적화)
   const isFormValid = useMemo(() => {
     if (!paymentInfo.customerName.trim()) return false;
@@ -232,6 +325,21 @@ const UsedPaymentForm = ({ initialData }) => {
   // 토스페이먼츠 결제 실패 처리
   const handlePaymentFail = (error) => {
     console.error('결제 실패:', error);
+    
+    // 결제 실패 시에도 거래 삭제
+    if (paymentInfo.usedTradeIdx) {
+      fetch(`/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          reason: '결제 실패',
+          timestamp: new Date().toISOString()
+        })
+      }).catch(deleteError => {
+        console.error('결제 실패 시 거래 삭제 실패:', deleteError);
+      });
+    }
+    
     router.push(`/checkout/fail?error=${encodeURIComponent(error.message || '결제가 취소되었습니다.')}`);
   };
 
