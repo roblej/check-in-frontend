@@ -21,6 +21,7 @@ export const useCustomerStore = create(
             provider: "",
             joinDate: "",
             inlogged: false,
+            
         },
 
             setCustomer: (customerData) => {
@@ -28,7 +29,7 @@ export const useCustomerStore = create(
                 const { 
                     customerIdx, id, rank, birthday, nickname, 
                     name, gender, phone, email, cash, 
-                    status, totalPrice, point, provider, joinDate 
+                    status, totalPrice, point, provider, joinDate , inlogged
                 } = customerData;
                 
                 // 추출된 필드만 담긴 새로운 객체를 상태로 설정합니다.
@@ -36,12 +37,31 @@ export const useCustomerStore = create(
                     customer: {
                         customerIdx, id, rank, birthday, nickname, 
                         name, gender, phone, email, cash, 
-                        status, totalPrice, point, provider, joinDate 
+                        status, totalPrice, point, provider, joinDate , inlogged
                     } 
                 });
             },
+
         getCustomer: () => get().customer,
 
+        resetCustomer: () => set({ customer: {
+            customerIdx: "",
+            id: "",
+            rank: "",
+            birthday: "",
+            nickname: "",
+            name: "",
+            gender: "",
+            phone: "",
+            email: "",
+            cash: "",
+            status: "",
+            totalPrice: "",
+            point: "",
+            provider: "",
+            joinDate: "",
+            inlogged: false,
+        } }),
 
     }),{
         name: "customer-storage",

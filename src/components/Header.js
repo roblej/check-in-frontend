@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useCustomerStore } from "@/stores/customerStore";
 const Header = () => {
-  const { customer } = useCustomerStore();
+  const { customer, resetCustomer } = useCustomerStore();
+  
+
+  const handleLogout = () => {
+    resetCustomer();
+    
+  };
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -36,8 +42,8 @@ const Header = () => {
             <a href="/mypage" className="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">
               MY
             </a>
-            <Link href="/login" className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
-              로그인
+            <Link href= {customer.inlogged ? "/" : "/login"} onClick={customer.inlogged ? handleLogout : ""} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
+              {customer.inlogged ? "로그아웃" : "로그인"} 
             </Link>
           </div>
         </div>
