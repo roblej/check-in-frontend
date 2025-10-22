@@ -5,18 +5,19 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import styles from "./login.module.css";
+import axios from "axios";
 
 export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    userId: "",
+    id: "",
     password: "",
   });
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-
+  const login_url = "/api/login";
   // 입력 필드 변경 핸들러
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -25,6 +26,8 @@ export default function LoginPage() {
       [name]: value,
     }));
 
+   
+    
     // 실시간 유효성 검사 (에러 제거)
     if (errors[name]) {
       setErrors((prev) => ({
@@ -34,12 +37,18 @@ export default function LoginPage() {
     }
   };
 
+  function login(){
+    axios.post(login_url, formData).then(function(res){
+      console.log(res.data);
+    })
+  };
+
   // 유효성 검사 함수
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.userId) {
-      newErrors.userId = "아이디를 입력해주세요.";
+    if (!formData.id) {
+      newErrors.id = "아이디를 입력해주세요.";
     }
 
     if (!formData.password) {
@@ -53,17 +62,17 @@ export default function LoginPage() {
   // 폼 제출 핸들러
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    
     if (!validateForm()) {
       return;
     }
-
+    login();
     setIsSubmitting(true);
 
     try {
       // TODO: API 연동
       // const response = await axios.post('/api/auth/login', {
-      //   userId: formData.userId,
+      //   id: formData.id,
       //   password: formData.password,
       //   rememberMe: rememberMe
       // });
@@ -107,22 +116,22 @@ export default function LoginPage() {
 
             {/* 아이디 */}
             <div className={styles.formGroup}>
-              <label htmlFor="userId" className={styles.label}>
+              <label htmlFor="id" className={styles.label}>
                 아이디
               </label>
               <input
                 type="text"
-                id="userId"
-                name="userId"
-                value={formData.userId}
+                id="id"
+                name="id"
+                value={formData.id}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                className={`${styles.input} ${errors.userId ? styles.inputError : ""}`}
+                className={`${styles.input} ${errors.id ? styles.inputError : ""}`}
                 placeholder="아이디를 입력해주세요"
                 autoComplete="username"
               />
-              {errors.userId && (
-                <span className={styles.errorMessage}>{errors.userId}</span>
+              {errors.id && (
+                <span className={styles.errorMessage}>{errors.id}</span>
               )}
             </div>
 

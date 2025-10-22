@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import HotelFilters from "./HotelFilters";
+import Pagination from "../Pagination";
 
 const HotelSearchResults = ({ 
   hotels, 
@@ -53,23 +55,6 @@ const HotelSearchResults = ({
       >
         {/* 호텔 리스트 상단 (검색 조건 & 정렬) */}
         <div className="p-4 border-b bg-white flex-shrink-0">
-          {/* 주변 필터 */}
-          <div className="flex items-center gap-2 text-xs mb-3 overflow-x-auto pb-2">
-            <span className="text-gray-600 whitespace-nowrap">주변</span>
-            <button className="px-2 py-1 border border-gray-300 rounded whitespace-nowrap hover:bg-gray-50 text-xs">
-              인천
-            </button>
-            <button className="px-2 py-1 border border-gray-300 rounded whitespace-nowrap hover:bg-gray-50 text-xs">
-              인천국제공항
-            </button>
-            <button className="px-2 py-1 border border-gray-300 rounded whitespace-nowrap hover:bg-gray-50 text-xs">
-              김포공항
-            </button>
-            <button className="px-2 py-1 border border-gray-300 rounded whitespace-nowrap hover:bg-gray-50 text-xs">
-              서울 중심지
-            </button>
-          </div>
-
           {/* 정렬 & 필터 */}
           <div className="flex items-center justify-between">
             <p className="text-xs text-red-500">{days||1}박 세금포함 가격</p>
@@ -208,6 +193,16 @@ const HotelSearchResults = ({
             )}
           </div>
 
+          {/* Pagination - 스크롤 영역 안에 포함 */}
+          <div className="mt-6">
+            <Pagination 
+              currentPage={0}
+              totalPages={4}
+              totalElements={19}
+              pageSize={10}
+              onPageChange={1}
+            />
+          </div>
         </div>
 
         {/* 필터 패널 (하단에서 올라옴 - 오버레이 없음) */}
@@ -225,77 +220,8 @@ const HotelSearchResults = ({
                 </button>
               </div>
 
-              {/* 가격 범위 */}
-              <div className="mb-6">
-                <h4 className="font-semibold mb-3">가격 범위</h4>
-                <div className="flex items-center gap-2 mb-3">
-                  <input
-                    type="number"
-                    className="w-28 px-3 py-2 border rounded text-sm"
-                    placeholder="최소"
-                  />
-                  <span>~</span>
-                  <input
-                    type="number"
-                    className="w-28 px-3 py-2 border rounded text-sm"
-                    placeholder="최대"
-                  />
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="500000"
-                  step="10000"
-                  className="w-full slider"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>₩0</span>
-                  <span>₩500,000</span>
-                </div>
-              </div>
-
-              {/* 별점 */}
-              <div className="mb-6">
-                <h4 className="font-semibold mb-3">별점</h4>
-                <div className="space-y-2">
-                  {[5, 4, 3, 2].map((rating) => (
-                    <label
-                      key={rating}
-                      className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded"
-                    >
-                      <input
-                        type="checkbox"
-                        className="rounded"
-                      />
-                      <span className="flex items-center">
-                        {[...Array(rating)].map((_, i) => (
-                          <span key={i} className="text-yellow-400">★</span>
-                        ))}
-                      </span>
-                      <span className="text-sm">{rating}성급 이상</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* 편의시설 */}
-              <div className="mb-6">
-                <h4 className="font-semibold mb-3">편의시설</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {["무료 WiFi", "주차장", "수영장", "피트니스", "레스토랑", "바"].map((amenity) => (
-                    <label
-                      key={amenity}
-                      className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-50 rounded"
-                    >
-                      <input
-                        type="checkbox"
-                        className="rounded"
-                      />
-                      <span className="text-sm">{amenity}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              {/* HotelFilters 컴포넌트 사용 */}
+              <HotelFilters />
 
               {/* 하단 버튼 */}
               <div className="sticky bottom-0 bg-white pt-4 border-t">
