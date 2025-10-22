@@ -93,17 +93,24 @@ const TossPaymentsWidget = ({
           try {
             console.log("백엔드 결제 검증 시작...");
 
+            // TODO: 로그인 상태 확인 및 사용자 인증 토큰 추가
+            // TODO: 결제 전 예약 가능 여부 사전 체크 API 호출
+            // TODO: 쿠폰/할인 적용 로직 추가
+            // TODO: 포인트 사용 로직 추가
+            // TODO: 결제 금액 검증 로직 추가
+
             const response = await fetch("/api/payments/confirm", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
+                // TODO: Authorization 헤더 추가 (JWT 토큰)
               },
               body: JSON.stringify({
                 paymentKey: paymentResult.paymentKey,
                 orderId: paymentResult.orderId,
                 amount: paymentResult.totalAmount,
                 type: "hotel_reservation",
-                customerIdx: 1, // 실제로는 로그인된 사용자 ID 사용
+                customerIdx: 1, // TODO: 실제 로그인된 사용자 ID 사용
                 contentId:
                   hotelInfo?.contentId || hotelInfo?.hotelId?.toString(),
                 roomId: hotelInfo?.roomId,
@@ -118,8 +125,8 @@ const TossPaymentsWidget = ({
                 customerPhone: customerInfo?.phone || customerMobilePhone,
                 specialRequests: customerInfo?.specialRequests,
                 method: "card",
-                pointsUsed: 0,
-                cashUsed: 0,
+                pointsUsed: 0, // TODO: 실제 포인트 사용량 계산
+                cashUsed: 0, // TODO: 현금 결제 로직 추가
               }),
             });
 
@@ -130,6 +137,10 @@ const TossPaymentsWidget = ({
               if (onSuccess) {
                 onSuccess(result);
               }
+              // TODO: 결제 성공 후 포인트 적립 로직 추가
+              // TODO: 결제 완료 알림 (토스트, 모달 등) 추가
+              // TODO: 결제 완료 후 사용자 행동 추적 (GA, Mixpanel 등)
+
               // 성공 페이지로 이동
               router.push(
                 `/payment/complete?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}`
@@ -139,6 +150,9 @@ const TossPaymentsWidget = ({
               if (onFail) {
                 onFail(new Error(result.message));
               }
+              // TODO: 에러 타입별 사용자 친화적 메시지 표시
+              // TODO: 결제 실패 시 재시도 로직 추가
+
               // 실패 페이지로 이동
               router.push(
                 `/checkout/fail?error=${encodeURIComponent(result.message)}`
@@ -149,6 +163,9 @@ const TossPaymentsWidget = ({
             if (onFail) {
               onFail(error);
             }
+            // TODO: 네트워크 오류 시 재시도 로직 추가
+            // TODO: 오류 로깅 시스템 연동 (Sentry 등)
+
             // 실패 페이지로 이동
             router.push(
               `/checkout/fail?error=${encodeURIComponent(error.message)}`
@@ -262,6 +279,10 @@ const TossPaymentsWidget = ({
                 >
                   ₩{amount?.toLocaleString()} 결제하기
                 </button>
+                {/* TODO: 결제 수단 선택 UI 추가 (카드, 계좌이체, 간편결제 등) */}
+                {/* TODO: 쿠폰 적용 UI 추가 */}
+                {/* TODO: 포인트 사용 UI 추가 */}
+                {/* TODO: 결제 약관 동의 체크박스 추가 */}
               </div>
             )}
           </div>

@@ -27,6 +27,10 @@ const PaymentCompletePage = () => {
       return;
     }
 
+    // TODO: 실제 결제 정보를 백엔드에서 조회하는 API 호출 추가
+    // TODO: 결제 완료 후 포인트 적립 알림 추가
+    // TODO: 예약 확인서 다운로드 기능 추가
+
     // 결제 정보 설정
     setPaymentInfo({
       orderId,
@@ -192,7 +196,8 @@ const PaymentCompletePage = () => {
             </button>
             <button
               onClick={() => {
-                // 다트 게임 모달 열기 (기존 기능)
+                // TODO: 게이미피케이션 상자가 열리고 포인트 지급되는 기능 추가
+                // TODO: 포인트 뽑기 결과에 따른 포인트 지급 로직 추가
                 alert("포인트 뽑기! 🎯");
               }}
               className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
