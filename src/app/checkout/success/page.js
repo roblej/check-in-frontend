@@ -25,6 +25,18 @@ const SuccessPage = () => {
         return;
       }
       
+      // 중고 호텔의 경우 이미 UsedPaymentForm에서 API 호출 완료
+      if (type === 'used_hotel') {
+        setResult({
+          orderId,
+          amount,
+          type,
+          message: "중고 호텔 결제가 완료되었습니다."
+        });
+        setLoading(false);
+        return;
+      }
+      
       try {
         const res = await fetch("/api/payments", {
           method: "POST",

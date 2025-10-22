@@ -12,6 +12,7 @@ const UsedPaymentForm = ({ initialData }) => {
   // 결제 정보 상태
   const [paymentInfo, setPaymentInfo] = useState({
     ...initialData,
+    usedTradeIdx: initialData.usedTradeIdx, // 거래 ID 추가
     customerIdx: 2,
     customerName: '주르',
     customerEmail: 'jururu@gmail.com',
@@ -149,7 +150,21 @@ const UsedPaymentForm = ({ initialData }) => {
   // 토스페이먼츠 결제 성공 처리
   const handlePaymentSuccess = async (paymentResult) => {
     try {
-      // 서버에 결제 완료 알림
+      // 1. 거래 확정 (중요: 결제 완료 후 거래 확정)
+      if (paymentInfo.usedTradeIdx) {
+        const tradeConfirmResponse = await fetch(`/api/used-hotels/trade/${paymentInfo.usedTradeIdx}/confirm`, {
+          method: 'POST'
+        });
+
+        if (!tradeConfirmResponse.ok) {
+          const errorData = await tradeConfirmResponse.json();
+          console.error('거래 확정 실패:', errorData.message);
+          alert('거래 확정에 실패했습니다. 고객센터에 문의해주세요.');
+          return;
+        }
+      }
+
+      // 2. 서버에 결제 완료 알림
       const response = await fetch('/api/payments', {
         method: 'POST',
         headers: {
@@ -161,6 +176,7 @@ const UsedPaymentForm = ({ initialData }) => {
           amount: paymentAmounts.actualPaymentAmount, // 실제 결제 금액
           totalAmount: paymentAmounts.totalAmount, // 총 결제 금액
           usedItemIdx: paymentInfo.usedItemIdx,
+          usedTradeIdx: paymentInfo.usedTradeIdx, // 거래 ID 추가
           paymentInfo: {
             useCash: paymentAmounts.useCash,
             usePoint: paymentAmounts.usePoint,
@@ -190,7 +206,22 @@ const UsedPaymentForm = ({ initialData }) => {
 
       if (response.ok) {
         clearPaymentDraft();
-        router.push(`/checkout/success?orderId=${paymentResult.orderId}&amount=${paymentAmounts.totalAmount}&type=used_hotel&cash=${paymentAmounts.useCash}&point=${paymentAmounts.usePoint}&card=${paymentAmounts.actualPaymentAmount}`);
+        // 중고 호텔 전용 성공 페이지로 리다이렉트
+        const successParams = new URLSearchParams({
+          orderId: paymentResult.orderId,
+          amount: paymentAmounts.totalAmount,
+          type: 'used_hotel',
+          cash: paymentAmounts.useCash,
+          point: paymentAmounts.usePoint,
+          card: paymentAmounts.actualPaymentAmount,
+          tradeIdx: paymentInfo.usedTradeIdx,
+          hotelName: paymentInfo.hotelName,
+          roomType: paymentInfo.roomType,
+          checkIn: paymentInfo.checkIn,
+          checkOut: paymentInfo.checkOut
+        });
+        
+        router.push(`/used-payment/success?${successParams.toString()}`);
       }
     } catch (error) {
       console.error('결제 완료 처리 오류:', error);
