@@ -20,6 +20,29 @@ export const useSearchStore = create(
           searchParams: { ...state.searchParams, ...params },
         })),
 
+      // URL 쿼리 파라미터로부터 검색 조건 업데이트
+      updateFromUrlParams: (urlParams) => {
+        const searchData = {
+          destination: urlParams.get("destination") || "",
+          checkIn: urlParams.get("checkIn") || "",
+          checkOut: urlParams.get("checkOut") || "",
+          adults: parseInt(urlParams.get("adults") || "2"),
+          children: parseInt(urlParams.get("children") || "0"),
+        };
+
+        // nights 계산
+        if (searchData.checkIn && searchData.checkOut) {
+          const nights = Math.ceil(
+            (new Date(searchData.checkOut) - new Date(searchData.checkIn)) /
+              (1000 * 60 * 60 * 24)
+          );
+          searchData.nights = nights > 0 ? nights : 1;
+        }
+
+        set({ searchParams: searchData });
+        return searchData;
+      },
+
       // 검색 조건 초기화
       resetSearchParams: () =>
         set({
