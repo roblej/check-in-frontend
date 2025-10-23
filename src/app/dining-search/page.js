@@ -119,15 +119,24 @@ const DiningSearchPage = () => {
                 {searchResults.map((dining) => (
                   <div key={dining.diningIdx} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
                     {/* 이미지 */}
-                    <div className="aspect-w-16 aspect-h-9">
-                      <img
-                        src={dining.imageUrl || '/placeholder-dining.jpg'}
-                        alt={dining.name}
-                        className="w-full h-48 object-cover"
-                        onError={(e) => {
-                          e.target.src = '/placeholder-dining.jpg';
-                        }}
-                      />
+                    <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+                      {dining.imageUrl ? (
+                        <img
+                          src={dining.imageUrl}
+                          alt={dining.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div className={`${dining.imageUrl ? 'hidden' : 'flex'} flex-col items-center justify-center text-blue-600`}>
+                        <svg className="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <span className="text-sm font-medium">다이닝 이미지</span>
+                      </div>
                     </div>
                     
                     {/* 다이닝 정보 */}
