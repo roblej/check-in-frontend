@@ -3,13 +3,17 @@
 import Link from "next/link";
 import { useCustomerStore } from "@/stores/customerStore";
 const Header = () => {
-  const { inlogged, resetAccessToken, setInlogged } = useCustomerStore();
+  const { inlogged, resetAccessToken, setInlogged, readAccessToken } = useCustomerStore();
   
 
   const handleLogout = () => {
     resetAccessToken("");
     setInlogged(false);
     console.log("inlogged", inlogged);
+  };
+  const handleGetTokenInfo = () => {
+    const tokenInfo = readAccessToken();
+    console.log("tokenInfo", tokenInfo);
   };
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
@@ -20,7 +24,7 @@ const Header = () => {
               체크인
             </Link>
             <nav className="hidden md:flex items-center gap-6">
-              <Link href="/" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+              <Link href="" onClick={handleGetTokenInfo} className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
                 뭐넣지
               </Link>
               <a href="/admin" className="text-sm font-semibold text-[#3B82F6] hover:text-blue-600 transition-colors">
