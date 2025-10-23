@@ -1,64 +1,85 @@
 "use client";
-
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import HotelDetail from "./HotelDetail";
 
 /**
- * 호텔 상세 패널 컴포넌트 (네이버 호텔 스타일)
- * - 모달이 아닌 사이드 패널 형태
- * - 배경 오버레이 없음 (다른 요소 클릭 가능)
- * - 호텔 리스트와 지도가 그대로 보임
- *
- * @param {Object} props
- * @param {number|string} props.contentId  - 호텔 ID
- * @param {Object} props.searchParams - 검색 파라미터
- * @param {Function} props.onClose - 패널 닫기 함수
+ * 호텔 상세 패널 - 패널은 고정, 내용만 교체
  */
-const HotelDetailPanel = ({ contentId, searchParams, onClose }) => {
+const HotelDetailPanel = ({
+  contentId,
+  searchParams,
+  onClose,
+  onSearchParamsChange,
+}) => {
   const scrollContainerRef = useRef(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [currentContentId, setCurrentContentId] = useState(contentId);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFading, setIsFading] = useState(false);
 
-  // ESC 키로 패널 닫기
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-
-    window.addEventListener("keydown", handleEsc);
-
-    return () => {
-      window.removeEventListener("keydown", handleEsc);
-    };
+  /** 닫기 */
+  const handleClose = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => onClose(), 80);
   }, [onClose]);
+
+  /** ESC 닫기 */
+  useEffect(() => {
+    const handleEsc = (e) => e.key === "Escape" && handleClose();
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [handleClose]);
+
+  /** contentId 변경 감지 → fade-out + 로딩 표시 → 내부 교체 */
+  useEffect(() => {
+    if (contentId && contentId !== currentContentId) {
+      // fade-out & 로딩 시작
+      setIsFading(true);
+      setIsLoading(true);
+
+      // 약간의 지연 후 내부 contentId 교체
+      setTimeout(() => {
+        setCurrentContentId(contentId);
+      }, 150);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentId]); // currentContentId 제거하여 무한 루프 방지
+
+  /** HotelDetail의 실제 API 로딩 상태 전달 */
+  const handleLoadingChange = useCallback((loading) => {
+    setIsLoading(loading);
+    if (!loading) {
+      // 새 데이터 도착 후 fade-in
+      setTimeout(() => setIsFading(false), 100);
+    }
+  }, []);
 
   return (
     <>
-      {/* 모바일: 전체 화면 모달 (배경 오버레이 있음) */}
+      {/* 모바일 오버레이 */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-30 z-40 animate-fade-in lg:hidden"
-        onClick={onClose}
+        className={`hotel-detail-panel-overlay fixed inset-0 bg-black bg-opacity-30 z-40 animate-fade-in lg:hidden ${
+          isTransitioning ? "transitioning" : ""
+        }`}
+        onClick={handleClose}
         aria-hidden="true"
       />
 
-      {/* 네이버 호텔 스타일 패널 */}
+      {/* 패널 자체는 절대 unmount 안 됨 */}
       <div
-        className="fixed top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in-right
-                   w-full 
-                   sm:top-16 sm:h-[calc(100vh-4rem)]
-                   lg:left-[calc(30%+1rem)] lg:right-auto lg:w-[555px] 
-                   lg:top-[120px] lg:h-[calc(100vh-140px)] 
-                   lg:rounded-xl lg:max-w-[555px]"
-        role="complementary"
-        aria-labelledby="panel-title"
+        className={`hotel-detail-panel fixed top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-50
+                     w-full sm:top-16 sm:h-[calc(100vh-4rem)]
+                     lg:left-[calc(30%+1rem)] lg:right-auto lg:w-[555px]
+                     lg:top-[120px] lg:h-[calc(100vh-140px)]
+                     lg:rounded-xl lg:max-w-[555px]
+                     ${isTransitioning ? "transitioning" : ""}
+                     animate-slide-in-right`}
       >
-        {/* 패널 헤더 */}
+        {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b bg-white flex-shrink-0">
-          <h2 id="panel-title" className="text-xl font-bold text-gray-900">
-            호텔 상세
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900">호텔 상세</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors shadow-sm"
             aria-label="닫기"
           >
@@ -78,19 +99,30 @@ const HotelDetailPanel = ({ contentId, searchParams, onClose }) => {
           </button>
         </div>
 
-        {/* 패널 컨텐츠 (스크롤 가능) */}
+        {/* 내용 (fade 전환) */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto relative"
+          className={`flex-1 overflow-y-auto relative fade-transition ${
+            isFading ? "fade-out" : "fade-in"
+          }`}
           style={{ scrollBehavior: "smooth" }}
         >
           <HotelDetail
-            contentId={contentId}
+            contentId={currentContentId}
             searchParams={searchParams}
             isModal={true}
             scrollContainerRef={scrollContainerRef}
+            onSearchParamsChange={onSearchParamsChange}
+            onLoadingChange={handleLoadingChange}
           />
         </div>
+
+        {/* 로딩 스피너 (fade-out 중 바로 표시됨) */}
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-10">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
+          </div>
+        )}
       </div>
     </>
   );

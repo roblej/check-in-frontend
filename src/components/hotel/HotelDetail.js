@@ -11,6 +11,9 @@ import HotelLocation from "./HotelLocation";
 import HotelPolicy from "./HotelPolicy";
 import { hotelAPI } from "@/lib/api/hotel";
 import SearchConditionModal from "./SearchConditionModal";
+import { useSearchStore } from "@/stores/searchStore";
+import { updateUrlParams, formatSearchParamsForUrl } from "@/utils/urlUtils";
+import { useRouter } from "next/navigation";
 
 /**
  * @typedef {Object} SearchParams
@@ -71,13 +74,20 @@ import SearchConditionModal from "./SearchConditionModal";
  * @param {SearchParams} [props.searchParams={}] - 검색 파라미터
  * @param {boolean} [props.isModal=false] - 모달 모드 여부
  * @param {React.RefObject} [props.scrollContainerRef] - 외부 스크롤 컨테이너 ref
+ * @param {Function} [props.onSearchParamsChange] - 검색 조건 변경 콜백
  */
 const HotelDetail = ({
   contentId,
   searchParams = {},
   isModal = false,
   scrollContainerRef: externalScrollRef,
+  onSearchParamsChange,
+  onLoadingChange,
 }) => {
+  const router = useRouter();
+  const { updateSearchParams, searchParams: storeSearchParams } =
+    useSearchStore();
+
   const [activeSection, setActiveSection] = useState("rooms");
   const [isScrollingToSection, setIsScrollingToSection] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -87,6 +97,14 @@ const HotelDetail = ({
   const [errorMessage, setErrorMessage] = useState("");
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [localSearchParams, setLocalSearchParams] = useState(searchParams);
+
+  // 로딩 상태 변경 시 부모 컴포넌트에 알림 (의존성 배열에서 제외)
+  useEffect(() => {
+    if (onLoadingChange) {
+      onLoadingChange(isLoading);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]); // onLoadingChange 제거
 
   const navRef = useRef(null);
   const headerRef = useRef(null);
@@ -100,9 +118,31 @@ const HotelDetail = ({
    * 로컬 검색 조건 업데이트 함수
    * @param {SearchParams} newParams - 새로운 검색 조건
    */
-  const updateLocalSearchParams = useCallback((newParams) => {
-    setLocalSearchParams((prev) => ({ ...prev, ...newParams }));
-  }, []);
+  const updateLocalSearchParams = useCallback(
+    (newParams) => {
+      const updatedParams = { ...localSearchParams, ...newParams };
+      setLocalSearchParams(updatedParams);
+
+      // 외부에서 검색 조건 변경 콜백이 제공된 경우 사용
+      if (onSearchParamsChange) {
+        onSearchParamsChange(updatedParams);
+        return;
+      }
+
+      // 모달인 경우 로컬 상태만 업데이트 (전체 스토어에 영향 없음)
+      if (isModal) {
+        return;
+      }
+
+      // 호텔 상세 페이지인 경우 URL만 업데이트 (스토어는 업데이트하지 않음)
+      const urlParams = formatSearchParamsForUrl(updatedParams);
+      const newUrl = updateUrlParams(urlParams);
+
+      // 브라우저 히스토리 업데이트 (페이지 새로고침 없이)
+      router.replace(newUrl, { scroll: false });
+    },
+    [localSearchParams, isModal, router, onSearchParamsChange]
+  );
 
   /**
    * 가격 포맷팅 함수
@@ -191,8 +231,13 @@ const HotelDetail = ({
     let isMounted = true;
 
     const fetchData = async () => {
-      setIsLoading(true);
+      //기존 데이터 초기화 잔상 없앰
+      setHotelData(null);
+      setRooms([]);
       setErrorMessage("");
+      //패널에 로딩 시작
+      setIsLoading(true);
+      onLoadingChange?.(true);
 
       try {
         const [hotelRes, roomsRes] = await Promise.all([
@@ -235,7 +280,11 @@ const HotelDetail = ({
           setErrorMessage("호텔 정보를 불러오지 못했습니다.");
         }
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {
+          //패널로딩 종료
+          setIsLoading(false);
+          onLoadingChange?.(false);
+        }
       }
     };
 
