@@ -1,70 +1,35 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export const useCustomerStore = create(
-    persist(
-        (set,get) => ({
-        customer: {
-            customerIdx: "",
-            id: "",
-            rank: "",
-            birthday: "",
-            nickname: "",
-            name: "",
-            gender: "",
-            phone: "",
-            email: "",
-            cash: "",
-            status: "",
-            totalPrice: "",
-            point: "",
-            provider: "",
-            joinDate: "",
-            inlogged: false,
+export const useCustomerStore = create(persist((set,get) => ({
+        accessToken: "",
+        inlogged: false,
+
+        setAccessToken: (accessToken) => set({ accessToken }),
+        getAccessToken: () => {return get().accessToken;},
+        readAccessToken: () => {
+            const accessToken = get().accessToken;
+            const payloadBase64 = accessToken.split('.')[1];
             
+            // Base64 디코딩 후 UTF-8 디코딩
+            const decodedPayload = atob(payloadBase64);
+            const utf8Payload = decodeURIComponent(escape(decodedPayload));
+            const userInfo = JSON.parse(utf8Payload);
+            
+            return userInfo;
         },
+        resetAccessToken: () => set({ accessToken: "" }),
 
-            setCustomer: (customerData) => {
-                // 구조 분해 할당을 이용해 필요한 필드만 추출 (password는 버림)
-                const { 
-                    customerIdx, id, rank, birthday, nickname, 
-                    name, gender, phone, email, cash, 
-                    status, totalPrice, point, provider, joinDate , inlogged
-                } = customerData;
-                
-                // 추출된 필드만 담긴 새로운 객체를 상태로 설정합니다.
-                set({ 
-                    customer: {
-                        customerIdx, id, rank, birthday, nickname, 
-                        name, gender, phone, email, cash, 
-                        status, totalPrice, point, provider, joinDate , inlogged
-                    } 
-                });
-            },
+        setInlogged: (inlogged) => set({ inlogged }),
 
-        getCustomer: () => get().customer,
-
-        resetCustomer: () => set({ customer: {
-            customerIdx: "",
-            id: "",
-            rank: "",
-            birthday: "",
-            nickname: "",
-            name: "",
-            gender: "",
-            phone: "",
-            email: "",
-            cash: "",
-            status: "",
-            totalPrice: "",
-            point: "",
-            provider: "",
-            joinDate: "",
-            inlogged: false,
-        } }),
+        isInlogged: () => get().inlogged,
 
     }),{
         name: "customer-storage",
+        partialize: (state) => ({
+            inlogged: state.inlogged,
+
+        }),
     }
-    )
+)
 );
