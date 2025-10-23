@@ -1,47 +1,77 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Header from "@/components/Header";
 import HotelDetailPanel from "@/components/hotel/HotelDetailPanel";
 import HotelSearchResults from "@/components/hotelSearch/HotelSearchResults";
-import { useSearchStore } from '@/stores/searchStore';
+import { useSearchStore } from "@/stores/searchStore";
+import {
+  createHotelDetailUrl,
+  formatSearchParamsForUrl,
+} from "@/utils/urlUtils";
 import axios from "axios";
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from "next/navigation";
 
 const HotelSearchPage = () => {
   const searchParams = useSearchParams();
-  const { updateSearchParams, searchParams: storeSearchParams } =
+  const router = useRouter();
+  const { updateFromUrlParams, searchParams: storeSearchParams } =
     useSearchStore();
 
   // URL에서 파라미터 추출
-  const destination = searchParams.get('destination');
-  const checkIn = searchParams.get('checkIn');
-  const checkOut = searchParams.get('checkOut');
-  const adults = searchParams.get('adults');
-  
-  console.log(destination, checkIn, checkOut, adults);
-  
+  const destination = searchParams.get("destination");
+  const checkIn = searchParams.get("checkIn");
+  const checkOut = searchParams.get("checkOut");
+  const adults = searchParams.get("adults");
+
+  console.log("URL 파라미터:", { destination, checkIn, checkOut, adults });
+
   const [searchResults, setSearchResults] = useState([]);
 
-  // URL 파라미터를 Zustand 스토어에 저장
+  // URL에서 선택된 호텔 ID 가져오기 (새로고침 시 패널 유지)
+  const selectedHotelId = searchParams.get("selectedHotel");
+  const [selectedcontentId, setSelectedcontentId] = useState(selectedHotelId);
+
+  // URL 파라미터를 Zustand 스토어에 동기화
   useEffect(() => {
-    if (destination && checkIn && checkOut && adults) {
-      const nights = Math.ceil(
-        (new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)
-      );
-      const searchData = {
+    if (destination || checkIn || checkOut || adults) {
+      console.log("URL 파라미터를 스토어에 동기화:", {
         destination,
         checkIn,
         checkOut,
-        nights,
-        adults: parseInt(adults),
-        children: 0, // 아이는 필요없음음
-      };
-
-      console.log("Zustand 스토어에 저장할 데이터:", searchData);
-      updateSearchParams(searchData);
+        adults,
+      });
+      updateFromUrlParams(searchParams);
     }
-  }, [destination, checkIn, checkOut, adults, updateSearchParams]);
+  }, [
+    destination,
+    checkIn,
+    checkOut,
+    adults,
+    searchParams,
+    updateFromUrlParams,
+  ]);
+
+  // URL에서 선택된 호텔 ID 동기화 (뒤로가기/앞으로가기 지원)
+  useEffect(() => {
+    const urlSelectedHotel = searchParams.get("selectedHotel");
+    //중복 갱신 방지
+    if (
+    urlSelectedHotel === selectedcontentId ||
+    (!urlSelectedHotel && !selectedcontentId)
+  ) {
+    return;
+  }
+  }, [searchParams, selectedcontentId]);
+
+  // 각 호텔별 독립적인 검색 조건 관리 (localStorage에서 복원)
+  const [hotelSearchParams, setHotelSearchParams] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("hotelSearchParams");
+      return saved ? JSON.parse(saved) : {};
+    }
+    return {};
+  });
 
   // 스토어에서 검색 파라미터 가져오기
   const localSearchParams = storeSearchParams;
@@ -56,7 +86,7 @@ const HotelSearchPage = () => {
 
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const [showMobileMap, setShowMobileMap] = useState(false);
-  const [selectedcontentId, setSelectedcontentId] = useState(null);
+
   const [searchHotels, setSearchHotels] = useState([]);
   const hotel_url = "api/hotel/search";
 
@@ -74,13 +104,14 @@ const HotelSearchPage = () => {
       console.log("전체 localSearchParams:", localSearchParams);
 
       if (!localSearchParams.destination) {
-        console.log('destination이 없어서 API 호출하지 않음');
+        console.log("destination이 없어서 API 호출하지 않음");
         return null;
       }
-      
-      
-      const res = await axios.post(hotel_url, {title:localSearchParams.destination});
-      if(res.data){
+
+      const res = await axios.post(hotel_url, {
+        title: localSearchParams.destination,
+      });
+      if (res.data) {
         console.log(res.data);
         setSearchResults(res.data);
         return res.data;
@@ -89,7 +120,7 @@ const HotelSearchPage = () => {
       console.error("호텔 데이터 가져오기 실패:", error);
       return null;
     }
-  }, [destination, localSearchParams.destination]);
+  }, [destination, localSearchParams]);
 
   useEffect(
     function () {
@@ -102,12 +133,12 @@ const HotelSearchPage = () => {
   // 필터링
   useEffect(() => {
     const hotels = searchResults || [];
-    console.log("hotels:",hotels);
+    console.log("hotels:", hotels);
     if (!Array.isArray(hotels) || hotels.length === 0) {
       setFilteredHotels([]);
       return;
     }
-    
+
     let filtered = hotels.filter((hotel) => {
       if (hotel.price < filters.priceMin || hotel.price > filters.priceMax)
         return false;
@@ -154,8 +185,66 @@ const HotelSearchPage = () => {
   };
 
   const handleHotelClick = (hotelId) => {
+    // 이미 같은 호텔이 선택되어 있으면 패널 닫기
+    if (selectedcontentId === hotelId) {
+      // URL 먼저 변경
+      const urlParams = new URLSearchParams(searchParams.toString());
+      urlParams.delete("selectedHotel");
+      router.replace(`?${urlParams.toString()}`, {
+        scroll: false,shallow: true, });
+
+      // 그 다음 상태 변경
+      setSelectedcontentId(null);
+      return;
+    }
+
+    // 다른 호텔 클릭 시 즉시 전환 (패널은 고정, 내용만 교체)
     setSelectedcontentId(hotelId);
+    const urlParams = new URLSearchParams(searchParams.toString());
+    urlParams.set("selectedHotel", hotelId);
+    router.replace(`?${urlParams.toString()}`, { scroll: false ,shallow: true,});
   };
+
+  // 호텔별 검색 조건 업데이트 함수 (localStorage에 저장)
+  const updateHotelSearchParams = (hotelId, newParams) => {
+    setHotelSearchParams((prev) => {
+      const updated = {
+        ...prev,
+        [hotelId]: { ...prev[hotelId], ...newParams },
+      };
+
+      // localStorage에 저장
+      if (typeof window !== "undefined") {
+        localStorage.setItem("hotelSearchParams", JSON.stringify(updated));
+      }
+
+      return updated;
+    });
+  };
+
+  // 현재 선택된 호텔의 검색 조건 가져오기 (메모이제이션)
+  const currentHotelSearchParams = useMemo(() => {
+    if (!selectedcontentId) return localSearchParams;
+
+    const hotelParams = hotelSearchParams[selectedcontentId];
+    if (hotelParams) {
+      return { ...localSearchParams, ...hotelParams };
+    }
+
+    return localSearchParams;
+  }, [selectedcontentId, hotelSearchParams, localSearchParams]);
+
+  // 호텔 상세 페이지로 이동하는 함수
+  const handleHotelDetailOpen = useCallback(
+    (contentId) => {
+      const urlParams = formatSearchParamsForUrl(localSearchParams);
+      const detailUrl = createHotelDetailUrl(contentId, urlParams);
+
+      console.log("호텔 상세 페이지로 이동:", detailUrl);
+      router.push(detailUrl);
+    },
+    [localSearchParams, router]
+  );
 
   return (
     <div className="h-screen bg-gray-50 overflow-hidden flex flex-col">
@@ -197,9 +286,10 @@ const HotelSearchPage = () => {
           hotels={filteredHotels}
           formatPrice={formatPrice}
           handleHotelClick={handleHotelClick}
+          handleHotelDetailOpen={handleHotelDetailOpen}
           sortBy={sortBy}
           setSortBy={setSortBy}
-          days ={localSearchParams.nights}
+          days={localSearchParams.nights}
           showFiltersPanel={showFiltersPanel}
           setShowFiltersPanel={setShowFiltersPanel}
           filteredHotels={filteredHotels}
@@ -272,14 +362,23 @@ const HotelSearchPage = () => {
         </div>
       </div>
 
-      {/* 호텔 상세 패널 */}
-      {selectedcontentId && (
-        <HotelDetailPanel
-          contentId={selectedcontentId}
-          searchParams={localSearchParams}
-          onClose={() => setSelectedcontentId(null)}
-        />
-      )}
+      {/* 호텔 상세 패널 - 항상 렌더링하되 내부에서 표시 제어 */}
+      <HotelDetailPanel
+        contentId={selectedcontentId}
+        searchParams={currentHotelSearchParams}
+        onClose={() => {
+          // URL 먼저 변경 (리렌더 방지)
+          const urlParams = new URLSearchParams(searchParams.toString());
+          urlParams.delete("selectedHotel");
+          router.replace(`?${urlParams.toString()}`, { scroll: false,shallow: true, });
+
+          // 그 다음 상태 변경 (즉시)
+          setSelectedcontentId(null);
+        }}
+        onSearchParamsChange={(newParams) => {
+          updateHotelSearchParams(selectedcontentId, newParams);
+        }}
+      />
     </div>
   );
 };
