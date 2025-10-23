@@ -93,7 +93,20 @@ const HotelDetail = ({
   const [headerHeight, setHeaderHeight] = useState(0);
   const [hotelData, setHotelData] = useState(null);
   const [rooms, setRooms] = useState([]);
+  const [isMounted, setIsMounted] = useState(true);
+  const abortControllerRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // 컴포넌트 언마운트 감지
+  useEffect(() => {
+    return () => {
+      setIsMounted(false);
+      // 진행 중인 API 요청 중단
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [localSearchParams, setLocalSearchParams] = useState(searchParams);
@@ -239,14 +252,25 @@ const HotelDetail = ({
       setIsLoading(true);
       onLoadingChange?.(true);
 
+      // 이전 요청이 있다면 중단
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      // 새로운 AbortController 생성
+      abortControllerRef.current = new AbortController();
+
       try {
         const [hotelRes, roomsRes] = await Promise.all([
-          hotelAPI.getHotelDetail(contentId),
+          hotelAPI.getHotelDetail(contentId, {
+            signal: abortControllerRef.current.signal,
+          }),
           hotelAPI.getHotelRooms(contentId, {
             name: localSearchParams?.roomName || undefined,
             checkIn: localSearchParams?.checkIn,
             checkOut: localSearchParams?.checkOut,
             adults: localSearchParams?.adults,
+            signal: abortControllerRef.current.signal,
           }),
         ]);
 
@@ -275,6 +299,11 @@ const HotelDetail = ({
           setRooms(mappedRooms);
         }
       } catch (err) {
+        // AbortError는 무시 (컴포넌트 언마운트로 인한 정상적인 중단)
+        if (err.name === "AbortError") {
+          return;
+        }
+
         console.error("호텔 데이터 로드 실패:", err);
         if (isMounted) {
           setErrorMessage("호텔 정보를 불러오지 못했습니다.");

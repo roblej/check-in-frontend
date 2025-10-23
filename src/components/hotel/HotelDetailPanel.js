@@ -12,15 +12,18 @@ const HotelDetailPanel = ({
   onSearchParamsChange,
 }) => {
   const scrollContainerRef = useRef(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const [currentContentId, setCurrentContentId] = useState(contentId);
   const [isLoading, setIsLoading] = useState(false);
   const [isFading, setIsFading] = useState(false);
 
   /** 닫기 */
   const handleClose = useCallback(() => {
-    setIsTransitioning(true);
-    setTimeout(() => onClose(), 80);
+    // 즉시 로딩 상태 초기화하여 API 요청 중단
+    setIsLoading(false);
+    setIsFading(false);
+
+    // 바로 닫기 (애니메이션 없음)
+    onClose();
   }, [onClose]);
 
   /** ESC 닫기 */
@@ -54,26 +57,26 @@ const HotelDetailPanel = ({
     }
   }, []);
 
+  // contentId가 없으면 패널 숨김
+  if (!contentId) {
+    return null;
+  }
+
   return (
     <>
       {/* 모바일 오버레이 */}
       <div
-        className={`hotel-detail-panel-overlay fixed inset-0 bg-black bg-opacity-30 z-40 animate-fade-in lg:hidden ${
-          isTransitioning ? "transitioning" : ""
-        }`}
+        className="hotel-detail-panel-overlay fixed inset-0 bg-black bg-opacity-30 z-40 animate-fade-in lg:hidden"
         onClick={handleClose}
         aria-hidden="true"
       />
-
       {/* 패널 자체는 절대 unmount 안 됨 */}
       <div
-        className={`hotel-detail-panel fixed top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-50
-                     w-full sm:top-16 sm:h-[calc(100vh-4rem)]
-                     lg:left-[calc(30%+1rem)] lg:right-auto lg:w-[555px]
-                     lg:top-[120px] lg:h-[calc(100vh-140px)]
-                     lg:rounded-xl lg:max-w-[555px]
-                     ${isTransitioning ? "transitioning" : ""}
-                     animate-slide-in-right`}
+        className="hotel-detail-panel fixed top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in-right
+                    w-full sm:top-16 sm:h-[calc(100vh-4rem)]
+                    lg:left-[calc(30%+1rem)] lg:right-auto lg:w-[555px]
+                    lg:top-[120px] lg:h-[calc(100vh-140px)]
+                    lg:rounded-xl lg:max-w-[555px]"
       >
         {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b bg-white flex-shrink-0">

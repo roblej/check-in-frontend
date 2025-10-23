@@ -55,9 +55,13 @@ const HotelSearchPage = () => {
   // URL에서 선택된 호텔 ID 동기화 (뒤로가기/앞으로가기 지원)
   useEffect(() => {
     const urlSelectedHotel = searchParams.get("selectedHotel");
-    if (urlSelectedHotel !== selectedcontentId) {
-      setSelectedcontentId(urlSelectedHotel);
-    }
+    //중복 갱신 방지
+    if (
+    urlSelectedHotel === selectedcontentId ||
+    (!urlSelectedHotel && !selectedcontentId)
+  ) {
+    return;
+  }
   }, [searchParams, selectedcontentId]);
 
   // 각 호텔별 독립적인 검색 조건 관리 (localStorage에서 복원)
@@ -183,12 +187,14 @@ const HotelSearchPage = () => {
   const handleHotelClick = (hotelId) => {
     // 이미 같은 호텔이 선택되어 있으면 패널 닫기
     if (selectedcontentId === hotelId) {
+      // URL 먼저 변경
+      const urlParams = new URLSearchParams(searchParams.toString());
+      urlParams.delete("selectedHotel");
+      router.replace(`?${urlParams.toString()}`, {
+        scroll: false,shallow: true, });
+
+      // 그 다음 상태 변경
       setSelectedcontentId(null);
-      setTimeout(() => {
-        const urlParams = new URLSearchParams(searchParams.toString());
-        urlParams.delete("selectedHotel");
-        router.replace(`?${urlParams.toString()}`, { scroll: false });
-      }, 50);
       return;
     }
 
@@ -196,7 +202,7 @@ const HotelSearchPage = () => {
     setSelectedcontentId(hotelId);
     const urlParams = new URLSearchParams(searchParams.toString());
     urlParams.set("selectedHotel", hotelId);
-    router.replace(`?${urlParams.toString()}`, { scroll: false });
+    router.replace(`?${urlParams.toString()}`, { scroll: false ,shallow: true,});
   };
 
   // 호텔별 검색 조건 업데이트 함수 (localStorage에 저장)
@@ -356,25 +362,23 @@ const HotelSearchPage = () => {
         </div>
       </div>
 
-      {/* 호텔 상세 패널 */}
-      {selectedcontentId && (
-        <HotelDetailPanel
-          contentId={selectedcontentId}
-          searchParams={currentHotelSearchParams}
-          onClose={() => {
-            setSelectedcontentId(null);
-            // URL에서 선택된 호텔 ID 제거 (깜박임 방지를 위해 약간의 지연)
-            setTimeout(() => {
-              const urlParams = new URLSearchParams(searchParams.toString());
-              urlParams.delete("selectedHotel");
-              router.replace(`?${urlParams.toString()}`, { scroll: false });
-            }, 50);
-          }}
-          onSearchParamsChange={(newParams) => {
-            updateHotelSearchParams(selectedcontentId, newParams);
-          }}
-        />
-      )}
+      {/* 호텔 상세 패널 - 항상 렌더링하되 내부에서 표시 제어 */}
+      <HotelDetailPanel
+        contentId={selectedcontentId}
+        searchParams={currentHotelSearchParams}
+        onClose={() => {
+          // URL 먼저 변경 (리렌더 방지)
+          const urlParams = new URLSearchParams(searchParams.toString());
+          urlParams.delete("selectedHotel");
+          router.replace(`?${urlParams.toString()}`, { scroll: false,shallow: true, });
+
+          // 그 다음 상태 변경 (즉시)
+          setSelectedcontentId(null);
+        }}
+        onSearchParamsChange={(newParams) => {
+          updateHotelSearchParams(selectedcontentId, newParams);
+        }}
+      />
     </div>
   );
 };
