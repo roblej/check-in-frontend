@@ -154,3 +154,7 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.border-black {
+  border: 1px solid #000000;
+}
