@@ -9,6 +9,7 @@ const CouponIssueManagement = () => {
 
   const couponIssue_url = "/api/admin/couponIssue";
   const customerSearch_url = "/api/admin/customerSearch?searchTerm=";
+  const couponCreate_url = "/api/admin/couponCreate";
 
   const [templates, setTemplates] = useState([]);
   const [issuedCoupons, setIssuedCoupons] = useState([]);
@@ -19,9 +20,11 @@ const CouponIssueManagement = () => {
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
+  /* 쿠폰생성을 위한 어드민 고유번호 */
+  const [adminIdx, setAdminIdx] = useState(1); // 일단 기본값 1 넣어둠
+
   function getTemplates(){
     axios.get(couponIssue_url).then(res => {
-      console.log(res.data);
       setTemplates(res.data);
     });
   }
@@ -31,16 +34,27 @@ const CouponIssueManagement = () => {
       setCustomers([]);
       return;
     }
-    
+
     axios.get(`${customerSearch_url}${encodeURIComponent(searchTerm)}`)
       .then(res => {
-        console.log(res.data);
         setCustomers(res.data);
       })
       .catch(error => {
         console.error('고객 검색 오류:', error);
         setCustomers([]);
       });
+  }
+
+  function createCoupon(templateIdx, customerIdx){
+    axios.post(couponCreate_url, {
+      templateIdx: templateIdx,
+      customerIdx: customerIdx,
+      adminIdx: adminIdx // 이거 나중에 꼭 받아서 전달해야함 (현재 로그인 한 admin 고유번호)
+    }).then(res => {
+      // 쿠폰 생성 성공 처리
+    }).catch(error => {
+      console.error('쿠폰 생성 오류:', error);
+    });
   }
 
   useEffect(() => {
@@ -218,7 +232,7 @@ const CouponIssueManagement = () => {
         <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg border-black">
             <h2 className="text-lg font-semibold mb-4">쿠폰 발급</h2>
-            
+
             {/* 템플릿 선택 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -285,6 +299,7 @@ const CouponIssueManagement = () => {
               <div className="mb-6 p-4 bg-gray-50 rounded-md">
                 <h3 className="font-medium mb-2">발급 정보</h3>
                 <div className="space-y-1 text-sm">
+                  <div>회원 고유번호:{selectedCustomer.customerIdx}</div>
                   <div>쿠폰: {selectedTemplate.templateName}</div>
                   <div>할인액: {selectedTemplate.discount.toLocaleString()}원</div>
                   <div>고객: {selectedCustomer.name} ({selectedCustomer.nickname || '닉네임 미설정'})</div>
@@ -296,7 +311,10 @@ const CouponIssueManagement = () => {
 
             <div className="flex gap-2">
               <button
-                onClick={handleIssueCoupon}
+                onClick={() => {
+                  createCoupon(selectedTemplate.templateIdx, selectedCustomer.customerIdx);
+                  handleIssueCoupon();
+                }}
                 disabled={!selectedTemplate || !selectedCustomer}
                 className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
