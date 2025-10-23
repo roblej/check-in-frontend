@@ -8,7 +8,8 @@ export default function SetAccessToken() {
     const { setAccessToken,getAccessToken } = useCustomerStore();
     let accessToken = "";
     accessToken = getAccessToken();
-    const getAccessToken_url = "/api/login/getAccessToken";
+    console.log("accessToken", accessToken);
+    const getAccessToken_url = "/api/login/getaccesstoken";
     if(accessToken=="") {
         console.log("hihihihihhi");
         axios.get(getAccessToken_url,{withCredentials: true}).then(function(res){

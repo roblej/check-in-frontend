@@ -5,7 +5,7 @@ export const useCustomerStore = create(persist((set,get) => ({
         accessToken: "",
         inlogged: false,
 
-        setAccessToken: (accessToken) => {set({ accessToken });},
+        setAccessToken: (accessToken) => set({ accessToken }),
         getAccessToken: () => {return get().accessToken;},
         readAccessToken: () => {
             const accessToken = get().accessToken;
