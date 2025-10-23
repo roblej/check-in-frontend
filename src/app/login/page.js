@@ -9,7 +9,7 @@ import axios from "axios";
 import { useCustomerStore } from "@/stores/customerStore"
 export default function LoginPage() {
   const router = useRouter();
-  const { setCustomer } = useCustomerStore();
+  const { setAccessToken } = useCustomerStore();
   const [formData, setFormData] = useState({
     id: "",
     password: "",
@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  let customer = {};
+  let accessToken = {};
 
   const login_url = "/api/login";
   // 입력 필드 변경 핸들러
@@ -45,9 +45,9 @@ export default function LoginPage() {
       console.log("res.data");
       console.log(res.data);
       if(res.data){
-        customer = res.data;
-        console.log("customer");
-        console.log(customer);
+        accessToken = res.data;
+        console.log("accessToken");
+        console.log(accessToken);
       }
     })
   };
@@ -95,8 +95,8 @@ export default function LoginPage() {
       
       // 성공 시 메인 페이지로 이동
       alert("로그인 성공");
-      customer.inlogged = true;
-      setCustomer(customer);
+      accessToken.inlogged = true;
+      setAccessToken(accessToken);
 
       router.push("/");
     } else {
