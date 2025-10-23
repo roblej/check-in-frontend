@@ -8,13 +8,40 @@
   --font-family-mono: var(--font-geist-mono), monospace;
 }
 
+/* 호텔 디테일 패널 최적화 - 애니메이션과 트랜지션 분리 */
+.hotel-detail-panel {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.hotel-detail-panel-overlay {
+  will-change: opacity;
+  backface-visibility: hidden;
+}
+
+/* 전환 중일 때 애니메이션 비활성화 */
+.hotel-detail-panel.transitioning,
+.hotel-detail-panel-overlay.transitioning {
+  transition: none !important;
+  animation: none !important;
+}
+
 /* Prevent page scroll only for admin/master layouts */
 .admin-layout,
 .master-layout {
   height: 100%;
   overflow: hidden;
 }
-
+.fade-transition {
+  transition: opacity 0.2s ease-in-out;
+}
+.fade-in {
+  opacity: 1;
+}
+.fade-out {
+  opacity: 0.3;
+}
 /* Button Component - Minimal with Blue UI */
 .btn {
   @apply cursor-pointer bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-3 rounded-lg transition-colors;

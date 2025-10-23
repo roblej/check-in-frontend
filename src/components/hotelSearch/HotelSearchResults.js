@@ -5,16 +5,17 @@ import { useState } from "react";
 import HotelFilters from "./HotelFilters";
 import Pagination from "../Pagination";
 
-const HotelSearchResults = ({ 
-  hotels, 
-  formatPrice, 
-  handleHotelClick, 
-  sortBy, 
-  setSortBy, 
+const HotelSearchResults = ({
+  hotels,
+  formatPrice,
+  handleHotelClick,
+  handleHotelDetailOpen,
+  sortBy,
+  setSortBy,
   days,
-  showFiltersPanel, 
+  showFiltersPanel,
   setShowFiltersPanel,
-  filteredHotels
+  filteredHotels,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -30,34 +31,30 @@ const HotelSearchResults = ({
         className={`fixed top-1/2 transform -translate-y-1/2 z-30 bg-white border border-gray-300 rounded shadow-md hover:shadow-lg transition-all duration-200 ${
           isCollapsed ? "left-0" : "left-[30%]"
         }`}
-        style={{ 
-          width: "36px", 
+        style={{
+          width: "36px",
           height: "36px",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center"
+          justifyContent: "center",
         }}
       >
-        <span className="text-gray-600 text-sm">
-          {isCollapsed ? "▶" : "◀"}
-        </span>
+        <span className="text-gray-600 text-sm">{isCollapsed ? "▶" : "◀"}</span>
       </button>
 
       {/* 호텔 검색 결과 패널 */}
       <div
         className={`transition-all duration-300 ease-in-out ${
-          isCollapsed 
-            ? "w-0 overflow-hidden" 
+          isCollapsed
+            ? "w-0 overflow-hidden"
             : "flex-1 lg:w-[30%] lg:max-w-[30%]"
-        } flex flex-col ${
-          isCollapsed ? "hidden" : "block"
-        }`}
+        } flex flex-col ${isCollapsed ? "hidden" : "block"}`}
       >
         {/* 호텔 리스트 상단 (검색 조건 & 정렬) */}
         <div className="p-4 border-b bg-white flex-shrink-0">
           {/* 정렬 & 필터 */}
           <div className="flex items-center justify-between">
-            <p className="text-xs text-red-500">{days||1}박 세금포함 가격</p>
+            <p className="text-xs text-red-500">{days || 1}박 세금포함 가격</p>
             <div className="flex items-center gap-2">
               <select
                 value={sortBy}
@@ -96,89 +93,95 @@ const HotelSearchResults = ({
           <div className="space-y-4">
             {Array.isArray(hotels) && hotels.length > 0 ? (
               hotels.map((hotel) => (
-              <div
-                key={hotel.contentId}
-                className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white cursor-pointer"
-                onClick={() => handleHotelClick(hotel.contentId)}
-              >
-                <div className="flex flex-col sm:flex-row">
-                  {/* 호텔 이미지 */}
-                  <div className="relative w-full sm:w-48 h-48 sm:h-auto bg-gradient-to-br from-blue-100 to-blue-200 flex-shrink-0">
-                    <Image 
-                      src={hotel.imageUrl} 
-                      alt="hotel image" 
-                      className="w-full h-full object-cover rounded-lg"
-                      width={400}
-                      height={300}
-                    />
-                    {/* {hotel.badges.length > 0 && (
+                <div
+                  key={hotel.contentId}
+                  className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white cursor-pointer"
+                  onClick={() => handleHotelClick(hotel.contentId)}
+                >
+                  <div className="flex flex-col sm:flex-row">
+                    {/* 호텔 이미지 */}
+                    <div className="relative w-full sm:w-48 h-48 sm:h-auto bg-gradient-to-br from-blue-100 to-blue-200 flex-shrink-0">
+                      <Image
+                        src={hotel.imageUrl}
+                        alt="hotel image"
+                        className="w-full h-full object-cover rounded-lg"
+                        width={400}
+                        height={300}
+                      />
+                      {/* {hotel.badges.length > 0 && (
                       <div className="absolute top-2 left-2">
                         <span className="bg-yellow-400 text-xs px-2 py-1 rounded font-medium">
                           {hotel.badges[0]}
                         </span>
                       </div>
                     )} */}
-                  </div>
+                    </div>
 
-                  {/* 호텔 정보 */}
-                  <div className="flex-1 p-4">
-                    <div className="flex flex-col h-full">
-                      {/* 호텔명 */}
-                      <h3 className="font-bold text-lg mb-2 hover:text-blue-600 cursor-pointer">
-                        {hotel.title}
-                      </h3>
+                    {/* 호텔 정보 */}
+                    <div className="flex-1 p-4">
+                      <div className="flex flex-col h-full">
+                        {/* 호텔명 */}
+                        <h3
+                          className="font-bold text-lg mb-2 hover:text-blue-600 cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleHotelClick(hotel.contentId);
+                          }}
+                        >
+                          {hotel.title}
+                        </h3>
 
-                      {/* 평점 */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="flex items-center">
-                          <span className="text-yellow-500 mr-1">★</span>
-                          <span className="font-bold text-blue-600">
-                            {hotel.rating}
+                        {/* 평점 */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex items-center">
+                            <span className="text-yellow-500 mr-1">★</span>
+                            <span className="font-bold text-blue-600">
+                              {hotel.rating}
+                            </span>
+                          </div>
+                          <span className="text-sm text-gray-600">
+                            {hotel.adress}
+                          </span>
+                          <span className="text-sm text-gray-600">
+                            {hotel.reviews}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {hotel.location}
                           </span>
                         </div>
-                        <span className="text-sm text-gray-600">
-                          {hotel.adress}
-                        </span>
-                        <span className="text-sm text-gray-600">
-                          {hotel.reviews}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {hotel.location}
-                        </span>
-                      </div>
 
-                      {/* 체크인 정보 */}
-                      <p className="text-xs text-gray-500 mb-3">
-                        {hotel.checkInTime}
-                      </p>
+                        {/* 체크인 정보 */}
+                        <p className="text-xs text-gray-500 mb-3">
+                          {hotel.checkInTime}
+                        </p>
 
-                      {/* 하단: 가격 및 예약 */}
-                      <div className="mt-auto">
-                        <div className="flex items-end justify-between">
-                          <div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-2xl font-bold text-gray-900">
-                                {/* 방 가격을 가져와서 가격 평균 표시*/}
-                                {/* ₩{formatPrice(hotel.price)} */}
-                              </span>
-                              {hotel.discount > 0 && (
-                                <span className="text-sm text-red-500 font-medium">
-                                  {hotel.discount}%
+                        {/* 하단: 가격 및 예약 */}
+                        <div className="mt-auto">
+                          <div className="flex items-end justify-between">
+                            <div>
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-2xl font-bold text-gray-900">
+                                  {/* 방 가격을 가져와서 가격 평균 표시*/}
+                                  {/* ₩{formatPrice(hotel.price)} */}
                                 </span>
+                                {hotel.discount > 0 && (
+                                  <span className="text-sm text-red-500 font-medium">
+                                    {hotel.discount}%
+                                  </span>
+                                )}
+                              </div>
+                              {hotel.originalPrice > hotel.price && (
+                                <div className="text-sm text-gray-500 line-through">
+                                  ₩{formatPrice(hotel.originalPrice)}
+                                </div>
                               )}
                             </div>
-                            {hotel.originalPrice > hotel.price && (
-                              <div className="text-sm text-gray-500 line-through">
-                                ₩{formatPrice(hotel.originalPrice)}
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
               ))
             ) : (
               <div className="text-center py-12">
@@ -195,7 +198,7 @@ const HotelSearchResults = ({
 
           {/* Pagination - 스크롤 영역 안에 포함 */}
           <div className="mt-6">
-            <Pagination 
+            <Pagination
               currentPage={0}
               totalPages={4}
               totalElements={19}
