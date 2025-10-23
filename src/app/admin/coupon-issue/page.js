@@ -7,7 +7,8 @@ import axios from 'axios';
 
 const CouponIssueManagement = () => {
 
-  const api_url = "/api/admin/couponIssue";
+  const couponIssue_url = "/api/admin/couponIssue";
+  const customerSearch_url = "/api/admin/customerSearch?searchTerm=";
 
   const [templates, setTemplates] = useState([]);
   const [issuedCoupons, setIssuedCoupons] = useState([]);
@@ -18,137 +19,49 @@ const CouponIssueManagement = () => {
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
-  function getDate(){
-    axios.get(api_url).then(res => {
+  function getTemplates(){
+    axios.get(couponIssue_url).then(res => {
       console.log(res.data);
       setTemplates(res.data);
     });
   }
 
+  function getCustomers(searchTerm) {
+    if (searchTerm.trim() === '') {
+      setCustomers([]);
+      return;
+    }
+    
+    axios.get(`${customerSearch_url}${encodeURIComponent(searchTerm)}`)
+      .then(res => {
+        console.log(res.data);
+        setCustomers(res.data);
+      })
+      .catch(error => {
+        console.error('고객 검색 오류:', error);
+        setCustomers([]);
+      });
+  }
+
   useEffect(() => {
-    getDate();
+    getTemplates();
   }, []);
 
-  // 더미 데이터
+  // 고객 검색이 변경될 때마다 API 호출 (디바운스 적용)
   useEffect(() => {
-    const dummyTemplates = [
-      {
-        templateIdx: 1,
-        templateName: '여름휴가 쿠폰',
-        discount: 10000,
-        validDays: 30,
-        status: true
-      },
-      {
-        templateIdx: 2,
-        templateName: '겨울휴가 쿠폰',
-        discount: 15000,
-        validDays: 30,
-        status: true
-      },
-      {
-        templateIdx: 4,
-        templateName: '브론즈 생일 쿠폰',
-        discount: 3000,
-        validDays: 30,
-        status: true
-      },
-      {
-        templateIdx: 5,
-        templateName: '골드 생일 쿠폰',
-        discount: 10000,
-        validDays: 30,
-        status: true
-      }
-    ];
+    const timeoutId = setTimeout(() => {
+      getCustomers(customerSearch);
+    }, 300); // 300ms 디바운스
 
-    const dummyCustomers = [
-      {
-        customerIdx: 1,
-        name: '김철수',
-        email: 'kim@example.com',
-        phone: '010-1234-5678',
-        rank: '골드'
-      },
-      {
-        customerIdx: 2,
-        name: '이영희',
-        email: 'lee@example.com',
-        phone: '010-2345-6789',
-        rank: '실버'
-      },
-      {
-        customerIdx: 3,
-        name: '박민수',
-        email: 'park@example.com',
-        phone: '010-3456-7890',
-        rank: '브론즈'
-      },
-      {
-        customerIdx: 4,
-        name: '정수진',
-        email: 'jung@example.com',
-        phone: '010-4567-8901',
-        rank: '골드'
-      },
-      {
-        customerIdx: 5,
-        name: '최동현',
-        email: 'choi@example.com',
-        phone: '010-5678-9012',
-        rank: '플래티넘'
-      }
-    ];
-
-    const dummyIssuedCoupons = [
-      {
-        couponIdx: 1,
-        templateIdx: 1,
-        templateName: '여름휴가 쿠폰',
-        customerIdx: 1,
-        customerName: '김철수',
-        adminIdx: 1,
-        createDate: '2024-10-20T10:00:00',
-        endDate: '2024-11-19T10:00:00',
-        status: false
-      },
-      {
-        couponIdx: 2,
-        templateIdx: 4,
-        templateName: '브론즈 생일 쿠폰',
-        customerIdx: 3,
-        customerName: '박민수',
-        adminIdx: 1,
-        createDate: '2024-10-21T14:30:00',
-        endDate: '2024-11-20T14:30:00',
-        status: true
-      },
-      {
-        couponIdx: 3,
-        templateIdx: 5,
-        templateName: '골드 생일 쿠폰',
-        customerIdx: 4,
-        customerName: '정수진',
-        adminIdx: 1,
-        createDate: '2024-10-22T09:15:00',
-        endDate: '2024-11-21T09:15:00',
-        status: false
-      }
-    ];
-
-    setTemplates(dummyTemplates);
-    setCustomers(dummyCustomers);
-    setIssuedCoupons(dummyIssuedCoupons);
-  }, []);
+    return () => clearTimeout(timeoutId);
+  }, [customerSearch]);
 
   const filteredTemplates = templates.filter(template =>
     template.templateName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-    customer.email.toLowerCase().includes(customerSearch.toLowerCase())
-  );
+  // API에서 이미 필터링된 결과를 사용
+  const filteredCustomers = customers;
 
   const handleIssueCoupon = () => {
     if (!selectedTemplate || !selectedCustomer) return;
@@ -302,8 +215,8 @@ const CouponIssueManagement = () => {
 
       {/* 쿠폰 발급 모달 */}
       {isIssueModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg border-black">
             <h2 className="text-lg font-semibold mb-4">쿠폰 발급</h2>
             
             {/* 템플릿 선택 */}
@@ -338,7 +251,7 @@ const CouponIssueManagement = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="고객명 또는 이메일로 검색..."
+                  placeholder="닉네임으로 검색..."
                   value={customerSearch}
                   onChange={(e) => setCustomerSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -359,7 +272,9 @@ const CouponIssueManagement = () => {
                   >
                     <div className="font-medium">{customer.name}</div>
                     <div className="text-sm text-gray-500">{customer.email}</div>
-                    <div className="text-sm text-gray-500">{customer.rank} 등급</div>
+                    <div className="text-sm text-gray-500">
+                      닉네임: {customer.nickname || '미설정'} | {customer.rank} 등급
+                    </div>
                   </div>
                 ))}
               </div>
@@ -372,7 +287,8 @@ const CouponIssueManagement = () => {
                 <div className="space-y-1 text-sm">
                   <div>쿠폰: {selectedTemplate.templateName}</div>
                   <div>할인액: {selectedTemplate.discount.toLocaleString()}원</div>
-                  <div>고객: {selectedCustomer.name} ({selectedCustomer.rank})</div>
+                  <div>고객: {selectedCustomer.name} ({selectedCustomer.nickname || '닉네임 미설정'})</div>
+                  <div>등급: {selectedCustomer.rank}</div>
                   <div>유효기간: {selectedTemplate.validDays}일</div>
                 </div>
               </div>

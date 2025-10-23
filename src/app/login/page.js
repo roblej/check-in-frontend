@@ -95,6 +95,7 @@ export default function LoginPage() {
       
       // 성공 시 메인 페이지로 이동
       alert("로그인 성공");
+      customer.inlogged = true;
       setCustomer(customer);
 
       router.push("/");
