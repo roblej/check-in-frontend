@@ -4,22 +4,51 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import TossPaymentsWidget from '@/components/payment/TossPaymentsWidget';
 import { usePaymentStore } from '@/stores/paymentStore';
-import { useCustomerStore } from '@/stores/customerStore';
 
 const UsedPaymentForm = ({ initialData }) => {
   const router = useRouter();
   const { loadFromStorage, clearPaymentDraft } = usePaymentStore();
-  const { customer } = useCustomerStore();
+  const [customer, setCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // httpOnly 쿠키에서 사용자 정보 가져오기
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await fetch('/api/customer/me', {
+          credentials: 'include' // httpOnly 쿠키 포함
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setCustomer(userData);
+        } else if (response.status === 401) {
+          console.log('인증이 필요합니다');
+          router.push('/login');
+          return;
+        }
+      } catch (error) {
+        console.error('사용자 정보 가져오기 실패:', error);
+        router.push('/login');
+        return;
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUserInfo();
+  }, [router]);
+
   // 결제 정보 상태
   const [paymentInfo, setPaymentInfo] = useState({
     ...initialData,
     usedTradeIdx: initialData.usedTradeIdx, // 거래 ID 추가
-    customerIdx: customer.customerIdx,
-    customerName: customer.nickname,
-    customerEmail: customer.email,
-    customerPhone: customer.phone,
-    customerCash: parseInt(customer.cash),
-    customerPoint: parseInt(customer.point),
+    customerIdx: null,
+    customerName: '',
+    customerEmail: '',
+    customerPhone: '',
+    customerCash: 0,
+    customerPoint: 0,
     // 결제 방식 관련 필드 추가
     useCash: 0, // 사용할 캐시 금액
     usePoint: 0, // 사용할 포인트 금액
@@ -28,6 +57,21 @@ const UsedPaymentForm = ({ initialData }) => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // 사용자 정보가 로드되면 paymentInfo 업데이트
+  useEffect(() => {
+    if (customer) {
+      setPaymentInfo(prev => ({
+        ...prev,
+        customerIdx: customer.customerIdx,
+        customerName: customer.nickname,
+        customerEmail: customer.email,
+        customerPhone: customer.phone,
+        customerCash: parseInt(customer.cash) || 0,
+        customerPoint: parseInt(customer.point) || 0,
+      }));
+    }
+  }, [customer]);
 
   // 고정된 키들 생성 (useMemo로 최적화)
   const paymentKeys = useMemo(
@@ -74,15 +118,17 @@ const UsedPaymentForm = ({ initialData }) => {
 
   // customer 정보가 변경될 때 paymentInfo 업데이트
   useEffect(() => {
-    setPaymentInfo(prev => ({
-      ...prev,
-      customerIdx: customer.customerIdx,
-      customerName: customer.nickname,
-      customerEmail: customer.email,
-      customerPhone: customer.phone,
-      customerCash: parseInt(customer.cash),
-      customerPoint: parseInt(customer.point),
-    }));
+    if (customer) {
+      setPaymentInfo(prev => ({
+        ...prev,
+        customerIdx: customer.customerIdx,
+        customerName: customer.nickname,
+        customerEmail: customer.email,
+        customerPhone: customer.phone,
+        customerCash: parseInt(customer.cash) || 0,
+        customerPoint: parseInt(customer.point) || 0,
+      }));
+    }
   }, [customer]);
 
   // 페이지 이탈 시 거래 삭제 (최적화된 버전)
@@ -376,6 +422,35 @@ const UsedPaymentForm = ({ initialData }) => {
     
     router.push(`/checkout/fail?error=${encodeURIComponent(error.message || '결제가 취소되었습니다.')}`);
   };
+
+  // 로딩 중이면 로딩 화면 표시
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">사용자 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 사용자 정보가 없으면 로그인 페이지로 리다이렉트
+  if (!customer) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">로그인이 필요합니다.</p>
+          <button 
+            onClick={() => router.push('/login')}
+            className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600"
+          >
+            로그인하기
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
