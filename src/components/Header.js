@@ -27,9 +27,6 @@ const Header = () => {
               <Link href="" onClick={handleGetTokenInfo} className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
                 뭐넣지
               </Link>
-              <Link href="/hotel/register" className="text-sm font-semibold text-[#10B981] hover:text-green-600 transition-colors">
-                호텔 등록하기
-              </Link>
               <a href="/admin" className="text-sm font-semibold text-[#3B82F6] hover:text-blue-600 transition-colors">
                 관리자
               </a>
@@ -47,9 +44,6 @@ const Header = () => {
             <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
               공유하기
             </button>
-            <Link href="/hotel/register" className="bg-[#10B981] hover:bg-green-600 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">
-              호텔등록
-            </Link>
             <a 
               href="/mypage"
               className="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
