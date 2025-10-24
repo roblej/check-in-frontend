@@ -4,6 +4,7 @@ import HeroSection from "@/components/HeroSection";
 import PopularHotels from "@/components/PopularHotels";
 import DartGameSection from "@/components/DartGameSection";
 import SetAccessToken from "@/components/login/SetAccessToken";
+import ReadToken from "@/components/token/readToken";
 
 /**
  * 체크인 호텔 메인 페이지 (SSR)
@@ -13,7 +14,6 @@ import SetAccessToken from "@/components/login/SetAccessToken";
  * - 클라이언트 컴포넌트들을 조합하여 구성
  */
 const CheckinHotel = () => {
-  
   // 여행 전 체크 아이템 데이터 (서버 컴포넌트에서 관리)
   const travelCheckItems = [
     {
@@ -41,7 +41,6 @@ const CheckinHotel = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SetAccessToken />
       {/* 헤더 */}
       <Header />
     
