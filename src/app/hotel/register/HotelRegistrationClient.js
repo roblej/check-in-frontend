@@ -77,6 +77,138 @@ const HotelRegistrationClient = ({ initialData }) => {
     setProgress(totalFields > 0 ? (completedFields / totalFields) * 100 : 0);
   }, [formData]);
 
+  // 임시저장 기능
+  const saveDraft = async () => {
+    try {
+      const draftData = {
+        formData: formData,
+        lastTab: currentTab,
+        progress: progress,
+      };
+      
+      const response = await axios.post("/api/hotel/draft", draftData);
+      
+      if (response.data.success) {
+        console.log("임시저장 완료:", response.data.message);
+      } else {
+        console.error("임시저장 실패:", response.data.message);
+      }
+    } catch (error) {
+      console.error("임시저장 API 호출 오류:", error);
+    }
+  };
+
+  // 임시저장 데이터 불러오기
+  const loadDraft = async () => {
+    try {
+      const response = await axios.get("/api/hotel/draft");
+      
+      if (response.data.success && response.data.data) {
+        const draftData = response.data.data;
+        
+        // JSON 문자열을 객체로 파싱
+        const parsedFormData = JSON.parse(draftData.formData);
+        
+        setFormData(parsedFormData);
+        setCurrentTab(draftData.lastTab || "basic");
+        setProgress(draftData.progress || 0);
+        
+        alert("이전 작성 내용을 불러왔습니다.");
+      } else {
+        alert("불러올 임시저장 데이터가 없습니다.");
+      }
+    } catch (error) {
+      console.error("임시저장 데이터 로드 실패:", error);
+      alert("임시저장 데이터 로드 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 임시저장 데이터 삭제
+  const clearDraft = async () => {
+    try {
+      const response = await axios.delete("/api/hotel/draft");
+      
+      if (response.data.success) {
+        alert("임시저장 내용이 삭제되었습니다.");
+        
+        // 폼 데이터 초기화
+        setFormData({
+          hotelInfo: {
+            title: "",
+            adress: "",
+            phone: "",
+            email: "",
+            checkInTime: "15:00",
+            checkOutTime: "11:00",
+            cancellationPolicy: "무료 취소 (체크인 24시간 전까지)"
+          },
+          hotelDetail: {
+            description: "",
+            features: "",
+            scale: "",
+            history: ""
+          },
+          area: {
+            region: "",
+            district: "",
+            nearbyAttractions: "",
+            transportation: ""
+          },
+          rooms: [],
+          images: [],
+          events: [],
+          dining: []
+        });
+        setCurrentTab("basic");
+        setProgress(0);
+      } else {
+        alert("임시저장 삭제 실패: " + response.data.message);
+      }
+    } catch (error) {
+      console.error("임시저장 삭제 실패:", error);
+      alert("임시저장 삭제 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 임시저장 상태 확인
+  const checkDraftStatus = async () => {
+    try {
+      const response = await axios.get("/api/hotel/draft/status");
+      
+      if (response.data.success) {
+        if (response.data.hasDraft) {
+          const shouldLoad = confirm(
+            "이전에 작성하던 호텔 등록 내용이 있습니다. 이어서 작성하시겠습니까?"
+          );
+          if (shouldLoad) {
+            loadDraft();
+          } else {
+            clearDraft();
+          }
+        }
+      }
+    } catch (error) {
+      console.error("임시저장 상태 확인 실패:", error);
+    }
+  };
+
+  // 자동 저장 (5초마다)
+  useEffect(() => {
+    const autoSaveTimer = setInterval(() => {
+      // 폼에 데이터가 있을 때만 자동 저장
+      if (formData.hotelInfo.title || formData.rooms.length > 0 || formData.images.length > 0) {
+        saveDraft();
+      }
+    }, 5000); // 5초마다 자동 저장
+
+    return () => clearInterval(autoSaveTimer);
+  }, [formData, currentTab, progress]);
+
+  // 페이지 로드 시 임시저장 상태 확인
+  useEffect(() => {
+    checkDraftStatus();
+  }, []);
+
   // 폼 데이터 업데이트
   const updateFormData = (section, data) => {
     setFormData(prev => ({
@@ -208,6 +340,8 @@ const HotelRegistrationClient = ({ initialData }) => {
 
       if (response.data.success) {
         alert("호텔 등록 요청이 완료되었습니다. 관리자 승인 후 운영을 시작할 수 있습니다.");
+        // 등록 성공 시 임시저장 삭제
+        await clearDraft();
         router.push("/"); // 메인 페이지로 이동
       } else {
         alert("등록 요청 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -258,6 +392,9 @@ const HotelRegistrationClient = ({ initialData }) => {
         initialData={initialData}
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
+        saveDraft={saveDraft}
+        loadDraft={loadDraft}
+        clearDraft={clearDraft}
       />
     </div>
   );
