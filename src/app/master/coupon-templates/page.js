@@ -8,6 +8,8 @@ import axios from 'axios';
 const CouponTemplateManagement = () => {
 
   const api_url = "/api/master/couponTemplates";
+  const createTemplate_url = "/api/master/createTemplate";
+  const updateTemplate_url = "/api/master/updateTemplate";
 
   const [templates, setTemplates] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,12 +18,14 @@ const CouponTemplateManagement = () => {
     templateName: '',
     discount: '',
     validDays: 30,
-    status: true
+    status: 1
   });
+
+  /* 관리자 고유번호 */
+  const [adminIdx, setAdminIdx] = useState(1);
 
   function getDate(){
     axios.get(api_url).then(res => {
-      console.log(res.data);
       setTemplates(res.data);
     });
   }
@@ -29,6 +33,41 @@ const CouponTemplateManagement = () => {
   useEffect(() => {
     getDate();
   }, []);
+
+  function createTemplate(templateName, discount, validDays, status){
+    axios.post(createTemplate_url, {
+      templateName: templateName,
+      discount: discount,
+      validDays: validDays,
+      status: status,
+      adminIdx: adminIdx
+
+    }).then(res => {
+      console.log(res.data);
+      getDate();
+      setIsModalOpen(false);
+      setEditingTemplate(null);
+      setFormData({ templateName: '', discount: '', validDays: 30, status: 1 });
+      alert('템플릿이 성공적으로 생성되었습니다.');
+    });
+  }
+
+  function updateTemplate(templateIdx, templateName){
+    if (window.confirm(`"${templateName}" 템플릿을 삭제하시겠습니까?\n\n⚠️ 주의: 이 작업은 되돌릴 수 없습니다.`)) {
+      axios.post(updateTemplate_url, {
+        templateIdx: templateIdx
+      }).then(res => {
+        getDate(); // 목록 새로고침
+        setIsModalOpen(false);
+        setEditingTemplate(null);
+        setFormData({ templateName: '', discount: '', validDays: 30, status: 1 });
+        alert('템플릿이 성공적으로 삭제되었습니다.');
+      }).catch(error => {
+        console.error('템플릿 삭제 오류:', error);
+        alert('템플릿 삭제 중 오류가 발생했습니다.');
+      });
+    }
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -54,7 +93,7 @@ const CouponTemplateManagement = () => {
     
     setIsModalOpen(false);
     setEditingTemplate(null);
-    setFormData({ templateName: '', discount: '', validDays: 30, status: true });
+    setFormData({ templateName: '', discount: '', validDays: 30, status: 1 });
   };
 
   const handleEdit = (template) => {
@@ -68,16 +107,14 @@ const CouponTemplateManagement = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (templateIdx) => {
-    if (confirm('정말로 이 템플릿을 삭제하시겠습니까?')) {
-      setTemplates(templates.filter(template => template.templateIdx !== templateIdx));
-    }
+  const handleDelete = (templateIdx, templateName) => {
+    updateTemplate(templateIdx, templateName);
   };
 
   const toggleStatus = (templateIdx) => {
     setTemplates(templates.map(template => 
       template.templateIdx === templateIdx 
-        ? { ...template, status: !template.status, updatedAt: new Date().toISOString() }
+        ? { ...template, status: template.status === 1 ? 0 : 1, updatedAt: new Date().toISOString() }
         : template
     ));
   };
@@ -144,13 +181,13 @@ const CouponTemplateManagement = () => {
                     <button
                       onClick={() => toggleStatus(template.templateIdx)}
                       className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                        template.status 
+                        template.status === 1
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
                       }`}
                     >
-                      {template.status ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                      {template.status ? '활성' : '비활성'}
+                      {template.status === 1 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                      {template.status === 1 ? '활성' : '비활성'}
                     </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -165,7 +202,7 @@ const CouponTemplateManagement = () => {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(template.templateIdx)}
+                        onClick={() => handleDelete(template.templateIdx, template.templateName)}
                         className="text-red-600 hover:text-red-900"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -181,8 +218,8 @@ const CouponTemplateManagement = () => {
 
       {/* 모달 */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg border-black">
             <h2 className="text-lg font-semibold mb-4">
               {editingTemplate ? '템플릿 수정' : '새 템플릿 추가'}
             </h2>
@@ -227,17 +264,21 @@ const CouponTemplateManagement = () => {
                 <label className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.checked})}
+                    checked={formData.status === 1}
+                    onChange={(e) => setFormData({...formData, status: e.target.checked ? 1 : 0})}
                     className="mr-2"
                   />
                   활성화
                 </label>
               </div>
               <div className="flex gap-2">
-                <button
-                  type="submit"
+                <button 
+                  type="button"
                   className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+                  onClick={() => {
+                    createTemplate(formData.templateName, formData.discount, formData.validDays, formData.status)
+                  }
+                }
                 >
                   {editingTemplate ? '수정' : '추가'}
                 </button>
@@ -246,7 +287,7 @@ const CouponTemplateManagement = () => {
                   onClick={() => {
                     setIsModalOpen(false);
                     setEditingTemplate(null);
-                    setFormData({ templateName: '', discount: '', validDays: 30, status: true });
+                    setFormData({ templateName: '', discount: '', validDays: 30, status: 1 });
                   }}
                   className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400"
                 >

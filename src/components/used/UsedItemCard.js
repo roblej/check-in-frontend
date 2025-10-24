@@ -3,11 +3,38 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Button from '../Button';
-import { useCustomerStore } from '@/stores/customerStore';
+import { useState, useEffect } from 'react';
 
 const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
   const router = useRouter();
-  const { customer } = useCustomerStore();
+  const [customer, setCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // httpOnly 쿠키에서 사용자 정보 가져오기
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await fetch('/api/customer/me', {
+          credentials: 'include' // httpOnly 쿠키 포함
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setCustomer(userData);
+        } else if (response.status === 401) {
+          console.log('인증이 필요합니다');
+          setCustomer(null);
+        }
+      } catch (error) {
+        console.error('사용자 정보 가져오기 실패:', error);
+        setCustomer(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUserInfo();
+  }, []);
   
   const formatPrice = (price) => {
     return new Intl.NumberFormat('ko-KR').format(price);
@@ -24,8 +51,15 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
 
   const handleInquire = async () => {
     try {
+      // 로그인 체크
+      if (!customer) {
+        alert('로그인이 필요합니다.');
+        router.push('/login');
+        return;
+      }
+
       // 1. 거래 가능성 체크
-      const availabilityResponse = await fetch(`/api/used-hotels/${item.usedItemIdx || item.id}/availability`);
+      const availabilityResponse = await fetch(`/api/used/${item.usedItemIdx || item.id}/availability`);
       const availabilityData = await availabilityResponse.json();
       
       if (!availabilityData.available) {
@@ -34,12 +68,15 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
       }
 
       // 2. 거래 생성
-      const tradeResponse = await fetch('/api/used-hotels/trade', {
+      const tradeResponse = await fetch('/api/used/trade', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include', // httpOnly 쿠키 포함
         body: JSON.stringify({
           usedItemIdx: item.usedItemIdx || item.id,
-          buyerIdx: customer.customerIdx || 2, // store에서 가져온 사용자 ID
+          buyerIdx: customer.customerIdx || customer.id, // httpOnly 쿠키에서 가져온 사용자 ID
           sellerIdx: item.sellerIdx || 1, // 실제로는 판매자 ID
           price: item.salePrice || 0,
           reservIdx: item.reservIdx || 1 // 실제로는 예약 ID
@@ -207,13 +244,15 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
             variant="primary"
             className="flex-1 bg-orange-500 hover:bg-orange-600"
             onClick={handleInquire}
+            disabled={loading}
           >
-            결제하기
+            {loading ? '로딩중...' : '결제하기'}
           </Button>
           <Button
             variant="outline"
             className="px-4"
             onClick={handleBookmark}
+            disabled={loading}
           >
             찜하기
           </Button>

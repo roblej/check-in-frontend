@@ -17,7 +17,7 @@ export default function MyPage() {
   const router = useRouter();
   
   // Zustand에서 고객 정보 가져오기
-  const { customer, isLoggedIn } = useCustomerStore();
+  const { verifyTokenWithBackend, isRecentlyVerified } = useCustomerStore();
   
   // 탭 상태 관리
   const [reservationTab, setReservationTab] = useState('upcoming'); // upcoming, completed, cancelled
@@ -35,19 +35,71 @@ export default function MyPage() {
     cancelled: []
   });
 
-  // 로그인 체크 및 초기 데이터 로드
-  useEffect(() => {
-    // 로그인하지 않은 경우 로그인 페이지로 리다이렉트
-    if (!isLoggedIn || !customer.customerIdx) {
-      alert('로그인이 필요한 서비스입니다.');
-      router.push('/login');
-      return;
-    }
+  // 백엔드에서 가져온 사용자 정보 상태
+  const [userData, setUserData] = useState(null);
 
-    console.log('👤 로그인된 사용자:', customer);
-    
-    // 페이지 로드 시 모든 탭의 데이터를 불러와서 카운트를 정확히 표시
-    loadAllReservations();
+  // 사용자 데이터를 API로 직접 가져오는 함수
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch('/api/customer/me', {
+        credentials: 'include' // HttpOnly 쿠키 포함
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setUserData(userData);
+        return userData;
+      } else if (response.status === 401) {
+        console.log('❌ 토큰 검증 실패 - 로그인 페이지로 이동');
+        router.push('/login');
+        return null;
+      } else {
+        console.error('❌ 서버 오류:', response.status);
+        alert('서비스에 접근할 수 없습니다. 다시 시도해주세요.');
+        router.push('/login');
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ 사용자 데이터 가져오기 실패:', error);
+      alert('서비스에 접근할 수 없습니다. 다시 시도해주세요.');
+      router.push('/login');
+      return null;
+    }
+  };
+
+  // 실제 토큰 검증 및 초기 데이터 로드
+  useEffect(() => {
+    const verifyTokenAndLoadData = async () => {
+      // 최근 검증된 경우 중복 검증 건너뛰기
+      if (isRecentlyVerified()) {
+        console.log('✅ 최근 검증됨 - 중복 검증 건너뛰기');
+        // 사용자 데이터는 API로 직접 가져오기
+        await fetchUserData();
+        loadAllReservations();
+        return;
+      }
+      
+      // 최근 검증되지 않은 경우 토큰 검증 수행
+      console.log('🔍 토큰 검증 수행');
+      const result = await verifyTokenWithBackend();
+      
+      if (result.success) {
+        console.log('👤 토큰 검증 성공, 사용자 정보:', result.userData);
+        
+        // 사용자 데이터 상태에 저장
+        setUserData(result.userData);
+        
+        // 페이지 로드 시 모든 탭의 데이터를 불러와서 카운트를 정확히 표시
+        loadAllReservations();
+      } else {
+        // 토큰 검증 실패 - 로그인 페이지로 리다이렉트
+        console.log('❌ 토큰 검증 실패 - 로그인 페이지로 이동');
+        router.push('/login');
+        return;
+      }
+    };
+
+    verifyTokenAndLoadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -285,15 +337,15 @@ export default function MyPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                  {customer.name || customer.nickname || customer.id}님
+                  {userData?.nickname || userData?.id || '사용자'}님
                 </h1>
-                <p className="text-sm text-gray-500">{customer.email || '이메일 미등록'}</p>
+                <p className="text-sm text-gray-500">{userData?.email || '이메일 미등록'}</p>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                    {customer.rank || 'Traveler'} 회원
+                    {userData?.rank || 'Traveler'} 회원
                   </span>
                   <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                    포인트: {(customer.point || 0).toLocaleString()}P
+                    포인트: {(userData?.point || 0).toLocaleString()}P
                   </span>
                 </div>
               </div>

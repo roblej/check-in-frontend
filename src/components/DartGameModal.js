@@ -582,10 +582,16 @@ const DartGameModal = ({ isOpen, onClose }) => {
       // areaCode가 있으면 해당 지역의 호텔 조회
       if (location.areaCode) {
         console.log('지역코드로 호텔 검색:', location.areaCode);
-        const response = await hotelAPI.getHotelsByAreaCode(location.areaCode, 10);
+        // 좌표가 있으면 좌표 기반으로 가장 근접한 호텔 조회
+        const response = await hotelAPI.getHotelsByAreaCode(
+          location.areaCode, 
+          10, 
+          location.lat, 
+          location.lng
+        );
         const hotels = response || [];
         
-        console.log('검색된 호텔:', hotels);
+        console.log('검색된 호텔 (거리순 정렬):', hotels);
         setRecommendedHotels(hotels);
       } else {
         // areaCode가 없으면 전국 호텔을 표시하지 않음
@@ -947,6 +953,15 @@ const DartGameModal = ({ isOpen, onClose }) => {
                         <div className="p-4">
                           <h5 className="font-bold text-gray-900 mb-2 line-clamp-1">{hotel.title}</h5>
                           <p className="text-sm text-gray-600 mb-3 line-clamp-2">{hotel.adress}</p>
+                          
+                          {/* 거리 정보 */}
+                          {hotel.distance && (
+                            <div className="mb-3">
+                              <p className="text-sm text-green-600 font-medium">
+                                📍 다트 위치로부터 {hotel.distance.toFixed(1)}km
+                              </p>
+                            </div>
+                          )}
                           
                           {/* 가격 정보 */}
                           {(hotel.minPrice || hotel.maxPrice) && (
