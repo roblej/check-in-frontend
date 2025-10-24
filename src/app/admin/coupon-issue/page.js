@@ -7,7 +7,7 @@ import axios from 'axios';
 
 const CouponIssueManagement = () => {
 
-  const couponIssue_url = "/api/admin/couponIssue";
+  const couponIssue_url = "/api/admin/couponIssue?adminIdx=";
   const customerSearch_url = "/api/admin/customerSearch?searchTerm=";
   const couponCreate_url = "/api/admin/couponCreate";
 
@@ -24,8 +24,9 @@ const CouponIssueManagement = () => {
   const [adminIdx, setAdminIdx] = useState(1); // 일단 기본값 1 넣어둠
 
   function getTemplates(){
-    axios.get(couponIssue_url).then(res => {
-      setTemplates(res.data);
+    axios.get(`${couponIssue_url}${adminIdx}&page=0&size=10`).then(res => {
+      setTemplates(res.data.couponTemplates);
+      setIssuedCoupons(res.data.coupons.content || res.data.coupons);
     });
   }
 
@@ -52,8 +53,14 @@ const CouponIssueManagement = () => {
       adminIdx: adminIdx // 이거 나중에 꼭 받아서 전달해야함 (현재 로그인 한 admin 고유번호)
     }).then(res => {
       // 쿠폰 생성 성공 처리
+      alert('쿠폰이 성공적으로 발급되었습니다.');
+      getTemplates(); // 목록 새로고침
+      setIsIssueModalOpen(false);
+      setSelectedTemplate(null);
+      setSelectedCustomer(null);
     }).catch(error => {
       console.error('쿠폰 생성 오류:', error);
+      alert('쿠폰 발급 중 오류가 발생했습니다.');
     });
   }
 
@@ -89,7 +96,7 @@ const CouponIssueManagement = () => {
       adminIdx: 1,
       createDate: new Date().toISOString(),
       endDate: new Date(Date.now() + selectedTemplate.validDays * 24 * 60 * 60 * 1000).toISOString(),
-      status: false
+      status: 0
     };
 
     setIssuedCoupons([...issuedCoupons, newCoupon]);
@@ -196,18 +203,18 @@ const CouponIssueManagement = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {issuedCoupons.map((coupon) => (
-                <tr key={coupon.couponIdx} className="hover:bg-gray-50">
+              {issuedCoupons.map((coupon, index) => (
+                <tr key={index} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {coupon.templateName}
+                      {coupon.couponTemplate?.templateName || 'N/A'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-gray-400" />
                       <div className="text-sm text-gray-900">
-                        {coupon.customerName}
+                        {coupon.customer?.name || 'N/A'}
                       </div>
                     </div>
                   </td>
