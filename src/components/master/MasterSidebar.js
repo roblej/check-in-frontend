@@ -6,7 +6,6 @@ import {
   LayoutDashboard, 
   Building2, 
   Users, 
-  MessageSquare, 
   TrendingUp, 
   Settings,
   Gift
@@ -41,17 +40,6 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
         { id: 'member-list', name: '회원 목록', path: '/master/members' },
         { id: 'member-history', name: '회원 이력', path: '/master/member-history' },
         { id: 'member-feedback', name: '회원 피드백', path: '/master/member-feedback' }
-      ]
-    },
-    {
-      id: 'messages',
-      name: '메시지 관리',
-      icon: <MessageSquare size={20} />,
-      path: '/master/messages',
-      submenu: [
-        { id: 'message-list', name: '메시지 목록', path: '/master/messages' },
-        { id: 'message-send', name: '메시지 발송', path: '/master/message-send' },
-        { id: 'message-templates', name: '템플릿 관리', path: '/master/message-templates' }
       ]
     },
     {

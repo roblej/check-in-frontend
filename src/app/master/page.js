@@ -2,7 +2,7 @@
 
 import MasterLayout from '@/components/master/MasterLayout';
 import axios from 'axios';
-import { ChartColumn, Hotel, Users, MessageCircleMore, LayoutDashboard, Settings, CalendarCheck, CircleDollarSign } from 'lucide-react';
+import { ChartColumn, Hotel, Users, LayoutDashboard, Settings, CalendarCheck, CircleDollarSign } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -295,9 +295,6 @@ const MasterDashboard = () => {
                       <button className="text-[#7C3AED] hover:text-purple-800">
                         상세보기
                       </button>
-                      <button className="text-blue-600 hover:text-blue-800">
-                        메시지
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -324,13 +321,6 @@ const MasterDashboard = () => {
             </button>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6">
-            <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-4">메시지 전송</h3>
-            <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4">호텔/회원에게 메시지를 전송하세요</p>
-            <button className="w-full bg-blue-600 text-white py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm">
-              메시지 전송
-            </button>
-          </div>
         </div>
       </div>
     </MasterLayout>
