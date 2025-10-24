@@ -81,7 +81,7 @@ const HotelRegistrationClient = ({ initialData }) => {
   const saveDraft = async () => {
     try {
       const draftData = {
-        formData: formData,
+        formData: JSON.stringify(formData), // JSON 문자열로 변환
         lastTab: currentTab,
         progress: progress,
       };
