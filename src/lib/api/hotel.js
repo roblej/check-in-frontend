@@ -77,9 +77,14 @@ export const hotelAPI = {
   },
 
   // 지역코드로 호텔 목록 조회
-  getHotelsByAreaCode: async (areaCode, limit = 10) => {
+  getHotelsByAreaCode: async (areaCode, limit = 10, lat = null, lng = null) => {
+    const params = { areaCode, limit };
+    if (lat !== null && lng !== null) {
+      params.lat = lat;
+      params.lng = lng;
+    }
     const response = await axiosInstance.get("hotel/area", {
-      params: { areaCode, limit },
+      params,
     });
     return response.data;
   },
