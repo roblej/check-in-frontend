@@ -67,6 +67,7 @@ export const useCustomerStore = create(persist((set,get) => ({
         partialize: (state) => ({
             inlogged: state.inlogged,
             lastVerified: state.lastVerified,
+            accessToken: state.accessToken,
         }),
     }
 )

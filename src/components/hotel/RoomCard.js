@@ -8,9 +8,10 @@ const RoomCard = ({ room, searchParams, formatPrice }) => {
   const { setPaymentDraft } = usePaymentStore();
   const isReadOnly = !!searchParams?.roomIdx; // roomIdx가 있으면 읽기 전용
 
-  // 숙박 일수에 따른 총 가격 계산
+  // 숙박 일수에 따른 총 가격 계산 (추가 요금 포함)
   const nights = searchParams?.nights || 1;
-  const totalPrice = (room.basePrice || room.price) * nights;
+  const roomPricePerNight = room.price || room.basePrice || 0;
+  const totalPrice = roomPricePerNight * nights;
 
   // 예약 버튼 클릭 핸들러
   const handleReservation = () => {
@@ -85,28 +86,100 @@ const RoomCard = ({ room, searchParams, formatPrice }) => {
                 <p className="text-sm text-gray-600 mb-3">{room.description}</p>
               )}
 
-              {/* 객실 옵션 표시 */}
-              <div className="flex flex-wrap gap-2 mb-3">
-                {room.refundable && (
-                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                    환불 가능
-                  </span>
-                )}
-                {room.breakfastIncluded && (
-                  <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">
-                    조식 포함
-                  </span>
-                )}
-                {room.smoking && (
-                  <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">
-                    흡연실
-                  </span>
-                )}
-                {room.roomCount && room.roomCount > 1 && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                    {room.roomCount}개 객실
-                  </span>
-                )}
+              {/* 예약 가능성 메시지 */}
+              {room.availabilityMessage && (
+                <div
+                  className={`mb-3 p-2 rounded-lg text-sm font-medium ${
+                    room.isAvailable
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {room.availabilityMessage}
+                </div>
+              )}
+
+              {/* 추가 요금 표시 */}
+              {room.additionalFee > 0 && (
+                <div className="mb-3 p-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm">
+                  <div className="flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>
+                      기본 {room.capacity}인 초과 시 추가 요금:
+                      <span className="font-semibold">
+                        {" "}
+                        ₩{formatPrice(room.additionalFee)}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* 객실 옵션 표시 - 2x2 그리드 */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {/* 환불 가능 여부 */}
+                <div
+                  className={`px-3 py-2 text-sm font-medium rounded-lg text-center ${
+                    !room.isAvailable
+                      ? "bg-gray-100 text-gray-400"
+                      : room.refundable
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {!room.isAvailable
+                    ? "✗ 환불 불가"
+                    : room.refundable
+                    ? "✓ 환불 가능"
+                    : "✗ 환불 불가"}
+                </div>
+
+                {/* 조식 포함 여부 */}
+                <div
+                  className={`px-3 py-2 text-sm font-medium rounded-lg text-center ${
+                    !room.isAvailable
+                      ? "bg-gray-100 text-gray-400"
+                      : room.breakfastIncluded
+                      ? "bg-orange-100 text-orange-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {!room.isAvailable
+                    ? "✗ 조식 불가"
+                    : room.breakfastIncluded
+                    ? "✓ 조식 포함"
+                    : "✗ 조식 불가"}
+                </div>
+
+                {/* 흡연 가능 여부 */}
+                <div
+                  className={`px-3 py-2 text-sm font-medium rounded-lg text-center ${
+                    !room.isAvailable
+                      ? "bg-gray-100 text-gray-400"
+                      : room.smoking
+                      ? "bg-red-100 text-red-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {!room.isAvailable
+                    ? "✗ 흡연 불가"
+                    : room.smoking
+                    ? "✓ 흡연 가능"
+                    : "✗ 흡연 불가"}
+                </div>
+
+                {/* 객실 개수 */}
+                <div
+                  className={`px-3 py-2 text-sm font-medium rounded-lg text-center ${
+                    !room.isAvailable
+                      ? "bg-gray-100 text-gray-400"
+                      : "bg-blue-100 text-blue-700"
+                  }`}
+                >
+                  {room.roomCount && room.roomCount > 1
+                    ? `${room.roomCount}개 객실`
+                    : "1개 객실"}
+                </div>
               </div>
             </div>
             {/* 우측 가격/버튼을 데스크톱에서 세로 정렬해 균형감 */}
@@ -116,18 +189,30 @@ const RoomCard = ({ room, searchParams, formatPrice }) => {
                   ₩{formatPrice(room.originalPrice)}
                 </div>
               )}
-              <div className="flex items-baseline gap-2">
-                <span className="text-1.7xl font-bold text-gray-900">
-                  ₩{formatPrice(totalPrice)}
-                </span>
-                <span className="text-sm text-gray-500">/ {nights}박</span>
+              <div className="flex flex-col items-end gap-1">
+                {room.additionalFee > 0 && (
+                  <div className="text-xs text-gray-500">
+                    기본: ₩{formatPrice((room.basePrice || 0) * nights)}
+                  </div>
+                )}
+                <div className="flex items-baseline gap-2">
+                  <span className="text-1.7xl font-bold text-gray-900">
+                    ₩{formatPrice(totalPrice)}
+                  </span>
+                  <span className="text-sm text-gray-500">/ {nights}박</span>
+                </div>
               </div>
               {!isReadOnly && (
                 <button
                   onClick={handleReservation}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-md"
+                  disabled={!room.isAvailable}
+                  className={`px-6 py-2 rounded-lg font-medium transition-colors shadow-md ${
+                    room.isAvailable
+                      ? "bg-blue-500 hover:bg-blue-600 text-white"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
                 >
-                  예약하기
+                  {room.isAvailable ? "예약하기" : "예약 불가"}
                 </button>
               )}
             </div>
@@ -156,19 +241,31 @@ const RoomCard = ({ room, searchParams, formatPrice }) => {
                   ₩{formatPrice(room.originalPrice)}
                 </div>
               )}
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-gray-900">
-                  ₩{formatPrice(totalPrice)}
-                </span>
-                <span className="text-sm text-gray-500">/ {nights}박</span>
+              <div className="flex flex-col gap-1">
+                {room.additionalFee > 0 && (
+                  <div className="text-xs text-gray-500">
+                    기본: ₩{formatPrice((room.basePrice || 0) * nights)}
+                  </div>
+                )}
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-gray-900">
+                    ₩{formatPrice(totalPrice)}
+                  </span>
+                  <span className="text-sm text-gray-500">/ {nights}박</span>
+                </div>
               </div>
             </div>
             {!isReadOnly && (
               <button
                 onClick={handleReservation}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-2 rounded-lg font-medium transition-colors shadow-md"
+                disabled={!room.isAvailable}
+                className={`px-8 py-2 rounded-lg font-medium transition-colors shadow-md ${
+                  room.isAvailable
+                    ? "bg-blue-500 hover:bg-blue-600 text-white"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
               >
-                예약하기
+                {room.isAvailable ? "예약하기" : "예약 불가"}
               </button>
             )}
           </div>

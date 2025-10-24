@@ -152,12 +152,6 @@ const MemberManagement = () => {
                   정지
                 </button>
                 <button
-                  onClick={() => handleBulkAction('message')}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  메시지 전송
-                </button>
-                <button
                   onClick={() => handleBulkAction('withdraw')}
                   className="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-700"
                 >
@@ -248,12 +242,6 @@ const MemberManagement = () => {
                       <div className="flex flex-col gap-1">
                         <button className="text-[#7C3AED] hover:text-purple-800 text-left">
                           상세보기
-                        </button>
-                        <button 
-                          onClick={() => handleMemberAction(member.id, 'message')}
-                          className="text-blue-600 hover:text-blue-800 text-left"
-                        >
-                          메시지 전송
                         </button>
                         <button 
                           onClick={() => handleMemberAction(member.id, 'suspend')}

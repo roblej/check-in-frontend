@@ -58,7 +58,7 @@ const SystemSettings = () => {
       role: 'Operator',
       lastLogin: '2024-01-14 16:45:00',
       status: 'inactive',
-      permissions: ['members', 'messages']
+      permissions: ['members']
     }
   ];
 

@@ -16,32 +16,27 @@ import { hotelAPI } from "@/lib/api/hotel";
  * @param {boolean} showAlways - 항상 표시할지 여부 (기본값: false, 조회수가 0일 때는 숨김)
  */
 const LiveViewerCount = ({ contentId, showAlways = true }) => {
-  // 진입 시 1회 조회수 등록
+  // 진입 시 및 이탈 처리
   useEffect(() => {
-    if (!contentId) return;
+    if (!contentId)
+      return;
 
-    const registerView = async () => {
-      try {
-        console.log("🔍 조회수 등록 시도:", contentId);
-        const result = await hotelAPI.incrementHotelView(contentId);
-        console.log("✅ 조회수 등록 성공:", result);
-      } catch (error) {
-        console.error("❌ 조회수 등록 실패:", error);
-      }
+    //진입시 Redis 등록 + 조회
+    hotelAPI.getHotelViews(contentId).catch((err)=>
+      console.error("조회자 등록 실패:",err)
+    );
+    // 페이지 이탈시 Redis 세션 제거
+    return ()=>{
+      hotelAPI.leaveHotel(contentId).catch(()=>
+        console.warn("이탈 처리 실패(만료된 세션일 가능성도 있음")
+      );
     };
-
-    registerView();
   }, [contentId]);
 
-  // 2️⃣ TanStack Query로 30초마다 실시간 조회수 refetch
+  // TanStack Query로 30초마다 실시간 조회수 refetch
   const { data, isLoading, isError } = useQuery({
     queryKey: ["hotelViews", contentId],
-    queryFn: async () => {
-      console.log("🔍 조회수 조회 시도:", contentId);
-      const res = await hotelAPI.getHotelViews(contentId);
-      console.log("📊 조회수 조회 결과:", res);
-      return res.data?.views ?? 0;
-    },
+    queryFn: () => hotelAPI.getHotelViews(contentId),
     refetchInterval: 10000, // 10초마다 자동 갱신 (더 빠른 테스트를 위해)
     staleTime: 10000, // 10초 동안 캐시 유지
     gcTime: 30000, // 메모리 캐시 유지 시간
@@ -71,7 +66,7 @@ const LiveViewerCount = ({ contentId, showAlways = true }) => {
   // 조회수가 0이고 showAlways가 false일 때는 표시하지 않음
   if (!showAlways && (!data || data === 0)) return null;
 
-  // 3️⃣ 현재 조회자 수 표시
+  // 현재 조회자 수 표시
   return (
     <div className="flex items-center gap-1 text-sm text-gray-600">
       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
