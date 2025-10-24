@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({
     id: "",
     password: "",
+    role: "customer", // 기본값: 회원
   });
 
   const [errors, setErrors] = useState({});
@@ -171,17 +172,44 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* 로그인 유지 체크박스 */}
-            <div className={styles.checkboxGroup}>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className={styles.checkbox}
-                />
-                <span>로그인 상태 유지</span>
-              </label>
+            {/* 로그인 유지 체크박스와 사용자 유형 선택 */}
+            <div className={styles.optionsGroup}>
+              <div className={styles.checkboxGroup}>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className={styles.checkbox}
+                  />
+                  <span>로그인 상태 유지</span>
+                </label>
+              </div>
+              
+              <div className={styles.userTypeGroup}>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="role"
+                    value="customer"
+                    checked={formData.role === "customer"}
+                    onChange={handleChange}
+                    className={styles.radioInput}
+                  />
+                  회원
+                </label>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="role"
+                    value="admin"
+                    checked={formData.role === "admin"}
+                    onChange={handleChange}
+                    className={styles.radioInput}
+                  />
+                  관리자
+                </label>
+              </div>
             </div>
 
             {/* 로그인 버튼 */}

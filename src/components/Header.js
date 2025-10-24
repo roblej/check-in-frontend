@@ -13,14 +13,14 @@ const Header = () => {
     setInlogged(false);
     console.log("inlogged", inlogged);
   };
-  
   const handleGetTokenInfo = () => {
     const tokenInfo = readAccessToken();
     console.log("tokenInfo", tokenInfo);
   };
 
-  // MY 버튼 클릭 시 백엔드 토큰 검증
-  const handleMyPageClick = async (e) => {
+
+   // MY 버튼 클릭 시 백엔드 토큰 검증
+   const handleMyPageClick = async (e) => {
     e.preventDefault();
     
     const result = await verifyTokenWithBackend();
@@ -43,7 +43,7 @@ const Header = () => {
               체크인
             </Link>
             <nav className="hidden md:flex items-center gap-6">
-              <Link href="" onClick={handleGetTokenInfo} className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+              <Link href="" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
                 뭐넣지
               </Link>
               <a href="/admin" className="text-sm font-semibold text-[#3B82F6] hover:text-blue-600 transition-colors">

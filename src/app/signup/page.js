@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
@@ -22,6 +22,7 @@ export default function SignupPage() {
     name: "",
     birthday: "",
     gender: "",
+    role: "customer", // 기본값: 회원
   });
 
   const [errors, setErrors] = useState({});
@@ -51,7 +52,7 @@ export default function SignupPage() {
 
  
 
-  function checkId(){
+  const checkId = useCallback(() => {
     axios.post(checkId_url, { id: formData.id }).then(function(res){
       console.log(res.data);
       if(res.data.message){
@@ -61,7 +62,7 @@ export default function SignupPage() {
         setErrors(idError);
       }
     })
-  }
+  }, [formData.id]);
   // 입력 필드 변경 핸들러
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -167,7 +168,7 @@ export default function SignupPage() {
       
       // 임시: 콘솔에 데이터 출력
       console.log("회원가입 데이터:", formData);
-
+      signUp();
       // 성공 시 로그인 페이지로 이동
       alert("회원가입이 완료되었습니다!");
       router.push("/login");
@@ -188,6 +189,37 @@ export default function SignupPage() {
           <p className={styles.subtitle}>CheckIn에 오신 것을 환영합니다</p>
 
           <form onSubmit={handleSubmit} className={styles.form}>
+            {/* 사용자 유형 선택 */}
+            <div className={styles.formGroup}>
+              <label className={styles.label}>
+                사용자 유형 <span className={styles.required}>*</span>
+              </label>
+              <div className={styles.radioGroup}>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="role"
+                    value="custormer"
+                    checked={formData.role === "customer"}
+                    onChange={handleChange}
+                    className={styles.radioInput}
+                  />
+                  회원
+                </label>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="role"
+                    value="admin"
+                    checked={formData.role === "admin"}
+                    onChange={handleChange}
+                    className={styles.radioInput}
+                  />
+                  관리자
+                </label>
+              </div>
+            </div>
+
             {/* 아이디 */}
             <div className={styles.formGroup}>
               <label htmlFor="id" className={styles.label}>
@@ -390,7 +422,6 @@ export default function SignupPage() {
             <button
               type="submit"
               className={styles.submitButton}
-              onClick={signUp}
               disabled={isSubmitting}
             >
               {isSubmitting ? "처리 중..." : "회원가입"}
