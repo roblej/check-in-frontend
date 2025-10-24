@@ -160,9 +160,6 @@ const HotelManagement = () => {
       case 'suspend':
         alert(`${selectedHotels.length}개 호텔을 정지했습니다.`);
         break;
-      case 'message':
-        alert(`${selectedHotels.length}개 호텔에 메시지를 전송합니다.`);
-        break;
       default:
         break;
     }
@@ -245,12 +242,6 @@ const HotelManagement = () => {
                   className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm bg-red-600 text-white rounded hover:bg-red-700"
                 >
                   정지
-                </button>
-                <button
-                  onClick={() => handleBulkAction('message')}
-                  className="px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  메시지 전송
                 </button>
               </div>
             </div>
@@ -336,9 +327,6 @@ const HotelManagement = () => {
                         <button className="text-[#7C3AED] hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-50 transition-colors">
                           상세보기
                         </button>
-                        <button className="text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
-                          메시지
-                        </button>
                         <button className="text-green-600 hover:text-green-800 px-2 py-1 rounded hover:bg-green-50 transition-colors">
                           수정
                         </button>
@@ -383,9 +371,6 @@ const HotelManagement = () => {
                 <div className="flex gap-1">
                   <button className="text-[#7C3AED] hover:text-purple-800 text-xs">
                     상세
-                  </button>
-                  <button className="text-blue-600 hover:text-blue-800 text-xs">
-                    메시지
                   </button>
                   <button className="text-red-600 hover:text-red-800 text-xs">
                     정지

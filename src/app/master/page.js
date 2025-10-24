@@ -2,14 +2,17 @@
 
 import MasterLayout from '@/components/master/MasterLayout';
 import axios from 'axios';
-import { ChartColumn, Hotel, Users, MessageCircleMore, LayoutDashboard, Settings, CalendarCheck, CircleDollarSign } from 'lucide-react';
+import { ChartColumn, Hotel, Users, LayoutDashboard, Settings, CalendarCheck, CircleDollarSign } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 const MasterDashboard = () => {
 
   const api_url = "/api/master/dashboard";
+  const router = useRouter();
 
   const [hotelCount, setHotelCount] = useState("불러오는중...");
+  const [pendingCount, setPendingCount] = useState("불러오는중...");
   const [customerCount, setCustomerCount] = useState("불러오는중...");
   const [paymentAmount, setPaymentAmount] = useState("불러오는중...");
 
@@ -20,24 +23,32 @@ const MasterDashboard = () => {
 
   function getData(){
     axios.get(api_url).then(res => {
-      if(res.data.hotelCount){
+      if(res.data.hotelCount !== undefined){
         setHotelCount(res.data.hotelCount);
       }
-      if(res.data.customerCount){
+      if(res.data.pendingCount !== undefined){
+        setPendingCount(res.data.pendingCount);
+      }
+      if(res.data.customerCount !== undefined){
         setCustomerCount(res.data.customerCount);
       }
-      if(res.data.paymentAmount){
+      if(res.data.paymentAmount !== undefined){
         setPaymentAmount(res.data.paymentAmount);
       }
       if(res.data.newCustomers){
-        console.log('New Customers Data:', res.data.newCustomers);
         setNewCustomers(res.data.newCustomers);
-        setNewCustomersCount(res.data.newCustomersCount);
       }
-      if(res.data.hotelRequestList){
-        setHotelRequestList(res.data.hotelRequestList);
-        setHotelRequestCount(res.data.hotelRequestCount);
+      if(res.data.pendingRequests){
+        setHotelRequestList(res.data.pendingRequests);
       }
+      if(res.data.pendingRequestCount !== undefined){
+        setHotelRequestCount(res.data.pendingRequestCount);
+      }
+    }).catch(error => {
+      console.error('Dashboard API Error:', error);
+      setHotelCount('오류');
+      setCustomerCount('오류');
+      setPaymentAmount('오류');
     });
   }
 
@@ -63,7 +74,7 @@ const MasterDashboard = () => {
     },
     {
       title: '오늘 예약',
-      value: '1,248',
+      value: `${pendingCount}`,
       change: '+12%',
       changeType: 'positive',
       icon: <CalendarCheck size={40} />
@@ -74,26 +85,6 @@ const MasterDashboard = () => {
       change: '+18%',
       changeType: 'positive',
       icon: <CircleDollarSign size={40} />
-    }
-  ];
-
-  // 최근 회원 가입 (축소)
-  const recentMembers = [
-    {
-      id: 'M001',
-      name: '김고객',
-      email: 'customer1@email.com',
-      joinDate: '2024-01-15',
-      reservations: 3,
-      status: 'active'
-    },
-    {
-      id: 'M002',
-      name: '이여행',
-      email: 'travel2@email.com',
-      joinDate: '2024-01-15',
-      reservations: 0,
-      status: 'active'
     }
   ];
 
@@ -169,7 +160,7 @@ const MasterDashboard = () => {
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-sm sm:text-lg font-semibold text-gray-900">최근 호텔 등록 요청</h3>
-                <p className="text-xs sm:text-sm text-gray-600">승인 대기중인 호텔 등록 요청 {hotelRequestCount}건</p>
+                <p className="text-xs sm:text-sm text-gray-600">승인 대기중인 호텔 등록 요청 {hotelRequestCount}건 (가장 먼저 요청을 한 호텔 5개만 보여집니다)</p>
               </div>
               <button className="text-[#7C3AED] hover:text-purple-800 text-xs sm:text-sm font-medium">
                 전체 보기
@@ -206,33 +197,33 @@ const MasterDashboard = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {hotelRequestList.map((request) => (
-                  <tr key={request.contentId} className="hover:bg-gray-50">
+                  <tr key={request.registrationIdx} className="hover:bg-gray-50">
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
-                      {request.title}
+                      {request.hotelInfo.title}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                      {request.ownerName}
+                      {request.admin.adminName}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                      {request.adress}
+                      {request.hotelInfo.adress}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                      {request.rooms}개
+                      {request.hotelInfo.rooms}개
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                      {request.requestDate}
+                      {request.regiDate ? new Date(request.regiDate).toLocaleDateString('ko-KR') : '정보 없음'}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-1 sm:px-2 py-0.5 sm:py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status)}`}>
+                      <span className={`inline-flex px-1 sm:px-2 py-0.5 sm:py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status === 0 ? 'pending' : 'approved')}`}>
                         {request.status === 0 ? '승인요청' : '승인됨'}
                       </span>
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium space-x-1 sm:space-x-2">
-                      <button className="text-[#7C3AED] hover:text-purple-800">
+                      <button 
+                        className="text-[#7C3AED] hover:text-purple-800"
+                        onClick={() => router.push('/master/hotel-approval')}
+                      >
                         검토
-                      </button>
-                      <button className="text-green-600 hover:text-green-800">
-                        승인
                       </button>
                     </td>
                   </tr>
@@ -293,19 +284,16 @@ const MasterDashboard = () => {
                       {member.joinDate ? new Date(member.joinDate).toLocaleDateString('ko-KR') : '정보 없음'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {member.totalPrice || 0}원
+                      ₩{member.totalPrice ? member.totalPrice.toLocaleString() : '0'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(member.status === 1 ? 'active' : 'inactive')}`}>
-                        {getStatusText(member.status === 1 ? 'active' : 'inactive')}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(member.status === '1' ? 'active' : 'inactive')}`}>
+                        {getStatusText(member.status === '1' ? 'active' : 'inactive')}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       <button className="text-[#7C3AED] hover:text-purple-800">
                         상세보기
-                      </button>
-                      <button className="text-blue-600 hover:text-blue-800">
-                        메시지
                       </button>
                     </td>
                   </tr>
@@ -333,13 +321,6 @@ const MasterDashboard = () => {
             </button>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6">
-            <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-4">메시지 전송</h3>
-            <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4">호텔/회원에게 메시지를 전송하세요</p>
-            <button className="w-full bg-blue-600 text-white py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm">
-              메시지 전송
-            </button>
-          </div>
         </div>
       </div>
     </MasterLayout>
