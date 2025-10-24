@@ -11,10 +11,7 @@ const Header = () => {
     setInlogged(false);
     console.log("inlogged", inlogged);
   };
-  const handleGetTokenInfo = () => {
-    const tokenInfo = readAccessToken();
-    console.log("tokenInfo", tokenInfo);
-  };
+  
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -24,7 +21,7 @@ const Header = () => {
               체크인
             </Link>
             <nav className="hidden md:flex items-center gap-6">
-              <Link href="" onClick={handleGetTokenInfo} className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+              <Link href="" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
                 뭐넣지
               </Link>
               <a href="/admin" className="text-sm font-semibold text-[#3B82F6] hover:text-blue-600 transition-colors">

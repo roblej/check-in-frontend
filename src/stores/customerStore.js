@@ -28,6 +28,7 @@ export const useCustomerStore = create(persist((set,get) => ({
         name: "customer-storage",
         partialize: (state) => ({
             inlogged: state.inlogged,
+            accessToken: state.accessToken,
 
         }),
     }
