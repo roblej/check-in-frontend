@@ -17,7 +17,27 @@ export default function MyPage() {
   const router = useRouter();
   
   // Zustand에서 고객 정보 가져오기
-  const { customer, isLoggedIn } = useCustomerStore();
+  const { isLoggedIn, getAccessToken, readAccessToken } = useCustomerStore();
+  
+  // JWT 토큰에서 사용자 정보 추출
+  const getUserInfo = () => {
+    try {
+      const accessToken = getAccessToken();
+      if (!accessToken) {
+        console.log('❌ AccessToken이 없습니다.');
+        return {};
+      }
+      
+      const tokenInfo = readAccessToken();
+      console.log('✅ 토큰에서 추출한 사용자 정보:', tokenInfo);
+      return tokenInfo || {};
+    } catch (error) {
+      console.error('❌ 토큰 정보 읽기 실패:', error);
+      return {};
+    }
+  };
+  
+  const userInfo = getUserInfo();
   
   // 탭 상태 관리
   const [reservationTab, setReservationTab] = useState('upcoming'); // upcoming, completed, cancelled
@@ -38,13 +58,13 @@ export default function MyPage() {
   // 로그인 체크 및 초기 데이터 로드
   useEffect(() => {
     // 로그인하지 않은 경우 로그인 페이지로 리다이렉트
-    if (!isLoggedIn || !customer.customerIdx) {
+    if (!isLoggedIn) {
       alert('로그인이 필요한 서비스입니다.');
       router.push('/login');
       return;
     }
 
-    console.log('👤 로그인된 사용자:', customer);
+    console.log('👤 로그인된 사용자:', userInfo);
     
     // 페이지 로드 시 모든 탭의 데이터를 불러와서 카운트를 정확히 표시
     loadAllReservations();
@@ -285,15 +305,15 @@ export default function MyPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                  {customer.name || customer.nickname || customer.id}님
+                  {userInfo.nickname || userInfo.id || '사용자'}님
                 </h1>
-                <p className="text-sm text-gray-500">{customer.email || '이메일 미등록'}</p>
+                <p className="text-sm text-gray-500">{userInfo.email || '이메일 미등록'}</p>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                    {customer.rank || 'Traveler'} 회원
+                    {userInfo.rank || 'Traveler'} 회원
                   </span>
                   <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                    포인트: {(customer.point || 0).toLocaleString()}P
+                    포인트: {(userInfo.point || 0).toLocaleString()}P
                   </span>
                 </div>
               </div>
