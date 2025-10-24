@@ -44,7 +44,10 @@ const Header = () => {
             <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
               공유하기
             </button>
-            <a href="/mypage" className="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">
+            <a 
+              href="/mypage"
+              className="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+            >
               MY
             </a>
             <Link href= {inlogged ? "/" : "/login"} onClick={inlogged ? handleLogout : ""} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
