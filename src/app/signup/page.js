@@ -28,17 +28,6 @@ export default function SignupPage() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  useEffect(function(){
-    if (/^[a-zA-Z0-9]{4,20}$/.test(formData.id)){
-    checkId();
-    }
-    else{
-      
-    }
-  },[formData.id]);
-
-  
-
   function signUp(){
     axios.post(signUp_url, formData)
       .then(response => {
@@ -53,7 +42,7 @@ export default function SignupPage() {
  
 
   const checkId = useCallback(() => {
-    axios.post(checkId_url, { id: formData.id }).then(function(res){
+    axios.post(checkId_url, { id: formData.id, role: formData.role }).then(function(res){
       console.log(res.data);
       if(res.data.message){
         console.log(res.data.message);
@@ -62,7 +51,16 @@ export default function SignupPage() {
         setErrors(idError);
       }
     })
-  }, [formData.id]);
+  }, [formData.id, formData.role]);
+
+  useEffect(function(){
+    if (/^[a-zA-Z0-9]{4,20}$/.test(formData.id)){
+    checkId();
+    }
+    else{
+      
+    }
+  },[formData.id, formData.role, checkId]);
   // 입력 필드 변경 핸들러
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -199,7 +197,7 @@ export default function SignupPage() {
                   <input
                     type="radio"
                     name="role"
-                    value="custormer"
+                    value="customer"
                     checked={formData.role === "customer"}
                     onChange={handleChange}
                     className={styles.radioInput}
