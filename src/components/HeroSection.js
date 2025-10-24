@@ -113,6 +113,16 @@ const HeroSection = () => {
         mealType,
         adults,
       });
+      
+      // 다이닝 검색 페이지로 이동
+      const params = new URLSearchParams({
+        destination: destination,
+        diningDate: diningDate,
+        mealType: mealType,
+        adults: adults.toString(),
+      });
+      
+      router.push(`/dining-search?${params.toString()}`);
     } else {
       console.log("검색:", { destination, checkIn, checkOut, adults });
       const nights =
