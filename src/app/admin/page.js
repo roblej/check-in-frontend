@@ -13,7 +13,7 @@ import { hotelAPI } from '@/lib/api/hotel';
 const AdminDashboard = () => {
   const router = useRouter();
   const { readAccessToken, isInlogged } = useCustomerStore();
-  const { getContentId, getHotelInfo, isLoggedIn: isAdminLoggedIn, fetchContentIdByAdminIdx } = useAdminStore();
+  const { getContentId, isLoggedIn: isAdminLoggedIn, fetchContentIdByAdminIdx } = useAdminStore();
   
   const api_url = "/api/admin/dashboard";
 
@@ -23,7 +23,6 @@ const AdminDashboard = () => {
   const [thisMonthSales, setThisMonthSales] = useState(0); // 이번달 매출
   const [roomReservationList, setRoomReservationList] = useState([]); // 최근 예약 목록
   const [isLoading, setIsLoading] = useState(true); // 로딩 상태
-  const [hotelInfo, setHotelInfo] = useState(null); // 호텔 정보
 
   // 호텔 정보 확인 및 대시보드 데이터 로드
   const checkHotelAndLoadData = useCallback(async () => {
@@ -36,7 +35,6 @@ const AdminDashboard = () => {
 
       // zustand에서 저장된 contentId 가져오기
       let contentId = getContentId();
-      let hotelInfo = getHotelInfo();
 
       // contentId가 없으면 쿠키에서 adminIdx를 확인하고 contentId를 가져오기
       if (!contentId) {
@@ -47,22 +45,17 @@ const AdminDashboard = () => {
           contentId = await fetchContentIdByAdminIdx(parseInt(adminIdxFromCookie));
           
           if (contentId) {
-            hotelInfo = getHotelInfo();
             console.log('contentId 복구 성공:', contentId);
           }
         }
       }
 
       if (!contentId) {
-        console.error('contentId가 없습니다. 다시 로그인해주세요.');
-        router.push('/login');
+        console.log('contentId가 없습니다. 호텔을 등록해주세요.');
+        router.push('/hotel/register');
         return;
       }
 
-      // 호텔 정보 설정
-      if (hotelInfo) {
-        setHotelInfo(hotelInfo);
-      }
 
       // contentId로 대시보드 데이터 로드
       await loadDashboardData(contentId);
@@ -73,7 +66,7 @@ const AdminDashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isInlogged, router, getContentId, getHotelInfo, fetchContentIdByAdminIdx, setHotelInfo]);
+  }, [isInlogged, router, getContentId, fetchContentIdByAdminIdx]);
 
   // 대시보드 데이터 로드
   const loadDashboardData = async (contentId) => {
@@ -173,7 +166,7 @@ const AdminDashboard = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">대시보드</h2>
           <p className="text-gray-600">
-            {hotelInfo ? `${hotelInfo.name} 호텔 운영 현황을 한눈에 확인하세요` : '호텔 운영 현황을 한눈에 확인하세요'}
+            호텔 운영 현황을 한눈에 확인하세요
           </p>
         </div>
 
