@@ -1,13 +1,47 @@
 @import "tailwindcss";
 
 @theme {
-  --color-naver: #03C75A;
-  --color-checkin: #3B82F6;
-  
+  --color-naver: #03c75a;
+  --color-checkin: #3b82f6;
+
   --font-family-sans: var(--font-geist-sans), system-ui, sans-serif;
   --font-family-mono: var(--font-geist-mono), monospace;
 }
 
+/* 호텔 디테일 패널 최적화 - 애니메이션과 트랜지션 분리 */
+.hotel-detail-panel {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.hotel-detail-panel-overlay {
+  will-change: opacity;
+  backface-visibility: hidden;
+}
+
+/* 전환 중일 때 애니메이션 비활성화 */
+.hotel-detail-panel.transitioning,
+.hotel-detail-panel-overlay.transitioning {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Prevent page scroll only for admin/master layouts */
+.admin-layout,
+.master-layout {
+  height: 100%;
+  overflow: hidden;
+}
+.fade-transition {
+  transition: opacity 0.2s ease-in-out;
+}
+.fade-in {
+  opacity: 1;
+}
+.fade-out {
+  opacity: 0.3;
+}
 /* Button Component - Minimal with Blue UI */
 .btn {
   @apply cursor-pointer bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-3 rounded-lg transition-colors;
@@ -15,4 +49,112 @@
 
 .btn:disabled {
   @apply cursor-not-allowed opacity-50 bg-blue-300;
+}
+
+.display-flex {
+  display: flex;
+}
+/* Slider Styles */
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.slider::-webkit-slider-track {
+  height: 8px;
+  border-radius: 4px;
+  background: #e5e7eb;
+}
+
+.slider::-moz-range-track {
+  height: 8px;
+  border-radius: 4px;
+  background: #e5e7eb;
+}
+
+/* 모달 애니메이션 */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.3s ease-out;
+}
+
+/* 모달 오버레이 애니메이션 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Sticky 요소 부드러운 전환 */
+.sticky-smooth {
+  transition: box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+/* 스크롤 성능 최적화 */
+.scroll-optimized {
+  will-change: transform;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbar for horizontal scroll sections */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.border-black {
+  border: 1px solid #000000;
 }
