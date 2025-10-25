@@ -3,10 +3,18 @@
 import AdminLayout from '@/components/admin/AdminLayout';
 import axios from 'axios';
 import { Building2, LogOut, Calendar, DollarSign, Users, Clock, CheckCircle, AlertCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useCustomerStore } from '@/stores/customerStore';
+import { useAdminStore } from '@/stores/adminStore';
+import { getAdminIdxFromCookie } from '@/utils/cookieUtils';
+import { hotelAPI } from '@/lib/api/hotel';
 
 const AdminDashboard = () => {
-
+  const router = useRouter();
+  const { readAccessToken, isInlogged } = useCustomerStore();
+  const { getContentId, getHotelInfo, isLoggedIn: isAdminLoggedIn, fetchContentIdByAdminIdx } = useAdminStore();
+  
   const api_url = "/api/admin/dashboard";
 
   const [todayCheckinCount, setTodayCheckinCount] = useState(0); // 오늘 체크인 수
@@ -14,21 +22,77 @@ const AdminDashboard = () => {
   const [reservationCount, setReservationCount] = useState(0); // 예약 확정 수
   const [thisMonthSales, setThisMonthSales] = useState(0); // 이번달 매출
   const [roomReservationList, setRoomReservationList] = useState([]); // 최근 예약 목록
+  const [isLoading, setIsLoading] = useState(true); // 로딩 상태
+  const [hotelInfo, setHotelInfo] = useState(null); // 호텔 정보
 
-  function getData(){
-    axios.get(api_url).then(res => {
-      console.log(res.data);
-      setTodayCheckinCount(res.data.todayCheckinCount);
-      setTodayCheckoutCount(res.data.todayCheckoutCount);
-      setReservationCount(res.data.reservationCount);
-      setThisMonthSales(res.data.thisMonthSales);
-      setRoomReservationList(res.data.roomReservationList);
-    });
-  }
+  // 호텔 정보 확인 및 대시보드 데이터 로드
+  const checkHotelAndLoadData = useCallback(async () => {
+    try {
+      // 로그인 상태 확인
+      if (!isInlogged()) {
+        router.push('/login');
+        return;
+      }
+
+      // zustand에서 저장된 contentId 가져오기
+      let contentId = getContentId();
+      let hotelInfo = getHotelInfo();
+
+      // contentId가 없으면 쿠키에서 adminIdx를 확인하고 contentId를 가져오기
+      if (!contentId) {
+        const adminIdxFromCookie = getAdminIdxFromCookie();
+        
+        if (adminIdxFromCookie) {
+          console.log('쿠키에서 adminIdx 발견:', adminIdxFromCookie);
+          contentId = await fetchContentIdByAdminIdx(parseInt(adminIdxFromCookie));
+          
+          if (contentId) {
+            hotelInfo = getHotelInfo();
+            console.log('contentId 복구 성공:', contentId);
+          }
+        }
+      }
+
+      if (!contentId) {
+        console.error('contentId가 없습니다. 다시 로그인해주세요.');
+        router.push('/login');
+        return;
+      }
+
+      // 호텔 정보 설정
+      if (hotelInfo) {
+        setHotelInfo(hotelInfo);
+      }
+
+      // contentId로 대시보드 데이터 로드
+      await loadDashboardData(contentId);
+      
+    } catch (error) {
+      console.error('초기화 실패:', error);
+      router.push('/login');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isInlogged, router, getContentId, getHotelInfo, fetchContentIdByAdminIdx, setHotelInfo]);
+
+  // 대시보드 데이터 로드
+  const loadDashboardData = async (contentId) => {
+    try {
+      const response = await axios.get(`${api_url}?contentId=${contentId}`);
+      console.log(response.data);
+      setTodayCheckinCount(response.data.todayCheckinCount);
+      setTodayCheckoutCount(response.data.todayCheckoutCount);
+      setReservationCount(response.data.reservationCount);
+      setThisMonthSales(response.data.thisMonthSales);
+      setRoomReservationList(response.data.roomReservationList);
+    } catch (error) {
+      console.error('대시보드 데이터 로드 실패:', error);
+    }
+  };
 
   useEffect(() => {
-    getData();
-  }, []);
+    checkHotelAndLoadData();
+  }, [checkHotelAndLoadData]);
 
   // 통계 데이터
   const stats = [
@@ -88,13 +152,29 @@ const AdminDashboard = () => {
     }
   };
 
+  // 로딩 중일 때 표시
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">호텔 정보를 확인하고 있습니다...</p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         {/* 페이지 헤더 */}
         <div>
           <h2 className="text-2xl font-bold text-gray-900">대시보드</h2>
-          <p className="text-gray-600">호텔 운영 현황을 한눈에 확인하세요</p>
+          <p className="text-gray-600">
+            {hotelInfo ? `${hotelInfo.name} 호텔 운영 현황을 한눈에 확인하세요` : '호텔 운영 현황을 한눈에 확인하세요'}
+          </p>
         </div>
 
         {/* 통계 카드 */}
@@ -227,3 +307,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
