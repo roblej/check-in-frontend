@@ -10,8 +10,9 @@ import { hotelAPI } from "@/lib/api/hotel";
  * 흐름:
  * 1. 페이지 진입 시 → 백엔드에 view 등록 (1회)
  * 2. TanStack Query로 30초마다 /views API 호출
- * 3. Redis TTL 1분 동안 유지
- *
+ * 3. Redis TTL 3분 동안 유지
+ * 리팩터링 예정사항 viewcount 중첩 현상 아마 백엔드에서 sessionid를
+ * 제대로 기억 못하는듯
  * @param {string} contentId - 호텔 ID
  * @param {boolean} showAlways - 항상 표시할지 여부 (기본값: false, 조회수가 0일 때는 숨김)
  */
