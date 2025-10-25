@@ -3,15 +3,26 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCustomerStore } from "@/stores/customerStore";
+import { useAdminStore } from "@/stores/adminStore";
+import { deleteAdminIdxCookie } from "@/utils/cookieUtils";
 const Header = () => {
   const router = useRouter();
   const { inlogged, resetAccessToken, setInlogged, readAccessToken, verifyTokenWithBackend } = useCustomerStore();
+  const { resetAdminData } = useAdminStore();
   
 
   const handleLogout = () => {
+    // 고객 스토어 초기화
     resetAccessToken("");
     setInlogged(false);
-    console.log("inlogged", inlogged);
+    
+    // 관리자 스토어 초기화 (관리자로 로그인한 경우)
+    resetAdminData();
+    
+    // adminIdx 쿠키 삭제
+    deleteAdminIdxCookie();
+    
+    console.log("로그아웃 완료");
   };
   const handleGetTokenInfo = () => {
     const tokenInfo = readAccessToken();

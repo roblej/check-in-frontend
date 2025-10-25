@@ -1,13 +1,28 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import { useCustomerStore } from '@/stores/customerStore';
+import { useAdminStore } from '@/stores/adminStore';
+import { deleteAdminIdxCookie } from '@/utils/cookieUtils';
 
 const AdminHeader = ({ onMenuClick }) => {
   const pathname = usePathname();
   const router = useRouter();
+  const { resetAccessToken, setInlogged } = useCustomerStore();
+  const { resetAdminData } = useAdminStore();
   
   const handleLogout = () => {
-    // 로그아웃 처리 (필요시 세션 정리 등)
+    // 고객 스토어 초기화
+    resetAccessToken("");
+    setInlogged(false);
+    
+    // 관리자 스토어 초기화
+    resetAdminData();
+    
+    // adminIdx 쿠키 삭제
+    deleteAdminIdxCookie();
+    
+    console.log("관리자 로그아웃 완료");
     router.push('/');
   };
   
