@@ -4,7 +4,6 @@ import { persist } from "zustand/middleware";
 export const useAdminStore = create(persist((set, get) => ({
   adminIdx: null,
   contentId: null,
-  hotelInfo: null,
   isAdminLoggedIn: false,
 
   // adminIdx 설정
@@ -12,9 +11,6 @@ export const useAdminStore = create(persist((set, get) => ({
 
   // contentId 설정
   setContentId: (contentId) => set({ contentId }),
-
-  // 호텔 정보 설정
-  setHotelInfo: (hotelInfo) => set({ hotelInfo }),
 
   // 관리자 로그인 상태 설정
   setAdminLoggedIn: (isLoggedIn) => set({ isAdminLoggedIn: isLoggedIn }),
@@ -44,7 +40,6 @@ export const useAdminStore = create(persist((set, get) => ({
   resetAdminData: () => set({ 
     adminIdx: null, 
     contentId: null, 
-    hotelInfo: null, 
     isAdminLoggedIn: false 
   }),
 
@@ -54,9 +49,6 @@ export const useAdminStore = create(persist((set, get) => ({
   // 현재 contentId 가져오기
   getContentId: () => get().contentId,
 
-  // 현재 호텔 정보 가져오기
-  getHotelInfo: () => get().hotelInfo,
-
   // 관리자 로그인 상태 확인
   isLoggedIn: () => get().isAdminLoggedIn,
 
@@ -65,7 +57,6 @@ export const useAdminStore = create(persist((set, get) => ({
   partialize: (state) => ({
     adminIdx: state.adminIdx,
     contentId: state.contentId,
-    hotelInfo: state.hotelInfo,
     isAdminLoggedIn: state.isAdminLoggedIn,
   }),
 }));
