@@ -37,23 +37,11 @@ const HotelReservationPage = () => {
     }
   }, [paymentDraft, router]);
 
-  // 결제 정보가 없으면 로딩 표시
-  if (!paymentDraft) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">결제 정보를 불러오는 중...</p>
-        </div>
-      </div>
-    );
-  }
-
   // 고정된 키들 생성
   const paymentKeys = useMemo(
     () => ({
-      customerKey: `customer_${paymentDraft.meta?.hotelId || "default"}`,
-      orderId: paymentDraft.orderId,
+      customerKey: `customer_${paymentDraft?.meta?.hotelId || "default"}`,
+      orderId: paymentDraft?.orderId || "",
     }),
     [paymentDraft]
   );
@@ -70,6 +58,18 @@ const HotelReservationPage = () => {
     if (!paymentInfo.agreePrivacy) return false;
     return true;
   }, [paymentInfo]);
+
+  // 결제 정보가 없으면 로딩 표시
+  if (!paymentDraft) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">결제 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   // 폼 유효성 검사 (에러 메시지 포함)
   const validateForm = () => {
