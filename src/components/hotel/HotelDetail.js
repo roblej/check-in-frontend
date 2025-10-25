@@ -232,12 +232,121 @@ const HotelDetail = ({
       basePrice: Number(room.basePrice ?? 0),
       discount: 0,
       imageUrl: room.imageUrl || "",
-      refundable: room.refundable || false,
-      breakfastIncluded: room.breakfastIncluded || false,
-      smoking: room.smoking || false,
+      refundable: room.refundable === 1 || room.refundable === true,
+      breakfastIncluded:
+        room.breakfastIncluded === 1 || room.breakfastIncluded === true,
+      smoking: room.smoking === 1 || room.smoking === true,
       roomCount: room.roomCount || 1,
     }));
   }, []);
+
+  /**
+   * 수용인원 초과 시 추가 요금 계산
+   * @param {number} capacity - 기본 수용인원
+   * @param {number} adults - 실제 인원
+   * @returns {number} 추가 요금
+   */
+  const calculateAdditionalFee = useCallback((capacity, adults) => {
+    if (adults <= capacity) return 0;
+
+    const excessGuests = adults - capacity;
+
+    if (capacity === 4) {
+      // 4인방: 초과 인원당 1만원
+      return excessGuests * 10000;
+    } else if (capacity === 8) {
+      // 8인방: 초과 인원당 1만원
+      return excessGuests * 10000;
+    }
+
+    return 0;
+  }, []);
+
+  /**
+   * 백엔드 객실 데이터를 프론트엔드 형식으로 매핑 (예약 가능성 포함)
+   * @param {Object[]} roomList - 백엔드 객실 데이터 배열
+   * @param {string} checkInTime - 체크인 시간
+   * @param {string|number} [roomIdx] - 특정 객실 ID (선택사항)
+   * @param {boolean} hasAvailabilityData - 예약 가능성 데이터 포함 여부
+   * @param {number} adults - 예약 인원
+   * @returns {Room[]} 매핑된 객실 데이터 배열
+   */
+  const mapRoomDataWithAvailability = useCallback(
+    (
+      roomList,
+      checkInTime,
+      roomIdx = null,
+      hasAvailabilityData = false,
+      adults = 0
+    ) => {
+      const safeRoomList = Array.isArray(roomList) ? roomList : [];
+
+      // roomIdx가 있으면 해당 객실만 필터링
+      const filteredRooms = roomIdx
+        ? safeRoomList.filter((room) => room.roomIdx == roomIdx)
+        : safeRoomList;
+
+      return filteredRooms.map((room, index) => {
+        // 예약 가능성 메시지 처리
+        let availabilityMessage = "";
+        let isAvailable = true;
+
+        if (hasAvailabilityData && room.availabilityMessage) {
+          availabilityMessage = room.availabilityMessage;
+          isAvailable =
+            !availabilityMessage.includes("불가능") &&
+            !availabilityMessage.includes("예약된");
+        } else {
+          // 기본 상태 처리 (예약 가능성 데이터가 없는 경우)
+          if (room.status === 0) {
+            availabilityMessage = "숙소 측 요청으로 사용 불가능한 방입니다";
+            isAvailable = false;
+          } else {
+            availabilityMessage = "예약 가능한 방입니다";
+            isAvailable = true;
+          }
+        }
+
+        // 추가 요금 계산
+        const additionalFee = calculateAdditionalFee(
+          room.capacity || 4,
+          adults
+        );
+        const totalPrice = (room.basePrice || 0) + additionalFee;
+
+        return {
+          id: room.roomIdx
+            ? `${room.contentId}-${room.roomIdx}`
+            : `${room.contentId}-${room.name}-${index}`,
+          roomIdx: room.roomIdx,
+          contentId: room.contentId,
+          name: room.name || "",
+          description: room.description || "",
+          size: room.size || "",
+          bedType: room.bedType || "",
+          capacity: room.capacity || 2,
+          maxOccupancy: room.capacity || 2, // 하위 호환성을 위해 유지
+          amenities: Array.isArray(room.amenities) ? room.amenities : [],
+          checkInInfo: checkInTime ? `${checkInTime} 이후 체크인` : "",
+          originalPrice: Number(room.basePrice ?? 0),
+          price: totalPrice,
+          basePrice: Number(room.basePrice ?? 0),
+          additionalFee: additionalFee,
+          discount: 0,
+          imageUrl: room.imageUrl || "",
+          refundable: room.refundable === 1 || room.refundable === true,
+          breakfastIncluded:
+            room.breakfastIncluded === 1 || room.breakfastIncluded === true,
+          smoking: room.smoking === 1 || room.smoking === true,
+          roomCount: room.roomCount || 1,
+          status: room.status || 1,
+          availabilityMessage: availabilityMessage,
+          isAvailable: isAvailable,
+        };
+      });
+    },
+    [calculateAdditionalFee]
+  );
 
   // 데이터 로드: 호텔 상세 + 객실 목록
   useEffect(() => {
@@ -261,17 +370,25 @@ const HotelDetail = ({
       abortControllerRef.current = new AbortController();
 
       try {
+        // 체크인/체크아웃 날짜가 있으면 예약 가능성 API 사용, 없으면 기본 객실 목록 API 사용
+        const hasDateRange =
+          localSearchParams?.checkIn && localSearchParams?.checkOut;
+
         const [hotelRes, roomsRes] = await Promise.all([
           hotelAPI.getHotelDetail(contentId, {
             signal: abortControllerRef.current.signal,
           }),
-          hotelAPI.getHotelRooms(contentId, {
-            name: localSearchParams?.roomName || undefined,
-            checkIn: localSearchParams?.checkIn,
-            checkOut: localSearchParams?.checkOut,
-            adults: localSearchParams?.adults,
-            signal: abortControllerRef.current.signal,
-          }),
+          hasDateRange
+            ? hotelAPI.getRoomAvailability(
+                contentId,
+                localSearchParams.checkIn,
+                localSearchParams.checkOut,
+                { signal: abortControllerRef.current.signal }
+              )
+            : hotelAPI.getHotelRooms(contentId, {
+                name: localSearchParams?.roomName || undefined,
+                signal: abortControllerRef.current.signal,
+              }),
         ]);
 
         // 백엔드 응답 정규화
@@ -280,10 +397,12 @@ const HotelDetail = ({
 
         // 데이터 매핑
         const mappedHotel = mapHotelData(hotel);
-        const mappedRooms = mapRoomData(
+        const mappedRooms = mapRoomDataWithAvailability(
           roomList,
           mappedHotel?.checkInTime,
-          localSearchParams?.roomIdx
+          localSearchParams?.roomIdx,
+          hasDateRange,
+          localSearchParams?.adults || 0
         );
 
         console.log("HotelDetail 데이터 로드:", {
@@ -322,7 +441,13 @@ const HotelDetail = ({
     return () => {
       isMounted = false;
     };
-  }, [contentId, localSearchParams, mapHotelData, mapRoomData]);
+  }, [
+    contentId,
+    localSearchParams,
+    mapHotelData,
+    mapRoomDataWithAvailability,
+    onLoadingChange,
+  ]);
 
   // 네비게이션 섹션
   const navSections = [
