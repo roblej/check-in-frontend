@@ -92,9 +92,24 @@
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
+.inputSuccess {
+  border-color: #10b981;
+}
+
+.inputSuccess:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
 .errorMessage {
   font-size: 0.85rem;
   color: #ef4444;
+  margin-top: -0.25rem;
+}
+
+.successMessage {
+  font-size: 0.85rem;
+  color: #10b981;
   margin-top: -0.25rem;
 }
 
