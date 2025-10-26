@@ -29,14 +29,11 @@ const FilterSection = ({
         <div className="flex flex-wrap gap-4 items-center">
           {/* 정렬 필터 */}
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">
-              정렬:
-            </label>
+            <label className="text-sm font-medium text-gray-700">정렬:</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent min-w-[150px]"
-            >
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent min-w-[150px]">
               <option value="date">체크인 빠른 순</option>
               <option value="date-desc">체크인 늦은 순</option>
               <option value="price">가격 낮은 순</option>
@@ -49,14 +46,11 @@ const FilterSection = ({
 
           {/* 가격 필터 */}
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">
-              가격:
-            </label>
+            <label className="text-sm font-medium text-gray-700">가격:</label>
             <select
               value={filterPrice}
               onChange={(e) => setFilterPrice(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent min-w-[120px]"
-            >
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent min-w-[120px]">
               <option value="all">전체</option>
               <option value="under200">20만원 이하</option>
               <option value="200-300">20-30만원</option>
@@ -67,14 +61,11 @@ const FilterSection = ({
 
           {/* 페이지 크기 선택 */}
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">
-              표시 개수:
-            </label>
+            <label className="text-sm font-medium text-gray-700">표시 개수:</label>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(parseInt(e.target.value))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent min-w-[80px]"
-            >
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent min-w-[80px]">
               <option value={5}>5개</option>
               <option value={10}>10개</option>
               <option value={20}>20개</option>
@@ -87,9 +78,7 @@ const FilterSection = ({
         <div className="flex items-center gap-4">
           <div className="text-sm text-gray-500">
             {totalCount > 0 ? (
-              <span>
-                총 <span className="font-semibold text-orange-600">{totalCount}</span>개의 양도 예약
-              </span>
+              <span>총 <span className="font-semibold text-orange-600">{totalCount}</span>개의 양도 예약</span>
             ) : (
               <span className="text-gray-400">검색 결과가 없습니다</span>
             )}

@@ -167,9 +167,16 @@ export default function SignupPage() {
       // 임시: 콘솔에 데이터 출력
       console.log("회원가입 데이터:", formData);
       signUp();
-      // 성공 시 로그인 페이지로 이동
+      // 성공 시 사용자 타입에 따라 리다이렉트
       alert("회원가입이 완료되었습니다!");
-      router.push("/login");
+      
+      // 사업자(admin)인 경우 관리자 화면으로 이동
+      if (formData.role === "admin") {
+        router.push("/admin");
+      } else {
+        // 일반 회원인 경우 로그인 페이지로 이동
+        router.push("/login");
+      }
     } catch (error) {
       console.error("회원가입 실패:", error);
       alert("회원가입에 실패했습니다. 다시 시도해주세요.");

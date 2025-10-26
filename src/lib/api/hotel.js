@@ -88,4 +88,10 @@ export const hotelAPI = {
     });
     return response.data;
   },
+
+  // 사업자별 호텔 정보 조회
+  getHotelByAdminIdx: async (adminIdx) => {
+    const response = await axiosInstance.get(`/hotels/admin/${adminIdx}`);
+    return response.data;
+  },
 };
