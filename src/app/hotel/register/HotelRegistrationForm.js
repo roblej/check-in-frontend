@@ -118,31 +118,6 @@ const HotelRegistrationForm = ({
             >
               임시저장
             </button>
-            {/* 임시저장 버튼들 */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={saveDraft}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm"
-              >
-                💾 임시저장
-              </button>
-              <button
-                type="button"
-                onClick={loadDraft}
-                className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm"
-              >
-                📂 불러오기
-              </button>
-              <button
-                type="button"
-                onClick={clearDraft}
-                className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors text-sm"
-              >
-                🗑️ 삭제
-              </button>
-            </div>
-
             <button
               type="button"
               onClick={onSubmit}
