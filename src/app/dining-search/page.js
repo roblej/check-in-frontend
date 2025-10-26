@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Header from "@/components/Header";
-import DiningSearchClient from "@/components/dining/DiningSearchClient";
+import DiningSearchClient from "./DiningSearchClient";
 
 export const metadata = {
   title: "다이닝 검색 | CheckIn",
