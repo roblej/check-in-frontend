@@ -20,9 +20,11 @@ jobs:
         cache: 'npm'
         
     - name: Install dependencies
+      # 다음 단계에서 Build에 필요한 모듈만 설치
       run: npm ci
       
     - name: Build application
+      # .next 폴더가 생성됩니다. (이 결과물을 EC2로 복사하여 사용합니다)
       run: npm run build
       env:
         NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
@@ -32,39 +34,42 @@ jobs:
       uses: webfactory/ssh-agent@v0.5.4
       with:
         ssh-private-key: ${{ secrets.FRONTEND_EC2_SSH_KEY }}
-    
-    # Docker 관련 파일 복사
-    - name: Copy Docker Files to EC2
+
+    # ==========================================================
+    # ⚡️ 속도 개선 1: tar로 압축하여 단일 파일로 전송
+    # ==========================================================
+    - name: Create Deployment Archive
       run: |
-        scp -r -o StrictHostKeyChecking=no \
-            Dockerfile \
-            docker-compose.yml \
-            .dockerignore \
-            ubuntu@${{ secrets.FRONTEND_EC2_HOST }}:/home/ubuntu/frontend/ || true
-        
-        # nginx 설정 디렉토리 생성 및 복사
-        ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.FRONTEND_EC2_HOST }} "mkdir -p /home/ubuntu/frontend/nginx"
-        
-        scp -r -o StrictHostKeyChecking=no \
-            nginx/ \
-            ubuntu@${{ secrets.FRONTEND_EC2_HOST }}:/home/ubuntu/frontend/
-    
-    # 빌드된 파일 및 소스 복사
-    - name: Copy Built Files to EC2
+        # 배포에 필요한 파일들을 하나의 tar 아카이브로 묶습니다.
+        # .next는 이미 빌드된 결과물이므로, Docker 빌드 시 다시 빌드할 필요가 없습니다.
+        tar -czf deployment.tar.gz \
+          Dockerfile \
+          docker-compose.yml \
+          .dockerignore \
+          nginx/ \
+          .next/ \
+          public/ \
+          src/ \
+          package.json \
+          package-lock.json \
+          next.config.mjs \
+          postcss.config.js \
+          eslint.config.mjs \
+          jsconfig.json
+          
+    - name: Copy Archive and Docker Files to EC2
       run: |
-        scp -r -o StrictHostKeyChecking=no \
-            .next \
-            public \
-            src \
-            package.json \
-            package-lock.json \
-            next.config.mjs \
-            postcss.config.js \
-            eslint.config.mjs \
-            jsconfig.json \
+        # 1. EC2에 원격 디렉토리 생성
+        ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.FRONTEND_EC2_HOST }} "mkdir -p /home/ubuntu/frontend"
+        
+        # 2. tar 아카이브를 EC2로 전송 (대용량 파일 전송 속도 향상)
+        scp -o StrictHostKeyChecking=no \
+            deployment.tar.gz \
             ubuntu@${{ secrets.FRONTEND_EC2_HOST }}:/home/ubuntu/frontend/
-    
-    # 배포 및 Docker 실행
+            
+    # ==========================================================
+    # ⚡️ 속도 개선 2: EC2에서 압축 해제 및 환경 변수 주입
+    # ==========================================================
     - name: Deploy and Start Application
       run: |
         ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.FRONTEND_EC2_HOST }} << 'EOF'
@@ -73,17 +78,20 @@ jobs:
         cd /home/ubuntu/frontend
         sudo docker-compose --env-file .env.production down || true
         
-        # 2. .env.production 파일 생성 (서버 비밀 변수를 GitHub Secrets에서 가져와 주입)
-        # TOSS_SECRET_KEY는 서버 전용 변수이므로 여기에 포함하는 것이 안전합니다.
+        # 2. tar 아카이브 압축 해제
+        # (기존 파일을 덮어쓰므로 이전 파일을 먼저 정리할 필요는 없습니다. 새로운 파일로 덮어쓰여집니다.)
+        tar -xzf deployment.tar.gz
+        
+        # 3. .env.production 파일 생성 (서버 비밀 변수 주입)
         echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" > .env.production
         echo "NEXT_PUBLIC_KAKAO_MAP_API_KEY=${{ secrets.NEXT_PUBLIC_KAKAO_MAP_API_KEY }}" >> .env.production
         echo "NEXT_PUBLIC_TOSS_CLIENT_KEY=${{ secrets.NEXT_PUBLIC_TOSS_CLIENT_KEY }}" >> .env.production
         echo "TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}" >> .env.production
-          
-        # 3. Docker Compose로 서비스 시작
+        
+        # 4. Docker Compose로 서비스 시작
         sudo docker-compose up -d --build
         
-        # 4. 헬스체크
+        # 5. 헬스체크
         sleep 30
         curl -f http://localhost:80 || exit 1
         
