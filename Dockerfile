@@ -12,7 +12,7 @@ RUN npm ci
 COPY . .
 
 # Next.js 빌드
-RUN npm run build
+# RUN npm run build
 
 EXPOSE 3333
 
