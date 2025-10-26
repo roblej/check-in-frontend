@@ -45,7 +45,6 @@ jobs:
             package.json \
             package-lock.json \
             next.config.js \
-            . \
             ubuntu@${{ secrets.FRONTEND_EC2_HOST }}:/home/ubuntu/frontend/
     
     # 3. 배포 및 애플리케이션 시작 (런타임 .env 파일 생성 추가)
