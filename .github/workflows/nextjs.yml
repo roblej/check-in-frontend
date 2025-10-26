@@ -36,6 +36,7 @@ jobs:
         key: ${{ secrets.FRONTEND_EC2_SSH_KEY }}
         command_timeout: 60s 
         timeout: 20s
+        opts: -o StrictHostKeyChecking=no
         script: |
           # 기존 프로세스 종료
           sudo pkill -f "next start" || true
