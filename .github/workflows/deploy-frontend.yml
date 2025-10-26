@@ -71,7 +71,7 @@ jobs:
         
         # 1. 기존 컨테이너 정리
         cd /home/ubuntu/frontend
-        docker-compose down || true
+        sudo docker-compose --env-file .env.production down || true
         
         # 2. .env.production 파일 생성 (서버 비밀 변수를 GitHub Secrets에서 가져와 주입)
         # TOSS_SECRET_KEY는 서버 전용 변수이므로 여기에 포함하는 것이 안전합니다.
@@ -81,7 +81,7 @@ jobs:
         echo "TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}" >> .env.production
           
         # 3. Docker Compose로 서비스 시작
-        docker-compose up -d --build
+        sudo docker-compose up -d --build
         
         # 4. 헬스체크
         sleep 30
