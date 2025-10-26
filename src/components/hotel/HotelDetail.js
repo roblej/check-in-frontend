@@ -420,12 +420,20 @@ const HotelDetail = ({
       } catch (err) {
         // AbortError는 무시 (컴포넌트 언마운트로 인한 정상적인 중단)
         if (err.name === "AbortError") {
+          console.log("API 요청이 취소되었습니다 (정상):", contentId);
           return;
         }
 
         console.error("호텔 데이터 로드 실패:", err);
         if (isMounted) {
-          setErrorMessage("호텔 정보를 불러오지 못했습니다.");
+          // 타임아웃 오류인 경우 더 구체적인 메시지
+          if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+            setErrorMessage(
+              "서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요."
+            );
+          } else {
+            setErrorMessage("호텔 정보를 불러오지 못했습니다.");
+          }
         }
       } finally {
         if (isMounted) {
@@ -440,6 +448,10 @@ const HotelDetail = ({
 
     return () => {
       isMounted = false;
+      // 컴포넌트 언마운트 시 진행 중인 요청 취소
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, [
     contentId,
@@ -690,7 +702,7 @@ const HotelDetail = ({
                     : 0
                 )}
               </p>
-              <LiveViewerCount contentId={hotelData.id} />
+              <LiveViewerCount contentId={contentId} />
             </div>
           </div>
         </div>

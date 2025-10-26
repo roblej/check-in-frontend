@@ -49,21 +49,31 @@ export const hotelAPI = {
     const response = await axiosInstance.post("/hotels/search", searchParams);
     return response.data;
   },
-
   /**
    * Redis 관련 실시간 조회 관련 api임
    * */
-  // 호텔 접속자 등록 + 조회 (GET)
-  getHotelViews: async (contentId) => {
-    const response = await axiosInstance.get(`/hotels/${contentId}/views`);
-    return response.data?.data?.views ?? 0; // DTO 구조 맞춤
+  //진입 시 세션 등록
+  enterHotel: async (contentId, sessionId) => {
+    const res = await axiosInstance.post(`/hotels/${contentId}/views`, {
+      sessionId,
+    });
+    return res.data;
   },
   // 이탈 시 세션 제거 (DELETE)
-  leaveHotel: async (contentId) => {
-    await axiosInstance.delete(`/hotels/${contentId}/views`);
+  leaveHotel: async (contentId, sessionId) => {
+    const res = await axiosInstance.delete(`/hotels/${contentId}/views`, {
+      data: { sessionId },
+    });
+    return res.data;
   },
 
-  // 여러 호텔의 실시간 조회수 조회 (선택
+  /** 현재 조회자 수 조회 (선택적으로 sessionId 전달하여 TTL 갱신) */
+  getHotelViews: async (contentId, sessionId = null) => {
+    const params = sessionId ? { sessionId } : {};
+    const res = await axiosInstance.get(`/hotels/${contentId}/views`, { params });
+    return res.data;
+  },
+  // 여러 호텔의 실시간 조회수 조회 (선택) 안쓸 가능성 큼
   getMultipleHotelViews: async (contentIds) => {
     const response = await axiosInstance.post("/hotels/views", {
       contentIds,
