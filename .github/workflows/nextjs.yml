@@ -34,13 +34,21 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.FRONTEND_EC2_SSH_KEY }}
     
-    # 2. 파일 복사 (참고 파일의 scp 명령어 사용)
     - name: Copy Files to EC2
       run: |
-        # 빌드 결과물 전체를 원격 EC2의 /home/ubuntu/frontend 디렉토리로 복사
-        scp -r -o StrictHostKeyChecking=no ./* ubuntu@${{ secrets.FRONTEND_EC2_HOST }}:/home/ubuntu/frontend
+        # node_modules와 .git을 제외하고, 배포에 필요한 폴더만 복사합니다.
+        # ⚠️ node_modules가 복사되면 시간이 기하급수적으로 늘어납니다.
+        # /home/ubuntu/frontend/ 디렉토리가 scp 타겟이 됩니다.
+        scp -r -o StrictHostKeyChecking=no \
+            .next \
+            public \
+            package.json \
+            package-lock.json \
+            next.config.js \
+            . \
+            ubuntu@${{ secrets.FRONTEND_EC2_HOST }}:/home/ubuntu/frontend/
     
-    # 3. 배포 및 애플리케이션 시작 (참고 파일의 SSH heredoc 사용)
+    # 3. 배포 및 애플리케이션 시작 (런타임 .env 파일 생성 추가)
     - name: Deploy and Start Application
       run: |
         # SSH를 통해 EC2 서버에 접속하여 명령어 실행
