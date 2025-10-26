@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -9,7 +9,7 @@ import Footer from "@/components/Footer";
  * 결제 완료 페이지
  * 결제 성공 후 최종 확인 및 안내를 제공합니다.
  */
-const PaymentCompletePage = () => {
+const PaymentCompletePageContent = () => {
   const search = useSearchParams();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -210,6 +210,25 @@ const PaymentCompletePage = () => {
 
       <Footer />
     </div>
+  );
+};
+
+const PaymentCompletePage = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">결제 정보를 불러오는 중...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    }>
+      <PaymentCompletePageContent />
+    </Suspense>
   );
 };
 
