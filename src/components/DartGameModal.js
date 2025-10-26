@@ -177,13 +177,17 @@ const DartGameModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (!isOpen || mapLoaded) return;
 
-    const script = document.createElement('script');
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY}&autoload=false&libraries=services`;
-    script.async = true;
+    // 카카오맵 스크립트가 이미 로드되어 있는지 확인
+    const loadMap = () => {
+      if (!window.kakao || !window.kakao.maps) {
+        console.error('카카오맵을 불러올 수 없습니다.');
+        return;
+      }
 
-    script.onload = () => {
       window.kakao.maps.load(() => {
         const container = mapRef.current;
+        if (!container) return;
+
         const options = {
           center: new window.kakao.maps.LatLng(koreaBounds.centerLat, koreaBounds.centerLng),
           level: 13 // 한국 전체가 보이는 레벨
@@ -211,13 +215,22 @@ const DartGameModal = ({ isOpen, onClose }) => {
       });
     };
 
+    // 이미 카카오맵이 로드되어 있으면 바로 실행
+    if (window.kakao && window.kakao.maps) {
+      loadMap();
+      return;
+    }
+
+    // 카카오맵이 로드되지 않았다면 스크립트 로드
+    const script = document.createElement('script');
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY}&autoload=false&libraries=services`;
+    script.async = true;
+
+    script.onload = loadMap;
+
     document.head.appendChild(script);
 
-    return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
-    };
+    // cleanup은 하지 않음 - 카카오맵은 한 번 로드하면 계속 사용
   }, [isOpen, mapLoaded]);
 
   // 파워 게이지 애니메이션
@@ -632,6 +645,21 @@ const DartGameModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (!isOpen) {
       resetDart();
+      // 지도 상태 리셋
+      if (markerRef.current) {
+        markerRef.current.setMap(null);
+        markerRef.current = null;
+      }
+      hotelMarkersRef.current.forEach(marker => marker.setMap(null));
+      hotelMarkersRef.current = [];
+      
+      // 지도 인스턴스 정리
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current = null;
+      }
+      
+      // 지도 로드 상태 리셋
+      setMapLoaded(false);
     }
   }, [isOpen]);
 
