@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # 의존성 설치
-RUN npm ci --only=production
+RUN npm ci
 
 # 나머지 파일 복사
 COPY . .
