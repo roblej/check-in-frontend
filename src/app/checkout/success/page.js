@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
-const SuccessPage = () => {
+const SuccessPageContent = () => {
   const search = useSearchParams();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -207,6 +207,25 @@ const SuccessPage = () => {
 
       <Footer />
     </div>
+  );
+};
+
+const SuccessPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">결제 정보를 불러오는 중...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    }>
+      <SuccessPageContent />
+    </Suspense>
   );
 };
 

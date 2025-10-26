@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import Header from "@/components/Header";
 import HotelDetailPanel from "@/components/hotel/HotelDetailPanel";
 import HotelSearchResults from "@/components/hotelSearch/HotelSearchResults";
@@ -12,7 +12,7 @@ import {
 import axios from "axios";
 import { useSearchParams, useRouter } from "next/navigation";
 
-const HotelSearchPage = () => {
+const HotelSearchPageContent = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { updateFromUrlParams, searchParams: storeSearchParams } =
@@ -380,6 +380,29 @@ const HotelSearchPage = () => {
         }}
       />
     </div>
+  );
+};
+
+const HotelSearchPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="h-screen bg-gray-50 overflow-hidden flex flex-col">
+        <div className="bg-white border-b flex-shrink-0">
+          <div className="max-w-[1200px] mx-auto px-4 py-3">
+            <div className="animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-1 relative overflow-hidden">
+          <div className="animate-pulse">
+            <div className="h-full bg-gray-100"></div>
+          </div>
+        </div>
+      </div>
+    }>
+      <HotelSearchPageContent />
+    </Suspense>
   );
 };
 
