@@ -28,6 +28,9 @@ jobs:
       run: npm run build
       env:
         NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+        NEXT_PUBLIC_KAKAO_MAP_API_KEY: ${{ secrets.NEXT_PUBLIC_KAKAO_MAP_API_KEY }}
+        NEXT_PUBLIC_TOSS_CLIENT_KEY: ${{ secrets.NEXT_PUBLIC_TOSS_CLIENT_KEY }}
+        TOSS_SECRET_KEY: ${{ secrets.TOSS_SECRET_KEY }}
     
     # SSH 키 설정
     - name: Set up SSH Key
