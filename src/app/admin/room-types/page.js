@@ -1,10 +1,50 @@
 'use client';
 
+import { useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Bed, Tv, Snowflake, Sofa, Utensils, Building2, CheckCircle, Users } from 'lucide-react';
 
 const RoomTypesPage = () => {
   
+  // 초기 데이터
+  const [roomTypes] = useState([
+    {
+      name: "디럭스 룸",
+      size: "25㎡",
+      capacity: 2,
+      bedType: "더블베드 1개",
+      images: ["🏨"],
+      amenities: ["TV", "에어컨", "무료 Wi-Fi", "미니바"],
+      status: 'active'
+    },
+    {
+      name: "스위트 룸",
+      size: "45㎡",
+      capacity: 4,
+      bedType: "킹베드 1개, 소파베드 1개",
+      images: ["🏨"],
+      amenities: ["TV", "에어컨", "무료 Wi-Fi", "미니바", "욕조", "발코니"],
+      status: 'active'
+    },
+    {
+      name: "패밀리 룸",
+      size: "35㎡",
+      capacity: 4,
+      bedType: "더블베드 2개",
+      images: ["🏨"],
+      amenities: ["TV", "에어컨", "무료 Wi-Fi", "미니바", "유아용 침대"],
+      status: 'active'
+    },
+    {
+      name: "비즈니스 룸",
+      size: "20㎡",
+      capacity: 2,
+      bedType: "싱글베드 2개",
+      images: ["🏨"],
+      amenities: ["TV", "에어컨", "무료 Wi-Fi", "업무용 책상"],
+      status: 'active'
+    }
+  ]);
 
   return (
     <AdminLayout>
