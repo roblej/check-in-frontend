@@ -11,65 +11,55 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Build application
-      run: npm run build
-      env:
-        NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-        
-    - name: Deploy to EC2
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.FRONTEND_EC2_HOST }}
-        username: ${{ secrets.FRONTEND_EC2_USER }}
-        key: ${{ secrets.FRONTEND_EC2_SSH_KEY }}
-        command_timeout: 60s 
-        timeout: 20s
-        opts: -o StrictHostKeyChecking=no
-        script: |
-          # 기존 프로세스 종료
-          sudo pkill -f "next start" || true
-          
-          # 백업 생성
-          if [ -d "/home/ubuntu/frontend" ]; then
-            sudo mv /home/ubuntu/frontend /home/ubuntu/frontend-backup-$(date +%Y%m%d-%H%M%S)
-          fi
-          
-          # 새 디렉토리 생성
-          mkdir -p /home/ubuntu/frontend
-          
-    - name: Copy files to EC2
-      uses: appleboy/scp-action@v0.1.4
-      with:
-        host: ${{ secrets.FRONTEND_EC2_HOST }}
-        username: ${{ secrets.FRONTEND_EC2_USER }}
-        key: ${{ secrets.FRONTEND_EC2_SSH_KEY }}
-        source: "."
-        target: "/home/ubuntu/frontend/"
-        
-    - name: Start Frontend Application
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.FRONTEND_EC2_HOST }}
-        username: ${{ secrets.FRONTEND_EC2_USER }}
-        key: ${{ secrets.FRONTEND_EC2_SSH_KEY }}
-        script: |
-          cd /home/ubuntu/frontend
-          
-          # PM2로 애플리케이션 실행
-          npm install -g pm2
-          pm2 delete frontend-app || true
-          pm2 start npm --name "frontend-app" -- start
-          pm2 save
-          pm2 startup
+- name: Checkout code
+  uses: actions/checkout@v4
+  
+- name: Setup Node.js
+  uses: actions/setup-node@v4
+  with:
+    node-version: '18'
+    cache: 'npm'
+    
+- name: Install dependencies
+  run: npm ci
+  
+- name: Build application
+  run: npm run build
+  env:
+    NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+
+# 1. SSH 키 설정 (참고 파일의 webfactory/ssh-agent 사용)
+- name: Set up SSH Key
+  uses: webfactory/ssh-agent@v0.5.4
+  with:
+    ssh-private-key: ${{ secrets.FRONTEND_EC2_SSH_KEY }}
+
+# 2. 파일 복사 (참고 파일의 scp 명령어 사용)
+- name: Copy Files to EC2
+  run: |
+    # 빌드 결과물 전체를 원격 EC2의 /home/ubuntu/frontend 디렉토리로 복사
+    scp -r -o StrictHostKeyChecking=no ./* ubuntu@${{ secrets.FRONTEND_EC2_HOST }}:/home/ubuntu/frontend
+
+# 3. 배포 및 애플리케이션 시작 (참고 파일의 SSH heredoc 사용)
+- name: Deploy and Start Application
+  run: |
+    # SSH를 통해 EC2 서버에 접속하여 명령어 실행
+    ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.FRONTEND_EC2_HOST }} << 'EOF'
+    
+    # 1. 기존 프로세스 종료
+    sudo pkill -f "next start" || true
+    
+    # 2. 디렉토리로 이동
+    cd /home/ubuntu/frontend
+    
+    # 3. PM2 설치 및 애플리케이션 재시작
+    npm install -g pm2
+    pm2 delete frontend-app || true
+    # Next.js의 start 명령어 실행
+    pm2 start npm --name "frontend-app" -- start
+    
+    # PM2 상태 저장 및 환경 설정
+    pm2 save
+    pm2 startup
+    
+    EOF
