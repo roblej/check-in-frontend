@@ -73,13 +73,17 @@ jobs:
         cd /home/ubuntu/frontend
         docker-compose down || true
         
-        # 2. .env.production 파일 생성
+        # 2. .env.production 파일 생성 (서버 비밀 변수를 GitHub Secrets에서 가져와 주입)
+        # TOSS_SECRET_KEY는 서버 전용 변수이므로 여기에 포함하는 것이 안전합니다.
         echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" > .env.production
-        
+        echo "NEXT_PUBLIC_KAKAO_MAP_API_KEY=${{ secrets.NEXT_PUBLIC_KAKAO_MAP_API_KEY }}" >> .env.production
+        echo "NEXT_PUBLIC_TOSS_CLIENT_KEY=${{ secrets.NEXT_PUBLIC_TOSS_CLIENT_KEY }}" >> .env.production
+        echo "TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}" >> .env.production
+          
         # 3. Docker Compose로 서비스 시작
         docker-compose up -d --build
         
-        # 5. 헬스체크
+        # 4. 헬스체크
         sleep 30
         curl -f http://localhost:80 || exit 1
         
