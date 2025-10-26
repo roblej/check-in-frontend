@@ -22,8 +22,7 @@ const HotelRegistrationForm = ({
   onSubmit,
   isSubmitting,
   saveDraft,
-  loadDraft,
-  clearDraft
+  loadDraft
 }) => {
   const tabs = [
     { id: "basic", name: "기본 정보", icon: "📋" },
