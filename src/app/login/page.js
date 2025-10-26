@@ -6,10 +6,13 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import styles from "./login.module.css";
 import axios from "axios";
-import { useCustomerStore } from "@/stores/customerStore"
+import { useCustomerStore } from "@/stores/customerStore";
+import { useAdminStore } from "@/stores/adminStore";
+import { setAdminIdxCookie } from "@/utils/cookieUtils";
 export default function LoginPage() {
   const router = useRouter();
   const { setAccessToken, setInlogged } = useCustomerStore();
+  const { setAdminIdx, setContentId, setHotelInfo, setAdminLoggedIn, fetchContentIdByAdminIdx } = useAdminStore();
   const [formData, setFormData] = useState({
     id: "",
     password: "",
@@ -94,12 +97,41 @@ export default function LoginPage() {
 
       //로그인 버튼 로그아웃으로 변경
       
-      // 성공 시 메인 페이지로 이동
+      // 성공 시 사용자 타입에 따라 리다이렉트
       alert("로그인 성공");
       setInlogged(true);
       setAccessToken(accessToken);
 
-      router.push("/");
+      // 사업자(admin)인 경우 관리자 화면으로 이동
+      if (formData.role === "admin") {
+        try {
+          // 토큰에서 adminIdx 추출
+          const userInfo = JSON.parse(atob(accessToken.split('.')[1]));
+          const adminIdx = userInfo.adminIdx;
+          
+          if (adminIdx) {
+            // adminIdx를 쿠키에 저장
+            setAdminIdxCookie(adminIdx, 7); // 7일
+            
+            // adminIdx로 contentId 가져오기
+            const contentId = await fetchContentIdByAdminIdx(adminIdx);
+            
+            if (contentId) {
+              setAdminLoggedIn(true);
+              console.log('관리자 로그인 성공:', { adminIdx, contentId });
+            } else {
+              console.warn('contentId를 가져올 수 없습니다.');
+            }
+          }
+        } catch (error) {
+          console.error('관리자 정보 처리 실패:', error);
+        }
+        
+        router.push("/admin");
+      } else {
+        // 일반 회원인 경우 메인 페이지로 이동
+        router.push("/");
+      }
     } else {
       setErrors({
         general: "아이디 또는 비밀번호가 올바르지 않습니다.",

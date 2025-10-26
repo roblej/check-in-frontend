@@ -4,48 +4,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Bed, Tv, Snowflake, Sofa, Utensils, Building2, CheckCircle, Users } from 'lucide-react';
 
 const RoomTypesPage = () => {
-  const roomTypes = [
-    {
-      id: 'RT001',
-      name: '스탠다드룸',
-      size: '25㎡',
-      capacity: 2,
-      bedType: '더블베드',
-      amenities: ['무료 WiFi', '에어컨', 'TV', '미니바', '욕실'],
-      images: [<Bed size={24} />, <Tv size={24} />, <Snowflake size={24} />],
-      status: 'active'
-    },
-    {
-      id: 'RT002',
-      name: '디럭스룸',
-      size: '35㎡',
-      capacity: 3,
-      bedType: '킹베드',
-      amenities: ['무료 WiFi', '에어컨', 'TV', '미니바', '욕실', '발코니', '소파'],
-      images: [<Bed size={24} />, <Tv size={24} />, <Snowflake size={24} />, <Sofa size={24} />],
-      status: 'active'
-    },
-    {
-      id: 'RT003',
-      name: '스위트룸',
-      size: '50㎡',
-      capacity: 4,
-      bedType: '킹베드 + 소파베드',
-      amenities: ['무료 WiFi', '에어컨', 'TV', '미니바', '욕실', '발코니', '소파', '다이닝 테이블', '작업 공간'],
-      images: [<Bed size={24} />, <Tv size={24} />, <Snowflake size={24} />, <Sofa size={24} />, <Utensils size={24} />],
-      status: 'active'
-    },
-    {
-      id: 'RT004',
-      name: '프레지덴셜룸',
-      size: '80㎡',
-      capacity: 6,
-      bedType: '킹베드 + 트윈베드',
-      amenities: ['무료 WiFi', '에어컨', 'TV', '미니바', '욕실', '발코니', '소파', '다이닝 테이블', '작업 공간', '주방', '거실'],
-      images: [<Bed size={24} />, <Tv size={24} />, <Snowflake size={24} />, <Sofa size={24} />, <Utensils size={24} />],
-      status: 'active'
-    }
-  ];
+  
 
   return (
     <AdminLayout>
@@ -65,8 +24,8 @@ const RoomTypesPage = () => {
 
         {/* 객실 타입 목록 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {roomTypes.map((roomType) => (
-            <div key={roomType.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          {roomTypes.map((roomType, key) => (
+            <div key={key} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               {/* 객실 이미지 영역 */}
               <div className="h-48 bg-gray-100 flex items-center justify-center">
                 <div className="text-6xl">{roomType.images[0]}</div>

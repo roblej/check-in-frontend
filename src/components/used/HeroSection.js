@@ -29,12 +29,8 @@ const HeroSection = ({
             <span className="text-gray-900">예약 양도</span>
             <span className="text-orange-600"> 중고거래</span>
           </h1>
-          <p className="text-lg text-gray-600 mb-2">
-            사정상 가지 못하는 호텔 예약을 싼 값에 양도하세요
-          </p>
-          <p className="text-sm text-gray-500">
-            취소 수수료 없이 합리적인 가격으로 호텔을 이용할 수 있습니다
-          </p>
+          <p className="text-lg text-gray-600 mb-2">사정상 가지 못하는 호텔 예약을 싼 값에 양도하세요</p>
+          <p className="text-sm text-gray-500">취소 수수료 없이 합리적인 가격으로 호텔을 이용할 수 있습니다</p>
         </div>
 
         {/* 검색 폼 */}
