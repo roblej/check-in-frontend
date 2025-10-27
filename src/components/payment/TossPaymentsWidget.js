@@ -30,76 +30,33 @@ const TossPaymentsWidget = ({
   const [error, setError] = useState(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
-  // 토스페이먼츠 SDK 로드 완료 후 실행
+  // 컴포넌트 마운트 시 스크립트가 이미 로드되어 있는지 확인
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.TossPayments) {
+      console.log("토스페이먼츠 SDK 이미 로드됨");
+      setScriptLoaded(true);
+    }
+  }, []);
+
+  // 토스페이먼츠 SDK 로드 완료 후 실행 (한 번만 실행)
   useEffect(() => {
     if (!scriptLoaded) return;
 
+    let isMounted = true;
+
     const initializePaymentWidget = async () => {
       try {
-        console.log("토스페이먼츠 초기화 시작...", {
-          clientKey,
-          customerKey,
-          amount,
-        });
+        console.log("토스페이먼츠 초기화 시작...");
 
-        // 토스페이먼츠 초기화 - 올바른 방법
+        // 토스페이먼츠 초기화
         const tossPayments = window.TossPayments(clientKey);
-        console.log("토스페이먼츠 초기화 완료:", tossPayments);
-        console.log("사용 가능한 메서드:", Object.keys(tossPayments));
+        console.log("토스페이먼츠 초기화 완료");
 
-        // 결제 위젯 대신 일반 결제 방식 사용
-        console.log("토스페이먼츠 초기화 완료 - 일반 결제 방식 사용");
-        setIsLoading(false);
+        if (!isMounted) return;
 
-        // 결제 요청 처리
-        const handlePayment = async () => {
-          try {
-            console.log("결제 요청 시작...");
+        widgetRef.current = tossPayments;
 
-            const paymentData = {
-              orderId,
-              orderName,
-              amount: amount,
-              customerName,
-              customerEmail,
-              customerMobilePhone,
-              // JavaScript 콜백을 사용하므로 URL 리다이렉트 비활성화
-              // successUrl: successUrl || `${window.location.origin}/checkout/success`,
-              // failUrl: failUrl || `${window.location.origin}/checkout/fail`,
-            };
-
-            console.log("결제 데이터 (민감정보 제외):", {
-              orderId: paymentData.orderId,
-              orderName: paymentData.orderName,
-              amount: paymentData.amount,
-              customerName: paymentData.customerName ? "***" : undefined,
-            });
-
-            // 토스페이먼츠 결제 요청
-            const paymentResult = await tossPayments.requestPayment(
-              "카드",
-              paymentData
-            );
-
-            console.log("결제 결과 (민감정보 제외):", {
-              paymentKey: paymentResult.paymentKey ? "***" : undefined,
-              orderId: paymentResult.orderId,
-              amount: paymentResult.amount,
-            });
-
-            // 결제 성공 시 백엔드로 검증 요청
-            if (paymentResult && paymentResult.paymentKey) {
-              await verifyPaymentWithBackend(paymentResult);
-            }
-          } catch (error) {
-            console.error("결제 요청 실패:", error);
-            if (onFail) {
-              onFail(error);
-            }
-          }
-        };
-
-        // 백엔드로 결제 검증 요청
+        // 결제 검증 함수
         const verifyPaymentWithBackend = async (paymentResult) => {
           try {
             console.log("백엔드 결제 검증 시작...");
@@ -119,28 +76,53 @@ const TossPaymentsWidget = ({
             const isUsedHotelPayment =
               orderId && orderId.includes("used_hotel");
 
+            // paymentKey 유효성 검사
+            if (!paymentResult?.paymentKey) {
+              console.error("paymentKey가 없습니다:", paymentResult);
+              throw new Error("결제 응답에 paymentKey가 없습니다.");
+            }
+
             const requestData = {
               paymentKey: paymentResult.paymentKey,
               orderId: paymentResult.orderId,
-              amount:
-                paymentResult.amount || paymentResult.totalAmount || amount, // amount 우선 사용
+              amount: customerInfo?.actualPaymentAmount || amount, // 실제 결제 금액 사용
               type: isUsedHotelPayment ? "used_hotel" : "hotel_reservation",
-              customerIdx: 1, // TODO: 실제 로그인된 사용자 ID 사용
-              contentId: hotelInfo?.contentId || hotelInfo?.hotelId?.toString(),
-              roomId: hotelInfo?.roomId,
+              customerIdx: customerInfo?.customerIdx || 1, // 실제 로그인된 사용자 ID
+              contentId: String(
+                hotelInfo?.contentId || hotelInfo?.hotelId || ""
+              ), // String으로 변환
+              roomId:
+                hotelInfo?.roomIdx || hotelInfo?.roomId
+                  ? parseInt(hotelInfo.roomIdx || hotelInfo.roomId)
+                  : null, // Integer로 변환
               checkIn: hotelInfo?.checkIn,
               checkOut: hotelInfo?.checkOut,
-              guests: hotelInfo?.guests,
-              nights: hotelInfo?.nights,
-              roomPrice: hotelInfo?.roomPrice,
-              totalPrice: hotelInfo?.totalPrice,
+              guests: hotelInfo?.guests ? parseInt(hotelInfo.guests) : null, // Integer로 변환
+              nights: hotelInfo?.nights ? parseInt(hotelInfo.nights) : null, // Integer로 변환
+              roomPrice: hotelInfo?.roomPrice
+                ? parseInt(hotelInfo.roomPrice)
+                : null, // Integer로 변환
+              totalPrice: hotelInfo?.totalPrice
+                ? parseInt(hotelInfo.totalPrice)
+                : null, // Integer로 변환
               customerName: customerInfo?.name || customerName,
               customerEmail: customerInfo?.email || customerEmail,
               customerPhone: customerInfo?.phone || customerMobilePhone,
               specialRequests: customerInfo?.specialRequests,
               method: "card",
-              pointsUsed: 0, // TODO: 실제 포인트 사용량 계산
-              cashUsed: 0, // TODO: 현금 결제 로직 추가
+              pointsUsed: customerInfo?.usePoint || 0, // 실제 포인트 사용량
+              cashUsed: customerInfo?.useCash || 0, // 실제 캐시 사용량
+              // paymentInfo 추가
+              paymentInfo: {
+                totalAmount: hotelInfo?.totalPrice || amount,
+                cashAmount: customerInfo?.useCash || 0,
+                pointAmount: customerInfo?.usePoint || 0,
+                cardAmount: customerInfo?.actualPaymentAmount || amount,
+                paymentMethod:
+                  customerInfo?.actualPaymentAmount > 0
+                    ? "mixed"
+                    : "cash_point_only",
+              },
               // 중고 호텔 결제를 위한 추가 필드
               ...(isUsedHotelPayment && {
                 usedItemIdx: hotelInfo?.usedItemIdx,
@@ -158,7 +140,7 @@ const TossPaymentsWidget = ({
               }),
             };
 
-            console.log("백엔드로 전송할 데이터 (민감정보 제외):", {
+            console.log("백엔드로 전송할 데이터:", {
               paymentKey: requestData.paymentKey ? "***" : undefined,
               orderId: requestData.orderId,
               amount: requestData.amount,
@@ -225,41 +207,110 @@ const TossPaymentsWidget = ({
           }
         };
 
-        // 결제 함수를 전역으로 노출하여 외부에서 호출 가능하도록 설정
+        const handlePayment = async () => {
+          try {
+            console.log("결제 요청 시작...");
+
+            const paymentData = {
+              orderId,
+              orderName,
+              amount: amount,
+              customerName,
+              customerEmail,
+              customerMobilePhone,
+            };
+
+            console.log("결제 데이터 (민감정보 제외):", {
+              orderId: paymentData.orderId,
+              orderName: paymentData.orderName,
+              amount: paymentData.amount,
+              customerName: paymentData.customerName ? "***" : undefined,
+            });
+
+            const tossPayments = widgetRef.current;
+            if (!tossPayments) {
+              throw new Error("토스페이먼츠가 초기화되지 않았습니다.");
+            }
+
+            const paymentResult = await tossPayments.requestPayment(
+              "카드",
+              paymentData
+            );
+
+            console.log("결제 결과 (민감정보 제외):", {
+              paymentKey: paymentResult?.paymentKey ? "***" : undefined,
+              orderId: paymentResult?.orderId,
+              amount: paymentResult?.amount,
+            });
+
+            // paymentKey 유효성 검사
+            if (!paymentResult?.paymentKey) {
+              throw new Error("결제 응답에 paymentKey가 없습니다.");
+            }
+
+            if (paymentResult && paymentResult.paymentKey) {
+              await verifyPaymentWithBackend(paymentResult);
+            }
+          } catch (error) {
+            console.error("결제 요청 실패:", error);
+
+            // 사용자가 결제를 취소한 경우
+            if (
+              error.code === "USER_CANCEL" ||
+              (error.message && error.message.includes("취소"))
+            ) {
+              console.log("사용자가 결제를 취소했습니다.");
+              // 결제 취소는 에러가 아니므로 onFail 호출 안함
+              // 재시도를 위해 상태 유지
+              return;
+            }
+
+            // 결제창이 닫힌 경우도 정상 처리
+            if (
+              error.message &&
+              (error.message.includes("닫혔습니다") ||
+                error.message.includes("closed"))
+            ) {
+              console.log("결제창이 닫혔습니다.");
+              return;
+            }
+
+            // 그 외 실제 에러인 경우에만 onFail 호출
+            if (onFail) {
+              onFail(error);
+            }
+          }
+        };
+
+        // 결제 핸들러를 전역에 등록
         window.tossPaymentHandler = handlePayment;
         console.log("토스페이먼츠 결제 핸들러 등록 완료");
 
-        widgetRef.current = tossPayments;
+        if (isMounted) {
+          setIsLoading(false);
+        }
       } catch (error) {
         console.error("토스페이먼츠 초기화 실패:", error);
-        setError(error.message || "토스페이먼츠 초기화에 실패했습니다.");
-        setIsLoading(false);
+        if (isMounted) {
+          setError(error.message || "토스페이먼츠 초기화에 실패했습니다.");
+          setIsLoading(false);
+        }
       }
     };
 
     initializePaymentWidget();
 
-    // 컴포넌트 언마운트 시 정리
     return () => {
+      isMounted = false;
       if (widgetRef.current) {
         widgetRef.current = null;
       }
-      // 전역 핸들러 정리
       if (window.tossPaymentHandler) {
         delete window.tossPaymentHandler;
       }
     };
-  }, [
-    scriptLoaded,
-    clientKey,
-    customerKey,
-    amount,
-    orderId,
-    orderName,
-    customerName,
-    customerEmail,
-    customerMobilePhone,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scriptLoaded]); // scriptLoaded만 의존 (무한 로딩 방지)
 
   if (error) {
     return (

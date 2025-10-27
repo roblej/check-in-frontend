@@ -60,22 +60,23 @@ export async function POST(req) {
         orderId,
         amount,
         type: "hotel_reservation",
-        customerIdx: body.customerIdx || 1, // 기본값 설정
-        contentId: body.contentId,
-        roomId: body.roomId,
-        checkIn: body.checkIn,
-        checkOut: body.checkOut,
-        guests: body.guests,
-        nights: body.nights,
-        roomPrice: body.roomPrice,
-        totalPrice: body.totalPrice,
-        customerName: body.customerName,
-        customerEmail: body.customerEmail,
-        customerPhone: body.customerPhone,
-        specialRequests: body.specialRequests,
+        customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1, // 실제 고객 ID
+        contentId: body.hotelInfo?.contentId || body.contentId, // String 타입
+        roomId: body.hotelInfo?.roomId || body.roomId,
+        checkIn: body.hotelInfo?.checkIn || body.checkIn,
+        checkOut: body.hotelInfo?.checkOut || body.checkOut,
+        guests: body.hotelInfo?.guests || body.guests,
+        nights: body.hotelInfo?.nights || body.nights,
+        roomPrice: body.hotelInfo?.roomPrice || body.roomPrice,
+        totalPrice: body.hotelInfo?.totalPrice || body.totalPrice,
+        customerName: body.customerInfo?.name || body.customerName,
+        customerEmail: body.customerInfo?.email || body.customerEmail,
+        customerPhone: body.customerInfo?.phone || body.customerPhone,
+        specialRequests:
+          body.customerInfo?.specialRequests || body.specialRequests,
         method: body.method || "card",
-        pointsUsed: body.pointsUsed || 0,
-        cashUsed: body.cashUsed || 0,
+        pointsUsed: body.paymentInfo?.pointAmount || body.pointsUsed || 0,
+        cashUsed: body.paymentInfo?.cashAmount || body.cashUsed || 0,
       };
 
       console.log("백엔드로 전송할 데이터 (민감정보 제외):", {
