@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { hotelAPI } from "@/lib/api/hotel";
-import { getOrCreateSessionId} from "@/lib/redisSession";
+import { getOrCreateSessionId } from "@/lib/redisSession";
 
 /**
  * 호텔 실시간 조회수 표시 컴포넌트 (ISR + Redis + TanStack Query)
@@ -20,22 +20,24 @@ import { getOrCreateSessionId} from "@/lib/redisSession";
 const LiveViewerCount = ({ contentId, showAlways = true }) => {
   // sessionStorage에서 캐싱된 sessionId 가져오기
   const sessionId = getOrCreateSessionId();
-  
-  // 진입 시 세션 등록만 (이탈 시 수동 제거하지 않음 - TTL 3분으로 자동 만료)
+
+  // 진입 시 세션 등록 + 초기 조회수 조회(이탈 시 수동 제거하지 않음 - TTL 3분으로 자동 만료)
   useEffect(() => {
     if (!contentId || !sessionId) return;
 
-    // 진입시 Redis 등록 API 호출 (실패해도 조용히 처리)
-    const registerSession = async () => {
+    const initSession = async () => {
       try {
+        // 1. Redis 세션 등록
         await hotelAPI.enterHotel(contentId, sessionId);
+        // 2. 초기 조회수 조회 (TTL 갱신도 함께)
+        await hotelAPI.getHotelViews(contentId, sessionId);
       } catch (err) {
         // 타임아웃이나 네트워크 오류는 무시 (조회수는 선택적 기능)
-        console.warn("조회자 등록 실패 (무시됨):", err.message);
+        console.warn("조회자 초기화 실패 (무시됨):", err.message);
       }
     };
-    
-    registerSession();
+
+    initSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contentId]);
 
@@ -77,7 +79,7 @@ const LiveViewerCount = ({ contentId, showAlways = true }) => {
   }
 
   // 조회수가 0이고 showAlways가 false일 때는 표시하지 않음
-  const viewCount = typeof data === 'number' ? data : 0;
+  const viewCount = typeof data === "number" ? data : 0;
   if (!showAlways && viewCount === 0) return null;
 
   // 현재 조회자 수 표시
