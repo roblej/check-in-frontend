@@ -11,6 +11,8 @@ export default function SignupPage() {
   const signUp_url = "/api/login/signup";
   const checkId_url = "/api/login/checkId";
   const checkNickname_url = "/api/login/checkNickname";
+  const sendVerificationCode_url = "/api/login/send-verification-code";
+  const verifyEmail_url = "/api/login/verify-email";
 
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -32,6 +34,12 @@ export default function SignupPage() {
   const [nicknameStatus, setNicknameStatus] = useState(null); // 'success', 'error', null
   const [nicknameMessage, setNicknameMessage] = useState(''); // 닉네임 검사 메시지 (성공/실패)
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // 이메일 인증 관련 상태
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   
   function signUp(){
     axios.post(signUp_url, formData)
@@ -141,6 +149,51 @@ export default function SignupPage() {
           [name]: "",
         }));
       }
+    }
+  };
+
+  // 이메일 인증 코드 전송
+  const handleSendVerificationCode = async () => {
+    if (!formData.email) {
+      alert('이메일을 먼저 입력해주세요.');
+      return;
+    }
+    setIsSendingCode(true);
+    try {
+      const response = await axios.post(sendVerificationCode_url, {
+        email: formData.email
+      });
+      alert('인증 코드가 전송되었습니다.');
+    } catch (error) {
+      alert('인증 코드 전송에 실패했습니다.');
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  // 이메일 인증 코드 확인
+  const handleVerifyEmail = async () => {
+    if (!verificationCode) {
+      alert('인증 코드를 입력해주세요.');
+      return;
+    }
+
+    setIsVerifyingCode(true);
+    try {
+      const response = await axios.post(verifyEmail_url, {
+        email: formData.email,
+        code: verificationCode
+      });
+      if (response.data.success) {
+        setEmailVerified(true);
+        alert('이메일 인증이 완료되었습니다.');
+      } else {
+        alert('인증 코드가 올바르지 않습니다.');
+      }
+    } catch (error) {
+      alert('인증 코드 확인에 실패했습니다.');
+    } finally {
+      setIsVerifyingCode(false);
     }
   };
 
@@ -396,17 +449,54 @@ export default function SignupPage() {
               <label htmlFor="email" className={styles.label}>
                 이메일 <span className={styles.required}>*</span>
               </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className={`${styles.input} ${errors.email ? styles.inputError : ""}`}
-                placeholder="example@email.com"
-              />
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={`${styles.input} ${errors.email ? styles.inputError : ""}`}
+                  placeholder="example@email.com"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={handleSendVerificationCode}
+                  disabled={isSendingCode || emailVerified}
+                  className={styles.verifyButton}
+                >
+                  {isSendingCode ? '전송 중...' : emailVerified ? '인증 완료' : '인증번호 전송'}
+                </button>
+              </div>
               {errors.email && (
                 <span className={styles.errorMessage}>{errors.email}</span>
+              )}
+              
+              {/* 인증 코드 입력 필드 */}
+              {formData.email && !emailVerified && (
+                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    className={styles.input}
+                    placeholder="인증 코드 입력"
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleVerifyEmail}
+                    disabled={isVerifyingCode}
+                    className={styles.verifyButton}
+                  >
+                    {isVerifyingCode ? '확인 중...' : '확인'}
+                  </button>
+                </div>
+              )}
+              
+              {emailVerified && (
+                <span className={styles.successMessage}>✓ 이메일 인증이 완료되었습니다.</span>
               )}
             </div>
 
