@@ -92,7 +92,7 @@ jobs:
         echo "TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}" >> .env.production
         
         # 4. Docker Compose로 서비스 시작
-        sudo docker-compose up -d --build
+        sudo docker-compose --env-file .env.production up -d --build
         
         # 5. 헬스체크
         sleep 30
