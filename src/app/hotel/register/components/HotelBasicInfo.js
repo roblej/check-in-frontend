@@ -27,7 +27,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              호텔명
+              호텔명 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -43,7 +43,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              연락처
+              연락처 <span className="text-red-500">*</span>
             </label>
             <input
               type="tel"
@@ -59,7 +59,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              이메일
+              이메일 <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
@@ -75,7 +75,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              주소
+              주소 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
