@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import HotelRegistrationForm from "./HotelRegistrationForm";
 import axios from "axios";
 
 const HotelRegistrationClient = ({ initialData }) => {
   const router = useRouter();
+  const hasCheckedDraft = useRef(false);
   
   // 폼 데이터 상태 관리
   const [formData, setFormData] = useState({
@@ -68,11 +69,7 @@ const HotelRegistrationClient = ({ initialData }) => {
       completedFields++;
     }
 
-    // 이미지 체크
-    if (formData.images.length > 0) {
-      totalFields++;
-      completedFields++;
-    }
+    // 이미지는 선택사항이므로 진행률 계산에 포함하지 않음
 
     setProgress(totalFields > 0 ? (completedFields / totalFields) * 100 : 0);
   }, [formData]);
@@ -112,83 +109,9 @@ const HotelRegistrationClient = ({ initialData }) => {
         setFormData(parsedFormData);
         setCurrentTab(draftData.lastTab || "basic");
         setProgress(draftData.progress || 0);
-        
-        alert("이전 작성 내용을 불러왔습니다.");
-      } else {
-        alert("불러올 임시저장 데이터가 없습니다.");
       }
     } catch (error) {
       console.error("임시저장 데이터 로드 실패:", error);
-      alert("임시저장 데이터 로드 중 오류가 발생했습니다.");
-    }
-  };
-
-  // 임시저장 데이터 삭제
-  const clearDraft = async () => {
-    try {
-      const response = await axios.delete("/api/hotel/draft");
-      
-      if (response.data.success) {
-        alert("임시저장 내용이 삭제되었습니다.");
-        
-        // 폼 데이터 초기화
-        setFormData({
-          hotelInfo: {
-            title: "",
-            adress: "",
-            phone: "",
-            email: "",
-            checkInTime: "15:00",
-            checkOutTime: "11:00",
-            cancellationPolicy: "무료 취소 (체크인 24시간 전까지)"
-          },
-          hotelDetail: {
-            description: "",
-            features: "",
-            scale: "",
-            history: ""
-          },
-          area: {
-            region: "",
-            district: "",
-            nearbyAttractions: "",
-            transportation: ""
-          },
-          rooms: [],
-          images: [],
-          events: [],
-          dining: []
-        });
-        setCurrentTab("basic");
-        setProgress(0);
-      } else {
-        alert("임시저장 삭제 실패: " + response.data.message);
-      }
-    } catch (error) {
-      console.error("임시저장 삭제 실패:", error);
-      alert("임시저장 삭제 중 오류가 발생했습니다.");
-    }
-  };
-
-  // 임시저장 상태 확인
-  const checkDraftStatus = async () => {
-    try {
-      const response = await axios.get("/api/hotel/draft/status");
-      
-      if (response.data.success) {
-        if (response.data.hasDraft) {
-          const shouldLoad = confirm(
-            "이전에 작성하던 호텔 등록 내용이 있습니다. 이어서 작성하시겠습니까?"
-          );
-          if (shouldLoad) {
-            loadDraft();
-          } else {
-            clearDraft();
-          }
-        }
-      }
-    } catch (error) {
-      console.error("임시저장 상태 확인 실패:", error);
     }
   };
 
@@ -196,17 +119,44 @@ const HotelRegistrationClient = ({ initialData }) => {
   useEffect(() => {
     const autoSaveTimer = setInterval(() => {
       // 폼에 데이터가 있을 때만 자동 저장
-      if (formData.hotelInfo.title || formData.rooms.length > 0 || formData.images.length > 0) {
+      if (formData.hotelInfo.title || formData.rooms.length > 0) {
         saveDraft();
       }
     }, 5000); // 5초마다 자동 저장
 
     return () => clearInterval(autoSaveTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, currentTab, progress]);
 
-  // 페이지 로드 시 임시저장 상태 확인
+  // 페이지 로드 시 임시저장 데이터 확인 (Strict Mode 대응)
   useEffect(() => {
-    checkDraftStatus();
+    const initCheck = async () => {
+      if (!hasCheckedDraft.current) {
+        hasCheckedDraft.current = true;
+        
+        try {
+          const response = await axios.get("/api/hotel/draft");
+          
+          if (response.data.success && response.data.data) {
+            const shouldLoad = confirm(
+              "이전에 작성하던 호텔 등록 내용이 있습니다. 이어서 작성하시겠습니까?"
+            );
+            if (shouldLoad) {
+              const draftData = response.data.data;
+              const parsedFormData = JSON.parse(draftData.formData);
+              
+              setFormData(parsedFormData);
+              setCurrentTab(draftData.lastTab || "basic");
+              setProgress(draftData.progress || 0);
+            }
+          }
+        } catch (error) {
+          console.error("임시저장 데이터 확인 실패:", error);
+        }
+      }
+    };
+    
+    initCheck();
   }, []);
 
   // 폼 데이터 업데이트
@@ -314,10 +264,7 @@ const HotelRegistrationClient = ({ initialData }) => {
       newErrors.rooms = "최소 1개 이상의 객실을 등록해주세요";
     }
 
-    // 이미지 검증
-    if (formData.images.length === 0) {
-      newErrors.images = "최소 1개 이상의 이미지를 업로드해주세요";
-    }
+    // 이미지는 선택사항이므로 검증하지 않음
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -340,8 +287,6 @@ const HotelRegistrationClient = ({ initialData }) => {
 
       if (response.data.success) {
         alert("호텔 등록 요청이 완료되었습니다. 관리자 승인 후 운영을 시작할 수 있습니다.");
-        // 등록 성공 시 임시저장 삭제
-        await clearDraft();
         router.push("/"); // 메인 페이지로 이동
       } else {
         alert("등록 요청 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -394,7 +339,6 @@ const HotelRegistrationClient = ({ initialData }) => {
         isSubmitting={isSubmitting}
         saveDraft={saveDraft}
         loadDraft={loadDraft}
-        clearDraft={clearDraft}
       />
     </div>
   );

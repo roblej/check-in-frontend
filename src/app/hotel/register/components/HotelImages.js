@@ -64,7 +64,7 @@ const HotelImages = ({ images, events, updateFormData, errors }) => {
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">호텔 이미지</h3>
         <p className="text-sm text-gray-500 mb-4">
-          호텔의 외관, 로비, 객실 등 다양한 이미지를 업로드하세요. 최소 3장 이상 권장합니다.
+          호텔의 외관, 로비, 객실 등 다양한 이미지를 업로드하세요. (선택사항)
         </p>
         
         {/* 이미지 업로드 영역 */}
