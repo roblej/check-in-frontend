@@ -52,7 +52,7 @@ export default function S3TestPage() {
       formData.append('folder', 'test'); // 업로드할 폴더 지정
 
       // 백엔드 API 호출
-      const response = await fetch('/api/image/upload', {
+      const response = await fetch('/api/image/s3/upload', {
         method: 'POST',
         body: formData,
       });
