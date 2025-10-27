@@ -14,8 +14,8 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
       {/* 헤더 */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-medium text-gray-900">객실 관리</h3>
-          <p className="text-sm text-gray-500">호텔의 객실 정보를 등록하세요</p>
+          <h3 className="text-lg font-medium text-gray-900">객실 관리 <span className="text-red-500">*</span></h3>
+          <p className="text-sm text-gray-500">호텔의 객실 정보를 등록하세요 (최소 1개 필수)</p>
         </div>
         <button
           onClick={addRoom}
