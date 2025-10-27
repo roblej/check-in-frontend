@@ -23,10 +23,11 @@ const nextConfig = {
         ],
     },
     async rewrites(){
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888';
         return [
             {
             source: '/api/:path*',
-            destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/:path*`
+            destination: `${apiUrl}/api/:path*`
         }
         ]
     }
