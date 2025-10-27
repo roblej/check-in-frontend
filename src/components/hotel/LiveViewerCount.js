@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { hotelAPI } from "@/lib/api/hotel";
+import { getOrCreateSessionId } from "@/lib/redisSession";
 
 /**
  * 호텔 실시간 조회수 표시 컴포넌트 (ISR + Redis + TanStack Query)
@@ -17,31 +18,44 @@ import { hotelAPI } from "@/lib/api/hotel";
  * @param {boolean} showAlways - 항상 표시할지 여부 (기본값: false, 조회수가 0일 때는 숨김)
  */
 const LiveViewerCount = ({ contentId, showAlways = true }) => {
-  // 진입 시 및 이탈 처리
-  useEffect(() => {
-    if (!contentId)
-      return;
+  // sessionStorage에서 캐싱된 sessionId 가져오기
+  const sessionId = getOrCreateSessionId();
 
-    //진입시 Redis 등록 + 조회
-    hotelAPI.getHotelViews(contentId).catch((err)=>
-      console.error("조회자 등록 실패:",err)
-    );
-    // 페이지 이탈시 Redis 세션 제거
-    return ()=>{
-      hotelAPI.leaveHotel(contentId).catch(()=>
-        console.warn("이탈 처리 실패(만료된 세션일 가능성도 있음")
-      );
+  // 진입 시 세션 등록 + 초기 조회수 조회(이탈 시 수동 제거하지 않음 - TTL 3분으로 자동 만료)
+  useEffect(() => {
+    if (!contentId || !sessionId) return;
+
+    const initSession = async () => {
+      try {
+        // 1. Redis 세션 등록
+        await hotelAPI.enterHotel(contentId, sessionId);
+        // 2. 초기 조회수 조회 (TTL 갱신도 함께)
+        await hotelAPI.getHotelViews(contentId, sessionId);
+      } catch (err) {
+        // 타임아웃이나 네트워크 오류는 무시 (조회수는 선택적 기능)
+        console.warn("조회자 초기화 실패 (무시됨):", err.message);
+      }
     };
+
+    initSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contentId]);
 
-  // TanStack Query로 30초마다 실시간 조회수 refetch
+  // TanStack Query로 20초마다 실시간 조회수 refetch (sessionId 전달하여 TTL 갱신)
   const { data, isLoading, isError } = useQuery({
     queryKey: ["hotelViews", contentId],
-    queryFn: () => hotelAPI.getHotelViews(contentId),
-    refetchInterval: 10000, // 10초마다 자동 갱신 (더 빠른 테스트를 위해)
-    staleTime: 10000, // 10초 동안 캐시 유지
-    gcTime: 30000, // 메모리 캐시 유지 시간
-    enabled: !!contentId, // contentId가 있을 때만 쿼리 실행
+    queryFn: async () => {
+      try {
+        const response = await hotelAPI.getHotelViews(contentId, sessionId);
+        return response?.data?.views ?? response ?? 0;
+      } catch (err) {
+        console.warn("조회수 조회 실패 (무시됨):", err.message);
+        return 0;
+      }
+    },
+    refetchInterval: 20000, // 20초마다 자동 갱신
+    enabled: !!contentId && !!sessionId, // contentId와 sessionId가 있을 때만 쿼리 실행
+    retry: false, // 실패 시 재시도 안 함
   });
 
   // 로딩 상태일 때는 로딩 표시
@@ -65,13 +79,14 @@ const LiveViewerCount = ({ contentId, showAlways = true }) => {
   }
 
   // 조회수가 0이고 showAlways가 false일 때는 표시하지 않음
-  if (!showAlways && (!data || data === 0)) return null;
+  const viewCount = typeof data === "number" ? data : 0;
+  if (!showAlways && viewCount === 0) return null;
 
   // 현재 조회자 수 표시
   return (
     <div className="flex items-center gap-1 text-sm text-gray-600">
       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-      <span>현재 {data || 0}명이 보고 있어요</span>
+      <span>현재 {viewCount}명이 보고 있어요</span>
     </div>
   );
 };
