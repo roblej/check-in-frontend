@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
 import TossPaymentsWidget from "@/components/payment/TossPaymentsWidget";
+import PaymentSummary from "@/components/payment/PaymentSummary";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -11,6 +12,9 @@ const HotelReservationPage = () => {
   const router = useRouter();
   const { paymentDraft, loadFromStorage, clearPaymentDraft, getRemainingMs } =
     usePaymentStore();
+
+  const [customer, setCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // 결제 정보 상태
   const [paymentInfo, setPaymentInfo] = useState({
@@ -20,6 +24,11 @@ const HotelReservationPage = () => {
     specialRequests: "",
     agreeTerms: false,
     agreePrivacy: false,
+    customerIdx: null,
+    customerCash: 0,
+    customerPoint: 0,
+    useCash: 0,
+    usePoint: 0,
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +46,47 @@ const HotelReservationPage = () => {
     }
   }, [paymentDraft, router]);
 
+  // httpOnly 쿠키에서 사용자 정보 가져오기
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await fetch("/api/customer/me", {
+          credentials: "include", // httpOnly 쿠키 포함
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setCustomer(userData);
+
+          // 사용자 정보가 있으면 자동 채우기
+          setPaymentInfo((prev) => ({
+            ...prev,
+            customerIdx: userData.customerIdx,
+            customerName: userData.nickname || "",
+            customerEmail: userData.email || "",
+            customerPhone: userData.phone || "",
+            customerCash: parseInt(userData.cash) || 0,
+            customerPoint: parseInt(userData.point) || 0,
+          }));
+        } else if (response.status === 401) {
+          console.log("인증이 필요합니다");
+          alert("로그인이 필요합니다. 로그인 페이지로 이동합니다.");
+          router.push("/login");
+          return;
+        }
+      } catch (error) {
+        console.error("사용자 정보 가져오기 실패:", error);
+        alert("로그인이 필요합니다. 로그인 페이지로 이동합니다.");
+        router.push("/login");
+        return;
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserInfo();
+  }, [router]);
+
   // 고정된 키들 생성
   const paymentKeys = useMemo(
     () => ({
@@ -45,6 +95,37 @@ const HotelReservationPage = () => {
     }),
     [paymentDraft]
   );
+
+  // 결제 금액 계산
+  const paymentAmounts = useMemo(() => {
+    if (!paymentDraft)
+      return {
+        totalAmount: 0,
+        useCash: 0,
+        usePoint: 0,
+        actualPaymentAmount: 0,
+      };
+
+    const totalAmount = paymentDraft.finalAmount;
+    const maxCash = Math.min(paymentInfo.useCash, paymentInfo.customerCash);
+    const maxPoint = Math.min(paymentInfo.usePoint, paymentInfo.customerPoint);
+    const availableCashPoint = maxCash + maxPoint;
+    const actualPaymentAmount = Math.max(0, totalAmount - availableCashPoint);
+
+    return {
+      totalAmount,
+      useCash: maxCash,
+      usePoint: maxPoint,
+      actualPaymentAmount,
+      availableCashPoint,
+    };
+  }, [
+    paymentDraft,
+    paymentInfo.useCash,
+    paymentInfo.usePoint,
+    paymentInfo.customerCash,
+    paymentInfo.customerPoint,
+  ]);
 
   // 폼 유효성 검사
   const isFormValid = useMemo(() => {
@@ -58,6 +139,42 @@ const HotelReservationPage = () => {
     if (!paymentInfo.agreePrivacy) return false;
     return true;
   }, [paymentInfo]);
+
+  // 로딩 중이면 로딩 화면 표시
+  if (loading || isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">
+            {isLoading
+              ? "결제를 처리하는 중입니다..."
+              : "사용자 정보를 불러오는 중..."}
+          </p>
+          {isLoading && (
+            <p className="text-sm text-gray-500 mt-2">잠시만 기다려주세요</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 사용자 정보가 없으면 로그인 페이지로 리다이렉트
+  if (!customer) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">로그인이 필요합니다.</p>
+          <button
+            onClick={() => router.push("/login")}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+          >
+            로그인하기
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // 결제 정보가 없으면 로딩 표시
   if (!paymentDraft) {
@@ -119,6 +236,50 @@ const HotelReservationPage = () => {
     }
   };
 
+  // 캐시 사용량 변경 핸들러
+  const handleCashChange = (value) => {
+    const cashAmount = Math.max(
+      0,
+      Math.min(parseInt(value) || 0, paymentInfo.customerCash)
+    );
+    setPaymentInfo((prev) => ({
+      ...prev,
+      useCash: cashAmount,
+    }));
+  };
+
+  // 포인트 사용량 변경 핸들러
+  const handlePointChange = (value) => {
+    const pointAmount = Math.max(
+      0,
+      Math.min(parseInt(value) || 0, paymentInfo.customerPoint)
+    );
+    setPaymentInfo((prev) => ({
+      ...prev,
+      usePoint: pointAmount,
+    }));
+  };
+
+  // 전체 캐시 사용
+  const useAllCash = () => {
+    const totalAmount = paymentDraft?.finalAmount || 0;
+    const maxCash = Math.min(paymentInfo.customerCash, totalAmount);
+    setPaymentInfo((prev) => ({
+      ...prev,
+      useCash: maxCash,
+    }));
+  };
+
+  // 전체 포인트 사용
+  const useAllPoint = () => {
+    const totalAmount = paymentDraft?.finalAmount || 0;
+    const maxPoint = Math.min(paymentInfo.customerPoint, totalAmount);
+    setPaymentInfo((prev) => ({
+      ...prev,
+      usePoint: maxPoint,
+    }));
+  };
+
   // 토스페이먼츠 결제 성공 처리
   const handlePaymentSuccess = async (paymentResult) => {
     try {
@@ -133,7 +294,7 @@ const HotelReservationPage = () => {
         body: JSON.stringify({
           paymentKey: paymentResult.paymentKey,
           orderId: paymentResult.orderId,
-          amount: paymentDraft.finalAmount,
+          amount: paymentAmounts.actualPaymentAmount,
           type: "hotel_reservation",
           hotelInfo: {
             contentId: paymentDraft.meta.contentId,
@@ -150,10 +311,21 @@ const HotelReservationPage = () => {
             amenities: paymentDraft.meta.amenities,
           },
           customerInfo: {
+            customerIdx: paymentInfo.customerIdx,
             name: paymentInfo.customerName,
             email: paymentInfo.customerEmail,
             phone: paymentInfo.customerPhone,
             specialRequests: paymentInfo.specialRequests,
+          },
+          paymentInfo: {
+            totalAmount: paymentAmounts.totalAmount,
+            cashAmount: paymentAmounts.useCash,
+            pointAmount: paymentAmounts.usePoint,
+            cardAmount: paymentAmounts.actualPaymentAmount,
+            paymentMethod:
+              paymentAmounts.actualPaymentAmount > 0
+                ? "mixed"
+                : "cash_point_only",
           },
         }),
       });
@@ -161,7 +333,7 @@ const HotelReservationPage = () => {
       if (response.ok) {
         clearPaymentDraft();
         router.push(
-          `/checkout/success?orderId=${paymentResult.orderId}&amount=${paymentDraft.finalAmount}&type=hotel_reservation`
+          `/checkout/success?orderId=${paymentResult.orderId}&amount=${paymentAmounts.actualPaymentAmount}&type=hotel_reservation`
         );
       } else {
         throw new Error("서버 처리 중 오류가 발생했습니다.");
@@ -187,8 +359,6 @@ const HotelReservationPage = () => {
   };
 
   const remaining = getRemainingMs();
-  const minutes = Math.floor(remaining / 60000);
-  const seconds = Math.floor((remaining % 60000) / 1000);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -419,20 +589,47 @@ const HotelReservationPage = () => {
             </div>
 
             {/* 토스페이먼츠 결제 위젯 */}
-            {isFormValid && (
+            {isFormValid && paymentAmounts.actualPaymentAmount > 0 && (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   결제 정보
                 </h2>
                 <TossPaymentsWidget
+                  key={paymentKeys.orderId}
                   clientKey={process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY}
                   customerKey={paymentKeys.customerKey}
-                  amount={paymentDraft.finalAmount}
+                  amount={paymentAmounts.actualPaymentAmount}
                   orderId={paymentKeys.orderId}
                   orderName={paymentDraft.orderName}
                   customerName={paymentInfo.customerName}
                   customerEmail={paymentInfo.customerEmail}
                   customerMobilePhone={paymentInfo.customerPhone}
+                  hotelInfo={{
+                    contentId: paymentDraft.meta.contentId,
+                    hotelName: paymentDraft.meta.hotelName,
+                    roomId: paymentDraft.meta.roomId,
+                    roomIdx:
+                      paymentDraft.meta.roomIdx || paymentDraft.meta.roomId, // 추가: 복합키의 roomIdx
+                    roomName: paymentDraft.meta.roomName,
+                    checkIn: paymentDraft.meta.checkIn,
+                    checkOut: paymentDraft.meta.checkOut,
+                    guests: paymentDraft.meta.guests,
+                    nights: paymentDraft.meta.nights,
+                    roomPrice: paymentDraft.meta.roomPrice,
+                    totalPrice: paymentDraft.meta.totalPrice,
+                    roomImage: paymentDraft.meta.roomImage,
+                    amenities: paymentDraft.meta.amenities,
+                  }}
+                  customerInfo={{
+                    customerIdx: paymentInfo.customerIdx,
+                    name: paymentInfo.customerName,
+                    email: paymentInfo.customerEmail,
+                    phone: paymentInfo.customerPhone,
+                    specialRequests: paymentInfo.specialRequests,
+                    useCash: paymentAmounts.useCash,
+                    usePoint: paymentAmounts.usePoint,
+                    actualPaymentAmount: paymentAmounts.actualPaymentAmount,
+                  }}
                   onSuccess={handlePaymentSuccess}
                   onFail={handlePaymentFail}
                 />
@@ -442,92 +639,37 @@ const HotelReservationPage = () => {
 
           {/* 가격 요약 */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                가격 요약
-              </h2>
-
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">객실 가격</span>
-                  <span>
-                    ₩{paymentDraft.meta.roomPrice.toLocaleString()}/박
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">숙박 일수</span>
-                  <span>{paymentDraft.meta.nights}박</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">세금 및 수수료</span>
-                  <span>포함</span>
-                </div>
-                <hr className="my-3" />
-                <div className="flex justify-between text-lg font-semibold">
-                  <span>총 결제 금액</span>
-                  <span className="text-blue-600">
-                    ₩{paymentDraft.finalAmount.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-
-              {/* 결제 유효시간 */}
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-yellow-600">⏰</span>
-                  <span className="text-sm font-medium text-yellow-800">
-                    결제 유효시간
-                  </span>
-                </div>
-                <div className="text-lg font-bold text-yellow-900">
-                  {minutes}:{seconds.toString().padStart(2, "0")}
-                </div>
-                <p className="text-xs text-yellow-700 mt-1">
-                  시간이 지나면 예약이 자동으로 취소됩니다.
-                </p>
-              </div>
-
-              {/* 결제 버튼 */}
-              <button
-                onClick={async () => {
-                  if (isFormValid) {
-                    // 토스페이먼츠 결제 핸들러 직접 호출
-                    if (window.tossPaymentHandler) {
-                      try {
-                        await window.tossPaymentHandler();
-                      } catch (error) {
-                        console.error("결제 요청 실패:", error);
-                        alert("결제 요청 중 오류가 발생했습니다.");
-                      }
-                    } else {
-                      alert(
-                        "토스페이먼츠가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요."
-                      );
-                    }
-                  } else {
-                    // 폼 유효성 검사 실행
-                    validateForm();
-                    alert("모든 필수 정보를 입력하고 약관에 동의해주세요.");
+            <PaymentSummary
+              paymentDraft={paymentDraft}
+              remaining={remaining}
+              customerCash={paymentInfo.customerCash}
+              customerPoint={paymentInfo.customerPoint}
+              useCash={paymentInfo.useCash}
+              usePoint={paymentInfo.usePoint}
+              onCashChange={handleCashChange}
+              onPointChange={handlePointChange}
+              onUseAllCash={useAllCash}
+              onUseAllPoint={useAllPoint}
+              paymentAmounts={paymentAmounts}
+              isFormValid={isFormValid}
+              isLoading={isLoading}
+              onPaymentClick={async () => {
+                // 토스페이먼츠 결제 핸들러 직접 호출
+                if (window.tossPaymentHandler) {
+                  try {
+                    await window.tossPaymentHandler();
+                  } catch (error) {
+                    console.error("결제 요청 실패:", error);
+                    alert("결제 요청 중 오류가 발생했습니다.");
                   }
-                }}
-                disabled={isLoading || remaining <= 0}
-                className={`w-full py-3 px-4 rounded-lg font-medium transition-colors mb-4 ${
-                  isFormValid && remaining > 0 && !isLoading
-                    ? "bg-blue-500 hover:bg-blue-600 text-white"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
-              >
-                {isLoading
-                  ? "결제 처리 중..."
-                  : remaining <= 0
-                  ? "결제 시간 만료"
-                  : `₩${paymentDraft.finalAmount.toLocaleString()} 결제하기`}
-              </button>
-
-              <div className="text-xs text-gray-500 text-center">
-                결제 완료 후 호텔 예약이 자동으로 확정됩니다.
-              </div>
-            </div>
+                } else {
+                  alert(
+                    "토스페이먼츠가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요."
+                  );
+                }
+              }}
+              onValidateForm={validateForm}
+            />
           </div>
         </div>
       </div>
