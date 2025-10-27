@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { hotelAPI } from "@/lib/api/hotel";
+import { getOrCreateSessionId } from "@/lib/redisSession";
 
 /**
  * 호텔 실시간 조회수 플로팅 패널 컴포넌트
@@ -17,37 +18,32 @@ import { hotelAPI } from "@/lib/api/hotel";
 const LiveViewerPanel = ({ contentId }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [isMinimized, setIsMinimized] = useState(false);
-
-  // 진입 시 1회 조회수 등록
-  useEffect(() => {
-    if (!contentId) return;
-
-    const registerView = async () => {
-      try {
-        await hotelAPI.incrementHotelView(contentId);
-      } catch (error) {
-        console.error("조회수 등록 실패:", error);
-      }
-    };
-
-    registerView();
-  }, [contentId]);
+  
+  // sessionStorage에서 캐싱된 sessionId 가져오기
+  const sessionId = getOrCreateSessionId();
 
   // TanStack Query로 30초마다 실시간 조회수 refetch
   const { data, isLoading, isError } = useQuery({
     queryKey: ["hotelViews", contentId],
     queryFn: async () => {
-      const res = await hotelAPI.getHotelViews(contentId);
-      return res.views ?? 0;
+      try {
+        const response = await hotelAPI.getHotelViews(contentId, sessionId);
+        return response?.data?.views ?? response ?? 0;
+      } catch (err) {
+        console.warn("조회수 조회 실패 (무시됨):", err.message);
+        return 0;
+      }
     },
     refetchInterval: 30000, // 30초마다 자동 갱신
     staleTime: 30000, // 30초 동안 캐시 유지
     gcTime: 60000, // 메모리 캐시 유지 시간
-    enabled: !!contentId && isVisible, // 패널이 보일 때만 쿼리 실행
+    enabled: !!contentId && !!sessionId && isVisible, // 패널이 보일 때만 쿼리 실행
+    retry: false, // 실패 시 재시도 안 함
   });
 
   // 조회수가 0이거나 로딩/에러 상태일 때는 패널 숨김
-  if (!isVisible || isLoading || isError || !data || data === 0) {
+  const viewCount = typeof data === 'number' ? data : 0;
+  if (!isVisible || isLoading || isError || viewCount === 0) {
     return null;
   }
 
@@ -153,7 +149,7 @@ const LiveViewerPanel = ({ contentId }) => {
             <div className="flex items-center justify-center">
               <div className="text-center">
                 <div className="text-2xl font-bold text-red-600 mb-1">
-                  {data.toLocaleString()}
+                  {viewCount.toLocaleString()}
                 </div>
                 <div className="text-sm text-gray-600">명이 보고 있어요</div>
                 <div className="text-xs text-gray-500 mt-1">
@@ -168,7 +164,7 @@ const LiveViewerPanel = ({ contentId }) => {
         {isMinimized && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <div className="text-sm font-bold text-red-600">{data}</div>
+              <div className="text-sm font-bold text-red-600">{viewCount}</div>
               <div className="w-1 h-1 bg-red-500 rounded-full mx-auto mt-1 animate-pulse"></div>
             </div>
           </div>

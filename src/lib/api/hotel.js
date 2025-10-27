@@ -22,6 +22,20 @@ export const hotelAPI = {
     return response.data;
   },
 
+  // 호텔 객실 예약 가능성 조회 (날짜 기반)
+  getRoomAvailability: async (contentId, checkinDate, checkoutDate) => {
+    const response = await axiosInstance.get(
+      `/hotels/${contentId}/rooms/availability`,
+      {
+        params: {
+          checkinDate,
+          checkoutDate,
+        },
+      }
+    );
+    return response.data;
+  },
+
   // 호텔 리뷰 조회
   getHotelReviews: async (contentId, params = {}) => {
     const response = await axiosInstance.get(
@@ -41,20 +55,31 @@ export const hotelAPI = {
     );
     return response.data;
   },
-
-  // 호텔 조회수 증가 (실시간)
-  incrementHotelView: async (contentId) => {
-    const response = await axiosInstance.post(`/hotels/${contentId}/view`);
-    return response.data;
+  /**
+   * Redis 관련 실시간 조회 관련 api임
+   * */
+  //진입 시 세션 등록
+  enterHotel: async (contentId, sessionId) => {
+    const res = await axiosInstance.post(`/hotels/${contentId}/views`, {
+      sessionId,
+    });
+    return res.data;
+  },
+  // 이탈 시 세션 제거 (DELETE)
+  leaveHotel: async (contentId, sessionId) => {
+    const res = await axiosInstance.delete(`/hotels/${contentId}/views`, {
+      data: { sessionId },
+    });
+    return res.data;
   },
 
-  // 호텔 실시간 조회수 조회
-  getHotelViews: async (contentId) => {
-    const response = await axiosInstance.get(`/hotels/${contentId}/views`);
-    return response.data;
+  /** 현재 조회자 수 조회 (선택적으로 sessionId 전달하여 TTL 갱신) */
+  getHotelViews: async (contentId, sessionId = null) => {
+    const params = sessionId ? { sessionId } : {};
+    const res = await axiosInstance.get(`/hotels/${contentId}/views`, { params });
+    return res.data;
   },
-
-  // 여러 호텔의 실시간 조회수 조회
+  // 여러 호텔의 실시간 조회수 조회 (선택) 안쓸 가능성 큼
   getMultipleHotelViews: async (contentIds) => {
     const response = await axiosInstance.post("/hotels/views", {
       contentIds,
