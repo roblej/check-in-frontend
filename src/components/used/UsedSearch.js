@@ -73,10 +73,10 @@ const ResaleSearch = ({
         console.log('검색 API 호출:', requestBody);
         
         // 검색 API 호출 (POST)
-        response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/search`, requestBody);
+        response = await axios.post('/api/used/search', requestBody);
       } else {
         // 전체 목록 API 호출 (GET)
-        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/list?page=${page}&size=${pageSize}`;
+        const apiUrl = `/api/used/list?page=${page}&size=${pageSize}`;
         console.log('전체 목록 API 호출:', apiUrl);
         response = await axios.get(apiUrl);
       }

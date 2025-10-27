@@ -360,7 +360,7 @@ const UsedPaymentForm = ({ initialData }) => {
         approvedAt: new Date().toISOString(),
       };
 
-      const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/payment`, {
+      const backendResponse = await fetch('/api/used/payment', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
