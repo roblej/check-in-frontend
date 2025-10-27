@@ -40,6 +40,7 @@ export default function SignupPage() {
   const [verificationCode, setVerificationCode] = useState('');
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [codeSent, setCodeSent] = useState(false); // 인증 코드 발송 여부
   
   function signUp(){
     axios.post(signUp_url, formData)
@@ -163,6 +164,7 @@ export default function SignupPage() {
       const response = await axios.post(sendVerificationCode_url, {
         email: formData.email
       });
+      setCodeSent(true); // 인증 코드 발송 성공
       alert('인증 코드가 전송되었습니다.');
     } catch (error) {
       alert('인증 코드 전송에 실패했습니다.');
@@ -184,16 +186,22 @@ export default function SignupPage() {
         email: formData.email,
         code: verificationCode
       });
-      if (response.data.success) {
+      if (response.data.status === 'success') {
         setEmailVerified(true);
-        alert('이메일 인증이 완료되었습니다.');
+        // 이메일 인증 성공 시 에러 제거
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors.email;
+          return newErrors;
+        });
       } else {
-        alert('인증 코드가 올바르지 않습니다.');
+        setIsVerifyingCode(false);
       }
+      alert(response.data.message);
     } catch (error) {
       alert('인증 코드 확인에 실패했습니다.');
     } finally {
-      setIsVerifyingCode(false);
+      
     }
   };
 
@@ -238,6 +246,8 @@ export default function SignupPage() {
       newErrors.email = "이메일을 입력해주세요.";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "올바른 이메일 형식이 아닙니다.";
+    } else if (!emailVerified) {
+      newErrors.email = "이메일 인증을 완료해주세요.";
     }
 
     // 닉네임 검사 (2-10자)
@@ -456,6 +466,7 @@ export default function SignupPage() {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
+                  disabled={emailVerified}
                   className={`${styles.input} ${errors.email ? styles.inputError : ""}`}
                   placeholder="example@email.com"
                   style={{ flex: 1 }}
@@ -469,12 +480,14 @@ export default function SignupPage() {
                   {isSendingCode ? '전송 중...' : emailVerified ? '인증 완료' : '인증번호 전송'}
                 </button>
               </div>
-              {errors.email && (
+              
+              {/* 에러 메시지 */}
+              {errors.email && !emailVerified && (
                 <span className={styles.errorMessage}>{errors.email}</span>
               )}
               
               {/* 인증 코드 입력 필드 */}
-              {formData.email && !emailVerified && (
+              {codeSent && !emailVerified && (
                 <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
                   <input
                     type="text"
@@ -495,6 +508,7 @@ export default function SignupPage() {
                 </div>
               )}
               
+              {/* 성공 메시지 */}
               {emailVerified && (
                 <span className={styles.successMessage}>✓ 이메일 인증이 완료되었습니다.</span>
               )}
