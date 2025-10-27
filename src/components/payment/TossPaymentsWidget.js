@@ -151,9 +151,7 @@ const TossPaymentsWidget = ({
             // 중고 호텔 결제인 경우 다른 엔드포인트 사용
             const apiEndpoint = isUsedHotelPayment
               ? "/api/payments" // 중고 호텔은 프론트엔드 API 라우트 사용
-              : `${
-                  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
-                }/api/payments/confirm`; // 일반 호텔은 백엔드 직접 호출
+              : "/api/payments/confirm"; // 일반 호텔도 Next.js 프록시 사용
 
             console.log("API 엔드포인트:", apiEndpoint);
 
