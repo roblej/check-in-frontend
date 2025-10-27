@@ -87,6 +87,7 @@ const HotelRegistrationClient = ({ initialData }) => {
       
       if (response.data.success) {
         console.log("임시저장 완료:", response.data.message);
+        console.log("draftIdx:", response.data.data.draftIdx);
       } else {
         console.error("임시저장 실패:", response.data.message);
       }
@@ -280,7 +281,7 @@ const HotelRegistrationClient = ({ initialData }) => {
     setIsSubmitting(true);
 
     try {
-      const response = await axios.post("/api/hotel/register", {
+      const response = await axios.post("/api/hotel/register?draftIdx=" + draftIdx, {
         ...formData,
         status: 0 // 승인 대기 상태
       });
