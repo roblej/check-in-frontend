@@ -51,6 +51,8 @@ const HotelApprovalDetail = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [refusalMsg, setRefusalMsg] = useState("");
 
   // 호텔 정보 로드
   useEffect(() => {
@@ -117,8 +119,9 @@ const HotelApprovalDetail = () => {
 
     try {
       setIsSubmitting(true);
-      const response = await axiosInstance.post(`/master/approveHotel/${registrationIdx}`);
-
+      const response = await axiosInstance.post(`/master/approveHotel`, {
+        registrationIdx: registrationIdx
+      });
       if (response.data.success) {
         alert("호텔이 승인되었습니다.");
         router.push("/master/hotel-approval");
@@ -133,15 +136,30 @@ const HotelApprovalDetail = () => {
     }
   };
 
-  // 거부 핸들러
-  const handleReject = async () => {
-    if (!confirm("이 호텔을 거부하시겠습니까?")) {
+  // 거부 버튼 클릭 핸들러 - 모달 표시
+  const handleReject = () => {
+    setShowRejectModal(true);
+  };
+
+  // 거부 취소 핸들러
+  const handleRejectCancel = () => {
+    setShowRejectModal(false);
+    setRefusalMsg("");
+  };
+
+  // 거부 확정 핸들러
+  const handleConfirmReject = async () => {
+    if (!refusalMsg.trim()) {
+      alert("거부 사유를 입력해주세요.");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const response = await axiosInstance.post(`/master/rejectHotel/${registrationIdx}`);
+      const response = await axiosInstance.post(`/master/rejectHotel`, {
+        registrationIdx: registrationIdx,
+        refusalMsg: refusalMsg.trim()
+      });
 
       if (response.data.success) {
         alert("호텔이 거부되었습니다.");
@@ -154,6 +172,8 @@ const HotelApprovalDetail = () => {
       alert("서버 오류가 발생했습니다.");
     } finally {
       setIsSubmitting(false);
+      setShowRejectModal(false);
+      setRefusalMsg("");
     }
   };
 
@@ -204,6 +224,76 @@ const HotelApprovalDetail = () => {
           onReject={handleReject}
         />
       </div>
+
+      {/* 거부 사유 입력 모달 */}
+      {showRejectModal && (
+        <div 
+          className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50 shadow-2xl rounded-lg border-black"
+          onClick={handleRejectCancel}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reject-modal-title"
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 모달 헤더 */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 
+                id="reject-modal-title" 
+                className="text-lg font-semibold text-gray-900"
+              >
+                호텔 거부 사유 입력
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                거부 사유를 입력해주세요.
+              </p>
+            </div>
+
+            {/* 모달 본문 */}
+            <div className="px-6 py-4">
+              <label 
+                htmlFor="refusalMsg" 
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                거부 사유 <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="refusalMsg"
+                value={refusalMsg}
+                onChange={(e) => setRefusalMsg(e.target.value)}
+                placeholder="예: 호텔 시설 기준 미달, 필수 정보 누락 등"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-black-500 focus:border-black-500 resize-none"
+                rows={5}
+                required
+              />
+            </div>
+
+            {/* 모달 푸터 */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={handleRejectCancel}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                tabIndex={0}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReject}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                tabIndex={0}
+              >
+                {isSubmitting ? "처리 중..." : "거부하기"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </MasterLayout>
   );
 };
