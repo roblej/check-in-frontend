@@ -299,7 +299,7 @@ const HotelReservationPage = () => {
           hotelInfo: {
             contentId: paymentDraft.meta.contentId,
             hotelName: paymentDraft.meta.hotelName,
-            roomId: paymentDraft.meta.roomId,
+            roomId: paymentDraft.meta.roomIdx || paymentDraft.meta.roomId, // roomIdx 우선 사용
             roomName: paymentDraft.meta.roomName,
             checkIn: paymentDraft.meta.checkIn,
             checkOut: paymentDraft.meta.checkOut,
@@ -607,9 +607,8 @@ const HotelReservationPage = () => {
                   hotelInfo={{
                     contentId: paymentDraft.meta.contentId,
                     hotelName: paymentDraft.meta.hotelName,
-                    roomId: paymentDraft.meta.roomId,
-                    roomIdx:
-                      paymentDraft.meta.roomIdx || paymentDraft.meta.roomId, // 추가: 복합키의 roomIdx
+                    roomId: paymentDraft.meta.roomIdx || paymentDraft.meta.roomId, // roomIdx 우선 사용
+                    roomIdx: paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
                     roomName: paymentDraft.meta.roomName,
                     checkIn: paymentDraft.meta.checkIn,
                     checkOut: paymentDraft.meta.checkOut,
