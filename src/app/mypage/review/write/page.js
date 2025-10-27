@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Star, Upload, X } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
-export default function WriteReviewPage() {
+function WriteReviewPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const reservationId = searchParams.get('reservationId');
@@ -217,3 +217,21 @@ export default function WriteReviewPage() {
   );
 }
 
+export default function WriteReviewPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">로딩 중...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    }>
+      <WriteReviewPageContent />
+    </Suspense>
+  );
+}
