@@ -49,22 +49,21 @@ export default function S3TestPage() {
       // FormData 생성
       const formData = new FormData();
       formData.append('image', selectedFile);
-      formData.append('folder', 'test'); // 업로드할 폴더 지정
 
       // 백엔드 API 호출
-      const response = await fetch('/api/image/upload', {
+      const response = await fetch('/api/image/s3/upload', {
         method: 'POST',
         body: formData,
       });
 
       if (response.ok) {
-        const result = await response.json();
-        console.log('업로드 성공:', result);
+        const imageUrl = await response.text(); // 백엔드가 URL 문자열을 반환
+        console.log('업로드 성공:', imageUrl);
         
         // 업로드된 이미지 목록에 추가
         setUploadedImages(prev => [...prev, {
-          url: result.url,
-          key: result.key,
+          url: imageUrl,
+          key: imageUrl.split('/').pop(), // URL에서 파일명 추출
           uploadedAt: new Date().toISOString(),
           fileName: selectedFile.name
         }]);
@@ -78,9 +77,15 @@ export default function S3TestPage() {
 
         alert('이미지가 성공적으로 업로드되었습니다!');
       } else {
-        const error = await response.json();
-        console.error('업로드 실패:', error);
-        alert(`업로드 실패: ${error.message}`);
+        try {
+          const errorData = await response.json();
+          console.error('업로드 실패:', errorData);
+          alert(`업로드 실패: ${errorData.message || errorData.error || '알 수 없는 오류'}`);
+        } catch {
+          const errorText = await response.text();
+          console.error('업로드 실패:', errorText);
+          alert(`업로드 실패: ${errorText}`);
+        }
       }
     } catch (error) {
       console.error('업로드 중 오류:', error);
