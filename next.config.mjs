@@ -24,12 +24,24 @@ const nextConfig = {
     },
     async rewrites(){
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888';
+        console.log('Rewrite API URL:', apiUrl);
+        
+        if (!apiUrl || (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://'))) {
+            console.error('Invalid API URL, using default');
+            return [
+                {
+                    source: '/api/:path*',
+                    destination: 'http://localhost:8888/api/:path*'
+                }
+            ];
+        }
+        
         return [
             {
-            source: '/api/:path*',
-            destination: `${apiUrl}/api/:path*`
-        }
-        ]
+                source: '/api/:path*',
+                destination: `${apiUrl}/api/:path*`
+            }
+        ];
     }
 };
 
