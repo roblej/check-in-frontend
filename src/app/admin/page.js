@@ -1,7 +1,7 @@
 'use client';
 
 import AdminLayout from '@/components/admin/AdminLayout';
-import axios from '@/lib/axios'; // ✅ axiosInstance 사용
+import axiosInstance from '@/lib/axios';
 import { Building2, LogOut, Calendar, DollarSign, Users, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -15,7 +15,7 @@ const AdminDashboard = () => {
   const { readAccessToken, isInlogged } = useCustomerStore();
   const { getContentId, isLoggedIn: isAdminLoggedIn, fetchContentIdByAdminIdx } = useAdminStore();
   
-  const api_url = "/api/admin/dashboard"; // lib/axios의 baseURL과 함께 사용
+  const api_url = "/admin/dashboard"; // lib/axios의 baseURL과 함께 사용
 
   const [todayCheckinCount, setTodayCheckinCount] = useState(0); // 오늘 체크인 수
   const [todayCheckoutCount, setTodayCheckoutCount] = useState(0); // 오늘 체크아웃 수
@@ -48,7 +48,7 @@ const AdminDashboard = () => {
   const loadDashboardData = async () => {
     try {
       // 쿠키가 자동으로 전송됨 (withCredentials: true)
-      const response = await axios.get(api_url);
+      const response = await axiosInstance.get(api_url);
       console.log('대시보드 응답:', response.data);
       setTodayCheckinCount(response.data.todayCheckinCount);
       setTodayCheckoutCount(response.data.todayCheckoutCount);

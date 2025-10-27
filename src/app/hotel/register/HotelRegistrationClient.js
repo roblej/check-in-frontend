@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import HotelRegistrationForm from "./HotelRegistrationForm";
-import axios from "axios";
+import HotelRegistrationForm from "@/components/master/approve/HotelRegistrationForm";
+import axiosInstance from "@/lib/axios";
 
 const HotelRegistrationClient = ({ initialData }) => {
   const router = useRouter();
@@ -83,11 +83,12 @@ const HotelRegistrationClient = ({ initialData }) => {
         progress: progress,
       };
       
-      const response = await axios.post("/api/hotel/draft", draftData);
+      const response = await axiosInstance.post("/hotel/draft", draftData);
       
       if (response.data.success) {
         console.log("임시저장 완료:", response.data.message);
         console.log("draftIdx:", response.data.data.draftIdx);
+        return response.data.data.draftIdx;
       } else {
         console.error("임시저장 실패:", response.data.message);
       }
@@ -99,7 +100,7 @@ const HotelRegistrationClient = ({ initialData }) => {
   // 임시저장 데이터 불러오기
   const loadDraft = async () => {
     try {
-      const response = await axios.get("/api/hotel/draft");
+      const response = await axiosInstance.get("/hotel/draft");
       
       if (response.data.success && response.data.data) {
         const draftData = response.data.data;
@@ -136,7 +137,7 @@ const HotelRegistrationClient = ({ initialData }) => {
         hasCheckedDraft.current = true;
         
         try {
-          const response = await axios.get("/api/hotel/draft");
+          const response = await axiosInstance.get("/hotel/draft");
           
           if (response.data.success && response.data.data) {
             const shouldLoad = confirm(
@@ -273,30 +274,39 @@ const HotelRegistrationClient = ({ initialData }) => {
 
   // 등록 요청 제출
   const handleSubmit = async () => {
+    // 1. 폼 유효성 검사
     if (!validateForm()) {
       alert("필수 정보를 모두 입력해주세요.");
       return;
     }
 
-    setIsSubmitting(true);
+    // 2. 임시저장 수행
+    const draftIdx = await saveDraft();
+    
+    // 3. draftIdx가 있으면 등록 요청 제출
+    if (draftIdx) {
+      setIsSubmitting(true);
 
-    try {
-      const response = await axios.post("/api/hotel/register?draftIdx=" + draftIdx, {
-        ...formData,
-        status: 0 // 승인 대기 상태
-      });
+      try {
+        const response = await axiosInstance.post("/hotel/register?draftIdx=" + draftIdx, {
+          ...formData,
+          status: 0 // 승인 대기 상태
+        });
 
-      if (response.data.success) {
-        alert("호텔 등록 요청이 완료되었습니다. 관리자 승인 후 운영을 시작할 수 있습니다.");
-        router.push("/"); // 메인 페이지로 이동
-      } else {
-        alert("등록 요청 중 오류가 발생했습니다. 다시 시도해주세요.");
+        if (response.data.success) {
+          alert("호텔 등록 요청이 완료되었습니다. 관리자 승인 후 운영을 시작할 수 있습니다.");
+          router.push("/"); // 메인 페이지로 이동
+        } else {
+          alert("등록 요청 중 오류가 발생했습니다. 다시 시도해주세요.");
+        }
+      } catch (error) {
+        console.error("등록 요청 실패:", error);
+        alert("서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+      } finally {
+        setIsSubmitting(false);
       }
-    } catch (error) {
-      console.error("등록 요청 실패:", error);
-      alert("서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      alert("임시저장에 실패했습니다. 다시 시도해주세요.");
     }
   };
 
@@ -324,6 +334,7 @@ const HotelRegistrationClient = ({ initialData }) => {
 
       {/* 폼 컴포넌트 */}
       <HotelRegistrationForm
+        mode="create"
         formData={formData}
         updateFormData={updateFormData}
         addRoom={addRoom}
@@ -338,8 +349,7 @@ const HotelRegistrationClient = ({ initialData }) => {
         initialData={initialData}
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
-        saveDraft={saveDraft}
-        loadDraft={loadDraft}
+        onSaveDraft={saveDraft}
       />
     </div>
   );

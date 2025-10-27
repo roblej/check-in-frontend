@@ -1,7 +1,8 @@
 "use client";
 
-const HotelDining = ({ dining, addDining, removeDining, updateDining, errors }) => {
+const HotelDining = ({ dining, addDining, removeDining, updateDining, errors, readOnly = false }) => {
   const addDiningItem = () => {
+    if (readOnly) return;
     const newDining = {
       id: Date.now(),
       name: "",
@@ -18,6 +19,7 @@ const HotelDining = ({ dining, addDining, removeDining, updateDining, errors }) 
   };
 
   const removeDiningItem = (diningId) => {
+    if (readOnly) return;
     removeDining(diningId);
   };
 
