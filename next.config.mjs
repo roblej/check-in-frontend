@@ -23,12 +23,15 @@ const nextConfig = {
         ],
     },
     async rewrites(){
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888';
+        console.log('[Next.js Rewrites] API URL:', apiUrl);
+        
         return [
             {
-            source: '/api/:path*',
-            destination: 'http://localhost:8888/api/:path*'
-        }
-        ]
+                source: '/api/:path*',
+                destination: `${apiUrl}/api/:path*`
+            }
+        ];
     }
 };
 
