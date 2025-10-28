@@ -25,9 +25,11 @@ const RoomCard = ({ room, searchParams, formatPrice }) => {
       finalAmount: totalPrice,
       meta: {
         type: "hotel_reservation",
-        contentId: searchParams?.contentId || searchParams?.hotelId,
+        contentId:
+          searchParams?.contentId || searchParams?.hotelId || room?.contentId, // room.contentId 추가
         hotelName: searchParams?.hotelName,
         roomId: room.id,
+        roomIdx: room.roomIdx || room.id, // 추가: 복합키의 roomIdx
         roomName: room.name,
         checkIn: searchParams?.checkIn,
         checkOut: searchParams?.checkOut,

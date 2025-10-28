@@ -4,9 +4,11 @@ import axios from "axios";
 const axiosInstance = axios.create({
   baseURL: "/api",
   timeout: 10000,
+  // withCredentials: true, // 쿠키 자동 전송
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // 쿠키 포함
 });
 
 // 요청 인터셉터

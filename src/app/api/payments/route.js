@@ -55,27 +55,40 @@ export async function POST(req) {
 
     // 호텔 예약인 경우 백엔드로 전달 (당신 기능)
     try {
+      // roomId를 Integer로 변환 (백엔드에서 Integer 타입 요구)
+      // roomId가 "1003654-1" 형식일 경우 마지막 부분만 추출
+      let roomIdValue = body.hotelInfo?.roomId || body.roomId;
+      
+      // 문자열이고 "-"를 포함하면 마지막 부분을 추출
+      if (typeof roomIdValue === 'string' && roomIdValue.includes('-')) {
+        const parts = roomIdValue.split('-');
+        roomIdValue = parts[parts.length - 1]; // 마지막 부분 (roomIdx)
+      }
+      
+      const roomIdInt = typeof roomIdValue === 'string' ? parseInt(roomIdValue, 10) : roomIdValue;
+
       const backendRequestData = {
         paymentKey,
         orderId,
         amount,
         type: "hotel_reservation",
-        customerIdx: body.customerIdx || 1, // 기본값 설정
-        contentId: body.contentId,
-        roomId: body.roomId,
-        checkIn: body.checkIn,
-        checkOut: body.checkOut,
-        guests: body.guests,
-        nights: body.nights,
-        roomPrice: body.roomPrice,
-        totalPrice: body.totalPrice,
-        customerName: body.customerName,
-        customerEmail: body.customerEmail,
-        customerPhone: body.customerPhone,
-        specialRequests: body.specialRequests,
+        customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1, // 실제 고객 ID
+        contentId: body.hotelInfo?.contentId || body.contentId, // String 타입
+        roomId: roomIdInt, // Integer 타입으로 변환
+        checkIn: body.hotelInfo?.checkIn || body.checkIn,
+        checkOut: body.hotelInfo?.checkOut || body.checkOut,
+        guests: body.hotelInfo?.guests || body.guests,
+        nights: body.hotelInfo?.nights || body.nights,
+        roomPrice: body.hotelInfo?.roomPrice || body.roomPrice,
+        totalPrice: body.hotelInfo?.totalPrice || body.totalPrice,
+        customerName: body.customerInfo?.name || body.customerName,
+        customerEmail: body.customerInfo?.email || body.customerEmail,
+        customerPhone: body.customerInfo?.phone || body.customerPhone,
+        specialRequests:
+          body.customerInfo?.specialRequests || body.specialRequests,
         method: body.method || "card",
-        pointsUsed: body.pointsUsed || 0,
-        cashUsed: body.cashUsed || 0,
+        pointsUsed: body.paymentInfo?.pointAmount || body.pointsUsed || 0,
+        cashUsed: body.paymentInfo?.cashAmount || body.cashUsed || 0,
       };
 
       console.log("백엔드로 전송할 데이터 (민감정보 제외):", {

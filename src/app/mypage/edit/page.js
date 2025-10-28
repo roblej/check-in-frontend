@@ -65,7 +65,7 @@ export default function EditProfilePage() {
       
       console.log('📥 프로필 데이터 로드:', data);
       
-      // 기본정보 설정
+      // 기본정보 설정 (백엔드 데이터 구조에 맞춤)
       setBasicInfo({
         nickname: data.nickname || '',
         phone: data.phone || '',

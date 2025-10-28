@@ -3,18 +3,18 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { CheckCircle, Building2, Sparkles, Wrench, HelpCircle, Home, DollarSign } from 'lucide-react';
-import axios from 'axios';
+import axiosInstance from '@/lib/axios';
 
 const RoomsPage = () => {
 
-  const api_url = "/api/admin/roomList";
+  const api_url = "/admin/roomList";
 
   const [selectedTab, setSelectedTab] = useState('status');
   const [selectedFloor, setSelectedFloor] = useState('all');
   const [roomList, setRoomList] = useState([]);
 
   function getData(){
-    axios.get(api_url).then(res => {
+    axiosInstance.get(api_url).then(res => {
       console.log(res.data);
       setRoomList(res.data);
     });

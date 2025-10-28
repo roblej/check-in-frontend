@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Search, Gift, User, Calendar, DollarSign, CheckCircle, XCircle } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import axios from 'axios';
+import axiosInstance from '@/lib/axios';
 
 const CouponIssueManagement = () => {
 
-  const couponIssue_url = "/api/admin/couponIssue?adminIdx=";
-  const customerSearch_url = "/api/admin/customerSearch?searchTerm=";
-  const couponCreate_url = "/api/admin/couponCreate";
+  const couponIssue_url = "/admin/couponIssue?adminIdx=";
+  const customerSearch_url = "/admin/customerSearch?searchTerm=";
+  const couponCreate_url = "/admin/couponCreate";
 
   const [templates, setTemplates] = useState([]);
   const [issuedCoupons, setIssuedCoupons] = useState([]);
@@ -24,7 +24,7 @@ const CouponIssueManagement = () => {
   const [adminIdx, setAdminIdx] = useState(1); // 일단 기본값 1 넣어둠
 
   function getTemplates(){
-    axios.get(`${couponIssue_url}${adminIdx}&page=0&size=10`).then(res => {
+    axiosInstance.get(`${couponIssue_url}${adminIdx}&page=0&size=10`).then(res => {
       setTemplates(res.data.couponTemplates);
       setIssuedCoupons(res.data.coupons.content || res.data.coupons);
     });
@@ -36,7 +36,7 @@ const CouponIssueManagement = () => {
       return;
     }
 
-    axios.get(`${customerSearch_url}${encodeURIComponent(searchTerm)}`)
+    axiosInstance.get(`${customerSearch_url}${encodeURIComponent(searchTerm)}`)
       .then(res => {
         setCustomers(res.data);
       })
@@ -47,7 +47,7 @@ const CouponIssueManagement = () => {
   }
 
   function createCoupon(templateIdx, customerIdx){
-    axios.post(couponCreate_url, {
+    axiosInstance.post(couponCreate_url, {
       templateIdx: templateIdx,
       customerIdx: customerIdx,
       adminIdx: adminIdx // 이거 나중에 꼭 받아서 전달해야함 (현재 로그인 한 admin 고유번호)

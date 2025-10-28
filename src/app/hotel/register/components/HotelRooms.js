@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialData }) => {
+const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialData, readOnly = false }) => {
   const [expandedRoom, setExpandedRoom] = useState(null);
 
   const toggleRoomExpansion = (roomId) => {
@@ -17,12 +17,14 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
           <h3 className="text-lg font-medium text-gray-900">객실 관리 <span className="text-red-500">*</span></h3>
           <p className="text-sm text-gray-500">호텔의 객실 정보를 등록하세요 (최소 1개 필수)</p>
         </div>
-        <button
-          onClick={addRoom}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          + 객실 추가
-        </button>
+        {!readOnly && (
+          <button
+            onClick={addRoom}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            + 객실 추가
+          </button>
+        )}
       </div>
 
       {/* 객실 목록 */}
@@ -31,12 +33,14 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
           <div className="text-gray-400 text-6xl mb-4">🛏️</div>
           <h4 className="text-lg font-medium text-gray-900 mb-2">등록된 객실이 없습니다</h4>
           <p className="text-gray-500 mb-4">첫 번째 객실을 추가해보세요</p>
-          <button
-            onClick={addRoom}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            객실 추가하기
-          </button>
+          {!readOnly && (
+            <button
+              onClick={addRoom}
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              객실 추가하기
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -50,7 +54,9 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                     type="text"
                     value={room.name}
                     onChange={(e) => updateRoom(room.id, { name: e.target.value })}
-                    className="text-lg font-medium bg-transparent border-none focus:outline-none focus:ring-0 p-0"
+                    readOnly={readOnly}
+                    disabled={readOnly}
+                    className={`text-lg font-medium bg-transparent border-none focus:outline-none focus:ring-0 p-0 ${readOnly ? "cursor-not-allowed" : ""}`}
                     placeholder="객실명을 입력하세요"
                   />
                 </div>
@@ -61,12 +67,14 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                   >
                     {expandedRoom === room.id ? "접기" : "펼치기"}
                   </button>
-                  <button
-                    onClick={() => removeRoom(room.id)}
-                    className="text-red-400 hover:text-red-600"
-                  >
-                    삭제
-                  </button>
+                  {!readOnly && (
+                    <button
+                      onClick={() => removeRoom(room.id)}
+                      className="text-red-400 hover:text-red-600"
+                    >
+                      삭제
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -82,7 +90,8 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                       <select
                         value={room.type}
                         onChange={(e) => updateRoom(room.id, { type: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={readOnly}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
                       >
                         <option value="">객실 타입을 선택하세요</option>
                         {initialData.roomTypes.map((type) => (
@@ -101,7 +110,9 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                         type="number"
                         value={room.price}
                         onChange={(e) => updateRoom(room.id, { price: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        readOnly={readOnly}
+                        disabled={readOnly}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
                         placeholder="100000"
                       />
                     </div>
@@ -116,7 +127,9 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                         max="10"
                         value={room.capacity}
                         onChange={(e) => updateRoom(room.id, { capacity: parseInt(e.target.value) })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        readOnly={readOnly}
+                        disabled={readOnly}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
                       />
                     </div>
 
@@ -128,7 +141,9 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                         type="text"
                         value={room.size}
                         onChange={(e) => updateRoom(room.id, { size: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        readOnly={readOnly}
+                        disabled={readOnly}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
                         placeholder="25"
                       />
                     </div>
@@ -140,7 +155,8 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                       <select
                         value={room.bedType}
                         onChange={(e) => updateRoom(room.id, { bedType: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={readOnly}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
                       >
                         <option value="">침대 타입을 선택하세요</option>
                         <option value="싱글">싱글</option>
@@ -171,7 +187,8 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                                 : currentAmenities.filter(a => a !== amenity.name);
                               updateRoom(room.id, { amenities: newAmenities });
                             }}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            disabled={readOnly}
+                            className={`rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${readOnly ? "cursor-not-allowed" : ""}`}
                           />
                           <span className="text-sm text-gray-700">{amenity.name}</span>
                         </label>
@@ -187,8 +204,10 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                     <textarea
                       value={room.description}
                       onChange={(e) => updateRoom(room.id, { description: e.target.value })}
+                      readOnly={readOnly}
+                      disabled={readOnly}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
                       placeholder="객실의 특징과 편의시설을 자세히 설명해주세요"
                     />
                   </div>

@@ -107,6 +107,8 @@ export default function MyPage() {
   const loadAllReservations = async () => {
     setIsLoading(true);
     try {
+      console.log('🔄 예약 내역 로드 시작...');
+      
       // 세 가지 상태를 병렬로 불러오기
       const [upcomingData, completedData, cancelledData] = await Promise.all([
         mypageAPI.getReservations('upcoming'),
@@ -114,23 +116,38 @@ export default function MyPage() {
         mypageAPI.getReservations('cancelled')
       ]);
 
-      setReservations({
-        upcoming: upcomingData.reservations || [],
-        completed: completedData.reservations || [],
-        cancelled: cancelledData.reservations || []
+      console.log('📥 API 응답 데이터:', {
+        upcoming: upcomingData,
+        completed: completedData,
+        cancelled: cancelledData
       });
 
-      console.log('📥 전체 예약 데이터 로드 완료:', {
-        upcoming: upcomingData.reservations?.length || 0,
-        completed: completedData.reservations?.length || 0,
-        cancelled: cancelledData.reservations?.length || 0
+      setReservations({
+        upcoming: upcomingData?.reservations || [],
+        completed: completedData?.reservations || [],
+        cancelled: cancelledData?.reservations || []
+      });
+
+      console.log('✅ 전체 예약 데이터 로드 완료:', {
+        upcoming: upcomingData?.reservations?.length || 0,
+        completed: completedData?.reservations?.length || 0,
+        cancelled: cancelledData?.reservations?.length || 0
       });
 
     } catch (error) {
       console.error('❌ 예약 내역 로드 실패:', error);
       
+      if (error.response?.status === 401) {
+        console.log('🔒 인증 실패 - 로그인 페이지로 이동');
+        router.push('/login');
+        return;
+      }
+      
       if (error.message === 'Network Error') {
         console.warn('⚠️ 백엔드 서버에 연결할 수 없습니다.');
+        alert('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        alert('예약 내역을 불러오는데 실패했습니다.');
       }
     } finally {
       setIsLoading(false);
@@ -151,24 +168,26 @@ export default function MyPage() {
       // 상태 업데이트
       setReservations(prev => ({
         ...prev,
-        [status]: response.reservations || []
+        [status]: response?.reservations || []
       }));
       
-      setIsLoading(false);
+      console.log(`✅ ${status} 예약 내역 로드 완료:`, response?.reservations?.length || 0, '건');
       
     } catch (error) {
       console.error('❌ 예약 내역 로드 실패:', error);
       
-      // Network Error 처리 (백엔드 미연결)
+      if (error.response?.status === 401) {
+        console.log('🔒 인증 실패 - 로그인 페이지로 이동');
+        router.push('/login');
+        return;
+      }
+      
       if (error.message === 'Network Error') {
-        console.warn('⚠️ 백엔드 서버에 연결할 수 없습니다. 더미 데이터를 사용합니다.');
-        // 더미 데이터 사용
-        loadDummyData(status);
+        console.warn('⚠️ 백엔드 서버에 연결할 수 없습니다.');
+        alert('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
       } else {
         alert('예약 내역을 불러오는데 실패했습니다.');
       }
-      
-      setIsLoading(false);
     } finally {
       setReservationsLoading(false);
     }
@@ -425,12 +444,24 @@ export default function MyPage() {
             {/* 데이터 없음 */}
             {!reservationsLoading && reservations[reservationTab].length === 0 && (
               <div className="text-center py-12">
-                <p className="text-gray-500">예약 내역이 없습니다.</p>
+                <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                  <Calendar className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500 text-lg font-medium mb-2">
+                  {reservationTab === 'upcoming' && '이용 예정인 예약이 없습니다'}
+                  {reservationTab === 'completed' && '이용 완료된 예약이 없습니다'}
+                  {reservationTab === 'cancelled' && '취소된 예약이 없습니다'}
+                </p>
+                <p className="text-gray-400 text-sm">
+                  새로운 호텔을 예약해보세요!
+                </p>
               </div>
             )}
             
             {/* 예약 목록 */}
-            {!reservationsLoading && reservations[reservationTab].map((reservation) => (
+            {!reservationsLoading && reservations[reservationTab].map((reservation) => {
+              console.log('📋 렌더링할 예약 데이터:', reservation);
+              return (
               <div key={reservation.id || reservation.reservationNumber} className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all">
                 <div className="flex justify-between items-start mb-4">
                   <div>
@@ -440,13 +471,23 @@ export default function MyPage() {
                       {reservation.location}
                     </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    reservation.status === '예약확정' ? 'bg-blue-100 text-blue-700' :
-                    reservation.status === '이용완료' ? 'bg-green-100 text-green-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {reservation.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {reservationTab === 'upcoming' && reservation.status === '예약확정' && (
+                      <button 
+                        onClick={() => handleRegisterTrade(reservation)}
+                        className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
+                      >
+                        양도거래 등록
+                      </button>
+                    )}
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      reservation.status === '예약확정' ? 'bg-blue-100 text-blue-700' :
+                      reservation.status === '이용완료' ? 'bg-green-100 text-green-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {reservation.status}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
@@ -515,7 +556,8 @@ export default function MyPage() {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

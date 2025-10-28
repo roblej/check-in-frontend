@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import MasterLayout from '@/components/master/MasterLayout';
-import axios from 'axios';
+import axiosInstance from '@/lib/axios';
 
 const CouponTemplateManagement = () => {
 
-  const api_url = "/api/master/couponTemplates";
-  const createTemplate_url = "/api/master/createTemplate";
-  const updateTemplate_url = "/api/master/updateTemplate";
+  const api_url = "/master/couponTemplates";
+  const createTemplate_url = "/master/createTemplate";
+  const updateTemplate_url = "/master/updateTemplate";
 
   const [templates, setTemplates] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,7 +25,7 @@ const CouponTemplateManagement = () => {
   const [adminIdx, setAdminIdx] = useState(1);
 
   function getDate(){
-    axios.get(api_url).then(res => {
+    axiosInstance.get(api_url).then(res => {
       setTemplates(res.data);
     });
   }
@@ -35,7 +35,7 @@ const CouponTemplateManagement = () => {
   }, []);
 
   function createTemplate(templateName, discount, validDays, status){
-    axios.post(createTemplate_url, {
+    axiosInstance.post(createTemplate_url, {
       templateName: templateName,
       discount: discount,
       validDays: validDays,
@@ -54,7 +54,7 @@ const CouponTemplateManagement = () => {
 
   function updateTemplate(templateIdx, templateName){
     if (window.confirm(`"${templateName}" 템플릿을 삭제하시겠습니까?\n\n⚠️ 주의: 이 작업은 되돌릴 수 없습니다.`)) {
-      axios.post(updateTemplate_url, {
+      axiosInstance.post(updateTemplate_url, {
         templateIdx: templateIdx
       }).then(res => {
         getDate(); // 목록 새로고침

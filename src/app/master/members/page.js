@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
-import axios from 'axios';
+import axiosInstance from '@/lib/axios';
 
 const MemberManagement = () => {
 
-  const api_url = "/api/master/customers"
+  const api_url = "/master/customers"
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -16,7 +16,7 @@ const MemberManagement = () => {
   const [customerCount, setCustomerCount] = useState("0");
 
   function getData(){
-    axios.get(api_url).then(res => {
+    axiosInstance.get(api_url).then(res => {
       console.log(res.data.content)
       if(res.data.content){
         setCustomers(res.data.content)
