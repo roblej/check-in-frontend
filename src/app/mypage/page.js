@@ -471,13 +471,23 @@ export default function MyPage() {
                       {reservation.location}
                     </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    reservation.status === '예약확정' ? 'bg-blue-100 text-blue-700' :
-                    reservation.status === '이용완료' ? 'bg-green-100 text-green-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {reservation.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {reservationTab === 'upcoming' && reservation.status === '예약확정' && (
+                      <button 
+                        onClick={() => handleRegisterTrade(reservation)}
+                        className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
+                      >
+                        양도거래 등록
+                      </button>
+                    )}
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      reservation.status === '예약확정' ? 'bg-blue-100 text-blue-700' :
+                      reservation.status === '이용완료' ? 'bg-green-100 text-green-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {reservation.status}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
