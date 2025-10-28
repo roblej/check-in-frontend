@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Button from '../Button';
 import { useState, useEffect } from 'react';
+import { usedAPI } from '@/lib/api/used';
 
 const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
   const router = useRouter();
@@ -58,9 +59,14 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
         return;
       }
 
+      // 본인의 매물인지 체크
+      if (item.sellerIdx && customer.customerIdx && item.sellerIdx === customer.customerIdx) {
+        alert('본인의 매물은 구매할 수 없습니다.');
+        return;
+      }
+
       // 1. 거래 가능성 체크
-      const availabilityResponse = await fetch(`/api/used/${item.usedItemIdx || item.id}/availability`);
-      const availabilityData = await availabilityResponse.json();
+      const availabilityData = await usedAPI.checkAvailability(item.usedItemIdx || item.id);
       
       if (!availabilityData.available) {
         alert('이미 다른 고객이 거래한 아이템입니다.');
@@ -68,25 +74,16 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
       }
 
       // 2. 거래 생성
-      const tradeResponse = await fetch('/api/used/trade', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include', // httpOnly 쿠키 포함
-        body: JSON.stringify({
-          usedItemIdx: item.usedItemIdx || item.id,
-          buyerIdx: customer.customerIdx || customer.id, // httpOnly 쿠키에서 가져온 사용자 ID
-          sellerIdx: item.sellerIdx || 1, // 실제로는 판매자 ID
-          price: item.salePrice || 0,
-          reservIdx: item.reservIdx || 1 // 실제로는 예약 ID
-        })
+      const tradeData = await usedAPI.createTrade({
+        usedItemIdx: item.usedItemIdx || item.id,
+        buyerIdx: customer.customerIdx || customer.id, // httpOnly 쿠키에서 가져온 사용자 ID
+        sellerIdx: item.sellerIdx || 1, // 실제로는 판매자 ID
+        price: item.salePrice || 0,
+        reservIdx: item.reservIdx || 1 // 실제로는 예약 ID
       });
-
-      const tradeData = await tradeResponse.json();
       
-      if (!tradeResponse.ok) {
-        alert(tradeData.message || '거래 생성에 실패했습니다.');
+      if (!tradeData || !tradeData.usedTradeIdx) {
+        alert(tradeData?.message || '거래 생성에 실패했습니다.');
         return;
       }
 
@@ -244,15 +241,15 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
             variant="primary"
             className="flex-1 bg-orange-500 hover:bg-orange-600"
             onClick={handleInquire}
-            disabled={loading}
+            disabled={loading || (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx)}
           >
-            {loading ? '로딩중...' : '결제하기'}
+            {loading ? '로딩중...' : (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx ? '본인 매물' : '결제하기')}
           </Button>
           <Button
             variant="outline"
             className="px-4"
             onClick={handleBookmark}
-            disabled={loading}
+            disabled={loading || (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx)}
           >
             찜하기
           </Button>

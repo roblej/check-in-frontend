@@ -78,19 +78,56 @@ const FailContent = () => {
         {/* 버튼들 */}
         <div className="flex gap-4 justify-center">
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              // localStorage에서 저장된 결제 정보 로드
+              const failedInfo = localStorage.getItem('failedPaymentInfo');
+              
+              if (failedInfo) {
+                const data = JSON.parse(failedInfo);
+                const { usedPaymentData } = data;
+                
+                // 결제 페이지로 다시 이동 (URL 파라미터 복원)
+                const params = new URLSearchParams({
+                  usedItemIdx: usedPaymentData.usedItemIdx || '',
+                  usedTradeIdx: usedPaymentData.usedTradeIdx || '',
+                  hotelName: usedPaymentData.hotelName || '',
+                  hotelImage: usedPaymentData.hotelImage || '',
+                  hotelAddress: usedPaymentData.hotelAddress || '',
+                  roomType: usedPaymentData.roomType || '',
+                  checkIn: usedPaymentData.checkIn || '',
+                  checkOut: usedPaymentData.checkOut || '',
+                  guests: usedPaymentData.guests || 2,
+                  originalPrice: usedPaymentData.originalPrice || 0,
+                  salePrice: usedPaymentData.salePrice || 0,
+                  seller: usedPaymentData.seller || ''
+                });
+                
+                router.push(`/used-payment?${params.toString()}`);
+              } else {
+                // localStorage에 정보가 없으면 뒤로가기
+                router.back();
+              }
+            }}
             className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             다시 시도
           </button>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => {
+              // localStorage 정리
+              localStorage.removeItem('failedPaymentInfo');
+              router.push("/");
+            }}
             className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             홈으로
           </button>
           <button
-            onClick={() => router.push("/used")}
+            onClick={() => {
+              // localStorage 정리
+              localStorage.removeItem('failedPaymentInfo');
+              router.push("/used");
+            }}
             className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             중고 호텔 둘러보기
