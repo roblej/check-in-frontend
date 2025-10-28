@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const HotelImages = ({ images, events, updateFormData, errors }) => {
+const HotelImages = ({ images, events, updateFormData, errors, readOnly = false }) => {
   const [dragOver, setDragOver] = useState(false);
 
   const handleDragOver = (e) => {

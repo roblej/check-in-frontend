@@ -10,6 +10,9 @@ import axios from "axios";
 export default function SignupPage() {
   const signUp_url = "/api/login/signup";
   const checkId_url = "/api/login/checkId";
+  const checkNickname_url = "/api/login/checkNickname";
+  const sendVerificationCode_url = "/api/login/send-verification-code";
+  const verifyEmail_url = "/api/login/verify-email";
 
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -26,19 +29,19 @@ export default function SignupPage() {
   });
 
   const [errors, setErrors] = useState({});
+  const [idStatus, setIdStatus] = useState(null); // 'success', 'error', null
+  const [idMessage, setIdMessage] = useState(''); // 아이디 검사 메시지 (성공/실패)
+  const [nicknameStatus, setNicknameStatus] = useState(null); // 'success', 'error', null
+  const [nicknameMessage, setNicknameMessage] = useState(''); // 닉네임 검사 메시지 (성공/실패)
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  useEffect(function(){
-    if (/^[a-zA-Z0-9]{4,20}$/.test(formData.id)){
-    checkId();
-    }
-    else{
-      
-    }
-  },[formData.id]);
-
+  // 이메일 인증 관련 상태
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [codeSent, setCodeSent] = useState(false); // 인증 코드 발송 여부
   
-
   function signUp(){
     axios.post(signUp_url, formData)
       .then(response => {
@@ -53,16 +56,68 @@ export default function SignupPage() {
  
 
   const checkId = useCallback(() => {
-    axios.post(checkId_url, { id: formData.id }).then(function(res){
+    axios.post(checkId_url, { id: formData.id, role: formData.role }).then(function(res){
       console.log(res.data);
-      if(res.data.message){
-        console.log(res.data.message);
-        const idError ={};
-        idError.userId = res.data.message;
+      if(res.data.status === 'fail'){
+        // 실패 시: 빨간 글씨로 에러 메시지 표시
+        const idError = {};
+        idError.id = res.data.message;
         setErrors(idError);
+        setIdStatus('error');
+        setIdMessage(res.data.message);
+      } else if(res.data.status === 'success'){
+        // 성공 시: 초록 테두리와 초록 글씨로 성공 메시지 표시
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.id; // errors에서 id 제거
+          return newErrors;
+        });
+        setIdStatus('success');
+        setIdMessage(res.data.message || '사용 가능한 아이디입니다.');
       }
     })
-  }, [formData.id]);
+  }, [formData.id, formData.role]);
+
+  const checkNickname = useCallback(() => {
+    axios.post(checkNickname_url, { nickname: formData.nickname, role: formData.role }).then(function(res){
+      console.log(res.data);
+      if(res.data.status === 'fail'){
+        // 실패 시: 빨간 글씨로 에러 메시지 표시
+        const nicknameError = {};
+        nicknameError.nickname = res.data.message;
+        setErrors(nicknameError);
+        setNicknameStatus('error');
+        setNicknameMessage(res.data.message);
+      } else if(res.data.status === 'success'){
+        // 성공 시: 초록 테두리와 초록 글씨로 성공 메시지 표시
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.nickname; // errors에서 nickname 제거
+          return newErrors;
+        });
+        setNicknameStatus('success');
+        setNicknameMessage(res.data.message || '사용 가능한 닉네임입니다.');
+      }
+    })
+  }, [formData.nickname, formData.role]);
+
+  useEffect(function(){
+    if (/^[a-zA-Z0-9]{4,20}$/.test(formData.id)){
+    checkId();
+    }
+    else{
+      
+    }
+  },[formData.id, formData.role, checkId]);
+
+  useEffect(function(){
+    if (formData.nickname.length >= 2 && formData.nickname.length <= 10){
+    checkNickname();
+    }
+    else{
+      
+    }
+  },[formData.nickname, formData.role, checkNickname]);
   // 입력 필드 변경 핸들러
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -71,12 +126,82 @@ export default function SignupPage() {
       [name]: value,
     }));
 
-    // 실시간 유효성 검사 (에러 제거)
-    if (errors[name]) {
+    // 아이디가 변경되면 상태와 에러 초기화
+    if (name === 'id') {
+      setIdStatus(null);
+      setIdMessage('');
       setErrors((prev) => ({
         ...prev,
-        [name]: "",
+        id: "",
       }));
+    } else if (name === 'nickname') {
+      // 닉네임이 변경되면 상태와 에러 초기화
+      setNicknameStatus(null);
+      setNicknameMessage('');
+      setErrors((prev) => ({
+        ...prev,
+        nickname: "",
+      }));
+    } else {
+      // 다른 필드의 경우에만 에러 제거
+      if (errors[name]) {
+        setErrors((prev) => ({
+          ...prev,
+          [name]: "",
+        }));
+      }
+    }
+  };
+
+  // 이메일 인증 코드 전송
+  const handleSendVerificationCode = async () => {
+    if (!formData.email) {
+      alert('이메일을 먼저 입력해주세요.');
+      return;
+    }
+    setIsSendingCode(true);
+    try {
+      const response = await axios.post(sendVerificationCode_url, {
+        email: formData.email
+      });
+      setCodeSent(true); // 인증 코드 발송 성공
+      alert('인증 코드가 전송되었습니다.');
+    } catch (error) {
+      alert('인증 코드 전송에 실패했습니다.');
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  // 이메일 인증 코드 확인
+  const handleVerifyEmail = async () => {
+    if (!verificationCode) {
+      alert('인증 코드를 입력해주세요.');
+      return;
+    }
+
+    setIsVerifyingCode(true);
+    try {
+      const response = await axios.post(verifyEmail_url, {
+        email: formData.email,
+        code: verificationCode
+      });
+      if (response.data.status === 'success') {
+        setEmailVerified(true);
+        // 이메일 인증 성공 시 에러 제거
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors.email;
+          return newErrors;
+        });
+      } else {
+        setIsVerifyingCode(false);
+      }
+      alert(response.data.message);
+    } catch (error) {
+      alert('인증 코드 확인에 실패했습니다.');
+    } finally {
+      
     }
   };
 
@@ -86,9 +211,15 @@ export default function SignupPage() {
 
     // 아이디 검사 (4-20자, 영문+숫자)
     if (!formData.id) {
-      newErrors.userId = "아이디를 입력해주세요.";
+      newErrors.id = "아이디를 입력해주세요.";
     } else if (!/^[a-zA-Z0-9]{4,20}$/.test(formData.id)) {
-      newErrors.userId = "아이디는 4-20자의 영문, 숫자만 가능합니다.";
+      newErrors.id = "아이디는 4-20자의 영문, 숫자만 가능합니다.";
+    } else if (idStatus === 'error') {
+      // 아이디 중복 검사 실패 시
+      newErrors.id = idMessage || "아이디 중복 검사가 필요합니다.";
+    } else if (idStatus !== 'success') {
+      // 아이디 중복 검사가 아직 완료되지 않은 경우
+      newErrors.id = "아이디 중복 검사를 완료해주세요.";
     }
 
     // 비밀번호 검사 (8자 이상, 영문+숫자+특수문자)
@@ -115,6 +246,8 @@ export default function SignupPage() {
       newErrors.email = "이메일을 입력해주세요.";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "올바른 이메일 형식이 아닙니다.";
+    } else if (!emailVerified) {
+      newErrors.email = "이메일 인증을 완료해주세요.";
     }
 
     // 닉네임 검사 (2-10자)
@@ -122,6 +255,12 @@ export default function SignupPage() {
       newErrors.nickname = "닉네임을 입력해주세요.";
     } else if (formData.nickname.length < 2 || formData.nickname.length > 10) {
       newErrors.nickname = "닉네임은 2-10자로 입력해주세요.";
+    } else if (nicknameStatus === 'error') {
+      // 닉네임 중복 검사 실패 시
+      newErrors.nickname = nicknameMessage || "닉네임 중복 검사가 필요합니다.";
+    } else if (nicknameStatus !== 'success') {
+      // 닉네임 중복 검사가 아직 완료되지 않은 경우
+      newErrors.nickname = "닉네임 중복 검사를 완료해주세요.";
     }
 
     // 전화번호 검사 (숫자만, 10-11자)
@@ -149,6 +288,20 @@ export default function SignupPage() {
     }
 
     setErrors(newErrors);
+    
+    // 에러가 있으면 첫 번째 에러 필드로 스크롤
+    if (Object.keys(newErrors).length > 0) {
+      const firstErrorField = Object.keys(newErrors)[0];
+      const errorElement = document.getElementById(firstErrorField);
+      if (errorElement) {
+        errorElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        errorElement.focus();
+      }
+    }
+    
     return Object.keys(newErrors).length === 0;
   };
 
@@ -206,7 +359,7 @@ export default function SignupPage() {
                   <input
                     type="radio"
                     name="role"
-                    value="custormer"
+                    value="customer"
                     checked={formData.role === "customer"}
                     onChange={handleChange}
                     className={styles.radioInput}
@@ -238,11 +391,26 @@ export default function SignupPage() {
                 name="id"
                 value={formData.id}
                 onChange={handleChange}
-                className={`${styles.input} ${errors.userId ? styles.inputError : ""}`}
+                className={`${styles.input} ${
+                  idStatus === 'error' 
+                    ? styles.inputError 
+                    : idStatus === 'success' 
+                    ? styles.inputSuccess 
+                    : ""
+                }`}
                 placeholder="4-20자의 영문, 숫자"
               />
-              {errors.userId && (
-                <span className={styles.errorMessage}>{errors.userId}</span>
+              {idMessage && (
+                <span className={
+                  idStatus === 'success' 
+                    ? styles.successMessage
+                    : styles.errorMessage
+                }>
+                  {idMessage}
+                </span>
+              )}
+              {errors.id && !idMessage && (
+                <span className={styles.errorMessage}>{errors.id}</span>
               )}
             </div>
 
@@ -291,17 +459,58 @@ export default function SignupPage() {
               <label htmlFor="email" className={styles.label}>
                 이메일 <span className={styles.required}>*</span>
               </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className={`${styles.input} ${errors.email ? styles.inputError : ""}`}
-                placeholder="example@email.com"
-              />
-              {errors.email && (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={emailVerified}
+                  className={`${styles.input} ${errors.email ? styles.inputError : ""}`}
+                  placeholder="example@email.com"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={handleSendVerificationCode}
+                  disabled={isSendingCode || emailVerified}
+                  className={styles.verifyButton}
+                >
+                  {isSendingCode ? '전송 중...' : emailVerified ? '인증 완료' : '인증번호 전송'}
+                </button>
+              </div>
+              
+              {/* 에러 메시지 */}
+              {errors.email && !emailVerified && (
                 <span className={styles.errorMessage}>{errors.email}</span>
+              )}
+              
+              {/* 인증 코드 입력 필드 */}
+              {codeSent && !emailVerified && (
+                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    className={styles.input}
+                    placeholder="인증 코드 입력"
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleVerifyEmail}
+                    disabled={isVerifyingCode}
+                    className={styles.verifyButton}
+                  >
+                    {isVerifyingCode ? '확인 중...' : '확인'}
+                  </button>
+                </div>
+              )}
+              
+              {/* 성공 메시지 */}
+              {emailVerified && (
+                <span className={styles.successMessage}>✓ 이메일 인증이 완료되었습니다.</span>
               )}
             </div>
 
@@ -316,10 +525,25 @@ export default function SignupPage() {
                 name="nickname"
                 value={formData.nickname}
                 onChange={handleChange}
-                className={`${styles.input} ${errors.nickname ? styles.inputError : ""}`}
+                className={`${styles.input} ${
+                  nicknameStatus === 'error' 
+                    ? styles.inputError 
+                    : nicknameStatus === 'success' 
+                    ? styles.inputSuccess 
+                    : ""
+                }`}
                 placeholder="2-10자"
               />
-              {errors.nickname && (
+              {nicknameMessage && (
+                <span className={
+                  nicknameStatus === 'success' 
+                    ? styles.successMessage
+                    : styles.errorMessage
+                }>
+                  {nicknameMessage}
+                </span>
+              )}
+              {errors.nickname && !nicknameMessage && (
                 <span className={styles.errorMessage}>{errors.nickname}</span>
               )}
             </div>

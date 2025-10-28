@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
+const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnly = false }) => {
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
 
@@ -33,9 +33,11 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
               type="text"
               value={formData.hotelInfo.title}
               onChange={(e) => updateFormData("hotelInfo", { title: e.target.value })}
+              readOnly={readOnly}
+              disabled={readOnly}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.title ? "border-red-500" : "border-gray-300"
-              }`}
+              } ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="호텔명을 입력하세요"
             />
             {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title}</p>}
@@ -49,9 +51,11 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
               type="tel"
               value={formData.hotelInfo.phone}
               onChange={(e) => updateFormData("hotelInfo", { phone: e.target.value })}
+              readOnly={readOnly}
+              disabled={readOnly}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.phone ? "border-red-500" : "border-gray-300"
-              }`}
+              } ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="02-1234-5678"
             />
             {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone}</p>}
@@ -65,9 +69,11 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
               type="email"
               value={formData.hotelInfo.email}
               onChange={(e) => updateFormData("hotelInfo", { email: e.target.value })}
+              readOnly={readOnly}
+              disabled={readOnly}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.email ? "border-red-500" : "border-gray-300"
-              }`}
+              } ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="hotel@example.com"
             />
             {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
@@ -81,9 +87,11 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
               type="text"
               value={formData.hotelInfo.adress}
               onChange={(e) => updateFormData("hotelInfo", { adress: e.target.value })}
+              readOnly={readOnly}
+              disabled={readOnly}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.adress ? "border-red-500" : "border-gray-300"
-              }`}
+              } ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="상세 주소를 입력하세요"
             />
             {errors.adress && <p className="mt-1 text-sm text-red-500">{errors.adress}</p>}
@@ -102,7 +110,8 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
             <select
               value={selectedRegion}
               onChange={(e) => handleRegionChange(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={readOnly || !initialData.regions.length}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
             >
               <option value="">시/도를 선택하세요</option>
               {initialData.regions.map((region) => (
@@ -120,8 +129,8 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
             <select
               value={selectedDistrict}
               onChange={(e) => handleDistrictChange(e.target.value)}
-              disabled={!selectedRegionData}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+              disabled={readOnly || !selectedRegionData}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 cursor-not-allowed"
             >
               <option value="">구/군을 선택하세요</option>
               {selectedRegionData?.districts.map((district) => (
@@ -139,8 +148,10 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
             <textarea
               value={formData.area.nearbyAttractions}
               onChange={(e) => updateFormData("area", { nearbyAttractions: e.target.value })}
+              readOnly={readOnly}
+              disabled={readOnly}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="주변 관광지나 명소를 입력하세요"
             />
           </div>
@@ -152,8 +163,10 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
             <textarea
               value={formData.area.transportation}
               onChange={(e) => updateFormData("area", { transportation: e.target.value })}
+              readOnly={readOnly}
+              disabled={readOnly}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="대중교통 이용 방법을 입력하세요"
             />
           </div>
@@ -171,8 +184,10 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
             <textarea
               value={formData.hotelDetail.description}
               onChange={(e) => updateFormData("hotelDetail", { description: e.target.value })}
+              readOnly={readOnly}
+              disabled={readOnly}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="호텔의 특징과 매력을 소개해주세요"
             />
           </div>
@@ -184,8 +199,10 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
             <textarea
               value={formData.hotelDetail.features}
               onChange={(e) => updateFormData("hotelDetail", { features: e.target.value })}
+              readOnly={readOnly}
+              disabled={readOnly}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="호텔의 주요 특징이나 특별한 서비스를 입력하세요"
             />
           </div>
@@ -199,7 +216,9 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
                 type="text"
                 value={formData.hotelDetail.scale}
                 onChange={(e) => updateFormData("hotelDetail", { scale: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                readOnly={readOnly}
+                disabled={readOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
                 placeholder="예: 지하 1층, 지상 10층, 총 120개 객실"
               />
             </div>
@@ -212,7 +231,9 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
                 type="text"
                 value={formData.hotelDetail.history}
                 onChange={(e) => updateFormData("hotelDetail", { history: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                readOnly={readOnly}
+                disabled={readOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
                 placeholder="예: 2020년 개업, 3년 운영 경험"
               />
             </div>
@@ -232,7 +253,9 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
               type="time"
               value={formData.hotelInfo.checkInTime}
               onChange={(e) => updateFormData("hotelInfo", { checkInTime: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              readOnly={readOnly}
+              disabled={readOnly}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
             />
           </div>
 
@@ -244,7 +267,9 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
               type="time"
               value={formData.hotelInfo.checkOutTime}
               onChange={(e) => updateFormData("hotelInfo", { checkOutTime: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              readOnly={readOnly}
+              disabled={readOnly}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
             />
           </div>
 
@@ -255,8 +280,10 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData }) => {
             <textarea
               value={formData.hotelInfo.cancellationPolicy}
               onChange={(e) => updateFormData("hotelInfo", { cancellationPolicy: e.target.value })}
+              readOnly={readOnly}
+              disabled={readOnly}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="취소 및 환불 정책을 입력하세요"
             />
           </div>

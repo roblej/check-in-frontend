@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import MasterLayout from '@/components/master/MasterLayout';
 import Pagination from '@/components/Pagination';
 import { CheckCircle, Eye, X, Clock, Building2 } from 'lucide-react';
-import axios from 'axios';
+import axiosInstance from '@/lib/axios';
 
 const HotelApproval = () => {
-
-  const api_url = "/api/master/hotelApproval";
+  const router = useRouter();
+  
+  const api_url = "/master/hotelApproval";
 
   const [hotelRequestList, setHotelRequestList] = useState([]);
   const [hotelRequestCount, setHotelRequestCount] = useState(0);
@@ -26,7 +28,7 @@ const HotelApproval = () => {
   const getData = async (page = currentPage, size = pageSize) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${api_url}?page=${page}&size=${size}`);
+      const response = await axiosInstance.get(`${api_url}?page=${page}&size=${size}`);
       
       if (response.data.content) {
         setHotelRequestList(response.data.content);
@@ -83,9 +85,9 @@ const HotelApproval = () => {
     }
     
     try {
-      const apiEndpoint = action === 'approve' ? '/api/master/approveHotel' : '/api/master/rejectHotel';
+      const apiEndpoint = action === 'approve' ? '/master/approveHotel' : '/master/rejectHotel';
       const promises = selectedRequests.map(registrationIdx => 
-        axios.post(apiEndpoint, { registrationIdx })
+        axiosInstance.post(apiEndpoint, { registrationIdx })
       );
       
       const responses = await Promise.all(promises);
@@ -109,8 +111,8 @@ const HotelApproval = () => {
 
   const handleApproval = async (registrationIdx, action) => {
     try {
-      const apiEndpoint = action === 'approve' ? '/api/master/approveHotel' : '/api/master/rejectHotel';
-      const response = await axios.post(apiEndpoint, {
+      const apiEndpoint = action === 'approve' ? '/master/approveHotel' : '/master/rejectHotel';
+      const response = await axiosInstance.post(apiEndpoint, {
         registrationIdx: registrationIdx
       });
 
@@ -331,7 +333,10 @@ const HotelApproval = () => {
                     </td>
                     <td className="px-6 py-4 text-sm font-medium w-64">
                       <div className="flex flex-wrap gap-2">
-                        <button className="text-[#7C3AED] hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-50 transition-colors">
+                        <button 
+                          onClick={() => router.push(`/master/hotel-approval-detail/${request.registrationIdx}`)}
+                          className="text-[#7C3AED] hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-50 transition-colors"
+                        >
                           상세보기
                         </button>
                         <button 
@@ -382,7 +387,10 @@ const HotelApproval = () => {
                   객실 {request.hotelInfo?.rooms || 0}개
                 </div>
                 <div className="flex gap-1">
-                  <button className="text-[#7C3AED] hover:text-purple-800 text-xs">
+                  <button 
+                    onClick={() => router.push(`/master/hotel-approval-detail/${request.registrationIdx}`)}
+                    className="text-[#7C3AED] hover:text-purple-800 text-xs"
+                  >
                     상세
                   </button>
                   <button 
