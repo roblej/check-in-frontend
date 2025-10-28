@@ -30,7 +30,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       path: '/admin/reservations',
       submenu: [
         { id: 'reservation-list', name: '예약 현황', path: '/admin/reservations' },
-        { id: 'reservation-calendar', name: '예약 캘린더', path: '/admin/calendar' }
+        { id: 'reservation-calendar', name: '예약 캘린더', path: '/admin/calender' }
       ]
     },
     {
