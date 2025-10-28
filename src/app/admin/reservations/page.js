@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { ClipboardList, Calendar, Building2 } from 'lucide-react';
-import axios from 'axios';
+import axiosInstance from '@/lib/axios';
 
 const ReservationsPage = () => {
 
-  const api_url = "/api/admin/roomReservationList";
+  const api_url = "/admin/roomReservationList";
 
   const [selectedTab, setSelectedTab] = useState('list');
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,7 +15,7 @@ const ReservationsPage = () => {
   const [roomReservationList, setRoomReservationList] = useState([]);
 
   function getData(){
-    axios.get(api_url).then(res => {
+    axiosInstance.get(api_url).then(res => {
       console.log(res.data);
       setRoomReservationList(res.data.content);
     });

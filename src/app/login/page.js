@@ -121,6 +121,10 @@ export default function LoginPage() {
               console.log('관리자 로그인 성공:', { adminIdx, contentId });
             } else {
               console.warn('contentId를 가져올 수 없습니다.');
+              // 호텔 등록 페이지로 이동
+              alert("호텔 등록 페이지로 이동합니다.");
+              router.push("/hotel/register");
+              return;
             }
           }
         } catch (error) {

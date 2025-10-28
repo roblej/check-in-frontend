@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import axios from 'axios';
+import axiosInstance from '@/lib/axios';
 
 const CheckoutPage = () => {
 
-  const api_url = "/api/admin/checkoutPendingList";
+  const api_url = "/admin/checkoutPendingList";
     
   const [searchTerm, setSearchTerm] = useState('');
   const [checkoutList, setCheckoutList] = useState([]);
@@ -14,7 +14,7 @@ const CheckoutPage = () => {
   const [loading, setLoading] = useState(false);
 
   function getData(){
-    axios.get(api_url).then(res => {
+    axiosInstance.get(api_url).then(res => {
       console.log(res.data);
       setCheckoutList(res.data.content);
     });

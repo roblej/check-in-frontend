@@ -1,7 +1,7 @@
 'use client';
 
 import AdminLayout from '@/components/admin/AdminLayout';
-import axios from 'axios';
+import axiosInstance from '@/lib/axios';
 import { Building2, LogOut, Calendar, DollarSign, Users, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -15,7 +15,7 @@ const AdminDashboard = () => {
   const { readAccessToken, isInlogged } = useCustomerStore();
   const { getContentId, isLoggedIn: isAdminLoggedIn, fetchContentIdByAdminIdx } = useAdminStore();
   
-  const api_url = "/api/admin/dashboard";
+  const api_url = "/admin/dashboard"; // lib/axios의 baseURL과 함께 사용
 
   const [todayCheckinCount, setTodayCheckinCount] = useState(0); // 오늘 체크인 수
   const [todayCheckoutCount, setTodayCheckoutCount] = useState(0); // 오늘 체크아웃 수
@@ -24,7 +24,7 @@ const AdminDashboard = () => {
   const [roomReservationList, setRoomReservationList] = useState([]); // 최근 예약 목록
   const [isLoading, setIsLoading] = useState(true); // 로딩 상태
 
-  // 호텔 정보 확인 및 대시보드 데이터 로드
+  // 대시보드 데이터 로드
   const checkHotelAndLoadData = useCallback(async () => {
     try {
       // 로그인 상태 확인
@@ -33,32 +33,8 @@ const AdminDashboard = () => {
         return;
       }
 
-      // zustand에서 저장된 contentId 가져오기
-      let contentId = getContentId();
-
-      // contentId가 없으면 쿠키에서 adminIdx를 확인하고 contentId를 가져오기
-      if (!contentId) {
-        const adminIdxFromCookie = getAdminIdxFromCookie();
-        
-        if (adminIdxFromCookie) {
-          console.log('쿠키에서 adminIdx 발견:', adminIdxFromCookie);
-          contentId = await fetchContentIdByAdminIdx(parseInt(adminIdxFromCookie));
-          
-          if (contentId) {
-            console.log('contentId 복구 성공:', contentId);
-          }
-        }
-      }
-
-      if (!contentId) {
-        console.log('contentId가 없습니다. 호텔을 등록해주세요.');
-        router.push('/hotel/register');
-        return;
-      }
-
-
-      // contentId로 대시보드 데이터 로드
-      await loadDashboardData(contentId);
+      // 대시보드 데이터 로드 (JWT 쿠키 자동 전송)
+      await loadDashboardData();
       
     } catch (error) {
       console.error('초기화 실패:', error);
@@ -66,13 +42,14 @@ const AdminDashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isInlogged, router, getContentId, fetchContentIdByAdminIdx]);
+  }, [isInlogged, router]);
 
   // 대시보드 데이터 로드
-  const loadDashboardData = async (contentId) => {
+  const loadDashboardData = async () => {
     try {
-      const response = await axios.get(`${api_url}?contentId=${contentId}`);
-      console.log(response.data);
+      // 쿠키가 자동으로 전송됨 (withCredentials: true)
+      const response = await axiosInstance.get(api_url);
+      console.log('대시보드 응답:', response.data);
       setTodayCheckinCount(response.data.todayCheckinCount);
       setTodayCheckoutCount(response.data.todayCheckoutCount);
       setReservationCount(response.data.reservationCount);

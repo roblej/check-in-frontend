@@ -1,14 +1,14 @@
 'use client';
 
 import MasterLayout from '@/components/master/MasterLayout';
-import axios from 'axios';
+import axiosInstance from '@/lib/axios';
 import { ChartColumn, Hotel, Users, LayoutDashboard, Settings, CalendarCheck, CircleDollarSign } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const MasterDashboard = () => {
 
-  const api_url = "/api/master/dashboard";
+  const api_url = "/master/dashboard";
   const router = useRouter();
 
   const [hotelCount, setHotelCount] = useState("불러오는중...");
@@ -22,7 +22,7 @@ const MasterDashboard = () => {
   const [newCustomersCount, setNewCustomersCount] = useState("불러오는중...");
 
   function getData(){
-    axios.get(api_url).then(res => {
+    axiosInstance.get(api_url).then(res => {
       if(res.data.hotelCount !== undefined){
         setHotelCount(res.data.hotelCount);
       }
