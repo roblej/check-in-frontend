@@ -332,9 +332,13 @@ const HotelReservationPage = () => {
 
       if (response.ok) {
         clearPaymentDraft();
-        router.push(
-          `/checkout/success?orderId=${paymentResult.orderId}&amount=${paymentAmounts.actualPaymentAmount}&type=hotel_reservation`
-        );
+        const params = new URLSearchParams({
+          orderId: paymentResult.orderId,
+          paymentKey: paymentResult.paymentKey,
+          amount: paymentAmounts.actualPaymentAmount.toString(),
+          type: "hotel_reservation",
+        });
+        router.push(`/checkout/success?${params.toString()}`);
       } else {
         throw new Error("서버 처리 중 오류가 발생했습니다.");
       }
@@ -607,8 +611,10 @@ const HotelReservationPage = () => {
                   hotelInfo={{
                     contentId: paymentDraft.meta.contentId,
                     hotelName: paymentDraft.meta.hotelName,
-                    roomId: paymentDraft.meta.roomIdx || paymentDraft.meta.roomId, // roomIdx 우선 사용
-                    roomIdx: paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
+                    roomId:
+                      paymentDraft.meta.roomIdx || paymentDraft.meta.roomId, // roomIdx 우선 사용
+                    roomIdx:
+                      paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
                     roomName: paymentDraft.meta.roomName,
                     checkIn: paymentDraft.meta.checkIn,
                     checkOut: paymentDraft.meta.checkOut,
