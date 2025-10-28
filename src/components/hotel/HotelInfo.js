@@ -13,8 +13,9 @@
  * 호텔 기본 정보 컴포넌트
  * @param {Object} props
  * @param {HotelData} props.hotelData - 호텔 데이터 객체
+ * @param {boolean} [props.isModal] - 모달 모드 여부 (모달일 때 호텔명 숨김)
  */
-const HotelInfo = ({ hotelData }) => {
+const HotelInfo = ({ hotelData, isModal = false }) => {
   if (!hotelData) return null;
 
   const { name, description, checkInTime, checkOutTime, starRating } =
@@ -22,7 +23,9 @@ const HotelInfo = ({ hotelData }) => {
 
   return (
     <div className="bg-white rounded-lg p-6 mb-6 shadow">
-      <h2 className="text-2xl font-bold mb-3">{name || "호텔 정보 없음"}</h2>
+      {!isModal && (
+        <h2 className="text-2xl font-bold mb-3">{name || "호텔 정보 없음"}</h2>
+      )}
       {description && <p className="text-gray-600 mb-4">{description}</p>}
       <div className="flex items-center gap-6 text-sm flex-wrap">
         {checkInTime && (
