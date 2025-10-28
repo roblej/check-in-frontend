@@ -3,13 +3,17 @@
 import { useState, useEffect } from 'react';
 import { Search, Gift, User, Calendar, DollarSign, CheckCircle, XCircle } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import Pagination from '@/components/Pagination';
 import axiosInstance from '@/lib/axios';
 
 const CouponIssueManagement = () => {
 
-  const couponIssue_url = "/admin/couponIssue?adminIdx=";
-  const customerSearch_url = "/admin/customerSearch?searchTerm=";
+  const couponIssue_url = "/admin/couponIssue";
   const couponCreate_url = "/admin/couponCreate";
+  // 해당 호텔을 사용한 고객만 조회
+  const hotelCustomers_url = "/admin/hotelCustomers";
+  // 최근 이용 고객 조회 (모달 열릴 때 자동 로드)
+  const recentCustomers_url = "/admin/recentCustomers";
 
   const [templates, setTemplates] = useState([]);
   const [issuedCoupons, setIssuedCoupons] = useState([]);
@@ -20,25 +24,69 @@ const CouponIssueManagement = () => {
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
-  /* 쿠폰생성을 위한 어드민 고유번호 */
-  const [adminIdx, setAdminIdx] = useState(1); // 일단 기본값 1 넣어둠
+  // Pagination 상태
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [pageSize, setPageSize] = useState(5);
 
-  function getTemplates(){
-    axiosInstance.get(`${couponIssue_url}${adminIdx}&page=0&size=10`).then(res => {
+  function getTemplates(page = currentPage, size = pageSize){
+    axiosInstance.get(couponIssue_url, {
+      params: {
+        page: page,
+        size: size
+      }
+    }).then(res => {
       setTemplates(res.data.couponTemplates);
-      setIssuedCoupons(res.data.coupons.content || res.data.coupons);
+      
+      // Page 객체에서 데이터 추출
+      if (res.data.coupons && res.data.coupons.content) {
+        setIssuedCoupons(res.data.coupons.content);
+        setTotalPages(res.data.coupons.totalPages || 0);
+        setTotalElements(res.data.coupons.totalElements || 0);
+        setCurrentPage(res.data.coupons.number || 0);
+      } else {
+        setIssuedCoupons(res.data.coupons || []);
+        setTotalPages(1);
+        setTotalElements(res.data.coupons?.length || 0);
+        setCurrentPage(0);
+      }
     });
   }
 
+  // 페이지 변경 핸들러
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    getTemplates(newPage, pageSize);
+  };
+
+  // 해당 호텔을 사용한 고객만 조회
   function getCustomers(searchTerm) {
     if (searchTerm.trim() === '') {
-      setCustomers([]);
+      // 검색어가 없으면 최근 고객 5명 로드
+      getRecentCustomers();
       return;
     }
 
-    axiosInstance.get(`${customerSearch_url}${encodeURIComponent(searchTerm)}`)
+    // 해당 호텔을 이용한 고객 중에서 검색
+    axiosInstance.get(hotelCustomers_url, {
+      params: {
+        searchTerm: searchTerm
+      }
+    })
       .then(res => {
-        setCustomers(res.data);
+        if (res.data.success && res.data.customers) {
+          // Customer 엔티티를 프론트엔드 형식으로 변환
+          const customersList = res.data.customers.map(customer => ({
+            customerIdx: customer.customerIdx,
+            name: customer.name,
+            email: customer.email,
+            nickname: customer.nickname || '닉네임 미설정',
+            rank: customer.rankEntity?.rankName || '일반',
+            recentRoomName: '' // 검색 결과에는 최근 이용 정보 없음
+          }));
+          setCustomers(customersList);
+        }
       })
       .catch(error => {
         console.error('고객 검색 오류:', error);
@@ -46,21 +94,48 @@ const CouponIssueManagement = () => {
       });
   }
 
+  function getRecentCustomers(){
+    axiosInstance.get(recentCustomers_url)
+      .then(res => {
+        if (res.data.success && res.data.customers) {
+          // customer 필드를 추출해서 표시
+          const recentCustomers = res.data.customers.map(reservation => ({
+            customerIdx: reservation.customer?.customerIdx,
+            name: reservation.customer?.name,
+            email: reservation.customer?.email,
+            nickname: reservation.customer?.nickname || '닉네임 미설정',
+            rank: reservation.customer?.rank || '일반',
+            recentRoomName: reservation.room?.name || '정보 없음'
+          }));
+          setCustomers(recentCustomers);
+        }
+      })
+      .catch(error => {
+        console.error('최근 이용 고객 로드 오류:', error);
+      });
+  }
+
   function createCoupon(templateIdx, customerIdx){
     axiosInstance.post(couponCreate_url, {
       templateIdx: templateIdx,
-      customerIdx: customerIdx,
-      adminIdx: adminIdx // 이거 나중에 꼭 받아서 전달해야함 (현재 로그인 한 admin 고유번호)
+      customerIdx: customerIdx
     }).then(res => {
-      // 쿠폰 생성 성공 처리
-      alert('쿠폰이 성공적으로 발급되었습니다.');
-      getTemplates(); // 목록 새로고침
-      setIsIssueModalOpen(false);
-      setSelectedTemplate(null);
-      setSelectedCustomer(null);
+      if (res.data.success) {
+        alert('쿠폰이 성공적으로 발급되었습니다.');
+        // 첫 페이지로 이동하여 최신 데이터 가져오기
+        setCurrentPage(0);
+        getTemplates(0, pageSize);
+        setIsIssueModalOpen(false);
+        setSelectedTemplate(null);
+        setSelectedCustomer(null);
+        setCustomerSearch('');
+        setCustomers([]);
+      } else {
+        alert(res.data.message || '쿠폰 발급에 실패했습니다.');
+      }
     }).catch(error => {
       console.error('쿠폰 생성 오류:', error);
-      alert('쿠폰 발급 중 오류가 발생했습니다.');
+      alert('서버 오류가 발생했습니다.');
     });
   }
 
@@ -84,27 +159,14 @@ const CouponIssueManagement = () => {
   // API에서 이미 필터링된 결과를 사용
   const filteredCustomers = customers;
 
-  const handleIssueCoupon = () => {
-    if (!selectedTemplate || !selectedCustomer) return;
-
-    const newCoupon = {
-      couponIdx: issuedCoupons.length + 1,
-      templateIdx: selectedTemplate.templateIdx,
-      templateName: selectedTemplate.templateName,
-      customerIdx: selectedCustomer.customerIdx,
-      customerName: selectedCustomer.name,
-      adminIdx: 1,
-      createDate: new Date().toISOString(),
-      endDate: new Date(Date.now() + selectedTemplate.validDays * 24 * 60 * 60 * 1000).toISOString(),
-      status: 0
-    };
-
-    setIssuedCoupons([...issuedCoupons, newCoupon]);
-    setIsIssueModalOpen(false);
-    setSelectedTemplate(null);
-    setSelectedCustomer(null);
-    setCustomerSearch('');
+  // 모달이 열릴 때 최근 이용 고객 5명 자동 로드
+  const handleOpenModal = () => {
+    setIsIssueModalOpen(true);
+    
+    // 최근 이용 고객 자동 로드
+    getRecentCustomers();
   };
+
 
   const getStatusBadge = (status) => {
     return status ? (
@@ -126,7 +188,7 @@ const CouponIssueManagement = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">쿠폰 발급 관리</h1>
         <button
-          onClick={() => setIsIssueModalOpen(true)}
+          onClick={handleOpenModal}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
         >
           <Gift className="w-4 h-4" />
@@ -232,13 +294,31 @@ const CouponIssueManagement = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-6 border-t border-gray-200 pt-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalElements={totalElements}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+            />
+          </div>
+        )}
       </div>
 
       {/* 쿠폰 발급 모달 */}
       {isIssueModalOpen && (
-        <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg border-black">
-            <h2 className="text-lg font-semibold mb-4">쿠폰 발급</h2>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="absolute inset-0 border-8 border-black"></div>
+          <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <div className="px-6 py-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-900">쿠폰 발급</h2>
+            </div>
+            
+            <div className="px-6 py-4 flex-1 overflow-y-auto">
 
             {/* 템플릿 선택 */}
             <div className="mb-4">
@@ -249,6 +329,7 @@ const CouponIssueManagement = () => {
                 value={selectedTemplate?.templateIdx || ''}
                 onChange={(e) => {
                   const template = templates.find(t => t.templateIdx === parseInt(e.target.value));
+                  console.log(template);
                   setSelectedTemplate(template);
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -257,7 +338,7 @@ const CouponIssueManagement = () => {
                 <option value="">템플릿을 선택하세요</option>
                 {templates.map(template => (
                   <option key={template.templateIdx} value={template.templateIdx}>
-                    {template.templateName} ({template.discount.toLocaleString()}원 할인)
+                    {template.templateName} ({template.discount.toLocaleString()}원 할인) / {template.validDays}일
                   </option>
                 ))}
               </select>
@@ -266,9 +347,9 @@ const CouponIssueManagement = () => {
             {/* 고객 검색 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                고객 검색
+                고객 선택
               </label>
-              <div className="relative">
+              <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
@@ -278,52 +359,72 @@ const CouponIssueManagement = () => {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+              
+              {/* 고객 목록 */}
+              <div className="mb-4 max-h-60 overflow-y-auto border border-gray-200 rounded-md">
+                {customers.length > 0 ? (
+                  customers.map(customer => (
+                    <div
+                      key={customer.customerIdx}
+                      className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-b-0 ${
+                        selectedCustomer?.customerIdx === customer.customerIdx ? 'bg-blue-50' : ''
+                      }`}
+                      onClick={() => setSelectedCustomer(customer)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">{customer.name}</div>
+                          <div className="text-xs text-blue-600 mt-1">
+                            {customer.recentRoomName ? `최근 이용: ${customer.recentRoomName}` : ''}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-gray-500">
+                            {customer.nickname || '닉네임 미설정'}
+                          </div>
+                          <div className="text-xs text-blue-600">
+                            {customer.rank || '일반'} 등급
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-sm text-gray-500">
+                    {customerSearch ? '검색 결과가 없습니다.' : '고객 정보를 불러오는 중...'}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* 고객 목록 */}
-            {customerSearch && (
-              <div className="mb-4 max-h-40 overflow-y-auto border border-gray-200 rounded-md">
-                {filteredCustomers.map(customer => (
-                  <div
-                    key={customer.customerIdx}
-                    className={`p-3 cursor-pointer hover:bg-gray-50 ${
-                      selectedCustomer?.customerIdx === customer.customerIdx ? 'bg-blue-50' : ''
-                    }`}
-                    onClick={() => setSelectedCustomer(customer)}
-                  >
-                    <div className="font-medium">{customer.name}</div>
-                    <div className="text-sm text-gray-500">{customer.email}</div>
-                    <div className="text-sm text-gray-500">
-                      닉네임: {customer.nickname || '미설정'} | {customer.rank} 등급
-                    </div>
+              {/* 선택된 정보 표시 */}
+              {selectedTemplate && selectedCustomer && (
+                <div className="mb-4 p-4 bg-blue-50 rounded-md border border-blue-200">
+                  <h3 className="font-medium mb-2 text-blue-900">발급 정보</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="text-gray-600">회원 고유번호:</div>
+                    <div className="font-medium">{selectedCustomer.customerIdx}</div>
+                    <div className="text-gray-600">쿠폰:</div>
+                    <div className="font-medium">{selectedTemplate.templateName}</div>
+                    <div className="text-gray-600">할인액:</div>
+                    <div className="font-medium text-blue-600">{selectedTemplate.discount.toLocaleString()}원</div>
+                    <div className="text-gray-600">고객:</div>
+                    <div className="font-medium">{selectedCustomer.name} ({selectedCustomer.nickname || '닉네임 미설정'})</div>
+                    <div className="text-gray-600">등급:</div>
+                    <div className="font-medium">{selectedCustomer.rank}</div>
+                    <div className="text-gray-600">유효기간:</div>
+                    <div className="font-medium">{selectedTemplate.validDays}일</div>
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* 선택된 정보 표시 */}
-            {selectedTemplate && selectedCustomer && (
-              <div className="mb-6 p-4 bg-gray-50 rounded-md">
-                <h3 className="font-medium mb-2">발급 정보</h3>
-                <div className="space-y-1 text-sm">
-                  <div>회원 고유번호:{selectedCustomer.customerIdx}</div>
-                  <div>쿠폰: {selectedTemplate.templateName}</div>
-                  <div>할인액: {selectedTemplate.discount.toLocaleString()}원</div>
-                  <div>고객: {selectedCustomer.name} ({selectedCustomer.nickname || '닉네임 미설정'})</div>
-                  <div>등급: {selectedCustomer.rank}</div>
-                  <div>유효기간: {selectedTemplate.validDays}일</div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            <div className="flex gap-2">
+            {/* 버튼 영역 */}
+            <div className="px-6 py-4 border-t bg-gray-50 flex gap-2">
               <button
-                onClick={() => {
-                  createCoupon(selectedTemplate.templateIdx, selectedCustomer.customerIdx);
-                  handleIssueCoupon();
-                }}
+                onClick={() => createCoupon(selectedTemplate.templateIdx, selectedCustomer.customerIdx)}
                 disabled={!selectedTemplate || !selectedCustomer}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors"
               >
                 쿠폰 발급
               </button>
@@ -333,8 +434,9 @@ const CouponIssueManagement = () => {
                   setSelectedTemplate(null);
                   setSelectedCustomer(null);
                   setCustomerSearch('');
+                  setCustomers([]);
                 }}
-                className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400"
+                className="flex-1 bg-white text-gray-700 border border-gray-300 py-3 px-4 rounded-lg hover:bg-gray-50 font-medium transition-colors"
               >
                 취소
               </button>

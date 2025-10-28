@@ -68,10 +68,14 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       ]
     },
     {
-      id: 'coupon-issue',
-      name: '쿠폰 발급',
+      id: 'coupon',
+      name: '쿠폰 관리',
       icon: <Gift size={20} />,
-      path: '/admin/coupon-issue'
+      path: '/admin/coupon-issue',
+      submenu: [
+        { id: 'coupon-issue', name: '쿠폰 발급', path: '/admin/coupon-issue' },
+        { id: 'coupon-batch', name: '쿠폰 일괄 처리', path: '/admin/coupon-batch' }
+      ]
     },
     {
       id: 'revenue',
