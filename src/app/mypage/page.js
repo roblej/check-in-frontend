@@ -35,6 +35,9 @@ export default function MyPage() {
     cancelled: []
   });
 
+  // 양도거래 등록 상태
+  const [tradeStatus, setTradeStatus] = useState({});
+
   // 백엔드에서 가져온 사용자 정보 상태
   const [userData, setUserData] = useState(null);
 
@@ -133,6 +136,9 @@ export default function MyPage() {
         completed: completedData?.reservations?.length || 0,
         cancelled: cancelledData?.reservations?.length || 0
       });
+
+      // 예약별 양도거래 등록 여부 확인
+      await checkTradeStatus(upcomingData?.reservations || []);
 
     } catch (error) {
       console.error('❌ 예약 내역 로드 실패:', error);
@@ -275,6 +281,47 @@ export default function MyPage() {
   const handleRebook = (reservation) => {
     // 호텔 상세 페이지로 이동 (재예약)
     router.push(`/hotel/${reservation.id}`);
+  };
+
+  const handleRegisterTrade = (reservation) => {
+    // 양도거래 등록 페이지로 이동 (예약 정보 전달)
+    router.push(`/used/register?reservIdx=${reservation.reservIdx || reservation.id}`);
+  };
+
+  const handleEditTrade = (reservation) => {
+    // 양도거래 수정 페이지로 이동
+    const reservIdx = reservation.reservIdx || reservation.id;
+    router.push(`/used/register?reservIdx=${reservIdx}&edit=true`);
+  };
+
+  // 양도거래 등록 여부 확인
+  const checkTradeStatus = async (reservations) => {
+    const statusMap = {};
+    
+    for (const reservation of reservations) {
+      const reservIdx = reservation.reservIdx || reservation.id;
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/check/${reservIdx}`,
+          { credentials: 'include' }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          statusMap[reservIdx] = data.registered;
+        }
+      } catch (error) {
+        console.error(`양도거래 상태 확인 실패 (reservIdx: ${reservIdx}):`, error);
+      }
+    }
+    
+    setTradeStatus(statusMap);
+  };
+
+  // 특정 예약의 양도거래 등록 여부 확인
+  const isTradeRegistered = (reservation) => {
+    const reservIdx = reservation.reservIdx || reservation.id;
+    return tradeStatus[reservIdx] || false;
   };
 
   // 더미 데이터 (쿠폰, 리뷰 등)
@@ -474,10 +521,14 @@ export default function MyPage() {
                   <div className="flex items-center gap-2">
                     {reservationTab === 'upcoming' && reservation.status === '예약확정' && (
                       <button 
-                        onClick={() => handleRegisterTrade(reservation)}
-                        className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
+                        onClick={() => isTradeRegistered(reservation) ? handleEditTrade(reservation) : handleRegisterTrade(reservation)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                          isTradeRegistered(reservation)
+                            ? 'bg-blue-50 hover:bg-blue-100 text-blue-600'
+                            : 'bg-green-50 hover:bg-green-100 text-green-600'
+                        }`}
                       >
-                        양도거래 등록
+                        {isTradeRegistered(reservation) ? '양도거래 수정' : '양도거래 등록'}
                       </button>
                     )}
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
