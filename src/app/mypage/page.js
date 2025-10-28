@@ -303,7 +303,10 @@ export default function MyPage() {
       const reservIdx = reservation.reservIdx || reservation.id;
       try {
         const data = await usedAPI.checkRegistered(reservIdx);
-        statusMap[reservIdx] = data.registered;
+        statusMap[reservIdx] = {
+          registered: data.registered,
+          status: data.status // status 정보도 저장
+        };
       } catch (error) {
         console.error(`양도거래 상태 확인 실패 (reservIdx: ${reservIdx}):`, error);
       }
@@ -315,7 +318,15 @@ export default function MyPage() {
   // 특정 예약의 양도거래 등록 여부 확인
   const isTradeRegistered = (reservation) => {
     const reservIdx = reservation.reservIdx || reservation.id;
-    return tradeStatus[reservIdx] || false;
+    const status = tradeStatus[reservIdx];
+    return status?.registered || false;
+  };
+
+  // 특정 예약의 양도거래 완료 여부 확인 (status가 2이면 완료)
+  const isTradeCompleted = (reservation) => {
+    const reservIdx = reservation.reservIdx || reservation.id;
+    const status = tradeStatus[reservIdx];
+    return status?.status === 2; // status 2 = 거래완료
   };
 
   // 더미 데이터 (쿠폰, 리뷰 등)
@@ -513,7 +524,7 @@ export default function MyPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {reservationTab === 'upcoming' && reservation.status === '예약확정' && (
+                    {reservationTab === 'upcoming' && reservation.status === '예약확정' && !isTradeCompleted(reservation) && (
                       <button 
                         onClick={() => isTradeRegistered(reservation) ? handleEditTrade(reservation) : handleRegisterTrade(reservation)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
