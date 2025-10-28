@@ -16,11 +16,26 @@ const SuccessPageContent = () => {
     const doConfirm = async () => {
       const paymentKey = search.get("paymentKey");
       const orderId = search.get("orderId");
-      const amount = Number(search.get("amount"));
+      const amount = search.get("amount");
       const type = search.get("type");
 
+      console.log("Success page params:", {
+        paymentKey,
+        orderId,
+        amount,
+        type,
+      });
+
       if (!paymentKey || !orderId || !amount) {
+        console.error("필수 파라미터 누락:", { paymentKey, orderId, amount });
         setError("필수 결제 파라미터가 없습니다.");
+        setLoading(false);
+        return;
+      }
+
+      const amountNum = Number(amount);
+      if (isNaN(amountNum)) {
+        setError("금액이 올바르지 않습니다.");
         setLoading(false);
         return;
       }
@@ -29,7 +44,7 @@ const SuccessPageContent = () => {
       if (type === "used_hotel") {
         setResult({
           orderId,
-          amount,
+          amount: amountNum,
           type,
           message: "중고 호텔 결제가 완료되었습니다.",
         });
@@ -41,13 +56,25 @@ const SuccessPageContent = () => {
         const res = await fetch("/api/payments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paymentKey, orderId, amount, type }),
+          body: JSON.stringify({
+            paymentKey,
+            orderId,
+            amount: amountNum,
+            type,
+          }),
         });
 
-        if (!res.ok) throw new Error("결제 처리 실패");
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("결제 검증 실패:", errorText);
+          throw new Error("결제 처리 실패");
+        }
+
         const data = await res.json();
+        console.log("결제 검증 성공:", data);
         setResult(data);
       } catch (e) {
+        console.error("결제 검증 오류:", e);
         setError(e?.message || "서버 오류가 발생했습니다.");
       } finally {
         setLoading(false);
@@ -98,6 +125,7 @@ const SuccessPageContent = () => {
   const qrUrl = result?.qrUrl;
   const receipt = result?.receiptUrl;
   const isUsedHotel = search.get("type") === "used_hotel";
+  const amountFromResult = result?.amount || search.get("amount");
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -117,16 +145,19 @@ const SuccessPageContent = () => {
           <p className="text-gray-600 mb-8">
             {isUsedHotel
               ? "중고 호텔 예약이 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."
-              : "결제가 성공적으로 완료되었습니다."}
+              : "결제가 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."}
           </p>
 
           {/* QR 코드 */}
           {qrUrl && (
             <div className="mb-8">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                예약 확인서
+                📱 예약 확인 QR 코드
               </h2>
-              <div className="bg-gray-50 p-4 rounded-lg inline-block">
+              <p className="text-sm text-gray-600 mb-4">
+                체크인 시 아래 QR 코드를 제시해주세요
+              </p>
+              <div className="bg-gray-50 p-4 rounded-lg inline-block border-2 border-gray-200">
                 <img src={qrUrl} alt="예약 QR" className="w-48 h-48 mx-auto" />
               </div>
             </div>
@@ -140,17 +171,26 @@ const SuccessPageContent = () => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600">주문번호:</span>
-                <span className="font-mono font-medium">{result?.orderId}</span>
+                <span className="font-mono font-medium">
+                  {result?.orderId || search.get("orderId")}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">결제금액:</span>
                 <span className="font-semibold text-orange-600">
-                  {Number(search.get("amount")).toLocaleString()}원
+                  {amountFromResult
+                    ? Number(amountFromResult).toLocaleString()
+                    : search.get("amount")?.toLocaleString()}
+                  원
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">결제일시:</span>
                 <span>{new Date().toLocaleString("ko-KR")}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">이메일 발송:</span>
+                <span className="text-green-600">✅ 발송 완료</span>
               </div>
               {receipt && (
                 <div className="flex justify-between">
@@ -169,17 +209,15 @@ const SuccessPageContent = () => {
           </div>
 
           {/* 안내 메시지 */}
-          {isUsedHotel && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
-              <h3 className="font-semibold text-blue-900 mb-2">
-                📧 예약 확인서 발송
-              </h3>
-              <p className="text-blue-800 text-sm">
-                예약 확인서가 입력하신 이메일 주소로 발송됩니다. 호텔 체크인 시
-                예약 확인서를 제시해주세요.
-              </p>
-            </div>
-          )}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+            <h3 className="font-semibold text-blue-900 mb-2">
+              📧 예약 확인서 발송
+            </h3>
+            <p className="text-blue-800 text-sm">
+              예약 확인서가 입력하신 이메일 주소로 발송됩니다. 호텔 체크인 시
+              예약 확인서를 제시해주세요.
+            </p>
+          </div>
 
           {/* 버튼들 */}
           <div className="flex gap-4 justify-center">
@@ -212,18 +250,20 @@ const SuccessPageContent = () => {
 
 const SuccessPage = () => {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">결제 정보를 불러오는 중...</p>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50">
+          <Header />
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">결제 정보를 불러오는 중...</p>
+            </div>
           </div>
+          <Footer />
         </div>
-        <Footer />
-      </div>
-    }>
+      }
+    >
       <SuccessPageContent />
     </Suspense>
   );

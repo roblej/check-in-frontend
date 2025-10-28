@@ -1,15 +1,32 @@
 import axios from "axios";
 
+// 서버/클라이언트 구분하여 적절한 인스턴스 반환
+const getAxiosInstance = () => {
+  // 서버 사이드
+  if (typeof window === 'undefined') {
+    return axios.create({
+      baseURL: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api`,
+      timeout: 10000,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      withCredentials: true,
+    });
+  }
+  
+  // 클라이언트 사이드
+  return axios.create({
+    baseURL: "/api",
+    timeout: 10000,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    withCredentials: true,
+  });
+};
+
 // Axios 인스턴스 생성
-const axiosInstance = axios.create({
-  baseURL: "/api",
-  timeout: 10000,
-  // withCredentials: true, // 쿠키 자동 전송
-  headers: {
-    "Content-Type": "application/json",
-  },
-  withCredentials: true, // 쿠키 포함
-});
+const axiosInstance = getAxiosInstance();
 
 // 요청 인터셉터
 axiosInstance.interceptors.request.use(
