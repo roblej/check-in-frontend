@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 
 export async function POST(req) {
   try {
@@ -35,8 +34,12 @@ export async function POST(req) {
     });
 
     if (!paymentKey || !orderId || !amount) {
-      console.error("필수 파라미터 누락:", { paymentKey, orderId, amount });
-      return NextResponse.json({ message: "invalid params" }, { status: 400 });
+      const errorMsg = `필수 파라미터 누락: paymentKey=${!!paymentKey}, orderId=${!!orderId}, amount=${!!amount}`;
+      console.error(errorMsg);
+      return NextResponse.json(
+        { success: false, message: errorMsg },
+        { status: 400 }
+      );
     }
 
     // 중고 호텔 결제인 경우 직접 처리 (팀원 기능 보존)
@@ -58,14 +61,17 @@ export async function POST(req) {
       // roomId를 Integer로 변환 (백엔드에서 Integer 타입 요구)
       // roomId가 "1003654-1" 형식일 경우 마지막 부분만 추출
       let roomIdValue = body.hotelInfo?.roomId || body.roomId;
-      
+
       // 문자열이고 "-"를 포함하면 마지막 부분을 추출
-      if (typeof roomIdValue === 'string' && roomIdValue.includes('-')) {
-        const parts = roomIdValue.split('-');
+      if (typeof roomIdValue === "string" && roomIdValue.includes("-")) {
+        const parts = roomIdValue.split("-");
         roomIdValue = parts[parts.length - 1]; // 마지막 부분 (roomIdx)
       }
-      
-      const roomIdInt = typeof roomIdValue === 'string' ? parseInt(roomIdValue, 10) : roomIdValue;
+
+      const roomIdInt =
+        typeof roomIdValue === "string"
+          ? parseInt(roomIdValue, 10)
+          : roomIdValue;
 
       const backendRequestData = {
         paymentKey,
@@ -193,72 +199,8 @@ async function handleUsedHotelPayment({
       });
     }
 
-    // Send email via SendGrid SMTP (using nodemailer) - 선택적 실행
-    try {
-      const smtpUser = process.env.SENDGRID_SMTP_USER;
-      const smtpPass = process.env.SENDGRID_SMTP_PASS;
-      const mailTo = process.env.PAYMENT_NOTIFY_TO || "admin@checkin.com";
-
-      if (
-        smtpUser &&
-        smtpPass &&
-        smtpUser !== "apikey" &&
-        smtpPass !== "your_sendgrid_api_key_here"
-      ) {
-        const transporter = nodemailer.createTransport({
-          host: "smtp.sendgrid.net",
-          port: 587,
-          secure: false,
-          auth: { user: smtpUser, pass: smtpPass },
-        });
-
-        // 중고 호텔과 일반 호텔 이메일 구분
-        const isUsedHotel = !!usedTradeIdx;
-        const subject = isUsedHotel
-          ? `🎉 중고 호텔 결제 완료 - ${orderId}`
-          : `결제 완료 안내 - ${orderId}`;
-
-        const emailHtml = isUsedHotel
-          ? `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #3b82f6;">🎉 중고 호텔 결제 완료</h2>
-            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px;">
-              <p><strong>주문번호:</strong> ${orderId}</p>
-              <p><strong>거래번호:</strong> ${usedTradeIdx}</p>
-              <p><strong>호텔명:</strong> ${hotelInfo?.hotelName || "N/A"}</p>
-              <p><strong>총 결제금액:</strong> <span style="color: #3b82f6; font-size: 18px;">${totalAmount?.toLocaleString()}원</span></p>
-              <p><strong>캐시 사용:</strong> ${paymentInfo?.useCash?.toLocaleString()}원</p>
-              <p><strong>포인트 사용:</strong> ${paymentInfo?.usePoint?.toLocaleString()}P</p>
-              <p><strong>카드 결제:</strong> ${paymentInfo?.actualPaymentAmount?.toLocaleString()}원</p>
-              <p><strong>결제시간:</strong> ${now.toLocaleString("ko-KR")}</p>
-            </div>
-            <div style="text-align: center; margin: 20px 0;">
-              <img src="${qrUrl}" alt="QR 코드" style="max-width: 200px;">
-              <p style="font-size: 12px; color: #666;">QR 코드로 예약 확인이 가능합니다.</p>
-            </div>
-          </div>
-        `
-          : `
-          <p>결제가 완료되었습니다.</p>
-          <p>주문번호: <b>${orderId}</b></p>
-          <p>금액: <b>${amount.toLocaleString()}원</b></p>
-          <p><img src="${qrUrl}" alt="QR" /></p>
-        `;
-
-        await transporter.sendMail({
-          from: "Check-In <noreply@checkin.local>",
-          to: mailTo,
-          subject: subject,
-          html: emailHtml,
-        });
-        console.log("이메일 발송 완료:", mailTo);
-      } else {
-        console.log("이메일 설정이 없어서 이메일 발송을 건너뜁니다.");
-      }
-    } catch (emailError) {
-      console.error("이메일 발송 실패:", emailError.message);
-      // 이메일 발송 실패해도 결제는 계속 진행
-    }
+    // 이메일 발송은 백엔드에서 처리하므로 프론트엔드에서는 로그만 남김
+    console.log("결제 완료 - 백엔드에서 이메일 발송 처리됨:", orderId);
 
     // 응답 데이터 구성 (중고 호텔과 일반 호텔 구분)
     const isUsedHotel = !!usedTradeIdx;
