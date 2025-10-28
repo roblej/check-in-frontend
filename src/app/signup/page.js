@@ -163,9 +163,15 @@ export default function SignupPage() {
     try {
       const response = await axios.post(sendVerificationCode_url, {
         email: formData.email
+      }).then(function(res){
+        if(res.data.status === 'success'){
+          setCodeSent(true); // 인증 코드 발송 성공
+          alert(res.data.message);
+        }
+        else{
+          alert(res.data.message);
+        }
       });
-      setCodeSent(true); // 인증 코드 발송 성공
-      alert('인증 코드가 전송되었습니다.');
     } catch (error) {
       alert('인증 코드 전송에 실패했습니다.');
     } finally {
