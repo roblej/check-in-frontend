@@ -35,6 +35,9 @@ export default function MyPage() {
     cancelled: []
   });
 
+  // 양도거래 등록 상태
+  const [tradeStatus, setTradeStatus] = useState({});
+
   // 작성 가능한 리뷰 상태
   const [writableReviews, setWritableReviews] = useState([]);
   const [writableReviewsLoading, setWritableReviewsLoading] = useState(false);
@@ -138,6 +141,9 @@ export default function MyPage() {
         completed: completedData?.reservations?.length || 0,
         cancelled: cancelledData?.reservations?.length || 0
       });
+
+      // 예약별 양도거래 등록 여부 확인
+      await checkTradeStatus(upcomingData?.reservations || []);
 
     } catch (error) {
       console.error('❌ 예약 내역 로드 실패:', error);
@@ -293,6 +299,52 @@ export default function MyPage() {
     } finally {
       setWritableReviewsLoading(false);
     }
+  };
+
+  const handleRegisterTrade = (reservation) => {
+    // 양도거래 등록 페이지로 이동 (예약 정보 전달)
+    router.push(`/used/register?reservIdx=${reservation.reservIdx || reservation.id}`);
+  };
+
+  const handleEditTrade = (reservation) => {
+    // 양도거래 수정 페이지로 이동
+    const reservIdx = reservation.reservIdx || reservation.id;
+    router.push(`/used/register?reservIdx=${reservIdx}&edit=true`);
+  };
+
+  // 양도거래 등록 여부 확인
+  const checkTradeStatus = async (reservations) => {
+    const { usedAPI } = await import('@/lib/api/used');
+    const statusMap = {};
+
+    for (const reservation of reservations) {
+      const reservIdx = reservation.reservIdx || reservation.id;
+      try {
+        const data = await usedAPI.checkRegistered(reservIdx);
+        statusMap[reservIdx] = {
+          registered: data.registered,
+          status: data.status // status 정보도 저장
+        };
+      } catch (error) {
+        console.error(`양도거래 상태 확인 실패 (reservIdx: ${reservIdx}):`, error);
+      }
+    }
+
+    setTradeStatus(statusMap);
+  };
+
+  // 특정 예약의 양도거래 등록 여부 확인
+  const isTradeRegistered = (reservation) => {
+    const reservIdx = reservation.reservIdx || reservation.id;
+    const status = tradeStatus[reservIdx];
+    return status?.registered || false;
+  };
+
+  // 특정 예약의 양도거래 완료 여부 확인 (status가 2이면 완료)
+  const isTradeCompleted = (reservation) => {
+    const reservIdx = reservation.reservIdx || reservation.id;
+    const status = tradeStatus[reservIdx];
+    return status?.status === 2; // status 2 = 거래완료
   };
 
   // 더미 데이터 (쿠폰, 리뷰 등)
@@ -481,12 +533,16 @@ export default function MyPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {reservationTab === 'upcoming' && reservation.status === '예약확정' && (
+                    {reservationTab === 'upcoming' && reservation.status === '예약확정' && !isTradeCompleted(reservation) && (
                       <button 
-                        onClick={() => handleRegisterTrade(reservation)}
-                        className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
+                        onClick={() => isTradeRegistered(reservation) ? handleEditTrade(reservation) : handleRegisterTrade(reservation)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                          isTradeRegistered(reservation)
+                            ? 'bg-blue-50 hover:bg-blue-100 text-blue-600'
+                            : 'bg-green-50 hover:bg-green-100 text-green-600'
+                        }`}
                       >
-                        양도거래 등록
+                        {isTradeRegistered(reservation) ? '양도거래 수정' : '양도거래 등록'}
                       </button>
                     )}
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -700,7 +756,7 @@ export default function MyPage() {
                         </span>
                       )}
                     </div>
-                    <button 
+                    <button
                       onClick={() => handleWriteReview({ id: review.reservationIdx })}
                       className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
                     >
@@ -816,7 +872,10 @@ export default function MyPage() {
               <MessageSquare className="w-6 h-6 text-blue-600" />
               1:1 문의 내역
             </h2>
-            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+            <button
+              onClick={() => router.push('/center/inquiry')}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
               새 문의하기
             </button>
           </div>
