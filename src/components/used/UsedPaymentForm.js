@@ -406,21 +406,19 @@ const UsedPaymentForm = ({ initialData }) => {
   // 토스페이먼츠 결제 실패 처리
   const handlePaymentFail = (error) => {
     console.error('결제 실패:', error);
-    // 결제 실패 시에도 거래 삭제
-    if (paymentInfo.usedTradeIdx) {
-      fetch(`/api/used/trade/${paymentInfo.usedTradeIdx}/delete`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          reason: '결제 실패',
-          timestamp: new Date().toISOString()
-        })
-      }).catch(deleteError => {
-        console.error('결제 실패 시 거래 삭제 실패:', deleteError);
-      });
-    }
     
-    router.push(`/checkout/fail?error=${encodeURIComponent(error.message || '결제가 취소되었습니다.')}`);
+    // 결제 실패 정보를 localStorage에 저장 (재시도를 위해)
+    localStorage.setItem('failedPaymentInfo', JSON.stringify({
+      usedTradeIdx: paymentInfo.usedTradeIdx,
+      usedItemIdx: paymentInfo.usedItemIdx,
+      usedPaymentData: paymentInfo,
+      timestamp: Date.now()
+    }));
+    
+    // 결제 실패 시 거래 삭제하지 않고 유지 (다시 시도를 위해)
+    // 거래는 결제 페이지를 완전히 벗어날 때만 삭제됨
+    
+    router.push(`/checkout/fail?error=${encodeURIComponent(error.message || '결제가 취소되었습니다.')}&usedTradeIdx=${paymentInfo.usedTradeIdx}`);
   };
 
   // 로딩 중이면 로딩 화면 표시
