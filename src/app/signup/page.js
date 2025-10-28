@@ -163,9 +163,15 @@ export default function SignupPage() {
     try {
       const response = await axios.post(sendVerificationCode_url, {
         email: formData.email
+      }).then(function(res){
+        if(res.data.status === 'success'){
+          setCodeSent(true); // 인증 코드 발송 성공
+          alert(res.data.message);
+        }
+        else{
+          alert(res.data.message);
+        }
       });
-      setCodeSent(true); // 인증 코드 발송 성공
-      alert('인증 코드가 전송되었습니다.');
     } catch (error) {
       alert('인증 코드 전송에 실패했습니다.');
     } finally {
@@ -263,11 +269,11 @@ export default function SignupPage() {
       newErrors.nickname = "닉네임 중복 검사를 완료해주세요.";
     }
 
-    // 전화번호 검사 (숫자만, 10-11자)
+    // 전화번호 검사 (숫자만,11자)
     if (!formData.phone) {
       newErrors.phone = "전화번호를 입력해주세요.";
-    } else if (!/^[0-9]{10,11}$/.test(formData.phone)) {
-      newErrors.phone = "전화번호는 10-11자리 숫자만 입력해주세요.";
+    } else if (!/^[0-9]{11}$/.test(formData.phone)) {
+      newErrors.phone = "전화번호는 11자리, 숫자만 입력해주세요.";
     }
 
     // 이름 검사
@@ -392,7 +398,7 @@ export default function SignupPage() {
                 value={formData.id}
                 onChange={handleChange}
                 className={`${styles.input} ${
-                  idStatus === 'error' 
+                  errors.id || idStatus === 'error' 
                     ? styles.inputError 
                     : idStatus === 'success' 
                     ? styles.inputSuccess 
@@ -526,7 +532,7 @@ export default function SignupPage() {
                 value={formData.nickname}
                 onChange={handleChange}
                 className={`${styles.input} ${
-                  nicknameStatus === 'error' 
+                  errors.nickname || nicknameStatus === 'error' 
                     ? styles.inputError 
                     : nicknameStatus === 'success' 
                     ? styles.inputSuccess 
