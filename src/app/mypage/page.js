@@ -296,20 +296,14 @@ export default function MyPage() {
 
   // 양도거래 등록 여부 확인
   const checkTradeStatus = async (reservations) => {
+    const { usedAPI } = await import('@/lib/api/used');
     const statusMap = {};
     
     for (const reservation of reservations) {
       const reservIdx = reservation.reservIdx || reservation.id;
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/check/${reservIdx}`,
-          { credentials: 'include' }
-        );
-        
-        if (response.ok) {
-          const data = await response.json();
-          statusMap[reservIdx] = data.registered;
-        }
+        const data = await usedAPI.checkRegistered(reservIdx);
+        statusMap[reservIdx] = data.registered;
       } catch (error) {
         console.error(`양도거래 상태 확인 실패 (reservIdx: ${reservIdx}):`, error);
       }
@@ -842,7 +836,10 @@ export default function MyPage() {
               <MessageSquare className="w-6 h-6 text-blue-600" />
               1:1 문의 내역
             </h2>
-            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+            <button 
+              onClick={() => router.push('/center/inquiry')}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
               새 문의하기
             </button>
           </div>

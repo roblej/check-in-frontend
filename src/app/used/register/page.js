@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Button from '@/components/Button';
+import { usedAPI } from '@/lib/api/used';
+import { mypageAPI } from '@/lib/api/mypage';
 
 export default function UsedItemRegisterPage() {
   const router = useRouter();
@@ -39,43 +41,31 @@ export default function UsedItemRegisterPage() {
         }
 
         // 예약 정보 가져오기 (mypage API 사용)
-        const reservResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/mypage/reservations?status=upcoming`, {
-          credentials: 'include'
-        });
+        const reservData = await mypageAPI.getReservations('upcoming');
+        const reservation = reservData.reservations?.find(r => r.reservIdx == reservIdx || r.id == reservIdx);
+        
+        if (reservation) {
+          setReservationInfo(reservation);
+        } else {
+          alert('예약 정보를 찾을 수 없습니다.');
+          router.push('/mypage');
+          return;
+        }
 
-        if (reservResponse.ok) {
-          const reservData = await reservResponse.json();
-          const reservation = reservData.reservations?.find(r => r.reservIdx == reservIdx || r.id == reservIdx);
-          
-          if (reservation) {
-            setReservationInfo(reservation);
+        // 수정 모드인 경우 기존 양도거래 정보 불러오기
+        if (isEditMode) {
+          const checkData = await usedAPI.checkRegistered(reservIdx);
+
+          if (checkData.registered) {
+            setExistingUsedItem(checkData);
+            // 기존 데이터로 폼 채우기
+            setFormData({
+              price: checkData.price.toString(),
+              comment: checkData.comment || ''
+            });
           } else {
-            alert('예약 정보를 찾을 수 없습니다.');
+            alert('등록된 양도거래가 없습니다.');
             router.push('/mypage');
-            return;
-          }
-
-          // 수정 모드인 경우 기존 양도거래 정보 불러오기
-          if (isEditMode) {
-            const checkResponse = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/check/${reservIdx}`,
-              { credentials: 'include' }
-            );
-
-            if (checkResponse.ok) {
-              const checkData = await checkResponse.json();
-              if (checkData.registered) {
-                setExistingUsedItem(checkData);
-                // 기존 데이터로 폼 채우기
-                setFormData({
-                  price: checkData.price.toString(),
-                  comment: checkData.comment || ''
-                });
-              } else {
-                alert('등록된 양도거래가 없습니다.');
-                router.push('/mypage');
-              }
-            }
           }
         }
       } catch (error) {
@@ -121,55 +111,27 @@ export default function UsedItemRegisterPage() {
     try {
       if (isEditMode && existingUsedItem) {
         // 수정 모드: PUT 요청
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/${existingUsedItem.usedItemIdx}`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              price: parseInt(formData.price),
-              comment: formData.comment
-            })
-          }
-        );
-
-        if (response.ok) {
-          alert('양도거래가 성공적으로 수정되었습니다!');
-          router.push('/mypage');
-        } else {
-          const error = await response.json();
-          alert(error.message || '수정 중 오류가 발생했습니다.');
-        }
-      } else {
-        // 등록 모드: POST 요청
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            reservIdx: parseInt(reservIdx),
-            price: parseInt(formData.price),
-            comment: formData.comment
-          })
+        await usedAPI.updateUsedItem(existingUsedItem.usedItemIdx, {
+          price: parseInt(formData.price),
+          comment: formData.comment
         });
 
-        if (response.ok) {
-          const result = await response.json();
-          alert('양도거래가 성공적으로 등록되었습니다!');
-          router.push('/mypage');
-        } else {
-          const error = await response.json();
-          alert(error.message || '등록 중 오류가 발생했습니다.');
-        }
+        alert('양도거래가 성공적으로 수정되었습니다!');
+        router.push('/mypage');
+      } else {
+        // 등록 모드: POST 요청
+        await usedAPI.registerUsedItem({
+          reservIdx: parseInt(reservIdx),
+          price: parseInt(formData.price),
+          comment: formData.comment
+        });
+
+        alert('양도거래가 성공적으로 등록되었습니다!');
+        router.push('/mypage');
       }
     } catch (error) {
       console.error(isEditMode ? '수정 실패:' : '등록 실패:', error);
-      alert(isEditMode ? '수정 중 오류가 발생했습니다.' : '등록 중 오류가 발생했습니다.');
+      alert(error.response?.data?.message || (isEditMode ? '수정 중 오류가 발생했습니다.' : '등록 중 오류가 발생했습니다.'));
     } finally {
       setLoading(false);
     }

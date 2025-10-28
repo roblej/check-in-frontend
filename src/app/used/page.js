@@ -2,6 +2,8 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UsedPageContent from '@/components/used/UsedPageContent';
 
+import { usedAPI } from '@/lib/api/used';
+
 // 서버에서 초기 데이터를 가져오는 함수
 async function getInitialData(searchParams) {
   try {
@@ -10,42 +12,29 @@ async function getInitialData(searchParams) {
     // 검색 조건이 있으면 검색 API, 없으면 전체 목록 API 호출
     const hasSearchConditions = destination || checkIn || checkOut || adults !== 2;
     
-    let response;
+    let data;
     if (hasSearchConditions) {
       // 검색 API 호출 (POST)
-      response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          destination: destination || null,
-          checkIn: checkIn || null,
-          checkOut: checkOut || null,
-          adults: adults || null,
-          priceMin: null,
-          priceMax: null,
-          sortBy: 'date',
-          sortDirection: 'asc',
-          status: null,
-          page: page,
-          size: size
-        }),
-        cache: 'no-store', // SSR을 위해 캐시 비활성화
+      data = await usedAPI.searchUsedItems({
+        destination: destination || null,
+        checkIn: checkIn || null,
+        checkOut: checkOut || null,
+        adults: adults || null,
+        priceMin: null,
+        priceMax: null,
+        sortBy: 'date',
+        sortDirection: 'asc',
+        status: null,
+        page: page,
+        size: size
       });
     } else {
       // 전체 목록 API 호출 (GET)
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/list?page=${page}&size=${size}`;
-      response = await fetch(apiUrl, {
-        cache: 'no-store', // SSR을 위해 캐시 비활성화
-      });
+      data = await usedAPI.getUsedItems({ page, size });
     }
     
-    if (response.ok) {
-      const data = await response.json();
-      
-      // 백엔드 API 응답을 프론트엔드 형식으로 변환
-      if (data.content) {
+    // 백엔드 API 응답을 프론트엔드 형식으로 변환
+    if (data.content) {
         const transformedContent = data.content.map(item => ({
           id: item.usedItemIdx,
           usedItemIdx: item.usedItemIdx,
@@ -65,6 +54,7 @@ async function getInitialData(searchParams) {
           roomType: item.reservation?.roomName || '객실 정보 없음',
           description: item.comment || '설명이 없습니다.',
           seller: item.reservation?.customerNickname || '판매자 정보 없음',
+          sellerIdx: item.reservation?.customerIdx || null,
           image: item.hotel?.hotelImageUrl || '',
           urgent: false,
           originalData: {
@@ -73,20 +63,17 @@ async function getInitialData(searchParams) {
           }
         }));
         
-        return {
-          ...data,
-          content: transformedContent
-        };
-      }
-      
-      return data;
+      return {
+        ...data,
+        content: transformedContent
+      };
     }
+      
+    return data;
   } catch (error) {
     console.error('초기 데이터 로드 실패:', error);
-  }
-  
-  // API 실패시 더미 데이터 반환
-  return {
+    // API 실패시 더미 데이터 반환
+    return {
     content: [
       {
         id: 999,
@@ -171,6 +158,7 @@ async function getInitialData(searchParams) {
     totalElements: 3,
     currentPage: 0
   };
+  }
 }
 
 const ResalePage = async ({ searchParams }) => {
