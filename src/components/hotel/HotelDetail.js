@@ -75,6 +75,7 @@ import { useRouter } from "next/navigation";
  * @param {boolean} [props.isModal=false] - 모달 모드 여부
  * @param {React.RefObject} [props.scrollContainerRef] - 외부 스크롤 컨테이너 ref
  * @param {Function} [props.onSearchParamsChange] - 검색 조건 변경 콜백
+ * @param {Function} [props.onClose] - 모달 닫기 콜백
  */
 const HotelDetail = ({
   contentId,
@@ -83,6 +84,7 @@ const HotelDetail = ({
   scrollContainerRef: externalScrollRef,
   onSearchParamsChange,
   onLoadingChange,
+  onClose,
 }) => {
   const router = useRouter();
   const { updateSearchParams, searchParams: storeSearchParams } =
@@ -643,9 +645,7 @@ const HotelDetail = ({
     <div
       id={`hotel-${hotelData.id}`}
       className={`bg-gray-50 ${
-        isModal
-          ? "flex flex-col h-full max-h-screen"
-          : "min-h-screen max-w-6xl mx-auto"
+        isModal ? "flex flex-col h-full" : "min-h-screen max-w-6xl mx-auto"
       }`}
     >
       {/* 고정 헤더 */}
@@ -690,20 +690,61 @@ const HotelDetail = ({
               </div>
             </div>
 
-            {/* 가격 및 조회수 */}
-            <div className="text-right ml-4 flex-shrink-0">
-              <p className="text-sm text-gray-500">평균가</p>
-              <p className="text-xl font-bold text-blue-600">
-                ₩
-                {formatPrice(
-                  Array.isArray(rooms) && rooms.length > 0
-                    ? (rooms[0]?.basePrice || rooms[0]?.price || 0) *
-                        (localSearchParams?.nights || 1)
-                    : 0
+            {/* 가격 및 조회수 - 모달일 때 세로 배치 */}
+            {isModal ? (
+              <div className="flex items-start gap-4 ml-4">
+                <div className="flex flex-col items-end gap-1">
+                  <LiveViewerCount contentId={contentId} />
+                  <p className="text-sm text-gray-500 mt-1">평균가</p>
+                  <p className="text-xl font-bold text-blue-600">
+                    ₩
+                    {formatPrice(
+                      Array.isArray(rooms) && rooms.length > 0
+                        ? (rooms[0]?.basePrice || rooms[0]?.price || 0) *
+                            (localSearchParams?.nights || 1)
+                        : 0
+                    )}
+                  </p>
+                </div>
+                {onClose && (
+                  <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    aria-label="닫기"
+                  >
+                    <svg
+                      className="w-6 h-6 text-gray-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
                 )}
-              </p>
-              <LiveViewerCount contentId={contentId} />
-            </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-6 ml-4">
+                <LiveViewerCount contentId={contentId} />
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">평균가</p>
+                  <p className="text-xl font-bold text-blue-600">
+                    ₩
+                    {formatPrice(
+                      Array.isArray(rooms) && rooms.length > 0
+                        ? (rooms[0]?.basePrice || rooms[0]?.price || 0) *
+                            (localSearchParams?.nights || 1)
+                        : 0
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -718,49 +759,45 @@ const HotelDetail = ({
                 className="flex items-center justify-between bg-white rounded-lg border border-gray-300 px-4 py-3 cursor-pointer hover:border-blue-500 transition-colors"
                 onClick={() => setIsSearchModalOpen(true)}
               >
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-600">체크인:</span>
-                    <span className="font-medium text-gray-900">
-                      {localSearchParams.checkIn
-                        ? new Date(
-                            localSearchParams.checkIn
-                          ).toLocaleDateString("ko-KR", {
+                <div className="flex items-center gap-4 text-sm text-gray-900">
+                  {localSearchParams.checkIn && localSearchParams.checkOut && (
+                    <>
+                      <span className="font-medium">
+                        {new Date(localSearchParams.checkIn).toLocaleDateString(
+                          "ko-KR",
+                          {
                             year: "numeric",
                             month: "2-digit",
                             day: "2-digit",
                             weekday: "short",
-                          })
-                        : "미선택"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-600">체크아웃:</span>
-                    <span className="font-medium text-gray-900">
-                      {localSearchParams.checkOut
-                        ? new Date(
-                            localSearchParams.checkOut
-                          ).toLocaleDateString("ko-KR", {
-                            year: "numeric",
-                            month: "2-digit",
-                            day: "2-digit",
-                            weekday: "short",
-                          })
-                        : "미선택"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-600">숙박:</span>
-                    <span className="font-medium text-gray-900">
-                      {localSearchParams.nights || 1}박
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-600">인원:</span>
-                    <span className="font-medium text-gray-900">
-                      성인 {localSearchParams.adults || 2}명
-                    </span>
-                  </div>
+                          }
+                        )}
+                      </span>
+                      <span>~</span>
+                      <span className="font-medium">
+                        {new Date(
+                          localSearchParams.checkOut
+                        ).toLocaleDateString("ko-KR", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          weekday: "short",
+                        })}
+                      </span>
+                    </>
+                  )}
+                  {(!localSearchParams.checkIn ||
+                    !localSearchParams.checkOut) && (
+                    <span className="text-gray-500">날짜 미선택</span>
+                  )}
+                  <span className="text-gray-400">|</span>
+                  <span className="font-medium">
+                    {localSearchParams.nights || 1}박
+                  </span>
+                  <span className="text-gray-400">|</span>
+                  <span className="font-medium">
+                    성인 {localSearchParams.adults || 2}명
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <svg
@@ -822,7 +859,7 @@ const HotelDetail = ({
       {/* 스크롤 가능한 메인 컨텐츠 */}
       <div
         ref={scrollContainerRef}
-        className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 ${
+        className={`flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 ${
           isModal
             ? "px-4 sm:px-6 lg:px-8 py-4 pb-8"
             : "px-4 sm:px-6 lg:px-8 py-6 pt-6"
@@ -835,8 +872,8 @@ const HotelDetail = ({
         {/* 이미지 갤러리 */}
         <HotelGallery contentId={contentId} isModal={isModal} />
 
-        {/* 호텔 기본 정보 */}
-        <HotelInfo hotelData={hotelData} />
+        {/* 호텔 기본 정보 - 패널 모드에서는 숨김 */}
+        {!isModal && <HotelInfo hotelData={hotelData} />}
 
         {/* 객실 목록 */}
         <section
@@ -855,6 +892,7 @@ const HotelDetail = ({
                   room={room}
                   searchParams={localSearchParams}
                   formatPrice={formatPrice}
+                  isModal={isModal}
                 />
               ))
             ) : (
