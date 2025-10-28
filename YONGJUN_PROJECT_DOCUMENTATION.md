@@ -10,26 +10,38 @@
 ```
 src/
 ├── components/
-│   └── hotel/
-│       ├── HotelDetail.js           # 호텔 상세 정보 메인 컴포넌트
-│       ├── HotelDetailPanel.js      # 패널 래퍼 컴포넌트 (네이버 스타일)
-│       ├── HotelGallery.js          # 이미지 갤러리
-│       ├── HotelInfo.js             # 호텔 기본 정보
-│       ├── HotelAmenities.js        # 편의시설
-│       ├── HotelReviews.js          # 리뷰
-│       ├── HotelLocation.js         # 위치 정보
-│       ├── HotelPolicy.js           # 이용 정책
-│       ├── RoomCard.js              # 객실 카드
-│       ├── LiveViewerCount.js       # 실시간 조회수
-│       ├── mockHotelData.js         # 임시 데이터 (API 연동 전)
-│       └── index.js                 # Export 통합
+│   ├── hotel/
+│   │   ├── HotelDetail.js           # 호텔 상세 정보 메인 컴포넌트
+│   │   ├── HotelDetailPanel.js      # 패널 래퍼 컴포넌트 (네이버 스타일)
+│   │   ├── HotelGallery.js          # 이미지 갤러리
+│   │   ├── HotelInfo.js             # 호텔 기본 정보
+│   │   ├── HotelAmenities.js        # 편의시설
+│   │   ├── HotelReviews.js          # 리뷰
+│   │   ├── HotelLocation.js         # 위치 정보
+│   │   ├── HotelPolicy.js           # 이용 정책
+│   │   ├── RoomCard.js              # 객실 카드 (예약 버튼)
+│   │   ├── LiveViewerCount.js       # 실시간 조회수 (20초마다 갱신)
+│   │   ├── mockHotelData.js         # 임시 데이터 (API 연동 전)
+│   │   └── index.js                 # Export 통합
+│   └── payment/
+│       ├── TossPaymentsWidget.js    # 토스페이먼츠 SDK 통합
+│       ├── CashPointSection.js      # 캐시/포인트 입력 UI
+│       └── PaymentSummary.js        # 결제 요약 및 버튼
 │
-└── app/
-    ├── hotel-search/
-    │   └── page.js                  # 호텔 검색 결과 페이지 (패널 사용)
-    └── hotel/
-        └── [id]/
-            └── page.js              # 호텔 상세 전체 페이지
+├── app/
+│   ├── reservation/
+│   │   └── page.js                  # 예약 결제 페이지 (메인)
+│   ├── api/
+│   │   └── payments/
+│   │       └── route.js            # 결제 API 프록시
+│   ├── hotel-search/
+│   │   └── page.js                  # 호텔 검색 결과 페이지 (패널 사용)
+│   └── hotel/
+│       └── [id]/
+│           └── page.js              # 호텔 상세 전체 페이지
+│
+└── stores/
+    └── paymentStore.js              # 결제 정보 스토어 (Zustand)
 
 ```
 
@@ -37,9 +49,48 @@ src/
 
 ## 🎯 주요 기능
 
-### 1️⃣ 호텔 상세 정보 표시 (2가지 모드)
+### 1️⃣ 호텔 예약 결제 시스템
 
-### 2️⃣ 검색 조건 관리 및 변경
+#### **예약 흐름**
+
+```
+1. RoomCard에서 "예약하기" 버튼 클릭
+   ↓
+2. paymentDraft 생성 (Zustand 스토어 저장)
+   - orderId, contentId, roomIdx, roomName
+   - checkIn, checkOut, guests, nights
+   - roomPrice, totalPrice
+   ↓
+3. /reservation 페이지로 이동
+   ↓
+4. 사용자 정보 자동 채우기 (/api/customer/me)
+   ↓
+5. 캐시/포인트 입력 (선택)
+   ↓
+6. TossPayments 위젯 렌더링
+   ↓
+7. "결제하기" 버튼 클릭
+   ↓
+8. 백엔드로 결제 검증 요청
+   ↓
+9. DB 저장 (트랜잭션 보장)
+   ↓
+10. 이메일 발송 (QR 코드 포함)
+```
+
+#### **주요 기능**
+
+- ✅ **로그인 필수**: 미로그인 시 `/login`으로 리다이렉트
+- ✅ **사용자 정보 자동 채우기**: nickname, email, phone 자동 입력
+- ✅ **캐시/포인트 사용**: 부분 결제 지원
+- ✅ **실시간 조회수**: 20초마다 자동 갱신
+- ✅ **TossPayments 통합**: 결제 SDK 통합
+- ✅ **결제 검증**: 프론트엔드 → Next.js API → Spring Boot
+- ✅ **트랜잭션 보장**: 롤백 지원
+
+### 2️⃣ 호텔 상세 정보 표시 (2가지 모드)
+
+### 3️⃣ 검색 조건 관리 및 변경
 
 #### **검색 조건 표시**
 
@@ -402,6 +453,100 @@ setActiveSection(currentSection);
 - 이미지 placeholder 실제 이미지로 교체
 - 리뷰 더보기 기능
 - 모바일 최적화
+
+---
+
+## 🐛 트러블 슈팅 (호텔 예약 결제 시스템)
+
+### 1️⃣ TossPayments 무한 로딩
+
+**문제**: 결제 취소 후 재시도 시 위젯이 무한 로딩
+
+**원인**:
+
+- `useEffect`가 여러 번 실행되며 SDK 스크립트가 중복 로드
+- `window.tossPaymentHandler`가 재등록되지 않음
+
+**해결**:
+
+```javascript
+// 1. SDK 로드 상태 체크
+useEffect(() => {
+  if (typeof window !== "undefined" && window.TossPayments) {
+    setScriptLoaded(true);
+    return;
+  }
+  // 스크립트 로드...
+}, []);
+
+// 2. 단일 useEffect로 통합
+useEffect(() => {
+  if (!scriptLoaded) return;
+
+  const widget = window.TossPayments(clientKey);
+  const handler = widget.requestPayment.bind(widget);
+  window.tossPaymentHandler = handler;
+}, [scriptLoaded]);
+
+// 3. key prop으로 강제 리마운트 방지
+<TossPaymentsWidget key={paymentKeys.orderId} />;
+```
+
+**교훈**: 외부 SDK는 로드 상태 추적 필수, 의존성 배열 최소화
+
+---
+
+### 2️⃣ paymentKey undefined 오류
+
+**문제**: `Cannot read properties of undefined (reading 'paymentKey')`
+
+**원인**: 결제 취소 시 `paymentResult`가 `undefined`인데 접근 시도
+
+**해결**:
+
+```javascript
+if (!paymentResult?.paymentKey) {
+  throw new Error("결제 응답에 paymentKey가 없습니다.");
+}
+```
+
+**교훈**: Optional chaining과 명시적 검증 필수
+
+---
+
+### 3️⃣ 외래키 제약조건 오류
+
+**문제**: `Cannot add or update a child row: foreign key constraint fails`
+
+**원인**:
+
+- `Room` 엔티티는 복합키 사용 (`roomIdx` + `contentId`)
+- 프론트엔드에서 `roomIdx` 전달 누락
+
+**해결**:
+
+1. `RoomCard.js`: `paymentDraft` 생성 시 `roomIdx` 추가
+2. `reservation/page.js`: `hotelInfo`에 `roomIdx` 전달
+3. `TossPaymentsWidget.js`: 백엔드로 `roomIdx` 전달
+
+**교훈**: 복합키를 사용하는 엔티티는 모든 키를 검증해야 함
+
+---
+
+### 4️⃣ JSON 파싱 오류
+
+**문제**: `Cannot deserialize value of type java.lang.Integer from String`
+
+**원인**: 타입 불일치 - `contentId`는 String인데 Integer로 파싱 시도
+
+**해결**:
+
+```javascript
+contentId: String(hotelInfo?.contentId || ""),     // String 타입
+roomId: parseInt(hotelInfo?.roomIdx || hotelInfo?.roomId), // Integer 타입
+```
+
+**교훈**: 백엔드 DTO 타입을 정확히 파악하고 명시적 타입 변환
 
 ---
 
