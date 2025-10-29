@@ -99,6 +99,11 @@ const HeroSection = () => {
   const handleDateChange = (newCheckIn, newCheckOut) => {
     setCheckIn(newCheckIn);
     setCheckOut(newCheckOut);
+    
+    // 다이닝 선택 시 diningDate도 업데이트
+    if (selectedType === "dining") {
+      setDiningDate(newCheckIn);
+    }
   };
 
   // 호텔 가져오기
@@ -267,7 +272,7 @@ const HeroSection = () => {
                     <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white hover:border-[#3B82F6] transition-colors h-12 flex flex-col justify-center">
                       <div className="text-xs text-gray-600">다이닝</div>
                       <div className="text-sm text-gray-900 font-medium">
-                        {checkIn ? formatDateDisplay(checkIn) : "날짜 선택"}
+                        {diningDate ? formatDateDisplay(diningDate) : "날짜 선택"}
                       </div>
                     </div>
                   </div>
