@@ -1,17 +1,22 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
+import ReservationDetailModal from '@/components/admin/ReservationDetailModal';
 import axiosInstance from '@/lib/axios';
-import { ChevronLeft, ChevronRight, Calendar, User, CreditCard, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, User, CreditCard, Clock, Building2 } from 'lucide-react';
 
 const AdminCalendar = () => {
+  const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedReservations, setSelectedReservations] = useState([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedReservationDetail, setSelectedReservationDetail] = useState(null);
+  const [showReservationDetailModal, setShowReservationDetailModal] = useState(false);
 
   // 달력 데이터 계산
   const calendarData = useMemo(() => {
@@ -71,21 +76,24 @@ const AdminCalendar = () => {
 
   useEffect(() => {
     fetchReservations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDate]);
 
   // 날짜 포맷 (YYYY-MM-DD)
   const formatDate = (date) => {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
-  // 특정 날짜의 예약 필터링
+  // 특정 날짜의 예약 필터링 (체크인 날짜만 확인)
   const getReservationsForDate = (date) => {
     if (!date) return [];
     const dateStr = formatDate(date);
     return reservations.filter(reservation => {
       const checkinStr = reservation.checkinDate?.split('T')[0];
-      const checkoutStr = reservation.checkoutDate?.split('T')[0];
-      return checkinStr === dateStr || checkoutStr === dateStr;
+      return checkinStr === dateStr;
     });
   };
 
@@ -112,6 +120,12 @@ const AdminCalendar = () => {
     if (dateReservations.length > 0) {
       setShowDetailModal(true);
     }
+  };
+
+  // 예약 상세보기 핸들러
+  const handleReservationDetail = (reservation) => {
+    setSelectedReservationDetail(reservation);
+    setShowReservationDetailModal(true);
   };
 
   const getStatusBadge = (status) => {
@@ -240,10 +254,20 @@ const AdminCalendar = () => {
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
             <div className="absolute inset-0 border-8 border-black"></div>
             <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
-              <div className="px-6 py-4 border-b">
+              <div className="px-6 py-4 border-b flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900">
                   {selectedDate && `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 예약`}
                 </h2>
+                <button
+                  onClick={() => {
+                    const dateStr = selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` : '';
+                    router.push(`/admin/rooms?date=${dateStr}`);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <Building2 className="w-4 h-4" />
+                  객실관리
+                </button>
               </div>
               
               <div className="px-6 py-4 flex-1 overflow-y-auto">
@@ -263,7 +287,7 @@ const AdminCalendar = () => {
                           {getStatusBadge(reservation.status)}
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
                           <div className="flex items-center gap-2 text-gray-600">
                             <Calendar className="w-4 h-4" />
                             <span>
@@ -279,6 +303,15 @@ const AdminCalendar = () => {
                             <CreditCard className="w-4 h-4" />
                             <span>결제금액: {reservation.totalPrice?.toLocaleString() || '0'}원</span>
                           </div>
+                        </div>
+                        
+                        <div className="flex justify-end mt-3">
+                          <button
+                            onClick={() => handleReservationDetail(reservation)}
+                            className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                          >
+                            상세보기
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -304,6 +337,17 @@ const AdminCalendar = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* 예약 상세 모달 */}
+        {showReservationDetailModal && (
+          <ReservationDetailModal
+            reservation={selectedReservationDetail}
+            onClose={() => {
+              setShowReservationDetailModal(false);
+              setSelectedReservationDetail(null);
+            }}
+          />
         )}
       </div>
     </AdminLayout>

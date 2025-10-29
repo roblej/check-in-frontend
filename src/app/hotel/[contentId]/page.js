@@ -1,13 +1,15 @@
-import { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import HotelDetail from "@/components/hotel/HotelDetail";
-import StructuredData from "@/components/SEO/StructuredData";
 import LiveViewerPanel from "@/components/hotel/LiveViewerPanel";
 import { hotelAPI } from "@/lib/api/hotel";
 import HotelDetailClient from "./HotelDetailClient";
 
-// SSR시점에서 동적 메타데이터 생성
+/**
+ * SSR 시점에서 동적 메타데이터 생성
+ * @param {Object} params - 라우트 파라미터
+ * @param {Object} searchParams - 쿼리 파라미터
+ * @returns {Promise<Object>} 메타데이터 객체
+ */
 export async function generateMetadata({ params, searchParams }) {
   const contentId = params.contentId || params.id;
   try {
@@ -50,22 +52,14 @@ const HotelDetailPage = async ({ params, searchParams }) => {
   const contentId = params.contentId || params.id;
   const resolvedSearchParams = await searchParams;
 
-  console.log("HotelDetailPage params:", {
-    params,
-    contentId,
-    resolvedSearchParams,
-  });
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* StructuredData는 추후 실제 데이터 연결 시 보완 */}
       <Header />
       <HotelDetailClient
         contentId={contentId}
         searchParams={resolvedSearchParams}
       />
       <Footer />
-      {/* 실시간 조회수 플로팅 패널 */}
       <LiveViewerPanel contentId={contentId} />
     </div>
   );
