@@ -790,11 +790,13 @@ export default function MyPage() {
                   <div key={review.reviewIdx} className="border border-gray-200 rounded-xl p-5">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
-                        <h3 className="text-lg font-bold text-gray-900 mb-1">{review.hotelName || '호텔 정보 없음'}</h3>
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">
+                          {review.hotelName || review.hotelInfo?.title || '호텔 정보 없음'}
+                        </h3>
                         <div className="flex items-center gap-2 mb-2">
                           <div className="flex">
                             {[...Array(5)].map((_, i) => (
-                              <Star key={i} className={`w-4 h-4 ${i < (review.star?.intValue() || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                              <Star key={i} className={`w-4 h-4 ${i < (review.star || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
                             ))}
                           </div>
                           <span className="text-sm text-gray-500">
