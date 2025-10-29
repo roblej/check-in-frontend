@@ -11,7 +11,7 @@ import { useAdminStore } from "@/stores/adminStore";
 import { setAdminIdxCookie } from "@/utils/cookieUtils";
 export default function LoginPage() {
   const router = useRouter();
-  const { setAccessToken, setInlogged } = useCustomerStore();
+  const { setAccessToken, setInlogged ,isInlogged} = useCustomerStore();
   const { setAdminIdx, setContentId, setHotelInfo, setAdminLoggedIn, fetchContentIdByAdminIdx } = useAdminStore();
   const [formData, setFormData] = useState({
     id: "",
@@ -50,8 +50,7 @@ export default function LoginPage() {
       console.log(res.data);
       if(res.data){
         accessToken = res.data;
-        console.log("accessToken");
-        console.log(accessToken);
+        setInlogged(true);
       }
     })
   };
@@ -82,7 +81,7 @@ export default function LoginPage() {
     await login();
     setIsSubmitting(true);
 
-    if(accessToken && Object.keys(accessToken).length > 0) {
+    if(isInlogged) {
       // TODO: API 연동
       // const response = await axios.post('/api/auth/login', {
       //   id: formData.id,
@@ -99,7 +98,7 @@ export default function LoginPage() {
       
       // 성공 시 사용자 타입에 따라 리다이렉트
       alert("로그인 성공");
-      setInlogged(true);
+      
       setAccessToken(accessToken);
 
       // 사업자(admin)인 경우 관리자 화면으로 이동

@@ -7,12 +7,14 @@ import { useAdminStore } from "@/stores/adminStore";
 import { deleteAdminIdxCookie } from "@/utils/cookieUtils";
 const Header = () => {
   const router = useRouter();
-  const { inlogged, resetAccessToken, setInlogged, readAccessToken, verifyTokenWithBackend } = useCustomerStore();
+  const { resetAccessToken, setInlogged, readAccessToken, verifyTokenWithBackend,isInlogged } = useCustomerStore();
   const { resetAdminData } = useAdminStore();
+  const logout_url = "api/login/logout";
   
 
   const handleLogout = () => {
     // 고객 스토어 초기화
+    
     resetAccessToken("");
     setInlogged(false);
     
@@ -80,8 +82,8 @@ const Header = () => {
             >
               MY
             </button>
-            <Link href= {inlogged ? "/" : "/login"} onClick={inlogged ? handleLogout : ""} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
-              {inlogged ? "로그아웃" : "로그인"} 
+            <Link href= {isInlogged() ? "/" : "/login"} onClick={isInlogged() ? handleLogout : ""} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
+              {isInlogged() ? "로그아웃" : "로그인"}
             </Link>
           </div>
         </div>
