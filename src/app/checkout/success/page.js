@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -12,6 +12,8 @@ const SuccessPageContent = () => {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
 
+  const isProcessingRef = useRef(false);
+
   useEffect(() => {
     const doConfirm = async () => {
       const paymentKey = search.get("paymentKey");
@@ -19,15 +21,18 @@ const SuccessPageContent = () => {
       const amount = search.get("amount");
       const type = search.get("type");
 
-      console.log("Success page params:", {
-        paymentKey,
-        orderId,
-        amount,
-        type,
-      });
+      // 클라이언트 가드: 동일 주문의 중복 처리 방지 (StrictMode, 중복 방문 등)
+      const processedKey = orderId ? `payment_processed_${orderId}` : null;
+      if (processedKey && typeof window !== "undefined") {
+        if (isProcessingRef.current) return; // 같은 마운트 내 중복 호출 방지
+        if (sessionStorage.getItem(processedKey) === "1") {
+          setLoading(false);
+          return;
+        }
+        isProcessingRef.current = true;
+      }
 
       if (!paymentKey || !orderId || !amount) {
-        console.error("필수 파라미터 누락:", { paymentKey, orderId, amount });
         setError("필수 결제 파라미터가 없습니다.");
         setLoading(false);
         return;
@@ -48,6 +53,7 @@ const SuccessPageContent = () => {
           type,
           message: "중고 호텔 결제가 완료되었습니다.",
         });
+        if (processedKey) sessionStorage.setItem(processedKey, "1");
         setLoading(false);
         return;
       }
@@ -76,18 +82,18 @@ const SuccessPageContent = () => {
 
         if (!res.ok) {
           const errorText = await res.text();
-          console.error("결제 검증 실패:", errorText);
           throw new Error("결제 처리 실패");
         }
 
         const data = await res.json();
-        console.log("결제 검증 성공:", data);
         setResult(data);
+        if (processedKey) sessionStorage.setItem(processedKey, "1");
       } catch (e) {
-        console.error("결제 검증 오류:", e);
         setError(e?.message || "서버 오류가 발생했습니다.");
+        if (processedKey) sessionStorage.removeItem(processedKey);
       } finally {
         setLoading(false);
+        if (isProcessingRef.current) isProcessingRef.current = false;
       }
     };
     doConfirm();
@@ -95,12 +101,42 @@ const SuccessPageContent = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 flex flex-col">
         <Header />
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">결제 처리 중...</p>
+        <div className="flex-1 flex items-center justify-center py-20">
+          <div className="text-center max-w-md px-4">
+            {/* 로딩 애니메이션 */}
+            <div className="relative mb-8">
+              <div className="animate-spin rounded-full h-20 w-20 border-b-4 border-orange-600 mx-auto"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-orange-600 text-2xl">💳</div>
+              </div>
+            </div>
+
+            {/* 로딩 메시지 */}
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              결제를 처리하고 있습니다
+            </h2>
+            <p className="text-gray-600 mb-6">
+              백엔드에서 결제 정보를 검증 중입니다.
+              <br />
+              잠시만 기다려주세요...
+            </p>
+
+            {/* 프로그레스 바 */}
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-orange-600 h-2 rounded-full animate-pulse"
+                style={{ width: "70%" }}
+              ></div>
+            </div>
+
+            {/* 안내 메시지 */}
+            <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                ⚠️ 페이지를 새로고침하거나 닫지 마세요
+              </p>
+            </div>
           </div>
         </div>
         <Footer />
@@ -277,12 +313,20 @@ const SuccessPage = () => {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 flex flex-col">
           <Header />
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">결제 정보를 불러오는 중...</p>
+          <div className="flex-1 flex items-center justify-center py-20">
+            <div className="text-center max-w-md px-4">
+              <div className="relative mb-8">
+                <div className="animate-spin rounded-full h-20 w-20 border-b-4 border-orange-600 mx-auto"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-orange-600 text-2xl">💳</div>
+                </div>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                결제 정보를 불러오는 중...
+              </h2>
+              <p className="text-gray-600">잠시만 기다려주세요</p>
             </div>
           </div>
           <Footer />

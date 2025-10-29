@@ -1,14 +1,28 @@
 import { NextResponse } from "next/server";
 
+// Simple in-memory idempotency guards (per server instance)
+const inFlightByOrderId = new Map(); // orderId -> Promise resolving to json
+const processedByOrderId = new Map(); // orderId -> { result, at }
+const PROCESSED_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+const getProcessed = (orderId) => {
+  const entry = processedByOrderId.get(orderId);
+  if (!entry) return null;
+  if (Date.now() - entry.at > PROCESSED_TTL_MS) {
+    processedByOrderId.delete(orderId);
+    return null;
+  }
+  return entry.result;
+};
+
+const setProcessed = (orderId, result) => {
+  processedByOrderId.set(orderId, { result, at: Date.now() });
+};
+
 export async function POST(req) {
   try {
     const body = await req.json();
-    console.log("결제 API 요청 받음 (민감정보 제외):", {
-      paymentKey: body.paymentKey ? "***" : undefined,
-      orderId: body.orderId,
-      amount: body.amount,
-      type: body.type,
-    });
+    // request received (logging removed in production)
 
     const {
       paymentKey,
@@ -23,15 +37,17 @@ export async function POST(req) {
       customerInfo,
     } = body || {};
 
-    console.log("파싱된 데이터 (민감정보 제외):", {
-      paymentKey: paymentKey ? "***" : undefined,
-      orderId,
-      amount,
-      usedItemIdx,
-      usedTradeIdx,
-      totalAmount,
-      type: body.type,
-    });
+    // idempotency: short-circuit if already processed or in-flight
+    if (orderId) {
+      const done = getProcessed(orderId);
+      if (done) {
+        return NextResponse.json(done);
+      }
+      if (inFlightByOrderId.has(orderId)) {
+        const prev = await inFlightByOrderId.get(orderId);
+        return NextResponse.json(prev);
+      }
+    }
 
     if (!paymentKey || !orderId || !amount) {
       const errorMsg = `필수 파라미터 누락: paymentKey=${!!paymentKey}, orderId=${!!orderId}, amount=${!!amount}`;
@@ -137,44 +153,58 @@ export async function POST(req) {
           process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
         }/api/payments/confirm`
       );
-
-      const backendResponse = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
-        }/api/payments/confirm`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(backendRequestData),
-        }
-      );
-
-      console.log("백엔드 응답 상태:", backendResponse.status);
-      console.log(
-        "백엔드 응답 헤더:",
-        Object.fromEntries(backendResponse.headers.entries())
-      );
-
-      if (!backendResponse.ok) {
-        const errorText = await backendResponse.text();
-        console.error("백엔드 오류 응답:", errorText);
-        throw new Error(`백엔드 결제 검증 실패: ${errorText}`);
+      // Wrap backend call with in-flight guard to avoid duplicates
+      if (orderId && inFlightByOrderId.has(orderId)) {
+        const prev = await inFlightByOrderId.get(orderId);
+        return NextResponse.json(prev);
       }
 
-      const result = await backendResponse.json();
-      console.log("백엔드 응답 데이터:", result);
+      const backendCall = async () => {
+        const backendResponse = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
+          }/api/payments/confirm`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              // Provide idempotency hint to backend if supported
+              "Idempotency-Key": orderId,
+            },
+            body: JSON.stringify(backendRequestData),
+          }
+        );
+
+        if (!backendResponse.ok) {
+          const errorText = await backendResponse.text();
+          throw new Error(`백엔드 결제 검증 실패: ${errorText}`);
+        }
+
+        const result = await backendResponse.json();
+        return result;
+      };
+
+      let result;
+      if (orderId) {
+        const p = backendCall()
+          .then((r) => {
+            setProcessed(orderId, r);
+            return r;
+          })
+          .finally(() => inFlightByOrderId.delete(orderId));
+        inFlightByOrderId.set(orderId, p);
+        result = await p;
+      } else {
+        result = await backendCall();
+      }
       return NextResponse.json(result);
     } catch (error) {
-      console.error("호텔 예약 결제 처리 오류:", error);
       return NextResponse.json(
         { success: false, message: error.message },
         { status: 500 }
       );
     }
   } catch (e) {
-    console.error("결제 처리 오류:", e);
     return NextResponse.json(
       { message: e?.message || "server error" },
       { status: 500 }
