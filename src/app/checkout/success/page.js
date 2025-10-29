@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import RouletteModal from "@/components/roulette/RouletteModal";
 
 const SuccessPageContent = () => {
   const search = useSearchParams();
@@ -11,6 +12,8 @@ const SuccessPageContent = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [isRouletteModalOpen, setIsRouletteModalOpen] = useState(false);
+  const [hasRouletteSpun, setHasRouletteSpun] = useState(false); // 룰렛을 이미 돌렸는지 여부
 
   const isProcessingRef = useRef(false);
 
@@ -295,16 +298,31 @@ const SuccessPageContent = () => {
               예약 내역 보기
             </button>
             <button
-              onClick={() => alert("포인트 뽑기! 🎯")}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              onClick={() => setIsRouletteModalOpen(true)}
+              disabled={hasRouletteSpun}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                hasRouletteSpun
+                  ? "bg-gray-400 cursor-not-allowed text-white"
+                  : "bg-blue-500 hover:bg-blue-600 text-white"
+              }`}
             >
-              포인트 뽑기
+              {hasRouletteSpun ? "뽑기 완료" : "포인트 뽑기"}
             </button>
           </div>
         </div>
       </div>
 
       <Footer />
+
+      {/* 룰렛 모달 */}
+      <RouletteModal
+        isOpen={isRouletteModalOpen}
+        onClose={() => setIsRouletteModalOpen(false)}
+        onSpinComplete={() => {
+          setHasRouletteSpun(true);
+          // 모달은 열린 상태로 유지, 사용자가 닫기 버튼을 눌러야 닫힘
+        }}
+      />
     </div>
   );
 };
