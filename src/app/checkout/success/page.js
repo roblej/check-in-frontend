@@ -53,15 +53,25 @@ const SuccessPageContent = () => {
       }
 
       try {
+        // 다이닝 예약인 경우 추가 파라미터 수집
+        const payload = {
+          paymentKey,
+          orderId,
+          amount: amountNum,
+          type,
+        };
+
+        if (type === "dining_reservation") {
+          payload.diningIdx = parseInt(search.get("diningIdx"));
+          payload.diningDate = search.get("diningDate");
+          payload.diningTime = search.get("diningTime");
+          payload.guests = parseInt(search.get("guests"));
+        }
+
         const res = await fetch("/api/payments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            paymentKey,
-            orderId,
-            amount: amountNum,
-            type,
-          }),
+          body: JSON.stringify(payload),
         });
 
         if (!res.ok) {
@@ -124,7 +134,9 @@ const SuccessPageContent = () => {
 
   const qrUrl = result?.qrUrl;
   const receipt = result?.receiptUrl;
-  const isUsedHotel = search.get("type") === "used_hotel";
+  const type = search.get("type");
+  const isUsedHotel = type === "used_hotel";
+  const isDiningReservation = type === "dining_reservation";
   const amountFromResult = result?.amount || search.get("amount");
 
   return (
@@ -138,14 +150,20 @@ const SuccessPageContent = () => {
 
           {/* 제목 */}
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            {isUsedHotel ? "중고 호텔 예약 완료!" : "결제가 완료되었습니다"}
+            {isUsedHotel 
+              ? "중고 호텔 예약 완료!" 
+              : isDiningReservation 
+                ? "다이닝 예약 완료!"
+                : "결제가 완료되었습니다"}
           </h1>
 
           {/* 설명 */}
           <p className="text-gray-600 mb-8">
             {isUsedHotel
               ? "중고 호텔 예약이 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."
-              : "결제가 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."}
+              : isDiningReservation
+                ? "다이닝 예약이 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."
+                : "결제가 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."}
           </p>
 
           {/* QR 코드 */}
@@ -228,10 +246,17 @@ const SuccessPageContent = () => {
               홈으로
             </button>
             <button
-              onClick={() => router.push("/orders")}
+              onClick={() => {
+                // 예약 상세 페이지로 이동 (reservIdx가 있으면 해당 페이지로, 없으면 목록으로)
+                if (result?.reservIdx) {
+                  router.push(`/mypage/reservation/${result.reservIdx}`);
+                } else {
+                  router.push("/mypage");
+                }
+              }}
               className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
             >
-              주문 내역
+              예약 내역 보기
             </button>
             <button
               onClick={() => alert("포인트 뽑기! 🎯")}

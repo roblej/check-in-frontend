@@ -185,10 +185,17 @@ const PaymentCompletePageContent = () => {
               홈으로
             </button>
             <button
-              onClick={() => router.push("/orders")}
+              onClick={() => {
+                // 예약 상세 페이지로 이동 (reservIdx가 있으면 해당 페이지로, 없으면 마이페이지로)
+                if (paymentInfo?.reservIdx) {
+                  router.push(`/mypage/reservation/${paymentInfo.reservIdx}`);
+                } else {
+                  router.push("/mypage");
+                }
+              }}
               className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
             >
-              주문 내역
+              예약 내역 보기
             </button>
             <button
               onClick={() => router.push("/mypage")}
