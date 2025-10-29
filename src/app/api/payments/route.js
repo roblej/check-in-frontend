@@ -51,6 +51,7 @@ export async function POST(req) {
 
     if (!paymentKey || !orderId || !amount) {
       const errorMsg = `필수 파라미터 누락: paymentKey=${!!paymentKey}, orderId=${!!orderId}, amount=${!!amount}`;
+      console.error(errorMsg);
       return NextResponse.json(
         { success: false, message: errorMsg },
         { status: 400 }
@@ -71,47 +72,87 @@ export async function POST(req) {
       });
     }
 
-    // 호텔 예약인 경우 백엔드로 전달 (당신 기능)
+    // 호텔 예약 또는 다이닝 예약인 경우 백엔드로 전달
     try {
-      // roomId를 Integer로 변환 (백엔드에서 Integer 타입 요구)
-      // roomId가 "1003654-1" 형식일 경우 마지막 부분만 추출
-      let roomIdValue = body.hotelInfo?.roomId || body.roomId;
+      let backendRequestData;
 
-      // 문자열이고 "-"를 포함하면 마지막 부분을 추출
-      if (typeof roomIdValue === "string" && roomIdValue.includes("-")) {
-        const parts = roomIdValue.split("-");
-        roomIdValue = parts[parts.length - 1]; // 마지막 부분 (roomIdx)
+      if (body.type === "dining_reservation") {
+        // 다이닝 예약 데이터 구성
+        backendRequestData = {
+          paymentKey,
+          orderId,
+          amount,
+          type: "dining_reservation",
+          customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1,
+          diningIdx: body.diningIdx,
+          diningDate: body.diningDate,
+          diningTime: body.diningTime,
+          guests: body.guests,
+          totalPrice: body.totalPrice || amount,
+          customerName: body.customerInfo?.name || body.customerName,
+          customerEmail: body.customerInfo?.email || body.customerEmail,
+          customerPhone: body.customerInfo?.phone || body.customerPhone,
+          specialRequests: body.customerInfo?.specialRequests || body.specialRequests,
+          method: body.method || "card",
+          pointsUsed: body.paymentInfo?.pointAmount || body.pointsUsed || 0,
+          cashUsed: body.paymentInfo?.cashAmount || body.cashUsed || 0,
+        };
+      } else {
+        // 호텔 예약 데이터 구성
+        // roomId를 Integer로 변환 (백엔드에서 Integer 타입 요구)
+        // roomId가 "1003654-1" 형식일 경우 마지막 부분만 추출
+        let roomIdValue = body.hotelInfo?.roomId || body.roomId;
+
+        // 문자열이고 "-"를 포함하면 마지막 부분을 추출
+        if (typeof roomIdValue === "string" && roomIdValue.includes("-")) {
+          const parts = roomIdValue.split("-");
+          roomIdValue = parts[parts.length - 1]; // 마지막 부분 (roomIdx)
+        }
+
+        const roomIdInt =
+          typeof roomIdValue === "string"
+            ? parseInt(roomIdValue, 10)
+            : roomIdValue;
+
+        backendRequestData = {
+          paymentKey,
+          orderId,
+          amount,
+          type: "hotel_reservation",
+          customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1, // 실제 고객 ID
+          contentId: body.hotelInfo?.contentId || body.contentId, // String 타입
+          roomId: roomIdInt, // Integer 타입으로 변환
+          checkIn: body.hotelInfo?.checkIn || body.checkIn,
+          checkOut: body.hotelInfo?.checkOut || body.checkOut,
+          guests: body.hotelInfo?.guests || body.guests,
+          nights: body.hotelInfo?.nights || body.nights,
+          roomPrice: body.hotelInfo?.roomPrice || body.roomPrice,
+          totalPrice: body.hotelInfo?.totalPrice || body.totalPrice,
+          customerName: body.customerInfo?.name || body.customerName,
+          customerEmail: body.customerInfo?.email || body.customerEmail,
+          customerPhone: body.customerInfo?.phone || body.customerPhone,
+          specialRequests:
+            body.customerInfo?.specialRequests || body.specialRequests,
+          method: body.method || "card",
+          pointsUsed: body.paymentInfo?.pointAmount || body.pointsUsed || 0,
+          cashUsed: body.paymentInfo?.cashAmount || body.cashUsed || 0,
+        };
       }
 
-      const roomIdInt =
-        typeof roomIdValue === "string"
-          ? parseInt(roomIdValue, 10)
-          : roomIdValue;
-
-      const backendRequestData = {
-        paymentKey,
-        orderId,
-        amount,
-        type: "hotel_reservation",
-        customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1, // 실제 고객 ID
-        contentId: body.hotelInfo?.contentId || body.contentId, // String 타입
-        roomId: roomIdInt, // Integer 타입으로 변환
-        checkIn: body.hotelInfo?.checkIn || body.checkIn,
-        checkOut: body.hotelInfo?.checkOut || body.checkOut,
-        guests: body.hotelInfo?.guests || body.guests,
-        nights: body.hotelInfo?.nights || body.nights,
-        roomPrice: body.hotelInfo?.roomPrice || body.roomPrice,
-        totalPrice: body.hotelInfo?.totalPrice || body.totalPrice,
-        customerName: body.customerInfo?.name || body.customerName,
-        customerEmail: body.customerInfo?.email || body.customerEmail,
-        customerPhone: body.customerInfo?.phone || body.customerPhone,
-        specialRequests:
-          body.customerInfo?.specialRequests || body.specialRequests,
-        method: body.method || "card",
-        pointsUsed: body.paymentInfo?.pointAmount || body.pointsUsed || 0,
-        cashUsed: body.paymentInfo?.cashAmount || body.cashUsed || 0,
-      };
-
+      console.log("백엔드로 전송할 데이터 (민감정보 제외):", {
+        paymentKey: backendRequestData.paymentKey ? "***" : undefined,
+        orderId: backendRequestData.orderId,
+        amount: backendRequestData.amount,
+        type: backendRequestData.type,
+        diningIdx: backendRequestData.diningIdx,
+        contentId: backendRequestData.contentId,
+      });
+      console.log(
+        "백엔드 URL:",
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
+        }/api/payments/confirm`
+      );
       // Wrap backend call with in-flight guard to avoid duplicates
       if (orderId && inFlightByOrderId.has(orderId)) {
         const prev = await inFlightByOrderId.get(orderId);

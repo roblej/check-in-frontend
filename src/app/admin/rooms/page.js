@@ -1,107 +1,97 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { CheckCircle, Building2, Sparkles, Wrench, HelpCircle, Home, DollarSign } from 'lucide-react';
+import { CheckCircle, Building2, Sparkles, Wrench, HelpCircle, Home, DollarSign, X, Eye, Calendar } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
 const RoomsPage = () => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  // URL에서 날짜 파라미터 가져오기 (없으면 오늘 날짜)
+  const selectedDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
   const api_url = "/admin/roomList";
 
-  const [selectedTab, setSelectedTab] = useState('status');
-  const [selectedFloor, setSelectedFloor] = useState('all');
-  const [roomList, setRoomList] = useState([]);
-
-  function getData(){
-    axiosInstance.get(api_url).then(res => {
-      console.log(res.data);
-      setRoomList(res.data);
-    });
-  }
+  const [roomStatusList, setRoomStatusList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [availableRoomCount, setAvailableRoomCount] = useState(0);
+  const [totalRoomCount, setTotalRoomCount] = useState(0);
 
   useEffect(() => {
-    getData();
-  }, []);
+    fetchRoomStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
 
-  // 객실 데이터
-  const rooms = [
-    { number: '101', floor: 1, type: '스탠다드룸', status: 'occupied', guest: '김철수', checkOut: '2024-01-17', price: '₩150,000' },
-    { number: '102', floor: 1, type: '스탠다드룸', status: 'available', guest: null, checkOut: null, price: '₩150,000' },
-    { number: '103', floor: 1, type: '스탠다드룸', status: 'cleaning', guest: null, checkOut: null, price: '₩150,000' },
-    { number: '201', floor: 2, type: '디럭스룸', status: 'available', guest: null, checkOut: null, price: '₩250,000' },
-    { number: '202', floor: 2, type: '디럭스룸', status: 'occupied', guest: '이영희', checkOut: '2024-01-16', price: '₩250,000' },
-    { number: '203', floor: 2, type: '디럭스룸', status: 'maintenance', guest: null, checkOut: null, price: '₩250,000' },
-    { number: '301', floor: 3, type: '스위트룸', status: 'occupied', guest: '박민수', checkOut: '2024-01-18', price: '₩400,000' },
-    { number: '302', floor: 3, type: '스위트룸', status: 'available', guest: null, checkOut: null, price: '₩400,000' },
-    { number: '401', floor: 4, type: '프레지덴셜룸', status: 'available', guest: null, checkOut: null, price: '₩600,000' },
-    { number: '402', floor: 4, type: '프레지덴셜룸', status: 'occupied', guest: '최지영', checkOut: '2024-01-19', price: '₩600,000' }
-  ];
+  const fetchRoomStatus = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get(api_url, {
+        params: { date: selectedDate }
+      });
+      if (response.data.success) {
+        setRoomStatusList(response.data.rooms || []);
+        setAvailableRoomCount(response.data.availableRoomCount || 0);
+        setTotalRoomCount(response.data.totalRoomCount || 0);
+      }
+    } catch (error) {
+      console.error('객실 현황 조회 오류:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'available':
+  const getStatusColor = (reservationStatus) => {
+    switch (reservationStatus) {
+      case '빈 객실':
         return 'bg-green-100 text-green-800';
-      case 'occupied':
-        return 'bg-blue-100 text-blue-800';
-      case 'cleaning':
+      case '예약':
+      case '체크인':
         return 'bg-yellow-100 text-yellow-800';
-      case 'maintenance':
-        return 'bg-red-100 text-red-800';
+      case '사용중':
+      case '체크아웃':
+      case '체크인/체크아웃':
+        return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusText = (status) => {
-    switch (status) {
-      case 'available':
-        return '이용가능';
-      case 'occupied':
-        return '투숙중';
-      case 'cleaning':
-        return '청소중';
-      case 'maintenance':
-        return '점검중';
-      default:
-        return '알 수 없음';
-    }
+    return status || '알 수 없음';
   };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'available':
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
-      case 'occupied':
-        return <Building2 className="w-5 h-5 text-blue-600" />;
-      case 'cleaning':
-        return <Sparkles className="w-5 h-5 text-yellow-600" />;
-      case 'maintenance':
-        return <Wrench className="w-5 h-5 text-red-600" />;
-      default:
-        return <HelpCircle className="w-5 h-5 text-gray-600" />;
-    }
-  };
-
-  const filteredRooms = selectedFloor === 'all' 
-    ? rooms 
-    : rooms.filter(room => room.floor === parseInt(selectedFloor));
-
-  const floors = [...new Set(rooms.map(room => room.floor))].sort();
 
   const tabs = [
     { id: 'status', name: '객실 현황', icon: <Building2 size={20} /> },
-    { id: 'pricing', name: '가격 설정', icon: <DollarSign size={20} /> },
-    { id: 'types', name: '객실 타입', icon: <Home size={20} /> }
   ];
+
+  const handleDetailClick = (room) => {
+    setSelectedRoom(room);
+    setShowDetailModal(true);
+  };
+
+  const handleManageClick = (room) => {
+    // TODO: 관리 모달 구현
+    alert('관리 기능은 추후 구현 예정입니다.');
+  };
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 p-6">
         {/* 페이지 헤더 */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">객실 관리</h2>
-          <p className="text-gray-600">객실 현황을 확인하고 상태를 관리하세요</p>
+          <div className="flex items-center gap-2 mb-2">
+            <h2 className="text-2xl font-bold text-gray-900">객실 현황</h2>
+            <span className="inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800">
+              <Calendar className="w-4 h-4 mr-1" />
+              {selectedDate}
+            </span>
+          </div>
+          <p className="text-gray-600">해당 날짜 기준 객실 현황을 확인하세요</p>
         </div>
 
         {/* 탭 네비게이션 */}
@@ -110,12 +100,7 @@ const RoomsPage = () => {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setSelectedTab(tab.id)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  selectedTab === tab.id
-                    ? 'border-[#3B82F6] text-[#3B82F6]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-2 px-1 border-b-2 font-medium text-sm border-[#3B82F6] text-[#3B82F6]`}
               >
                 <span className="mr-2">{tab.icon}</span>
                 {tab.name}
@@ -124,141 +109,224 @@ const RoomsPage = () => {
           </nav>
         </div>
 
-        {/* 필터 및 액션 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            {/* 층별 필터 */}
-            <div className="flex items-center gap-4">
-              <label className="text-sm font-medium text-gray-700">층별 보기:</label>
-              <select
-                value={selectedFloor}
-                onChange={(e) => setSelectedFloor(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent"
-              >
-                <option value="all">전체</option>
-                {floors.map(floor => (
-                  <option key={floor} value={floor}>{floor}층</option>
-                ))}
-              </select>
+        {/* 객실 현황 통계 */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex items-center">
+              <div className="text-blue-600 mr-3"><Building2 size={24} /></div>
+              <div>
+                <div className="text-sm text-gray-600">전체 객실</div>
+                <div className="text-xl font-bold text-blue-600">{totalRoomCount}</div>
+              </div>
             </div>
-
-            {/* 액션 버튼들 */}
-            <div className="flex gap-2">
-              <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
-                청소 완료
-              </button>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                상태 변경
-              </button>
-              <button className="bg-[#3B82F6] text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-                새 객실 추가
-              </button>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex items-center">
+              <div className="text-green-600 mr-3"><CheckCircle size={24} /></div>
+              <div>
+                <div className="text-sm text-gray-600">빈 객실</div>
+                <div className="text-xl font-bold text-green-600">{availableRoomCount}</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex items-center">
+              <div className="text-yellow-600 mr-3"><Sparkles size={24} /></div>
+              <div>
+                <div className="text-sm text-gray-600">예약된 객실</div>
+                <div className="text-xl font-bold text-yellow-600">{totalRoomCount - availableRoomCount}</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex items-center">
+              <div className="text-gray-600 mr-3"><Building2 size={24} /></div>
+              <div>
+                <div className="text-sm text-gray-600">예약률</div>
+                <div className="text-xl font-bold text-gray-600">
+                  {totalRoomCount > 0 ? Math.round(((totalRoomCount - availableRoomCount) / totalRoomCount) * 100) : 0}%
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* 객실 현황 그리드 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {roomList.map((room) => (
-            <div key={room.roomIdx} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
-              {/* 객실 번호 및 상태 */}
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold text-gray-900">{room.name}</h3>
-                <span className="text-2xl">{getStatusIcon(room.roomIdx)}</span>
-              </div>
-
-              {/* 객실 정보 */}
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">타입:</span>
-                  <span className="text-sm font-medium text-gray-900">{room.type}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">가격:</span>
-                  <span className="text-sm font-medium text-gray-900">{room.basePrice}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">상태:</span>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(room.status)}`}>
-                    {getStatusText(room.roomCount)}
+        {loading ? (
+          <div className="flex justify-center items-center h-96">
+            <div className="text-lg text-gray-600">데이터를 불러오는 중...</div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {roomStatusList.map((room) => (
+              <div key={`${room.roomIdx}-${room.contentId}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+                {/* 객실 번호 및 상태 */}
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-gray-900">{room.name}</h3>
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(room.reservationStatus)}`}>
+                    {getStatusText(room.reservationStatus)}
                   </span>
                 </div>
-              </div>
 
-              {/* 투숙객 정보 */}
-              {room.guest && (
-                <div className="border-t border-gray-200 pt-3 mb-4">
-                  <div className="text-sm text-gray-600 mb-1">투숙객</div>
-                  <div className="text-sm font-medium text-gray-900">{room.guest}</div>
-                  <div className="text-xs text-gray-500">체크아웃: {room.checkOut}</div>
+                {/* 객실 정보 */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">객실 번호:</span>
+                    <span className="text-sm font-medium text-gray-900">{room.roomIdx}호</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">수용인원:</span>
+                    <span className="text-sm font-medium text-gray-900">{room.capacity}명</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">기본 가격:</span>
+                    <span className="text-sm font-medium text-gray-900">₩{room.basePrice?.toLocaleString() || '0'}</span>
+                  </div>
                 </div>
-              )}
 
-              {/* 액션 버튼들 */}
-              <div className="flex gap-2">
-                <button className="flex-1 bg-gray-100 text-gray-700 py-2 px-3 rounded text-sm hover:bg-gray-200 transition-colors">
-                  상세보기
-                </button>
-                <button className="flex-1 bg-[#3B82F6] text-white py-2 px-3 rounded text-sm hover:bg-blue-600 transition-colors">
-                  관리
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+                {/* 예약 정보 */}
+                {room.hasReservation && room.customerName && (
+                  <div className="border-t border-gray-200 pt-3 mb-4">
+                    <div className="text-sm text-gray-600 mb-1">예약 고객</div>
+                    <div className="text-sm font-medium text-gray-900">{room.customerName}</div>
+                  </div>
+                )}
 
-        {/* 객실 상태 통계 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center">
-              <div className="text-green-600 mr-3"><CheckCircle size={24} /></div>
-              <div>
-                <div className="text-sm text-gray-600">이용가능</div>
-                <div className="text-xl font-bold text-green-600">
-                  {rooms.filter(room => room.status === 'available').length}
+                {/* 액션 버튼들 */}
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handleDetailClick(room)}
+                    className="flex-1 bg-[#3B82F6] text-white py-2 px-3 rounded text-sm hover:bg-blue-600 transition-colors"
+                  >
+                    상세보기
+                  </button>
+                  <button 
+                    onClick={() => handleManageClick(room)}
+                    className="flex-1 bg-gray-600 text-white py-2 px-3 rounded text-sm hover:bg-gray-700 transition-colors"
+                  >
+                    관리
+                  </button>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center">
-              <div className="text-blue-600 mr-3"><Building2 size={24} /></div>
-              <div>
-                <div className="text-sm text-gray-600">투숙중</div>
-                <div className="text-xl font-bold text-blue-600">
-                  {rooms.filter(room => room.status === 'occupied').length}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center">
-              <div className="text-yellow-600 mr-3"><Sparkles size={24} /></div>
-              <div>
-                <div className="text-sm text-gray-600">청소중</div>
-                <div className="text-xl font-bold text-yellow-600">
-                  {rooms.filter(room => room.status === 'cleaning').length}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center">
-              <div className="text-red-600 mr-3"><Wrench size={24} /></div>
-              <div>
-                <div className="text-sm text-gray-600">점검중</div>
-                <div className="text-xl font-bold text-red-600">
-                  {rooms.filter(room => room.status === 'maintenance').length}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
+
+        {/* 객실 상세 정보 모달 */}
+        {showDetailModal && selectedRoom && (
+          <RoomDetailModal 
+            room={selectedRoom}
+            onClose={() => {
+              setShowDetailModal(false);
+              setSelectedRoom(null);
+            }}
+            onUpdate={fetchRoomStatus}
+          />
+        )}
       </div>
     </AdminLayout>
+  );
+};
+
+// 객실 상세 정보 모달 컴포넌트
+const RoomDetailModal = ({ room, onClose, onUpdate }) => {
+  const [roomData, setRoomData] = useState({
+    name: room.name || '',
+    capacity: room.capacity || 0,
+    basePrice: room.basePrice || 0,
+    // TODO: 추후 다른 필드들도 추가
+  });
+
+  const handleSubmit = async () => {
+    // TODO: 객실 수정 API 호출
+    console.log('객실 수정:', roomData);
+    alert('객실 수정 기능은 추후 구현 예정입니다.');
+  };
+
+  const handleDeactivate = async () => {
+    // TODO: 객실 비활성화 API 호출
+    console.log('객실 비활성화:', room.roomIdx, room.contentId);
+    alert('객실 비활성화 기능은 추후 구현 예정입니다.');
+  };
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+      <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        {/* 헤더 */}
+        <div className="px-6 py-4 border-b flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">객실 상세 정보</h2>
+            <p className="text-sm text-gray-600 mt-1">객실번호: {room.roomIdx}호</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* 본문 */}
+        <div className="px-6 py-4 flex-1 overflow-y-auto">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">객실명</label>
+              <input
+                type="text"
+                value={roomData.name}
+                onChange={(e) => setRoomData({...roomData, name: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">수용인원</label>
+              <input
+                type="number"
+                value={roomData.capacity}
+                onChange={(e) => setRoomData({...roomData, capacity: parseInt(e.target.value) || 0})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">기본 가격</label>
+              <input
+                type="number"
+                value={roomData.basePrice}
+                onChange={(e) => setRoomData({...roomData, basePrice: parseInt(e.target.value) || 0})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* TODO: 추후 다른 필드들 추가 */}
+          </div>
+        </div>
+
+        {/* 푸터 */}
+        <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
+          <button
+            onClick={handleDeactivate}
+            className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+          >
+            비활성화
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            취소
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            수정
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

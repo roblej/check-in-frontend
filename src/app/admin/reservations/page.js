@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import ReservationDetailModal from '@/components/admin/ReservationDetailModal';
 import { ClipboardList, Calendar, Building2 } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
@@ -13,6 +14,8 @@ const ReservationsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [roomReservationList, setRoomReservationList] = useState([]);
+  const [selectedReservation, setSelectedReservation] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   function getData(){
     axiosInstance.get(api_url).then(res => {
@@ -305,8 +308,14 @@ const ReservationsPage = () => {
                       ₩{reservation.totalPrice?.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button className="text-[#3B82F6] hover:text-blue-800">
-                        상세
+                      <button 
+                        onClick={() => {
+                          setSelectedReservation(reservation);
+                          setShowDetailModal(true);
+                        }}
+                        className="text-[#3B82F6] hover:text-blue-800"
+                      >
+                        상세보기
                       </button>
                       <button className="text-green-600 hover:text-green-800">
                         수정
@@ -341,6 +350,17 @@ const ReservationsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* 예약 상세 모달 */}
+        {showDetailModal && (
+          <ReservationDetailModal
+            reservation={selectedReservation}
+            onClose={() => {
+              setShowDetailModal(false);
+              setSelectedReservation(null);
+            }}
+          />
+        )}
       </div>
     </AdminLayout>
   );
