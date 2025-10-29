@@ -64,10 +64,14 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
       ]
     },
     {
-      id: 'coupon-templates',
-      name: '쿠폰 템플릿',
+      id: 'coupon',
+      name: '쿠폰 관리',
       icon: <Gift size={20} />,
-      path: '/master/coupon-templates'
+      path: '/master/coupon-templates',
+      submenu: [
+        { id: 'coupon-templates', name: '쿠폰 템플릿', path: '/master/coupon-templates' },
+        { id: 'coupon-batch', name: '쿠폰 일괄 처리', path: '/master/coupon-batch' }
+      ]
     },
     {
       id: 'settings',

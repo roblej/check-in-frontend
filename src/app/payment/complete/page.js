@@ -20,29 +20,31 @@ const PaymentCompletePageContent = () => {
     const orderId = search.get("orderId");
     const paymentKey = search.get("paymentKey");
     const amount = search.get("amount");
+    const type = search.get("type") || "hotel_reservation";
+
+    console.log("Payment complete params:", {
+      orderId,
+      paymentKey,
+      amount,
+      type,
+    });
 
     if (!orderId || !paymentKey || !amount) {
+      console.error("필수 파라미터 누락:", { orderId, paymentKey, amount });
       setError("필수 결제 정보가 없습니다.");
       setLoading(false);
       return;
     }
 
-    // TODO: 실제 결제 정보를 백엔드에서 조회하는 API 호출 추가
-    // TODO: 결제 완료 후 포인트 적립 알림 추가
-    // TODO: 예약 확인서 다운로드 기능 추가
-
-    // 결제 정보 설정
-    setPaymentInfo({
+    // 이 페이지는 더 이상 사용하지 않으므로 checkout/success로 리다이렉트
+    const params = new URLSearchParams({
       orderId,
       paymentKey,
-      amount: parseInt(amount),
-      qrUrl: `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${orderId}`,
-      receiptUrl: `https://api.tosspayments.com/v1/payments/${paymentKey}/receipt`,
-      approvedAt: new Date().toISOString(),
+      amount,
+      type,
     });
-
-    setLoading(false);
-  }, [search]);
+    router.replace(`/checkout/success?${params.toString()}`);
+  }, [search, router]);
 
   if (loading) {
     return (
@@ -215,18 +217,20 @@ const PaymentCompletePageContent = () => {
 
 const PaymentCompletePage = () => {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">결제 정보를 불러오는 중...</p>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50">
+          <Header />
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">결제 정보를 불러오는 중...</p>
+            </div>
           </div>
+          <Footer />
         </div>
-        <Footer />
-      </div>
-    }>
+      }
+    >
       <PaymentCompletePageContent />
     </Suspense>
   );

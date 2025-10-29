@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import MasterLayout from '@/components/master/MasterLayout';
 import Pagination from '@/components/Pagination';
-import { Building2, Bed, Calendar, DollarSign, Star } from 'lucide-react';
+import { Building2, Bed, Calendar, DollarSign, Star, X } from 'lucide-react';
+import axiosInstance from '@/lib/axios';
 
 const HotelManagement = () => {
+  const router = useRouter();
   const api_url = "/api/master/hotels";
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,6 +22,12 @@ const HotelManagement = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [pageSize, setPageSize] = useState(5);
+
+  // 정지 모달 관련 상태
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [selectedHotelForSuspend, setSelectedHotelForSuspend] = useState(null);
+  const [suspendReason, setSuspendReason] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // API에서 호텔 데이터 가져오기
   const getData = async (page = currentPage, size = pageSize) => {
@@ -164,6 +173,55 @@ const HotelManagement = () => {
         break;
     }
     setSelectedHotels([]);
+  };
+
+  // 호텔 정지 버튼 클릭 핸들러
+  const handleSuspendClick = (hotel) => {
+    setSelectedHotelForSuspend(hotel);
+    setShowSuspendModal(true);
+  };
+
+  // 정지 취소 핸들러
+  const handleSuspendCancel = () => {
+    setShowSuspendModal(false);
+    setSelectedHotelForSuspend(null);
+    setSuspendReason('');
+  };
+
+  // 정지 확정 핸들러
+  const handleConfirmSuspend = async () => {
+    if (!suspendReason.trim()) {
+      alert("정지 사유를 입력해주세요.");
+      return;
+    }
+
+    if (!selectedHotelForSuspend) {
+      alert("선택된 호텔 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await axiosInstance.post(`/master/suspendHotel`, {
+        contentId: selectedHotelForSuspend.contentId,
+        reason: suspendReason.trim()
+      });
+
+      if (response.data.success) {
+        alert("호텔이 정지되었습니다.");
+        getData(currentPage, pageSize); // 목록 새로고침
+      } else {
+        alert("정지 처리 중 오류가 발생했습니다.");
+      }
+    } catch (error) {
+      console.error("정지 실패:", error);
+      alert("서버 오류가 발생했습니다.");
+    } finally {
+      setIsSubmitting(false);
+      setShowSuspendModal(false);
+      setSelectedHotelForSuspend(null);
+      setSuspendReason('');
+    }
   };
 
   if (loading) {
@@ -327,10 +385,11 @@ const HotelManagement = () => {
                         <button className="text-[#7C3AED] hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-50 transition-colors">
                           상세보기
                         </button>
-                        <button className="text-green-600 hover:text-green-800 px-2 py-1 rounded hover:bg-green-50 transition-colors">
-                          수정
-                        </button>
-                        <button className="text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50 transition-colors">
+                      
+                        <button 
+                          onClick={() => handleSuspendClick(hotel)}
+                          className="text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                        >
                           정지
                         </button>
                       </div>
@@ -372,7 +431,10 @@ const HotelManagement = () => {
                   <button className="text-[#7C3AED] hover:text-purple-800 text-xs">
                     상세
                   </button>
-                  <button className="text-red-600 hover:text-red-800 text-xs">
+                  <button 
+                    onClick={() => handleSuspendClick(hotel)}
+                    className="text-red-600 hover:text-red-800 text-xs"
+                  >
                     정지
                   </button>
                 </div>
@@ -455,6 +517,64 @@ const HotelManagement = () => {
           </div>
         )}
       </div>
+
+      {/* 정지 모달 */}
+      {showSuspendModal && (
+        <div className="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50 p-4 border-black">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            {/* 모달 헤더 */}
+            <div className="flex justify-between items-center p-6 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">호텔 정지</h3>
+              <button
+                onClick={handleSuspendCancel}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 모달 내용 */}
+            <div className="p-6">
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  정지할 호텔: <span className="font-semibold text-gray-900">{selectedHotelForSuspend?.title}</span>
+                </p>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  정지 사유 <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={suspendReason}
+                  onChange={(e) => setSuspendReason(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                  placeholder="정지 사유를 입력해주세요..."
+                />
+              </div>
+            </div>
+
+            {/* 모달 푸터 */}
+            <div className="flex justify-end gap-2 p-6 border-t">
+              <button
+                onClick={handleSuspendCancel}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmSuspend}
+                disabled={isSubmitting || !suspendReason.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? '처리 중...' : '정지 확인'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </MasterLayout>
   );
 };

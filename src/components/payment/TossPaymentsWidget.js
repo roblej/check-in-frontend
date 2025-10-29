@@ -177,7 +177,7 @@ const TossPaymentsWidget = ({
 
               // 성공 페이지로 이동
               router.push(
-                `/payment/complete?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}`
+                `/checkout/success?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}&type=hotel_reservation`
               );
             } else {
               console.error("결제 검증 실패:", result.message);
