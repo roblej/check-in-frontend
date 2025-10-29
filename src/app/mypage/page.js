@@ -9,12 +9,13 @@ import {
   MessageSquare, ChevronRight, Star, Clock,
   Edit, Trash2, Share2, Hotel
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 export default function MyPage() {
   const router = useRouter();
+  const pathname = usePathname();
   
   // Zustand에서 고객 정보 가져오기
   const { verifyTokenWithBackend, isRecentlyVerified } = useCustomerStore();
@@ -75,6 +76,13 @@ export default function MyPage() {
   };
 
   // 실제 토큰 검증 및 초기 데이터 로드
+  // 경로 변경 시 리뷰 목록 갱신 (리뷰 작성 후 마이페이지로 돌아왔을 때)
+  useEffect(() => {
+    if (pathname === '/mypage') {
+      loadWrittenReviews();
+    }
+  }, [pathname]);
+
   useEffect(() => {
     const verifyTokenAndLoadData = async () => {
       // 최근 검증된 경우 중복 검증 건너뛰기
@@ -311,6 +319,10 @@ export default function MyPage() {
       const response = await mypageAPI.getMyReviews();
       const reviews = response.reviews || [];
       setWrittenReviews(reviews);
+      
+      // 리뷰 작성 완료된 예약 ID Set 업데이트
+      const reviewedIds = new Set(reviews.map(review => review.reservationIdx));
+      setReviewedReservationIds(reviewedIds);
     } catch (error) {
       console.error('작성한 리뷰 로드 실패:', error);
     } finally {
@@ -367,6 +379,15 @@ export default function MyPage() {
   // 작성한 리뷰 상태
   const [writtenReviews, setWrittenReviews] = useState([]);
   const [writtenReviewsLoading, setWrittenReviewsLoading] = useState(false);
+
+  // 리뷰 작성 완료된 예약 ID Set (빠른 조회를 위해)
+  const [reviewedReservationIds, setReviewedReservationIds] = useState(new Set());
+
+  // 특정 예약에 대해 리뷰가 작성되었는지 확인
+  const isReviewWritten = (reservation) => {
+    const reservIdx = reservation.reservIdx || reservation.id;
+    return reviewedReservationIds.has(reservIdx);
+  };
 
   // 더미 데이터 (쿠폰 등)
   const coupons = {
@@ -609,8 +630,13 @@ export default function MyPage() {
                   {reservationTab === 'completed' && (
                     <>
                       <button 
-                        onClick={() => handleWriteReview(reservation)}
-                        className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                        onClick={() => !isReviewWritten(reservation) && handleWriteReview(reservation)}
+                        disabled={isReviewWritten(reservation)}
+                        className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors ${
+                          isReviewWritten(reservation)
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
                       >
                         리뷰 작성
                       </button>
