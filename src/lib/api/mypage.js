@@ -44,4 +44,10 @@ export const mypageAPI = {
     const response = await axiosInstance.post("/reviews", reviewData);
     return response.data;
   },
+
+  // 내가 작성한 리뷰 조회
+  getMyReviews: async () => {
+    const response = await axiosInstance.get("/reviews/my-reviews");
+    return response.data;
+  },
 };

@@ -105,7 +105,10 @@ function WriteReviewPageContent() {
       });
       
       alert(`리뷰가 등록되었습니다! 포인트 ${result.points || 1000}P가 적립되었습니다.`);
+      // 마이페이지로 이동 후 데이터 새로고침
       router.push('/mypage');
+      // 페이지 새로고침 트리거
+      router.refresh();
       
     } catch (error) {
       console.error('리뷰 등록 실패:', error);

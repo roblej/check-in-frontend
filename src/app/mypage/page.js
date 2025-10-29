@@ -83,6 +83,8 @@ export default function MyPage() {
         // 사용자 데이터는 API로 직접 가져오기
         await fetchUserData();
         loadAllReservations();
+        loadWritableReviews();
+        loadWrittenReviews();
         return;
       }
       
@@ -99,6 +101,7 @@ export default function MyPage() {
         // 페이지 로드 시 모든 탭의 데이터를 불러와서 카운트를 정확히 표시
         loadAllReservations();
         loadWritableReviews();
+        loadWrittenReviews();
       } else {
         // 토큰 검증 실패 - 로그인 페이지로 리다이렉트
         console.log('❌ 토큰 검증 실패 - 로그인 페이지로 이동');
@@ -301,6 +304,20 @@ export default function MyPage() {
     }
   };
 
+  // 작성한 리뷰 불러오기
+  const loadWrittenReviews = async () => {
+    setWrittenReviewsLoading(true);
+    try {
+      const response = await mypageAPI.getMyReviews();
+      const reviews = response.reviews || [];
+      setWrittenReviews(reviews);
+    } catch (error) {
+      console.error('작성한 리뷰 로드 실패:', error);
+    } finally {
+      setWrittenReviewsLoading(false);
+    }
+  };
+
   const handleRegisterTrade = (reservation) => {
     // 양도거래 등록 페이지로 이동 (예약 정보 전달)
     router.push(`/used/register?reservIdx=${reservation.reservIdx || reservation.id}`);
@@ -347,7 +364,11 @@ export default function MyPage() {
     return status?.status === 2; // status 2 = 거래완료
   };
 
-  // 더미 데이터 (쿠폰, 리뷰 등)
+  // 작성한 리뷰 상태
+  const [writtenReviews, setWrittenReviews] = useState([]);
+  const [writtenReviewsLoading, setWrittenReviewsLoading] = useState(false);
+
+  // 더미 데이터 (쿠폰 등)
   const coupons = {
     available: [
       { id: 1, name: '신규가입 웰컴 쿠폰', discount: '10%', condition: '최소 10만원 이상 예약시', expiry: '2025.12.31' },
@@ -361,19 +382,6 @@ export default function MyPage() {
       { id: 5, name: '추석 연휴 특가', discount: '20%', condition: '최소 20만원 이상', expiry: '2025.09.30' }
     ]
   };
-
-
-  const writtenReviews = [
-    {
-      id: 1,
-      hotelName: '파크 하얏트 부산',
-      location: '부산 해운대구',
-      rating: 5,
-      content: '정말 훌륭한 호텔이었습니다. 직원분들이 친절하시고 조식도 맛있었어요.',
-      date: '2025.09.10',
-      helpful: 12
-    }
-  ];
 
   const likedHotels = [
     { id: 1, name: '스카이 파크 센트럴', location: '명동·남산', price: 140000, rating: 4.8 },
@@ -717,6 +725,8 @@ export default function MyPage() {
               }`}
             >
               작성 가능한 리뷰 ({writableReviews.length})
+              {/* 디버깅 */}
+              {/* {console.log('🖥️ 렌더링 시 writableReviews:', writableReviews)} */}
             </button>
             <button
               onClick={() => setReviewTab('written')}
@@ -766,33 +776,45 @@ export default function MyPage() {
                 ))
               )
             ) : (
-              writtenReviews.map((review) => (
-                <div key={review.id} className="border border-gray-200 rounded-xl p-5">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-900 mb-1">{review.hotelName}</h3>
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="flex">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-                          ))}
+              writtenReviewsLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="ml-3 text-gray-600">데이터를 불러오는 중...</span>
+                </div>
+              ) : writtenReviews.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">작성한 리뷰가 없습니다.</p>
+                </div>
+              ) : (
+                writtenReviews.map((review) => (
+                  <div key={review.reviewIdx} className="border border-gray-200 rounded-xl p-5">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">{review.hotelName || '호텔 정보 없음'}</h3>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} className={`w-4 h-4 ${i < (review.star?.intValue() || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                            ))}
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {review.createdAt ? new Date(review.createdAt).toLocaleDateString('ko-KR') : ''}
+                          </span>
                         </div>
-                        <span className="text-sm text-gray-500">{review.date}</span>
+                        <p className="text-gray-700 mb-3">{review.content}</p>
                       </div>
-                      <p className="text-gray-700 mb-3">{review.content}</p>
-                      <p className="text-sm text-gray-500">도움됨 {review.helpful}명</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                        <Edit className="w-4 h-4 text-gray-600" />
-                      </button>
-                      <button className="p-2 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </button>
+                      <div className="flex gap-2">
+                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                          <Edit className="w-4 h-4 text-gray-600" />
+                        </button>
+                        <button className="p-2 hover:bg-red-50 rounded-lg transition-colors">
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                ))
+              )
             )}
           </div>
         </section>
