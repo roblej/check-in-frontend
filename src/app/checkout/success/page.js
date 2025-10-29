@@ -4,8 +4,14 @@ import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { usePaymentStore } from "@/stores/paymentStore";
 import RouletteModal from "@/components/roulette/RouletteModal";
 
+/**
+ * 결제 성공 페이지
+ * - 모바일/데스크톱 공통으로 백엔드에 결제 검증을 요청한다.
+ * - StrictMode/재방문 중복 처리를 sessionStorage로 가드한다.
+ */
 const SuccessPageContent = () => {
   const search = useSearchParams();
   const router = useRouter();
@@ -24,7 +30,7 @@ const SuccessPageContent = () => {
       const amount = search.get("amount");
       const type = search.get("type");
 
-      // 클라이언트 가드: 동일 주문의 중복 처리 방지 (StrictMode, 중복 방문 등)
+      // 같은 마운트 내 중복 호출 방지 + 재방문 가드
       const processedKey = orderId ? `payment_processed_${orderId}` : null;
       if (processedKey && typeof window !== "undefined") {
         if (isProcessingRef.current) return; // 같은 마운트 내 중복 호출 방지
@@ -42,13 +48,13 @@ const SuccessPageContent = () => {
       }
 
       const amountNum = Number(amount);
-      if (isNaN(amountNum)) {
+      if (Number.isNaN(amountNum)) {
         setError("금액이 올바르지 않습니다.");
         setLoading(false);
         return;
       }
 
-      // 중고 호텔의 경우 이미 UsedPaymentForm에서 API 호출 완료
+      // 중고 호텔의 경우 프론트에서 이미 처리됨
       if (type === "used_hotel") {
         setResult({
           orderId,
@@ -62,19 +68,57 @@ const SuccessPageContent = () => {
       }
 
       try {
-        // 다이닝 예약인 경우 추가 파라미터 수집
+        // 로그인 사용자 정보 보강 (이메일/이름/전화/idx)
+        let me = null;
+        try {
+          const meRes = await fetch("/api/customer/me", {
+            credentials: "include",
+          });
+          if (meRes.ok) me = await meRes.json();
+        } catch {}
+
         const payload = {
           paymentKey,
           orderId,
           amount: amountNum,
           type,
+          customerIdx: me?.customerIdx,
+          customerEmail: me?.email || undefined,
+          customerName: me?.name || undefined,
+          customerPhone: me?.phone || undefined,
         };
-
         if (type === "dining_reservation") {
-          payload.diningIdx = parseInt(search.get("diningIdx"));
-          payload.diningDate = search.get("diningDate");
-          payload.diningTime = search.get("diningTime");
-          payload.guests = parseInt(search.get("guests"));
+          const diningIdx = Number(search.get("diningIdx"));
+          const guests = Number(search.get("guests"));
+          payload.diningIdx = Number.isNaN(diningIdx) ? undefined : diningIdx;
+          payload.diningDate = search.get("diningDate") || undefined;
+          payload.diningTime = search.get("diningTime") || undefined;
+          payload.guests = Number.isNaN(guests) ? undefined : guests;
+        }
+        // 호텔 예약일 경우 결제 직전 저장된 메타를 스토어에서 보강
+        if (type === "hotel_reservation") {
+          try {
+            const { paymentDraft } = usePaymentStore.getState();
+            const meta = paymentDraft?.meta;
+            if (meta) {
+              payload.hotelInfo = {
+                contentId: meta.contentId,
+                roomId: meta.roomIdx || meta.roomId,
+                checkIn: meta.checkIn,
+                checkOut: meta.checkOut,
+                guests: meta.guests,
+                nights: meta.nights,
+                roomPrice: meta.roomPrice,
+                totalPrice: meta.totalPrice,
+              };
+              payload.customerInfo = {
+                customerIdx: me?.customerIdx,
+                name: me?.name,
+                email: me?.email,
+                phone: me?.phone,
+              };
+            }
+          } catch {}
         }
 
         const res = await fetch("/api/payments", {
@@ -84,8 +128,15 @@ const SuccessPageContent = () => {
         });
 
         if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error("결제 처리 실패");
+          // 서버에서 JSON 에러를 내려줄 수도 있으니 방어
+          let message = "결제 처리 실패";
+          try {
+            const errJson = await res.json();
+            if (errJson?.message) message = errJson.message;
+          } catch {
+            // ignore
+          }
+          throw new Error(message);
         }
 
         const data = await res.json();
@@ -99,8 +150,9 @@ const SuccessPageContent = () => {
         if (isProcessingRef.current) isProcessingRef.current = false;
       }
     };
+
     doConfirm();
-  }, [search]);
+  }, [search, router]);
 
   if (loading) {
     return (
@@ -171,7 +223,7 @@ const SuccessPageContent = () => {
     );
   }
 
-  const qrUrl = result?.qrUrl;
+  const qrUrl = result?.qrUrl; // 데스크톱 카카오페이의 경우에만 존재
   const receipt = result?.receiptUrl;
   const type = search.get("type");
   const isUsedHotel = type === "used_hotel";
@@ -189,11 +241,11 @@ const SuccessPageContent = () => {
 
           {/* 제목 */}
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            {isUsedHotel 
-              ? "중고 호텔 예약 완료!" 
-              : isDiningReservation 
-                ? "다이닝 예약 완료!"
-                : "결제가 완료되었습니다"}
+            {isUsedHotel
+              ? "중고 호텔 예약 완료!"
+              : isDiningReservation
+              ? "다이닝 예약 완료!"
+              : "결제가 완료되었습니다"}
           </h1>
 
           {/* 설명 */}
@@ -201,11 +253,11 @@ const SuccessPageContent = () => {
             {isUsedHotel
               ? "중고 호텔 예약이 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."
               : isDiningReservation
-                ? "다이닝 예약이 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."
-                : "결제가 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."}
+              ? "다이닝 예약이 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."
+              : "결제가 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."}
           </p>
 
-          {/* QR 코드 */}
+          {/* 데스크톱 카카오페이의 경우 백엔드가 반환한 QR URL 노출 */}
           {qrUrl && (
             <div className="mb-8">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -276,7 +328,6 @@ const SuccessPageContent = () => {
             </p>
           </div>
 
-          {/* 버튼들 */}
           <div className="flex gap-4 justify-center">
             <button
               onClick={() => router.push("/")}
