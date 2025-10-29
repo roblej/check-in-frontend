@@ -16,17 +16,47 @@ const ReservationsPage = () => {
   const [roomReservationList, setRoomReservationList] = useState([]);
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-
-  function getData(){
-    axiosInstance.get(api_url).then(res => {
-      console.log(res.data);
-      setRoomReservationList(res.data.content);
-    });
-  }
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
-    getData();
-  }, []);
+    fetchReservations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
+
+  const fetchReservations = async () => {
+    try {
+      const response = await axiosInstance.get(api_url, {
+        params: { 
+          page: currentPage, 
+          size: pageSize 
+        }
+      });
+      
+      if (response.data) {
+        console.log(response.data);
+        setRoomReservationList(response.data.content || []);
+        setTotalPages(response.data.totalPages || 0);
+        setTotalElements(response.data.totalElements || 0);
+      }
+    } catch (error) {
+      console.error('예약 목록 조회 오류:', error);
+    }
+  };
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
+  const handleCancelReservation = async (reservationIdx) => {
+    if (confirm('예약을 취소하시겠습니까?')) {
+      // TODO: 예약 취소 API 호출
+      console.log('예약 취소:', reservationIdx);
+      alert('예약 취소 기능은 추후 구현 예정입니다.');
+    }
+  };
 
   // 예약 데이터
   const reservations = [
@@ -90,13 +120,13 @@ const ReservationsPage = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'confirmed':
+      case 0:
         return 'bg-green-100 text-green-800';
-      case 'checked-in':
+      case 1:
         return 'bg-blue-100 text-blue-800';
-      case 'pending':
+      case 2:
         return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled':
+      case 3:
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -105,44 +135,20 @@ const ReservationsPage = () => {
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'confirmed':
-        return '확정';
-      case 'checked-in':
-        return '체크인';
-      case 'pending':
+      case 0:
         return '대기';
-      case 'cancelled':
+      case 1:
+        return '확정';
+      case 2:
         return '취소';
+      case 4:
+        return '이용완료';
       default:
         return '알 수 없음';
     }
   };
 
-  const getPaymentStatusColor = (status) => {
-    switch (status) {
-      case 'paid':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'refunded':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
 
-  const getPaymentStatusText = (status) => {
-    switch (status) {
-      case 'paid':
-        return '결제완료';
-      case 'pending':
-        return '결제대기';
-      case 'refunded':
-        return '환불완료';
-      default:
-        return '알 수 없음';
-    }
-  };
 
   const filteredReservations = roomReservationList.filter(reservation => {
     const matchesSearch = (reservation.customer?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -259,9 +265,6 @@ const ReservationsPage = () => {
                     상태
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    결제상태
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     금액
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -299,11 +302,6 @@ const ReservationsPage = () => {
                         {getStatusText(reservation.status)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(reservation.paymentStatus)}`}>
-                        {getPaymentStatusText(reservation.paymentStatus)}
-                      </span>
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       ₩{reservation.totalPrice?.toLocaleString()}
                     </td>
@@ -317,10 +315,11 @@ const ReservationsPage = () => {
                       >
                         상세보기
                       </button>
-                      <button className="text-green-600 hover:text-green-800">
-                        수정
-                      </button>
-                      <button className="text-red-600 hover:text-red-800">
+                      <button 
+                        onClick={() => handleCancelReservation(reservation.reservIdx)}
+                        className="text-red-600 hover:text-red-800"
+                        disabled={reservation.status === 2}
+                      >
                         취소
                       </button>
                     </td>
@@ -332,24 +331,54 @@ const ReservationsPage = () => {
         </div>
 
         {/* 페이지네이션 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              총 {filteredReservations.length}건 중 1-{filteredReservations.length}건 표시
-            </div>
-            <div className="flex space-x-2">
-              <button className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">
-                이전
-              </button>
-              <button className="px-3 py-1 text-sm bg-[#3B82F6] text-white rounded">
-                1
-              </button>
-              <button className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">
-                다음
-              </button>
+        {totalPages > 1 && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                총 {totalElements}건 중 {currentPage * pageSize + 1}-{Math.min((currentPage + 1) * pageSize, totalElements)}건 표시
+              </div>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 0}
+                  className={`px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 ${currentPage === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  이전
+                </button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i;
+                  } else if (currentPage < 3) {
+                    pageNum = i;
+                  } else if (currentPage > totalPages - 4) {
+                    pageNum = totalPages - 5 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <button 
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-1 text-sm border border-gray-300 rounded ${
+                        currentPage === pageNum ? 'bg-[#3B82F6] text-white' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum + 1}
+                    </button>
+                  );
+                })}
+                <button 
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages - 1}
+                  className={`px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 ${currentPage >= totalPages - 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  다음
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* 예약 상세 모달 */}
         {showDetailModal && (
