@@ -62,7 +62,7 @@ const HotelReservationPage = () => {
           setPaymentInfo((prev) => ({
             ...prev,
             customerIdx: userData.customerIdx,
-            customerName: userData.nickname || "",
+            customerName: userData.name || "", // 구매 시에는 실명 사용
             customerEmail: userData.email || "",
             customerPhone: userData.phone || "",
             customerCash: parseInt(userData.cash) || 0,

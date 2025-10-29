@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import SearchCondition from "@/components/hotelSearch/SearchCondition";
 import { useRouter } from "next/navigation";
 
@@ -26,8 +27,27 @@ const SearchConditionModal = ({
   );
   const [localAdults, setLocalAdults] = useState(searchParams?.adults || 2);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  // 모달 열릴 때 body scroll lock
+  useEffect(() => {
+    if (isOpen && !isPanelMode) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen, isPanelMode]);
 
   const formatDateDisplay = (date) => {
     if (!date) return "";
@@ -74,11 +94,10 @@ const SearchConditionModal = ({
       }
     }
 
-    console.log("검색 조건 변경:", newParams);
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   // 패널 모드일 때는 패널 내부에 렌더링
   if (isPanelMode) {
@@ -196,10 +215,25 @@ const SearchConditionModal = ({
     );
   }
 
-  // 전체 화면 모드 (기존 방식)
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden">
+  // 전체 화면 모드 - Portal 사용
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{
+        backgroundColor: "rgba(0, 0, 0, 0.4)",
+        backdropFilter: "blur(4px)",
+        WebkitBackdropFilter: "blur(4px)",
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden shadow-2xl transition-all duration-200 ease-out"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* 모달 헤더 */}
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="text-lg font-bold text-gray-900">숙박일정</h3>
@@ -294,23 +328,46 @@ const SearchConditionModal = ({
           </button>
         </div>
 
-        {/* 날짜 선택기 */}
-        {isDatePickerOpen && (
-          <div className="absolute top-full left-0 right-0 z-10 mt-1">
-            <SearchCondition
-              isOpen={isDatePickerOpen}
-              onClose={() => setIsDatePickerOpen(false)}
-              checkIn={localCheckIn}
-              checkOut={localCheckOut}
-              onDateChange={handleDateChange}
-              selectedType="hotel"
-              className="max-w-md"
-            />
-          </div>
-        )}
+        {/* 날짜 선택기 - Portal 사용 */}
+        {isDatePickerOpen &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
+              style={{
+                backgroundColor: "rgba(0, 0, 0, 0.3)",
+                backdropFilter: "blur(4px)",
+                WebkitBackdropFilter: "blur(4px)",
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setIsDatePickerOpen(false);
+                }
+              }}
+            >
+              <div
+                className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto transition-all duration-200 ease-out"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <SearchCondition
+                  isOpen={isDatePickerOpen}
+                  onClose={() => setIsDatePickerOpen(false)}
+                  checkIn={localCheckIn}
+                  checkOut={localCheckOut}
+                  onDateChange={handleDateChange}
+                  selectedType="hotel"
+                  className="w-full"
+                />
+              </div>
+            </div>,
+            document.body
+          )}
       </div>
     </div>
   );
+
+  return typeof window !== "undefined"
+    ? createPortal(modalContent, document.body)
+    : null;
 };
 
 export default SearchConditionModal;

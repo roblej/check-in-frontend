@@ -1,14 +1,28 @@
 import { NextResponse } from "next/server";
 
+// Simple in-memory idempotency guards (per server instance)
+const inFlightByOrderId = new Map(); // orderId -> Promise resolving to json
+const processedByOrderId = new Map(); // orderId -> { result, at }
+const PROCESSED_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+const getProcessed = (orderId) => {
+  const entry = processedByOrderId.get(orderId);
+  if (!entry) return null;
+  if (Date.now() - entry.at > PROCESSED_TTL_MS) {
+    processedByOrderId.delete(orderId);
+    return null;
+  }
+  return entry.result;
+};
+
+const setProcessed = (orderId, result) => {
+  processedByOrderId.set(orderId, { result, at: Date.now() });
+};
+
 export async function POST(req) {
   try {
     const body = await req.json();
-    console.log("결제 API 요청 받음 (민감정보 제외):", {
-      paymentKey: body.paymentKey ? "***" : undefined,
-      orderId: body.orderId,
-      amount: body.amount,
-      type: body.type,
-    });
+    // request received (logging removed in production)
 
     const {
       paymentKey,
@@ -23,15 +37,17 @@ export async function POST(req) {
       customerInfo,
     } = body || {};
 
-    console.log("파싱된 데이터 (민감정보 제외):", {
-      paymentKey: paymentKey ? "***" : undefined,
-      orderId,
-      amount,
-      usedItemIdx,
-      usedTradeIdx,
-      totalAmount,
-      type: body.type,
-    });
+    // idempotency: short-circuit if already processed or in-flight
+    if (orderId) {
+      const done = getProcessed(orderId);
+      if (done) {
+        return NextResponse.json(done);
+      }
+      if (inFlightByOrderId.has(orderId)) {
+        const prev = await inFlightByOrderId.get(orderId);
+        return NextResponse.json(prev);
+      }
+    }
 
     if (!paymentKey || !orderId || !amount) {
       const errorMsg = `필수 파라미터 누락: paymentKey=${!!paymentKey}, orderId=${!!orderId}, amount=${!!amount}`;
@@ -56,52 +72,80 @@ export async function POST(req) {
       });
     }
 
-    // 호텔 예약인 경우 백엔드로 전달 (당신 기능)
+    // 호텔 예약 또는 다이닝 예약인 경우 백엔드로 전달
     try {
-      // roomId를 Integer로 변환 (백엔드에서 Integer 타입 요구)
-      // roomId가 "1003654-1" 형식일 경우 마지막 부분만 추출
-      let roomIdValue = body.hotelInfo?.roomId || body.roomId;
+      let backendRequestData;
 
-      // 문자열이고 "-"를 포함하면 마지막 부분을 추출
-      if (typeof roomIdValue === "string" && roomIdValue.includes("-")) {
-        const parts = roomIdValue.split("-");
-        roomIdValue = parts[parts.length - 1]; // 마지막 부분 (roomIdx)
+      if (body.type === "dining_reservation") {
+        // 다이닝 예약 데이터 구성
+        backendRequestData = {
+          paymentKey,
+          orderId,
+          amount,
+          type: "dining_reservation",
+          customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1,
+          diningIdx: body.diningIdx,
+          diningDate: body.diningDate,
+          diningTime: body.diningTime,
+          guests: body.guests,
+          totalPrice: body.totalPrice || amount,
+          customerName: body.customerInfo?.name || body.customerName,
+          customerEmail: body.customerInfo?.email || body.customerEmail,
+          customerPhone: body.customerInfo?.phone || body.customerPhone,
+          specialRequests: body.customerInfo?.specialRequests || body.specialRequests,
+          method: body.method || "card",
+          pointsUsed: body.paymentInfo?.pointAmount || body.pointsUsed || 0,
+          cashUsed: body.paymentInfo?.cashAmount || body.cashUsed || 0,
+        };
+      } else {
+        // 호텔 예약 데이터 구성
+        // roomId를 Integer로 변환 (백엔드에서 Integer 타입 요구)
+        // roomId가 "1003654-1" 형식일 경우 마지막 부분만 추출
+        let roomIdValue = body.hotelInfo?.roomId || body.roomId;
+
+        // 문자열이고 "-"를 포함하면 마지막 부분을 추출
+        if (typeof roomIdValue === "string" && roomIdValue.includes("-")) {
+          const parts = roomIdValue.split("-");
+          roomIdValue = parts[parts.length - 1]; // 마지막 부분 (roomIdx)
+        }
+
+        const roomIdInt =
+          typeof roomIdValue === "string"
+            ? parseInt(roomIdValue, 10)
+            : roomIdValue;
+
+        backendRequestData = {
+          paymentKey,
+          orderId,
+          amount,
+          type: "hotel_reservation",
+          customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1, // 실제 고객 ID
+          contentId: body.hotelInfo?.contentId || body.contentId, // String 타입
+          roomId: roomIdInt, // Integer 타입으로 변환
+          checkIn: body.hotelInfo?.checkIn || body.checkIn,
+          checkOut: body.hotelInfo?.checkOut || body.checkOut,
+          guests: body.hotelInfo?.guests || body.guests,
+          nights: body.hotelInfo?.nights || body.nights,
+          roomPrice: body.hotelInfo?.roomPrice || body.roomPrice,
+          totalPrice: body.hotelInfo?.totalPrice || body.totalPrice,
+          customerName: body.customerInfo?.name || body.customerName,
+          customerEmail: body.customerInfo?.email || body.customerEmail,
+          customerPhone: body.customerInfo?.phone || body.customerPhone,
+          specialRequests:
+            body.customerInfo?.specialRequests || body.specialRequests,
+          method: body.method || "card",
+          pointsUsed: body.paymentInfo?.pointAmount || body.pointsUsed || 0,
+          cashUsed: body.paymentInfo?.cashAmount || body.cashUsed || 0,
+        };
       }
-
-      const roomIdInt =
-        typeof roomIdValue === "string"
-          ? parseInt(roomIdValue, 10)
-          : roomIdValue;
-
-      const backendRequestData = {
-        paymentKey,
-        orderId,
-        amount,
-        type: "hotel_reservation",
-        customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1, // 실제 고객 ID
-        contentId: body.hotelInfo?.contentId || body.contentId, // String 타입
-        roomId: roomIdInt, // Integer 타입으로 변환
-        checkIn: body.hotelInfo?.checkIn || body.checkIn,
-        checkOut: body.hotelInfo?.checkOut || body.checkOut,
-        guests: body.hotelInfo?.guests || body.guests,
-        nights: body.hotelInfo?.nights || body.nights,
-        roomPrice: body.hotelInfo?.roomPrice || body.roomPrice,
-        totalPrice: body.hotelInfo?.totalPrice || body.totalPrice,
-        customerName: body.customerInfo?.name || body.customerName,
-        customerEmail: body.customerInfo?.email || body.customerEmail,
-        customerPhone: body.customerInfo?.phone || body.customerPhone,
-        specialRequests:
-          body.customerInfo?.specialRequests || body.specialRequests,
-        method: body.method || "card",
-        pointsUsed: body.paymentInfo?.pointAmount || body.pointsUsed || 0,
-        cashUsed: body.paymentInfo?.cashAmount || body.cashUsed || 0,
-      };
 
       console.log("백엔드로 전송할 데이터 (민감정보 제외):", {
         paymentKey: backendRequestData.paymentKey ? "***" : undefined,
         orderId: backendRequestData.orderId,
         amount: backendRequestData.amount,
         type: backendRequestData.type,
+        diningIdx: backendRequestData.diningIdx,
+        contentId: backendRequestData.contentId,
       });
       console.log(
         "백엔드 URL:",
@@ -109,44 +153,58 @@ export async function POST(req) {
           process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
         }/api/payments/confirm`
       );
-
-      const backendResponse = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
-        }/api/payments/confirm`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(backendRequestData),
-        }
-      );
-
-      console.log("백엔드 응답 상태:", backendResponse.status);
-      console.log(
-        "백엔드 응답 헤더:",
-        Object.fromEntries(backendResponse.headers.entries())
-      );
-
-      if (!backendResponse.ok) {
-        const errorText = await backendResponse.text();
-        console.error("백엔드 오류 응답:", errorText);
-        throw new Error(`백엔드 결제 검증 실패: ${errorText}`);
+      // Wrap backend call with in-flight guard to avoid duplicates
+      if (orderId && inFlightByOrderId.has(orderId)) {
+        const prev = await inFlightByOrderId.get(orderId);
+        return NextResponse.json(prev);
       }
 
-      const result = await backendResponse.json();
-      console.log("백엔드 응답 데이터:", result);
+      const backendCall = async () => {
+        const backendResponse = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
+          }/api/payments/confirm`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              // Provide idempotency hint to backend if supported
+              "Idempotency-Key": orderId,
+            },
+            body: JSON.stringify(backendRequestData),
+          }
+        );
+
+        if (!backendResponse.ok) {
+          const errorText = await backendResponse.text();
+          throw new Error(`백엔드 결제 검증 실패: ${errorText}`);
+        }
+
+        const result = await backendResponse.json();
+        return result;
+      };
+
+      let result;
+      if (orderId) {
+        const p = backendCall()
+          .then((r) => {
+            setProcessed(orderId, r);
+            return r;
+          })
+          .finally(() => inFlightByOrderId.delete(orderId));
+        inFlightByOrderId.set(orderId, p);
+        result = await p;
+      } else {
+        result = await backendCall();
+      }
       return NextResponse.json(result);
     } catch (error) {
-      console.error("호텔 예약 결제 처리 오류:", error);
       return NextResponse.json(
         { success: false, message: error.message },
         { status: 500 }
       );
     }
   } catch (e) {
-    console.error("결제 처리 오류:", e);
     return NextResponse.json(
       { message: e?.message || "server error" },
       { status: 500 }

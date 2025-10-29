@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { diningAPI } from "@/lib/api/dining";
 
 const DiningSearchClient = ({ destination, diningDate, mealType, adults }) => {
+  const router = useRouter();
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -58,6 +60,27 @@ const DiningSearchClient = ({ destination, diningDate, mealType, adults }) => {
   const formatPrice = (price) => {
     if (!price) return '0원';
     return price.toLocaleString() + '원';
+  };
+
+  // 예약하기 핸들러
+  const handleReservation = (dining) => {
+    const params = new URLSearchParams({
+      diningIdx: dining.diningIdx,
+      contentId: dining.contentid,
+      diningName: dining.name,
+      hotelName: dining.hotelInfo?.title || '',
+      hotelAddress: dining.hotelInfo?.adress || '',
+      diningDate: diningDate || new Date().toISOString().split('T')[0],
+      diningTime: '', // 사용자가 예약 페이지에서 선택
+      guests: adults || '2',
+      basePrice: dining.basePrice,
+      imageUrl: dining.imageUrl || '',
+      openTime: dining.openTime || '11:00:00',
+      closeTime: dining.closeTime || '21:00:00',
+      slotDuration: dining.slotDuration || 60,
+    });
+    
+    router.push(`/dining-reservation?${params.toString()}`);
   };
   
   return (
@@ -173,7 +196,10 @@ const DiningSearchClient = ({ destination, diningDate, mealType, adults }) => {
                     </div>
                     
                     {/* 예약 버튼 */}
-                    <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                    <button 
+                      onClick={() => handleReservation(dining)}
+                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
                       예약하기
                     </button>
                   </div>
