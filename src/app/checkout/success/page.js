@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { usePaymentStore } from "@/stores/paymentStore";
+import RouletteModal from "@/components/roulette/RouletteModal";
 
 /**
  * 결제 성공 페이지
@@ -17,6 +18,9 @@ const SuccessPageContent = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [isRouletteModalOpen, setIsRouletteModalOpen] = useState(false);
+  const [hasRouletteSpun, setHasRouletteSpun] = useState(false); // 룰렛을 이미 돌렸는지 여부
+
   const isProcessingRef = useRef(false);
 
   useEffect(() => {
@@ -29,7 +33,7 @@ const SuccessPageContent = () => {
       // 같은 마운트 내 중복 호출 방지 + 재방문 가드
       const processedKey = orderId ? `payment_processed_${orderId}` : null;
       if (processedKey && typeof window !== "undefined") {
-        if (isProcessingRef.current) return;
+        if (isProcessingRef.current) return; // 같은 마운트 내 중복 호출 방지
         if (sessionStorage.getItem(processedKey) === "1") {
           setLoading(false);
           return;
@@ -156,12 +160,15 @@ const SuccessPageContent = () => {
         <Header />
         <div className="flex-1 flex items-center justify-center py-20">
           <div className="text-center max-w-md px-4">
+            {/* 로딩 애니메이션 */}
             <div className="relative mb-8">
               <div className="animate-spin rounded-full h-20 w-20 border-b-4 border-orange-600 mx-auto"></div>
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-orange-600 text-2xl">💳</div>
               </div>
             </div>
+
+            {/* 로딩 메시지 */}
             <h2 className="text-2xl font-bold text-gray-900 mb-3">
               결제를 처리하고 있습니다
             </h2>
@@ -170,12 +177,16 @@ const SuccessPageContent = () => {
               <br />
               잠시만 기다려주세요...
             </p>
+
+            {/* 프로그레스 바 */}
             <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-orange-600 h-2 rounded-full animate-pulse"
                 style={{ width: "70%" }}
               ></div>
             </div>
+
+            {/* 안내 메시지 */}
             <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">
                 ⚠️ 페이지를 새로고침하거나 닫지 마세요
@@ -217,10 +228,7 @@ const SuccessPageContent = () => {
   const type = search.get("type");
   const isUsedHotel = type === "used_hotel";
   const isDiningReservation = type === "dining_reservation";
-  const amountFromResult =
-    typeof result?.amount === "number"
-      ? result.amount
-      : Number(search.get("amount"));
+  const amountFromResult = result?.amount || search.get("amount");
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -228,8 +236,10 @@ const SuccessPageContent = () => {
 
       <div className="max-w-2xl mx-auto px-4 py-20">
         <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+          {/* 성공 아이콘 */}
           <div className="text-green-500 text-6xl mb-6">✅</div>
 
+          {/* 제목 */}
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
             {isUsedHotel
               ? "중고 호텔 예약 완료!"
@@ -238,6 +248,7 @@ const SuccessPageContent = () => {
               : "결제가 완료되었습니다"}
           </h1>
 
+          {/* 설명 */}
           <p className="text-gray-600 mb-8">
             {isUsedHotel
               ? "중고 호텔 예약이 성공적으로 완료되었습니다. 예약 확인서가 이메일로 발송됩니다."
@@ -261,6 +272,7 @@ const SuccessPageContent = () => {
             </div>
           )}
 
+          {/* 결제 정보 */}
           <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               결제 정보
@@ -275,7 +287,10 @@ const SuccessPageContent = () => {
               <div className="flex justify-between">
                 <span className="text-gray-600">결제금액:</span>
                 <span className="font-semibold text-orange-600">
-                  {Number(amountFromResult || 0).toLocaleString()}원
+                  {amountFromResult
+                    ? Number(amountFromResult).toLocaleString()
+                    : search.get("amount")?.toLocaleString()}
+                  원
                 </span>
               </div>
               <div className="flex justify-between">
@@ -302,6 +317,7 @@ const SuccessPageContent = () => {
             </div>
           </div>
 
+          {/* 안내 메시지 */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
             <h3 className="font-semibold text-blue-900 mb-2">
               📧 예약 확인서 발송
@@ -321,25 +337,43 @@ const SuccessPageContent = () => {
             </button>
             <button
               onClick={() => {
-                if (result?.reservIdx)
+                // 예약 상세 페이지로 이동 (reservIdx가 있으면 해당 페이지로, 없으면 목록으로)
+                if (result?.reservIdx) {
                   router.push(`/mypage/reservation/${result.reservIdx}`);
-                else router.push("/mypage");
+                } else {
+                  router.push("/mypage");
+                }
               }}
               className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
             >
               예약 내역 보기
             </button>
             <button
-              onClick={() => alert("포인트 뽑기! 🎯")}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              onClick={() => setIsRouletteModalOpen(true)}
+              disabled={hasRouletteSpun}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                hasRouletteSpun
+                  ? "bg-gray-400 cursor-not-allowed text-white"
+                  : "bg-blue-500 hover:bg-blue-600 text-white"
+              }`}
             >
-              포인트 뽑기
+              {hasRouletteSpun ? "뽑기 완료" : "포인트 뽑기"}
             </button>
           </div>
         </div>
       </div>
 
       <Footer />
+
+      {/* 룰렛 모달 */}
+      <RouletteModal
+        isOpen={isRouletteModalOpen}
+        onClose={() => setIsRouletteModalOpen(false)}
+        onSpinComplete={() => {
+          setHasRouletteSpun(true);
+          // 모달은 열린 상태로 유지, 사용자가 닫기 버튼을 눌러야 닫힘
+        }}
+      />
     </div>
   );
 };
