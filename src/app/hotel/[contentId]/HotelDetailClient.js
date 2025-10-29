@@ -26,8 +26,6 @@ const HotelDetailClient = ({ contentId, searchParams }) => {
   // URL 파라미터가 변경될 때만 로컬 상태 업데이트
   useEffect(() => {
     if (searchParams && Object.keys(searchParams).length > 0) {
-      console.log("호텔 상세 페이지 - 로컬 상태 업데이트:", searchParams);
-
       setLocalSearchParams({
         destination: searchParams.destination || "",
         checkIn: searchParams.checkIn || "",
