@@ -592,53 +592,47 @@ const HotelReservationPage = () => {
               </div>
             </div>
 
-            {/* 토스페이먼츠 결제 위젯 */}
+            {/* 토스페이먼츠 결제 위젯 (백그라운드 초기화만) */}
             {isFormValid && paymentAmounts.actualPaymentAmount > 0 && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  결제 정보
-                </h2>
-                <TossPaymentsWidget
-                  key={paymentKeys.orderId}
-                  clientKey={process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY}
-                  customerKey={paymentKeys.customerKey}
-                  amount={paymentAmounts.actualPaymentAmount}
-                  orderId={paymentKeys.orderId}
-                  orderName={paymentDraft.orderName}
-                  customerName={paymentInfo.customerName}
-                  customerEmail={paymentInfo.customerEmail}
-                  customerMobilePhone={paymentInfo.customerPhone}
-                  hotelInfo={{
-                    contentId: paymentDraft.meta.contentId,
-                    hotelName: paymentDraft.meta.hotelName,
-                    roomId:
-                      paymentDraft.meta.roomIdx || paymentDraft.meta.roomId, // roomIdx 우선 사용
-                    roomIdx:
-                      paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
-                    roomName: paymentDraft.meta.roomName,
-                    checkIn: paymentDraft.meta.checkIn,
-                    checkOut: paymentDraft.meta.checkOut,
-                    guests: paymentDraft.meta.guests,
-                    nights: paymentDraft.meta.nights,
-                    roomPrice: paymentDraft.meta.roomPrice,
-                    totalPrice: paymentDraft.meta.totalPrice,
-                    roomImage: paymentDraft.meta.roomImage,
-                    amenities: paymentDraft.meta.amenities,
-                  }}
-                  customerInfo={{
-                    customerIdx: paymentInfo.customerIdx,
-                    name: paymentInfo.customerName,
-                    email: paymentInfo.customerEmail,
-                    phone: paymentInfo.customerPhone,
-                    specialRequests: paymentInfo.specialRequests,
-                    useCash: paymentAmounts.useCash,
-                    usePoint: paymentAmounts.usePoint,
-                    actualPaymentAmount: paymentAmounts.actualPaymentAmount,
-                  }}
-                  onSuccess={handlePaymentSuccess}
-                  onFail={handlePaymentFail}
-                />
-              </div>
+              <TossPaymentsWidget
+                key={paymentKeys.orderId}
+                clientKey={process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY}
+                customerKey={paymentKeys.customerKey}
+                amount={paymentAmounts.actualPaymentAmount}
+                orderId={paymentKeys.orderId}
+                orderName={paymentDraft.orderName}
+                customerName={paymentInfo.customerName}
+                customerEmail={paymentInfo.customerEmail}
+                customerMobilePhone={paymentInfo.customerPhone}
+                hotelInfo={{
+                  contentId: paymentDraft.meta.contentId,
+                  hotelName: paymentDraft.meta.hotelName,
+                  roomId: paymentDraft.meta.roomIdx || paymentDraft.meta.roomId, // roomIdx 우선 사용
+                  roomIdx:
+                    paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
+                  roomName: paymentDraft.meta.roomName,
+                  checkIn: paymentDraft.meta.checkIn,
+                  checkOut: paymentDraft.meta.checkOut,
+                  guests: paymentDraft.meta.guests,
+                  nights: paymentDraft.meta.nights,
+                  roomPrice: paymentDraft.meta.roomPrice,
+                  totalPrice: paymentDraft.meta.totalPrice,
+                  roomImage: paymentDraft.meta.roomImage,
+                  amenities: paymentDraft.meta.amenities,
+                }}
+                customerInfo={{
+                  customerIdx: paymentInfo.customerIdx,
+                  name: paymentInfo.customerName,
+                  email: paymentInfo.customerEmail,
+                  phone: paymentInfo.customerPhone,
+                  specialRequests: paymentInfo.specialRequests,
+                  useCash: paymentAmounts.useCash,
+                  usePoint: paymentAmounts.usePoint,
+                  actualPaymentAmount: paymentAmounts.actualPaymentAmount,
+                }}
+                onSuccess={handlePaymentSuccess}
+                onFail={handlePaymentFail}
+              />
             )}
           </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import AdminLayout from '@/components/admin/AdminLayout';
+import ReservationDetailModal from '@/components/admin/ReservationDetailModal';
 import axiosInstance from '@/lib/axios';
 import { Building2, LogOut, Calendar, DollarSign, Users, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
@@ -23,6 +24,8 @@ const AdminDashboard = () => {
   const [thisMonthSales, setThisMonthSales] = useState(0); // 이번달 매출
   const [roomReservationList, setRoomReservationList] = useState([]); // 최근 예약 목록
   const [isLoading, setIsLoading] = useState(true); // 로딩 상태
+  const [selectedReservation, setSelectedReservation] = useState(null); // 선택된 예약
+  const [showDetailModal, setShowDetailModal] = useState(false); // 상세보기 모달 상태
 
   // 대시보드 데이터 로드
   const checkHotelAndLoadData = useCallback(async () => {
@@ -234,7 +237,13 @@ const AdminDashboard = () => {
                       {reservation.room.basePrice}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button className="text-[#3B82F6] hover:text-blue-800">
+                      <button 
+                        onClick={() => {
+                          setSelectedReservation(reservation);
+                          setShowDetailModal(true);
+                        }}
+                        className="text-[#3B82F6] hover:text-blue-800"
+                      >
                         상세보기
                       </button>
                     </td>
@@ -272,6 +281,17 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* 예약 상세 모달 */}
+      {showDetailModal && (
+        <ReservationDetailModal
+          reservation={selectedReservation}
+          onClose={() => {
+            setShowDetailModal(false);
+            setSelectedReservation(null);
+          }}
+        />
+      )}
     </AdminLayout>
   );
 };
