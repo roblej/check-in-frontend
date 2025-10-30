@@ -7,6 +7,29 @@ import Script from "next/script";
 /**
  * TossPayments 결제 위젯 컴포넌트
  * TossPayments SDK를 사용하여 결제를 처리합니다.
+ *
+ * 개선사항:
+ * - 모바일 환경은 successUrl/failUrl 기반 리다이렉트 플로우로 고정 (Promise/Callback 사용하지 않음)
+ * - 데스크톱은 Promise 플로우 유지(또는 리다이렉트로 통일 가능)
+ * - 카카오페이 QR은 데스크톱에서만 노출 (모바일은 앱/리다이렉트)
+ * - 카카오톡 미설치 시 사용자 안내 처리
+ *
+ * @param {Object} props
+ * @param {string} props.clientKey - TossPayments 클라이언트 키
+ * @param {string} [props.customerKey] - 고객 식별 키(옵션)
+ * @param {number} props.amount - 결제 금액
+ * @param {string} props.orderId - 주문 ID
+ * @param {string} props.orderName - 주문명
+ * @param {string} [props.customerName] - 고객 이름
+ * @param {string} [props.customerEmail] - 고객 이메일
+ * @param {string} [props.customerMobilePhone] - 고객 휴대폰
+ * @param {Object} [props.hotelInfo] - 호텔/객실 관련 메타
+ * @param {Object} [props.customerInfo] - 고객 관련 메타
+ * @param {Function} [props.onSuccess] - 결제 성공 훅(데스크톱 Promise 플로우에서만 사용)
+ * @param {Function} [props.onFail] - 결제 실패 훅
+ * @param {string} [props.successUrl] - 결제 성공 리다이렉트 경로
+ * @param {string} [props.failUrl] - 결제 실패 리다이렉트 경로
+ * @param {"카드"|"카카오페이"} [props.paymentMethod="카드"] - 결제수단
  */
 const TossPaymentsWidget = ({
   clientKey,
@@ -23,17 +46,18 @@ const TossPaymentsWidget = ({
   onFail,
   successUrl,
   failUrl,
+  paymentMethod = "카드",
 }) => {
   const widgetRef = useRef(null);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // 컴포넌트 마운트 시 스크립트가 이미 로드되어 있는지 확인
   useEffect(() => {
     if (typeof window !== "undefined" && window.TossPayments) {
-      console.log("토스페이먼츠 SDK 이미 로드됨");
       setScriptLoaded(true);
     }
   }, []);
@@ -46,253 +70,15 @@ const TossPaymentsWidget = ({
 
     const initializePaymentWidget = async () => {
       try {
-        console.log("토스페이먼츠 초기화 시작...");
-
         // 토스페이먼츠 초기화
         const tossPayments = window.TossPayments(clientKey);
-        console.log("토스페이먼츠 초기화 완료");
-
         if (!isMounted) return;
-
         widgetRef.current = tossPayments;
 
-        // 결제 검증 함수
-        const verifyPaymentWithBackend = async (paymentResult) => {
-          try {
-            console.log("백엔드 결제 검증 시작...");
-            console.log("paymentResult (민감정보 제외):", {
-              paymentKey: paymentResult.paymentKey ? "***" : undefined,
-              orderId: paymentResult.orderId,
-              amount: paymentResult.amount,
-            });
-
-            // TODO: 로그인 상태 확인 및 사용자 인증 토큰 추가
-            // TODO: 결제 전 예약 가능 여부 사전 체크 API 호출
-            // TODO: 쿠폰/할인 적용 로직 추가
-            // TODO: 포인트 사용 로직 추가
-            // TODO: 결제 금액 검증 로직 추가
-
-            // 중고 호텔 결제인지 확인 (orderId에 'used_hotel'이 포함된 경우)
-            const isUsedHotelPayment =
-              orderId && orderId.includes("used_hotel");
-
-            // paymentKey 유효성 검사
-            if (!paymentResult?.paymentKey) {
-              console.error("paymentKey가 없습니다:", paymentResult);
-              throw new Error("결제 응답에 paymentKey가 없습니다.");
-            }
-
-            const requestData = {
-              paymentKey: paymentResult.paymentKey,
-              orderId: paymentResult.orderId,
-              amount: customerInfo?.actualPaymentAmount || amount, // 실제 결제 금액 사용
-              type: isUsedHotelPayment ? "used_hotel" : "hotel_reservation",
-              customerIdx: customerInfo?.customerIdx || 1, // 실제 로그인된 사용자 ID
-              contentId: String(
-                hotelInfo?.contentId || hotelInfo?.hotelId || ""
-              ), // String으로 변환
-              roomId:
-                hotelInfo?.roomIdx || hotelInfo?.roomId
-                  ? parseInt(hotelInfo.roomIdx || hotelInfo.roomId)
-                  : null, // Integer로 변환
-              checkIn: hotelInfo?.checkIn,
-              checkOut: hotelInfo?.checkOut,
-              guests: hotelInfo?.guests ? parseInt(hotelInfo.guests) : null, // Integer로 변환
-              nights: hotelInfo?.nights ? parseInt(hotelInfo.nights) : null, // Integer로 변환
-              roomPrice: hotelInfo?.roomPrice
-                ? parseInt(hotelInfo.roomPrice)
-                : null, // Integer로 변환
-              totalPrice: hotelInfo?.totalPrice
-                ? parseInt(hotelInfo.totalPrice)
-                : null, // Integer로 변환
-              customerName: customerInfo?.name || customerName,
-              customerEmail: customerInfo?.email || customerEmail,
-              customerPhone: customerInfo?.phone || customerMobilePhone,
-              specialRequests: customerInfo?.specialRequests,
-              method: "card",
-              pointsUsed: customerInfo?.usePoint || 0, // 실제 포인트 사용량
-              cashUsed: customerInfo?.useCash || 0, // 실제 캐시 사용량
-              // paymentInfo 추가
-              paymentInfo: {
-                totalAmount: hotelInfo?.totalPrice || amount,
-                cashAmount: customerInfo?.useCash || 0,
-                pointAmount: customerInfo?.usePoint || 0,
-                cardAmount: customerInfo?.actualPaymentAmount || amount,
-                paymentMethod:
-                  customerInfo?.actualPaymentAmount > 0
-                    ? "mixed"
-                    : "cash_point_only",
-              },
-              // 중고 호텔 결제를 위한 추가 필드
-              ...(isUsedHotelPayment && {
-                usedItemIdx: hotelInfo?.usedItemIdx,
-                usedTradeIdx: hotelInfo?.usedTradeIdx,
-                hotelName: hotelInfo?.hotelName,
-                roomType: hotelInfo?.roomType,
-                salePrice: hotelInfo?.salePrice,
-                paymentInfo: {
-                  useCash: 0, // TODO: 실제 캐시 사용량
-                  usePoint: 0, // TODO: 실제 포인트 사용량
-                  actualPaymentAmount:
-                    paymentResult.amount || paymentResult.totalAmount || amount,
-                  paymentMethod: "card",
-                },
-              }),
-            };
-
-            console.log("백엔드로 전송할 데이터:", {
-              paymentKey: requestData.paymentKey ? "***" : undefined,
-              orderId: requestData.orderId,
-              amount: requestData.amount,
-              type: requestData.type,
-              customerIdx: requestData.customerIdx,
-            });
-
-            // 중고 호텔 결제인 경우 다른 엔드포인트 사용
-            const apiEndpoint = isUsedHotelPayment
-              ? "/api/payments" // 중고 호텔은 프론트엔드 API 라우트 사용
-              : "/api/payments/confirm"; // 일반 호텔도 Next.js 프록시 사용
-
-            console.log("API 엔드포인트:", apiEndpoint);
-
-            const response = await fetch(apiEndpoint, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                // TODO: Authorization 헤더 추가 (JWT 토큰)
-              },
-              body: JSON.stringify(requestData),
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-              console.log("결제 검증 성공:", result);
-              if (onSuccess) {
-                onSuccess(result);
-              }
-              // TODO: 결제 성공 후 포인트 적립 로직 추가
-              // TODO: 결제 완료 알림 (토스트, 모달 등) 추가
-              // TODO: 결제 완료 후 사용자 행동 추적 (GA, Mixpanel 등)
-
-              // 성공 페이지로 이동
-              router.push(
-                `/checkout/success?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}&type=hotel_reservation`
-              );
-            } else {
-              console.error("결제 검증 실패:", result.message);
-              if (onFail) {
-                onFail(new Error(result.message));
-              }
-              // TODO: 에러 타입별 사용자 친화적 메시지 표시
-              // TODO: 결제 실패 시 재시도 로직 추가
-
-              // 실패 페이지로 이동
-              router.push(
-                `/checkout/fail?error=${encodeURIComponent(result.message)}`
-              );
-            }
-          } catch (error) {
-            console.error("백엔드 결제 검증 중 오류:", error);
-            if (onFail) {
-              onFail(error);
-            }
-            // TODO: 네트워크 오류 시 재시도 로직 추가
-            // TODO: 오류 로깅 시스템 연동 (Sentry 등)
-
-            // 실패 페이지로 이동
-            router.push(
-              `/checkout/fail?error=${encodeURIComponent(error.message)}`
-            );
-          }
-        };
-
-        const handlePayment = async () => {
-          try {
-            console.log("결제 요청 시작...");
-
-            const paymentData = {
-              orderId,
-              orderName,
-              amount: amount,
-              customerName,
-              customerEmail,
-              customerMobilePhone,
-            };
-
-            console.log("결제 데이터 (민감정보 제외):", {
-              orderId: paymentData.orderId,
-              orderName: paymentData.orderName,
-              amount: paymentData.amount,
-              customerName: paymentData.customerName ? "***" : undefined,
-            });
-
-            const tossPayments = widgetRef.current;
-            if (!tossPayments) {
-              throw new Error("토스페이먼츠가 초기화되지 않았습니다.");
-            }
-
-            const paymentResult = await tossPayments.requestPayment(
-              "카드",
-              paymentData
-            );
-
-            console.log("결제 결과 (민감정보 제외):", {
-              paymentKey: paymentResult?.paymentKey ? "***" : undefined,
-              orderId: paymentResult?.orderId,
-              amount: paymentResult?.amount,
-            });
-
-            // paymentKey 유효성 검사
-            if (!paymentResult?.paymentKey) {
-              throw new Error("결제 응답에 paymentKey가 없습니다.");
-            }
-
-            if (paymentResult && paymentResult.paymentKey) {
-              await verifyPaymentWithBackend(paymentResult);
-            }
-          } catch (error) {
-            console.error("결제 요청 실패:", error);
-
-            // 사용자가 결제를 취소한 경우
-            if (
-              error.code === "USER_CANCEL" ||
-              (error.message && error.message.includes("취소"))
-            ) {
-              console.log("사용자가 결제를 취소했습니다.");
-              // 결제 취소는 에러가 아니므로 onFail 호출 안함
-              // 재시도를 위해 상태 유지
-              return;
-            }
-
-            // 결제창이 닫힌 경우도 정상 처리
-            if (
-              error.message &&
-              (error.message.includes("닫혔습니다") ||
-                error.message.includes("closed"))
-            ) {
-              console.log("결제창이 닫혔습니다.");
-              return;
-            }
-
-            // 그 외 실제 에러인 경우에만 onFail 호출
-            if (onFail) {
-              onFail(error);
-            }
-          }
-        };
-
-        // 결제 핸들러를 전역에 등록
-        window.tossPaymentHandler = handlePayment;
-        console.log("토스페이먼츠 결제 핸들러 등록 완료");
-
+        if (isMounted) setIsLoading(false);
+      } catch (err) {
         if (isMounted) {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("토스페이먼츠 초기화 실패:", error);
-        if (isMounted) {
-          setError(error.message || "토스페이먼츠 초기화에 실패했습니다.");
+          setError(err?.message || "토스페이먼츠 초기화에 실패했습니다.");
           setIsLoading(false);
         }
       }
@@ -302,15 +88,200 @@ const TossPaymentsWidget = ({
 
     return () => {
       isMounted = false;
-      if (widgetRef.current) {
-        widgetRef.current = null;
-      }
-      if (window.tossPaymentHandler) {
-        delete window.tossPaymentHandler;
-      }
+      widgetRef.current = null;
+      if (window.tossPaymentHandler) delete window.tossPaymentHandler;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scriptLoaded]); // scriptLoaded만 의존 (무한 로딩 방지)
+  }, [scriptLoaded, clientKey]);
+
+  /**
+   * 백엔드 결제 검증
+   * - 데스크톱 Promise 플로우에서만 사용
+   * - 모바일은 리다이렉트되어 성공 페이지에서 검증 수행
+   * @param {Object} paymentResult - 결제 결과 객체
+   */
+  const verifyPaymentWithBackend = async (paymentResult) => {
+    try {
+      setIsVerifying(true);
+
+      // 중고 호텔 결제 여부
+      const isUsedHotelPayment = orderId && orderId.includes("used_hotel");
+
+      if (!paymentResult?.paymentKey) {
+        throw new Error("결제 응답에 paymentKey가 없습니다.");
+      }
+
+      const requestData = {
+        paymentKey: paymentResult.paymentKey,
+        orderId: paymentResult.orderId,
+        amount: customerInfo?.actualPaymentAmount || amount,
+        type: isUsedHotelPayment ? "used_hotel" : "hotel_reservation",
+        customerIdx: customerInfo?.customerIdx || 1,
+        contentId: String(hotelInfo?.contentId || hotelInfo?.hotelId || ""),
+        roomId:
+          hotelInfo?.roomIdx || hotelInfo?.roomId
+            ? parseInt(hotelInfo.roomIdx || hotelInfo.roomId, 10)
+            : null,
+        checkIn: hotelInfo?.checkIn,
+        checkOut: hotelInfo?.checkOut,
+        guests: hotelInfo?.guests ? parseInt(hotelInfo.guests, 10) : null,
+        nights: hotelInfo?.nights ? parseInt(hotelInfo.nights, 10) : null,
+        roomPrice: hotelInfo?.roomPrice
+          ? parseInt(hotelInfo.roomPrice, 10)
+          : null,
+        totalPrice: hotelInfo?.totalPrice
+          ? parseInt(hotelInfo.totalPrice, 10)
+          : null,
+        // 이메일 필수 - customerInfo 우선, 없으면 props에서 가져오기
+        customerName: customerInfo?.name || customerName || "",
+        customerEmail: customerInfo?.email || customerEmail || "",
+        customerPhone: customerInfo?.phone || customerMobilePhone || "",
+        specialRequests: customerInfo?.specialRequests || "",
+        method: paymentMethod === "카카오페이" ? "kakaopay" : "card",
+        pointsUsed: customerInfo?.usePoint || 0,
+        cashUsed: customerInfo?.useCash || 0,
+        paymentInfo: {
+          totalAmount: hotelInfo?.totalPrice || amount,
+          cashAmount: customerInfo?.useCash || 0,
+          pointAmount: customerInfo?.usePoint || 0,
+          cardAmount: customerInfo?.actualPaymentAmount || amount,
+          paymentMethod:
+            customerInfo?.actualPaymentAmount > 0 ? "mixed" : "cash_point_only",
+        },
+        ...(isUsedHotelPayment && {
+          usedItemIdx: hotelInfo?.usedItemIdx,
+          usedTradeIdx: hotelInfo?.usedTradeIdx,
+          hotelName: hotelInfo?.hotelName,
+          roomType: hotelInfo?.roomType,
+          salePrice: hotelInfo?.salePrice,
+          paymentInfo: {
+            useCash: 0,
+            usePoint: 0,
+            actualPaymentAmount:
+              paymentResult.amount || paymentResult.totalAmount || amount,
+            paymentMethod: "card",
+          },
+        }),
+      };
+
+      const apiEndpoint = "/api/payments";
+
+      const response = await fetch(apiEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestData),
+      });
+
+      const result = await response.json();
+
+      setIsVerifying(false);
+
+      if (result?.success) {
+        if (onSuccess) onSuccess(result);
+        router.push(
+          `/checkout/success?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}&type=hotel_reservation`
+        );
+      } else {
+        if (onFail) onFail(new Error(result?.message || "결제 검증 실패"));
+        router.push(
+          `/checkout/fail?error=${encodeURIComponent(
+            result?.message || "VERIFY_FAIL"
+          )}`
+        );
+      }
+    } catch (err) {
+      setIsVerifying(false);
+      if (onFail) onFail(err);
+      router.push(`/checkout/fail?error=${encodeURIComponent(err.message)}`);
+    }
+  };
+
+  /**
+   * 결제 요청 핸들러
+   * - 모바일: 리다이렉트 플로우(앱/브라우저). QR 미노출이 정상.
+   * - 데스크톱: Promise 플로우로 결과를 받고 즉시 검증.
+   */
+  const handlePayment = async () => {
+    try {
+      const tp = widgetRef.current;
+      if (!tp) throw new Error("토스페이먼츠가 초기화되지 않았습니다.");
+
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
+
+      /** success/fail URL은 모든 환경에서 반드시 포함 */
+      const paymentData = {
+        orderId,
+        orderName,
+        amount,
+        customerName,
+        customerEmail,
+        customerMobilePhone,
+        successUrl: `${origin}${successUrl || "/checkout/success"}`,
+        failUrl: `${origin}${failUrl || "/checkout/fail"}`,
+      };
+
+      const isMobile =
+        typeof window !== "undefined" &&
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          window.navigator.userAgent
+        );
+
+      if (isMobile) {
+        // 📱 모바일은 리다이렉트 기반. (카카오페이 QR 미지원이 정상)
+        try {
+          tp.requestPayment(paymentMethod, paymentData);
+          // 이후는 리다이렉트 되므로 추가 로직 없음
+          return;
+        } catch (mobileErr) {
+          // 카카오톡 미설치 등으로 intent 스킴 실패 시
+          const msg = mobileErr?.message || "";
+          if (msg.includes("does not have a registered handler")) {
+            // 사용자 안내 (스토어 링크 유도)
+            alert(
+              "카카오페이 결제를 위해 카카오톡 앱이 필요합니다.\n앱 설치 후 다시 시도해주세요."
+            );
+            // 선택: 스토어 링크로 이동 유도
+            window.location.href =
+              "https://play.google.com/store/apps/details?id=com.kakao.talk";
+            return;
+          }
+          if (onFail) onFail(mobileErr);
+        }
+      } else {
+        // 🖥️ 데스크톱: Promise 플로우 (카카오페이면 QR 자동 노출)
+        const paymentResult = await tp.requestPayment(
+          paymentMethod,
+          paymentData
+        );
+
+        if (!paymentResult?.paymentKey) {
+          throw new Error("결제 응답에 paymentKey가 없습니다.");
+        }
+        await verifyPaymentWithBackend(paymentResult);
+      }
+    } catch (error) {
+      // 사용자 취소/창 닫힘은 에러로 처리하지 않음
+      const msg = error?.message || "";
+      if (
+        error?.code === "USER_CANCEL" ||
+        msg.includes("취소") ||
+        msg.toLowerCase().includes("closed")
+      ) {
+        return;
+      }
+      if (onFail) onFail(error);
+    }
+  };
+
+  // 결제 핸들러를 전역에 등록 (기존 구조 유지)
+  useEffect(() => {
+    if (!isLoading) {
+      window.tossPaymentHandler = handlePayment;
+    }
+    return () => {
+      if (window.tossPaymentHandler) delete window.tossPaymentHandler;
+    };
+  }, [isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) {
     return (
@@ -333,64 +304,66 @@ const TossPaymentsWidget = ({
 
   return (
     <>
-      {/* 토스페이먼츠 SDK 로드 */}
+      {/* 토스페이먼츠 SDK 로드 (백그라운드) */}
       <Script
         src="https://js.tosspayments.com/v1/payment"
         strategy="afterInteractive"
-        onLoad={() => {
-          console.log("토스페이먼츠 SDK 로드 완료");
-          setScriptLoaded(true);
-        }}
+        onLoad={() => setScriptLoaded(true)}
         onError={() => {
-          console.error("토스페이먼츠 SDK 로드 실패");
           setError("토스페이먼츠 SDK 로드에 실패했습니다.");
           setIsLoading(false);
         }}
       />
 
-      <div className="space-y-6">
-        {/* 결제 수단 선택 */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            결제 수단
-          </h3>
-          <div className="border border-gray-200 rounded-lg p-4">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
-                  <p className="text-gray-600">토스페이먼츠 로딩 중...</p>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="w-12 h-8 bg-blue-500 rounded flex items-center justify-center mr-3">
-                    <span className="text-white text-sm font-bold">카드</span>
-                  </div>
-                  <span className="text-gray-700">카드 결제</span>
-                </div>
-                <p className="text-gray-500 text-sm mb-4">
-                  결제 버튼을 클릭하면 토스페이먼츠 결제창이 열립니다
-                </p>
-                <button
-                  onClick={() =>
-                    window.tossPaymentHandler && window.tossPaymentHandler()
-                  }
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!window.tossPaymentHandler}
-                >
-                  ₩{amount?.toLocaleString()} 결제하기
-                </button>
-                {/* TODO: 결제 수단 선택 UI 추가 (카드, 계좌이체, 간편결제 등) */}
-                {/* TODO: 쿠폰 적용 UI 추가 */}
-                {/* TODO: 포인트 사용 UI 추가 */}
-                {/* TODO: 결제 약관 동의 체크박스 추가 */}
-              </div>
-            )}
+      {/* 로딩 또는 에러 상태만 표시 */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-4">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
+            <p className="text-gray-600 text-sm">토스페이먼츠 준비 중...</p>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* 백엔드 검증 중 로딩 오버레이 (데스크톱 Promise 플로우에서만 사용) */}
+      {isVerifying && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+          }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
+            <div className="relative mb-6">
+              <div className="animate-spin rounded-full h-20 w-20 border-b-4 border-orange-600 mx-auto"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-orange-600 text-3xl">🔒</div>
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">
+              결제 검증 중
+            </h3>
+            <p className="text-gray-600 mb-6 text-lg leading-relaxed">
+              결제 정보를 확인하고 있습니다.
+              <br />
+              잠시만 기다려주세요...
+            </p>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden mb-6">
+              <div
+                className="bg-orange-600 h-3 rounded-full animate-pulse transition-all duration-500"
+                style={{ width: "80%" }}
+              />
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800 font-medium">
+                ⚠️ 페이지를 새로고침하거나 닫지 마세요
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
