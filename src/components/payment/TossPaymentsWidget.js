@@ -116,6 +116,13 @@ const TossPaymentsWidget = ({
 
       const resolvedType = paymentType || (isUsedHotelPayment ? "used_hotel" : (diningInfo ? "dining_reservation" : "hotel_reservation"));
 
+      // 중고 호텔은 공통 결제 검증 API를 사용하지 않고, 호출자(onSuccess)에서 처리하도록 위임
+      if (resolvedType === "used_hotel") {
+        setIsVerifying(false);
+        if (onSuccess) onSuccess(paymentResult);
+        return;
+      }
+
       const requestData = {
         paymentKey: paymentResult.paymentKey,
         orderId: paymentResult.orderId,
