@@ -58,19 +58,7 @@ export async function POST(req) {
       );
     }
 
-    // 중고 호텔 결제인 경우 직접 처리 (팀원 기능 보존)
-    if (usedTradeIdx) {
-      return await handleUsedHotelPayment({
-        paymentKey,
-        orderId,
-        amount,
-        usedTradeIdx,
-        totalAmount,
-        paymentInfo,
-        hotelInfo,
-        customerInfo,
-      });
-    }
+    // 중고 호텔 결제: 더 이상 프론트에서 자체 처리하지 않고 백엔드로 위임
 
     // 호텔 예약 또는 다이닝 예약인 경우 백엔드로 전달
     try {
@@ -104,6 +92,27 @@ export async function POST(req) {
           reservationTimeFromBody: body?.reservationTime,
           diningTimeToBackend: backendRequestData.diningTime,
         });
+      } else if (body.type === "used_hotel") {
+        // 중고 호텔 결제 데이터 구성
+        backendRequestData = {
+          paymentKey,
+          orderId,
+          amount,
+          type: "used_hotel",
+          customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1,
+          usedTradeIdx: body.hotelInfo?.usedTradeIdx || body.usedTradeIdx,
+          usedItemIdx: body.hotelInfo?.usedItemIdx || body.usedItemIdx,
+          // 선택 메타
+          hotelName: body.hotelInfo?.hotelName,
+          roomType: body.hotelInfo?.roomType,
+          salePrice: body.hotelInfo?.salePrice,
+          customerName: body.customerInfo?.name || body.customerName,
+          customerEmail: body.customerInfo?.email || body.customerEmail,
+          customerPhone: body.customerInfo?.phone || body.customerPhone,
+          method: body.method || "card",
+          pointsUsed: body.paymentInfo?.pointAmount || body.pointsUsed || 0,
+          cashUsed: body.paymentInfo?.cashAmount || body.cashUsed || 0,
+        };
       } else {
         // 호텔 예약 데이터 구성
         // roomId를 Integer로 변환 (백엔드에서 Integer 타입 요구)

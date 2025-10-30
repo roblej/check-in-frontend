@@ -107,14 +107,14 @@ const TossPaymentsWidget = ({
     try {
       setIsVerifying(true);
 
-      // 중고 호텔 결제 여부
-      const isUsedHotelPayment = orderId && orderId.includes("used_hotel");
+      // 중고 호텔 결제 여부 (orderId 문자열 대신 명시 필드 기반으로 판정)
+      const isUsedHotelPayment = !!(hotelInfo?.usedTradeIdx || hotelInfo?.usedItemIdx);
 
       if (!paymentResult?.paymentKey) {
         throw new Error("결제 응답에 paymentKey가 없습니다.");
       }
 
-      const resolvedType = paymentType || (isUsedHotelPayment ? "used_hotel" : "hotel_reservation");
+      const resolvedType = paymentType || (isUsedHotelPayment ? "used_hotel" : (diningInfo ? "dining_reservation" : "hotel_reservation"));
 
       const requestData = {
         paymentKey: paymentResult.paymentKey,
@@ -122,21 +122,15 @@ const TossPaymentsWidget = ({
         amount: customerInfo?.actualPaymentAmount || amount,
         type: resolvedType,
         customerIdx: customerInfo?.customerIdx || 1,
+        // 호텔 결제 필드 (resolvedType이 호텔/중고일 때만 의미)
         contentId: String(hotelInfo?.contentId || hotelInfo?.hotelId || ""),
-        roomId:
-          hotelInfo?.roomIdx || hotelInfo?.roomId
-            ? parseInt(hotelInfo.roomIdx || hotelInfo.roomId, 10)
-            : null,
-        checkIn: hotelInfo?.checkIn,
-        checkOut: hotelInfo?.checkOut,
-        guests: hotelInfo?.guests ? parseInt(hotelInfo.guests, 10) : null,
-        nights: hotelInfo?.nights ? parseInt(hotelInfo.nights, 10) : null,
-        roomPrice: hotelInfo?.roomPrice
-          ? parseInt(hotelInfo.roomPrice, 10)
-          : null,
-        totalPrice: hotelInfo?.totalPrice
-          ? parseInt(hotelInfo.totalPrice, 10)
-          : null,
+        roomId: (hotelInfo?.roomIdx || hotelInfo?.roomId) ? parseInt(hotelInfo.roomIdx || hotelInfo.roomId, 10) : null,
+        checkIn: hotelInfo?.checkIn || undefined,
+        checkOut: hotelInfo?.checkOut || undefined,
+        guests: hotelInfo?.guests ? parseInt(hotelInfo.guests, 10) : undefined,
+        nights: hotelInfo?.nights ? parseInt(hotelInfo.nights, 10) : undefined,
+        roomPrice: hotelInfo?.roomPrice ? parseInt(hotelInfo.roomPrice, 10) : undefined,
+        totalPrice: hotelInfo?.totalPrice ? parseInt(hotelInfo.totalPrice, 10) : undefined,
         // 이메일 필수 - customerInfo 우선, 없으면 props에서 가져오기
         customerName: customerInfo?.name || customerName || "",
         customerEmail: customerInfo?.email || customerEmail || "",
@@ -153,7 +147,7 @@ const TossPaymentsWidget = ({
           paymentMethod:
             customerInfo?.actualPaymentAmount > 0 ? "mixed" : "cash_point_only",
         },
-        ...(isUsedHotelPayment && {
+        ...(resolvedType === "used_hotel" && {
           usedItemIdx: hotelInfo?.usedItemIdx,
           usedTradeIdx: hotelInfo?.usedTradeIdx,
           hotelName: hotelInfo?.hotelName,
@@ -170,7 +164,7 @@ const TossPaymentsWidget = ({
         ...(resolvedType === "dining_reservation" && {
           diningIdx: diningInfo?.diningIdx,
           diningDate: diningInfo?.diningDate,
-          // diningTime: diningInfo?.diningTime,
+          diningTime: diningInfo?.diningTime,
           reservationTime: diningInfo?.diningTime,
           guests: diningInfo?.guests,
           totalPrice: diningInfo?.totalPrice,
@@ -193,7 +187,7 @@ const TossPaymentsWidget = ({
       if (result?.success) {
         if (onSuccess) onSuccess(result);
         router.push(
-          `/checkout/success?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}&type=hotel_reservation`
+          `/checkout/success?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}&type=${resolvedType}`
         );
       } else {
         if (onFail) onFail(new Error(result?.message || "결제 검증 실패"));
@@ -217,7 +211,6 @@ const TossPaymentsWidget = ({
     hotelInfo,
     onFail,
     onSuccess,
-    orderId,
     paymentMethod,
     paymentType,
     diningInfo,
@@ -238,6 +231,45 @@ const TossPaymentsWidget = ({
         typeof window !== "undefined" ? window.location.origin : "";
 
       /** success/fail URL은 모든 환경에서 반드시 포함 */
+      const resolvedType = paymentType || (orderId && orderId.includes("used_hotel") ? "used_hotel" : (diningInfo ? "dining_reservation" : "hotel_reservation"));
+
+      const buildUrl = (base, params) => {
+        const u = new URL(base, origin);
+        Object.entries(params || {}).forEach(([k, v]) => {
+          if (v !== undefined && v !== null && v !== "") u.searchParams.set(k, String(v));
+        });
+        return u.pathname + (u.search || "");
+      };
+
+      let successPath = successUrl || "/checkout/success";
+      let failPath = failUrl || "/checkout/fail";
+
+      if (resolvedType === "hotel_reservation") {
+        successPath = buildUrl(successPath, {
+          type: resolvedType,
+          contentId: hotelInfo?.contentId || hotelInfo?.hotelId,
+          roomId: hotelInfo?.roomIdx || hotelInfo?.roomId,
+          checkIn: hotelInfo?.checkIn,
+          checkOut: hotelInfo?.checkOut,
+          guests: hotelInfo?.guests,
+          nights: hotelInfo?.nights,
+          totalPrice: hotelInfo?.totalPrice,
+        });
+        failPath = buildUrl(failPath, { type: resolvedType });
+      } else if (resolvedType === "dining_reservation") {
+        successPath = buildUrl(successPath, {
+          type: resolvedType,
+          diningIdx: diningInfo?.diningIdx,
+          diningDate: diningInfo?.diningDate,
+          diningTime: diningInfo?.diningTime,
+          guests: diningInfo?.guests,
+        });
+        failPath = buildUrl(failPath, { type: resolvedType });
+      } else if (resolvedType === "used_hotel") {
+        successPath = buildUrl(successPath, { type: resolvedType, usedTradeIdx: hotelInfo?.usedTradeIdx });
+        failPath = buildUrl(failPath, { type: resolvedType });
+      }
+
       const paymentData = {
         orderId,
         orderName,
@@ -245,8 +277,8 @@ const TossPaymentsWidget = ({
         customerName,
         customerEmail,
         customerMobilePhone,
-        successUrl: `${origin}${successUrl || "/checkout/success"}`,
-        failUrl: `${origin}${failUrl || "/checkout/fail"}`,
+        successUrl: `${origin}${successPath}`,
+        failUrl: `${origin}${failPath}`,
       };
 
       const isMobile =
@@ -306,6 +338,18 @@ const TossPaymentsWidget = ({
     customerMobilePhone,
     customerName,
     failUrl,
+    diningInfo,
+    hotelInfo?.checkIn,
+    hotelInfo?.checkOut,
+    hotelInfo?.contentId,
+    hotelInfo?.guests,
+    hotelInfo?.hotelId,
+    hotelInfo?.nights,
+    hotelInfo?.roomId,
+    hotelInfo?.roomIdx,
+    hotelInfo?.totalPrice,
+    hotelInfo?.usedTradeIdx,
+    paymentType,
     verifyPaymentWithBackend,
     onFail,
     orderId,
