@@ -6,11 +6,12 @@ import { useEffect, useState } from "react";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useAdminStore } from "@/stores/adminStore";
 import { deleteAdminIdxCookie } from "@/utils/cookieUtils";
+import axios from "axios";
 const Header = () => {
   const router = useRouter();
-  const { resetAccessToken, setInlogged, readAccessToken, verifyTokenWithBackend,isInlogged } = useCustomerStore();
+  const { resetAccessToken, setInlogged, readAccessToken, verifyTokenWithBackend, isInlogged } = useCustomerStore();
   const { resetAdminData } = useAdminStore();
-  const logout_url = "api/login/logout";
+  const logout_url = "/api/login/logout";
   
   // Hydration 오류 방지를 위한 상태
   const [isClient, setIsClient] = useState(false);
@@ -22,7 +23,7 @@ const Header = () => {
 
   const handleLogout = () => {
     // 고객 스토어 초기화
-    
+    axios.get(logout_url,{withCredentials: true});
     resetAccessToken("");
     setInlogged(false);
     
@@ -43,6 +44,9 @@ const Header = () => {
    // MY 버튼 클릭 시 백엔드 토큰 검증
    const handleMyPageClick = async (e) => {
     e.preventDefault();
+    
+    // 클라이언트에서만 실행
+    if (!isClient) return;
     
     const result = await verifyTokenWithBackend();
     
