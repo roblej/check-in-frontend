@@ -14,6 +14,7 @@ import ReadToken from "@/components/token/readToken";
  * - 클라이언트 컴포넌트들을 조합하여 구성
  */
 const CheckinHotel = () => {
+  console.log("home page");
   // 여행 전 체크 아이템 데이터 (서버 컴포넌트에서 관리)
   const travelCheckItems = [
     {

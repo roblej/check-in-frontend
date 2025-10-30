@@ -1,9 +1,69 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 const UsedPaymentSuccessContent = ({ initialData }) => {
   const router = useRouter();
+  const processedRef = useRef(false);
+
+  // 모바일 리다이렉트 플로우에서 결제 저장/거래 확정을 수행
+  useEffect(() => {
+    const run = async () => {
+      if (processedRef.current) return;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const orderId = params.get('orderId');
+        const paymentKey = params.get('paymentKey');
+        const amountStr = params.get('amount');
+        const usedTradeIdx = params.get('usedTradeIdx') || initialData.tradeIdx;
+
+        if (!orderId || !paymentKey || !usedTradeIdx) return; // 부족하면 skip (데스크톱 경로에서 이미 처리됨)
+
+        const processedKey = `used_payment_processed_${orderId}`;
+        if (sessionStorage.getItem(processedKey) === '1') return;
+
+        // 1) 거래 확정
+        const confirmRes = await fetch(`/api/used/trade/${usedTradeIdx}/confirm`, { method: 'POST' });
+        if (!confirmRes.ok) {
+          // 실패해도 결제 저장은 시도
+          console.warn('거래 확정 실패');
+        }
+
+        // 2) 결제 내역 저장 (모바일은 분할 정보 없음 -> 전액 카드 처리)
+        const amount = parseInt(amountStr || '0', 10) || initialData.amount || 0;
+        const paymentData = {
+          usedTradeIdx: parseInt(usedTradeIdx, 10),
+          paymentKey,
+          orderId,
+          totalAmount: amount,
+          cashAmount: 0,
+          pointAmount: 0,
+          cardAmount: amount,
+          paymentMethod: 'card',
+          status: 1,
+          receiptUrl: `https://toss.im/payments/receipt/${orderId}`,
+          qrUrl: `https://chart.googleapis.com/chart?chs=240x240&cht=qr&chl=${encodeURIComponent(JSON.stringify({ orderId, paymentKey, amount, usedTradeIdx }))}`,
+          approvedAt: new Date().toISOString(),
+        };
+
+        const saveRes = await fetch('/api/used/payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(paymentData),
+        });
+        if (!saveRes.ok) {
+          console.error('모바일 결제 내역 저장 실패');
+        }
+
+        sessionStorage.setItem(processedKey, '1');
+        processedRef.current = true;
+      } catch (e) {
+        console.error('모바일 결제 처리 오류:', e);
+      }
+    };
+    run();
+  }, [initialData.tradeIdx, initialData.amount]);
 
   const handleNavigateToUsed = () => {
     router.push('/used');

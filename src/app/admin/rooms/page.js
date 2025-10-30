@@ -1,19 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { CheckCircle, Building2, Sparkles, Wrench, HelpCircle, Home, DollarSign, X, Eye, Calendar } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
-const RoomsPage = () => {
-  const searchParams = useSearchParams();
+const RoomsInner = () => {
   const router = useRouter();
-  
-  // URL에서 날짜 파라미터 가져오기 (없으면 오늘 날짜)
-  const selectedDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
-
   const api_url = "/admin/roomList";
+  const searchParams = useSearchParams();
+  const selectedDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
   const [roomStatusList, setRoomStatusList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -228,6 +225,14 @@ const RoomsPage = () => {
   );
 };
 
+const RoomsPage = () => {
+  return (
+    <Suspense fallback={<div className="p-6">로딩 중...</div>}>
+      <RoomsInner />
+    </Suspense>
+  );
+};
+
 // 객실 상세 정보 모달 컴포넌트
 const RoomDetailModal = ({ room, onClose, onUpdate }) => {
   const [roomData, setRoomData] = useState({
@@ -251,7 +256,7 @@ const RoomDetailModal = ({ room, onClose, onUpdate }) => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-      <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+      <div className="absolute inset-0 bg-opacity-50"></div>
       <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
         {/* 헤더 */}
         <div className="px-6 py-4 border-b flex items-center justify-between">
