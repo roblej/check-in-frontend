@@ -92,7 +92,10 @@ const SuccessPageContent = () => {
           const guests = Number(search.get("guests"));
           payload.diningIdx = Number.isNaN(diningIdx) ? undefined : diningIdx;
           payload.diningDate = search.get("diningDate") || undefined;
-          payload.diningTime = search.get("diningTime") || undefined;
+          const diningTime = search.get("diningTime") || undefined;
+          payload.diningTime = diningTime;
+          // 백엔드가 reservationTime을 기대하는 환경을 대비해 중복 전송
+          payload.reservationTime = diningTime;
           payload.guests = Number.isNaN(guests) ? undefined : guests;
         }
         // 호텔 예약일 경우 결제 직전 저장된 메타를 스토어에서 보강

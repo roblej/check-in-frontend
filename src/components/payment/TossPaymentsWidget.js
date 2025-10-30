@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 
@@ -30,6 +30,8 @@ import Script from "next/script";
  * @param {string} [props.successUrl] - 결제 성공 리다이렉트 경로
  * @param {string} [props.failUrl] - 결제 실패 리다이렉트 경로
  * @param {"카드"|"카카오페이"} [props.paymentMethod="카드"] - 결제수단
+ * @param {"hotel_reservation"|"used_hotel"|"dining_reservation"} [props.paymentType] - 결제 타입 명시(데스크톱 검증 시 사용)
+ * @param {Object} [props.diningInfo] - 다이닝 결제에 필요한 메타(diningIdx, diningDate, diningTime, guests, totalPrice, specialRequests)
  */
 const TossPaymentsWidget = ({
   clientKey,
@@ -47,6 +49,8 @@ const TossPaymentsWidget = ({
   successUrl,
   failUrl,
   paymentMethod = "카드",
+  paymentType,
+  diningInfo,
 }) => {
   const widgetRef = useRef(null);
   const router = useRouter();
@@ -99,7 +103,7 @@ const TossPaymentsWidget = ({
    * - 모바일은 리다이렉트되어 성공 페이지에서 검증 수행
    * @param {Object} paymentResult - 결제 결과 객체
    */
-  const verifyPaymentWithBackend = async (paymentResult) => {
+  const verifyPaymentWithBackend = useCallback(async (paymentResult) => {
     try {
       setIsVerifying(true);
 
@@ -110,11 +114,13 @@ const TossPaymentsWidget = ({
         throw new Error("결제 응답에 paymentKey가 없습니다.");
       }
 
+      const resolvedType = paymentType || (isUsedHotelPayment ? "used_hotel" : "hotel_reservation");
+
       const requestData = {
         paymentKey: paymentResult.paymentKey,
         orderId: paymentResult.orderId,
         amount: customerInfo?.actualPaymentAmount || amount,
-        type: isUsedHotelPayment ? "used_hotel" : "hotel_reservation",
+        type: resolvedType,
         customerIdx: customerInfo?.customerIdx || 1,
         contentId: String(hotelInfo?.contentId || hotelInfo?.hotelId || ""),
         roomId:
@@ -161,6 +167,15 @@ const TossPaymentsWidget = ({
             paymentMethod: "card",
           },
         }),
+        ...(resolvedType === "dining_reservation" && {
+          diningIdx: diningInfo?.diningIdx,
+          diningDate: diningInfo?.diningDate,
+          // diningTime: diningInfo?.diningTime,
+          reservationTime: diningInfo?.diningTime,
+          guests: diningInfo?.guests,
+          totalPrice: diningInfo?.totalPrice,
+          specialRequests: diningInfo?.specialRequests,
+        }),
       };
 
       const apiEndpoint = "/api/payments";
@@ -193,14 +208,28 @@ const TossPaymentsWidget = ({
       if (onFail) onFail(err);
       router.push(`/checkout/fail?error=${encodeURIComponent(err.message)}`);
     }
-  };
+  }, [
+    amount,
+    customerEmail,
+    customerMobilePhone,
+    customerInfo,
+    customerName,
+    hotelInfo,
+    onFail,
+    onSuccess,
+    orderId,
+    paymentMethod,
+    paymentType,
+    diningInfo,
+    router,
+  ]);
 
   /**
    * 결제 요청 핸들러
    * - 모바일: 리다이렉트 플로우(앱/브라우저). QR 미노출이 정상.
    * - 데스크톱: Promise 플로우로 결과를 받고 즉시 검증.
    */
-  const handlePayment = async () => {
+  const handlePayment = useCallback(async () => {
     try {
       const tp = widgetRef.current;
       if (!tp) throw new Error("토스페이먼츠가 초기화되지 않았습니다.");
@@ -271,7 +300,19 @@ const TossPaymentsWidget = ({
       }
       if (onFail) onFail(error);
     }
-  };
+  }, [
+    amount,
+    customerEmail,
+    customerMobilePhone,
+    customerName,
+    failUrl,
+    verifyPaymentWithBackend,
+    onFail,
+    orderId,
+    orderName,
+    paymentMethod,
+    successUrl,
+  ]);
 
   // 결제 핸들러를 전역에 등록 (기존 구조 유지)
   useEffect(() => {
@@ -281,7 +322,22 @@ const TossPaymentsWidget = ({
     return () => {
       if (window.tossPaymentHandler) delete window.tossPaymentHandler;
     };
-  }, [isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+    // 결제 파라미터가 바뀌면 최신 값으로 핸들러 갱신
+  }, [
+    isLoading,
+    paymentMethod,
+    amount,
+    orderId,
+    orderName,
+    customerName,
+    customerEmail,
+    customerMobilePhone,
+    successUrl,
+    failUrl,
+    paymentType,
+    diningInfo?.diningTime,
+    handlePayment,
+  ]);
 
   if (error) {
     return (

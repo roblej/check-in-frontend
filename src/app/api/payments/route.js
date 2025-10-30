@@ -86,7 +86,8 @@ export async function POST(req) {
           customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1,
           diningIdx: body.diningIdx,
           diningDate: body.diningDate,
-          diningTime: body.diningTime,
+          // 프론트(위젯/성공페이지)에서 어느 키로 와도 수용
+          diningTime: body.diningTime || body.reservationTime,
           guests: body.guests,
           totalPrice: body.totalPrice || amount,
           customerName: body.customerInfo?.name || body.customerName,
@@ -97,6 +98,12 @@ export async function POST(req) {
           pointsUsed: body.paymentInfo?.pointAmount || body.pointsUsed || 0,
           cashUsed: body.paymentInfo?.cashAmount || body.cashUsed || 0,
         };
+        // 디버그: 전달값 확인 (필요 시 제거)
+        console.log("[payments/api] dining payload times:", {
+          diningTimeFromBody: body?.diningTime,
+          reservationTimeFromBody: body?.reservationTime,
+          diningTimeToBackend: backendRequestData.diningTime,
+        });
       } else {
         // 호텔 예약 데이터 구성
         // roomId를 Integer로 변환 (백엔드에서 Integer 타입 요구)
