@@ -28,7 +28,15 @@ const SuccessPageContent = () => {
       const paymentKey = search.get("paymentKey");
       const orderId = search.get("orderId");
       const amount = search.get("amount");
-      const type = search.get("type");
+
+      // localStorage에서 paymentDraft 복원 시도
+      usePaymentStore.getState().loadFromStorage();
+
+      // type은 URL이 아니라 paymentDraft에서 가져옴
+      const { paymentDraft } = usePaymentStore.getState();
+      console.log("🔍 paymentDraft 전체:", paymentDraft);
+      const type = paymentDraft?.meta?.type || search.get("type");
+      console.log("🔍 추출된 type:", type);
 
       // 같은 마운트 내 중복 호출 방지 + 재방문 가드
       const processedKey = orderId ? `payment_processed_${orderId}` : null;
@@ -95,33 +103,30 @@ const SuccessPageContent = () => {
           payload.diningTime = search.get("diningTime") || undefined;
           payload.guests = Number.isNaN(guests) ? undefined : guests;
         }
-        // 호텔 예약일 경우 결제 직전 저장된 메타를 스토어에서 보강
+        // 호텔 예약일 경우 결제 직전 저장된 메타를 평탄화하여 백엔드 DTO와 일치시킴
         if (type === "hotel_reservation") {
-          try {
-            const { paymentDraft } = usePaymentStore.getState();
-            const meta = paymentDraft?.meta;
-            if (meta) {
-              payload.hotelInfo = {
-                contentId: meta.contentId,
-                roomId: meta.roomIdx || meta.roomId,
-                checkIn: meta.checkIn,
-                checkOut: meta.checkOut,
-                guests: meta.guests,
-                nights: meta.nights,
-                roomPrice: meta.roomPrice,
-                totalPrice: meta.totalPrice,
-              };
-              payload.customerInfo = {
-                customerIdx: me?.customerIdx,
-                name: me?.name,
-                email: me?.email,
-                phone: me?.phone,
-              };
-            }
-          } catch {}
+          const meta = paymentDraft?.meta;
+          console.log("paymentDraft:", paymentDraft);
+          console.log("meta:", meta);
+
+          if (meta) {
+            payload.contentId = meta.contentId;
+            payload.roomId = meta.roomIdx || meta.roomId;
+            payload.checkIn = meta.checkIn;
+            payload.checkOut = meta.checkOut;
+            payload.guests = meta.guests;
+            payload.nights = meta.nights;
+            payload.roomPrice = meta.roomPrice;
+            payload.totalPrice = meta.totalPrice;
+            payload.specialRequests = meta.specialRequests;
+          } else {
+            console.warn("meta 정보가 없습니다. paymentDraft를 확인하세요.");
+          }
         }
 
-        const res = await fetch("/api/payments", {
+        console.log("결제 확인 요청 페이로드:", payload);
+
+        const res = await fetch("/api/payments/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
