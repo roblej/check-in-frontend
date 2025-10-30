@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { CheckCircle, Building2, Sparkles, Wrench, HelpCircle, Home, DollarSign, X, Eye, Calendar } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
@@ -11,11 +11,9 @@ const RoomsPage = () => {
 
   const api_url = "/admin/roomList";
 
-  // URL에서 날짜 파라미터 가져오기 (초기값: 오늘 날짜)
-  const [selectedDate, setSelectedDate] = useState(() => {
-    // 초기값은 항상 오늘 날짜 (빌드 타임 안전성)
-    return new Date().toISOString().split('T')[0];
-  });
+  // URL 파라미터(date) 읽기 - Suspense 경계 내에서 안전하게 사용
+  const searchParams = useSearchParams();
+  const selectedDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
   const [roomStatusList, setRoomStatusList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,36 +22,7 @@ const RoomsPage = () => {
   const [availableRoomCount, setAvailableRoomCount] = useState(0);
   const [totalRoomCount, setTotalRoomCount] = useState(0);
 
-  // 클라이언트에서만 실행되는 useEffect로 URL 파라미터 읽기
-  useEffect(() => {
-    // window.location은 클라이언트에서만 접근 가능하므로 안전
-    const params = new URLSearchParams(window.location.search);
-    const dateParam = params.get('date');
-    
-    if (dateParam) {
-      setSelectedDate(dateParam);
-    }
-
-    // URL 파라미터 변경 감지 (뒤로가기, 직접 URL 변경 시)
-    const handleUrlChange = () => {
-      const newParams = new URLSearchParams(window.location.search);
-      const newDate = newParams.get('date') || new Date().toISOString().split('T')[0];
-      setSelectedDate((prevDate) => {
-        // 이전 값과 비교하여 불필요한 업데이트 방지
-        if (newDate !== prevDate) {
-          return newDate;
-        }
-        return prevDate;
-      });
-    };
-
-    // popstate 이벤트 리스너 (뒤로가기/앞으로가기 감지)
-    window.addEventListener('popstate', handleUrlChange);
-
-    return () => {
-      window.removeEventListener('popstate', handleUrlChange);
-    };
-  }, []); // 마운트 시 한 번만 실행 - URL 읽기는 초기 1회만 필요
+  // selectedDate가 변경될 때마다 데이터 로드
 
   useEffect(() => {
     fetchRoomStatus();
@@ -113,6 +82,7 @@ const RoomsPage = () => {
   };
 
   return (
+    <Suspense fallback={<div className="p-6">로딩 중...</div>}>
     <AdminLayout>
       <div className="space-y-6 p-6">
         {/* 페이지 헤더 */}
@@ -258,6 +228,7 @@ const RoomsPage = () => {
         )}
       </div>
     </AdminLayout>
+    </Suspense>
   );
 };
 
