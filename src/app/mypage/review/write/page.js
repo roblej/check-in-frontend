@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Star, Upload, X } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { mypageAPI } from '@/lib/api/mypage';
 
 function WriteReviewPageContent() {
   const router = useRouter();
@@ -16,14 +17,42 @@ function WriteReviewPageContent() {
   const [content, setContent] = useState('');
   const [images, setImages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reservation, setReservation] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // 더미 예약 데이터
-  const reservation = {
-    id: reservationId,
-    hotelName: '롯데호텔 부산',
-    location: '부산 해운대구',
-    checkOutDate: '2025.09.17',
-  };
+  // 예약 데이터 로드
+  useEffect(() => {
+    const loadReservationData = async () => {
+      if (!reservationId) {
+        alert('예약 정보가 없습니다.');
+        router.push('/mypage');
+        return;
+      }
+
+      try {
+        // TODO: mypageAPI import 필요
+        const data = await mypageAPI.getReservationDetail(reservationId);
+        
+        // status가 4 (이용완료)인지 확인
+        if (data.statusCode !== 4) {
+          alert('이용 완료된 예약만 리뷰를 작성할 수 있습니다.');
+          router.push('/mypage');
+          return;
+        }
+        
+        // TODO: 이미 리뷰를 작성했는지 확인 (백엔드 구현 필요)
+        
+        setReservation(data);
+        setLoading(false);
+      } catch (error) {
+        console.error('예약 정보 로드 실패:', error);
+        alert('예약 정보를 불러올 수 없습니다.');
+        router.push('/mypage');
+      }
+    };
+    
+    loadReservationData();
+  }, [reservationId, router]);
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -65,12 +94,64 @@ function WriteReviewPageContent() {
 
     setIsSubmitting(true);
 
-    // API 호출 시뮬레이션
-    setTimeout(() => {
-      alert('리뷰가 등록되었습니다! 포인트 1000P가 적립되었습니다.');
+    try {
+      // 리뷰 작성 API 호출
+      const result = await mypageAPI.createReview({
+        reservationIdx: reservation.id,
+        roomIdx: reservation.roomIdx,
+        contentId: reservation.contentId,
+        rating: rating,
+        content: content
+      });
+      
+      alert(`리뷰가 등록되었습니다! 포인트 ${result.points || 1000}P가 적립되었습니다.`);
+      // 마이페이지로 이동 후 데이터 새로고침
       router.push('/mypage');
-    }, 1500);
+      // 페이지 새로고침 트리거
+      router.refresh();
+      
+    } catch (error) {
+      console.error('리뷰 등록 실패:', error);
+      alert(error.response?.data?.message || '리뷰 등록에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  // 로딩 중
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex justify-center items-center py-20">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="ml-3 text-gray-600">예약 정보를 불러오는 중...</span>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // 데이터 없음
+  if (!reservation) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="max-w-3xl mx-auto px-4 py-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <p className="text-red-600 mb-4">예약 정보를 찾을 수 없습니다.</p>
+            <button
+              onClick={() => router.push('/mypage')}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
+              마이페이지로 돌아가기
+            </button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -85,13 +166,16 @@ function WriteReviewPageContent() {
           >
             <ArrowLeft className="w-6 h-6 text-gray-700" />
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">리뷰 작성</h1>
+          <button 
+            onClick={() => router.back()}
+            className="text-3xl font-bold text-gray-900 cursor-pointer">리뷰 작성
+          </button>
         </div>
 
         {/* 호텔 정보 */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
           <h2 className="text-xl font-bold text-gray-900 mb-1">{reservation.hotelName}</h2>
-          <p className="text-gray-500">{reservation.location} · 체크아웃: {reservation.checkOutDate}</p>
+          <p className="text-gray-500">{reservation.location} · 체크아웃: {reservation.checkOut}</p>
         </div>
 
         {/* 별점 선택 */}

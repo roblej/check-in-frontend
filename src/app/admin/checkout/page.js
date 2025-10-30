@@ -7,6 +7,7 @@ import axiosInstance from '@/lib/axios';
 const CheckoutPage = () => {
 
   const api_url = "/admin/checkoutPendingList";
+  const checkoutApi_url = "/admin/checkout";
     
   const [searchTerm, setSearchTerm] = useState('');
   const [checkoutList, setCheckoutList] = useState([]);
@@ -40,22 +41,41 @@ const CheckoutPage = () => {
     }
   }, [searchTerm, checkoutList]);
 
-  // 체크아웃 처리 (더미)
-  const handleCheckout = async (reservIdx) => {
-    if (!confirm('체크아웃을 처리하시겠습니까?')) return;
-    
-    // 더미 처리 - 실제로는 백엔드에서 처리
-    alert(`예약번호 ${reservIdx} 체크아웃이 완료되었습니다.`);
-    
-    // 더미 데이터에서 제거
-    setCheckoutList(prev => prev.filter(item => item.reservIdx !== reservIdx));
+  const checkOutData = async (orderIdx) => {
+    setLoading(true);
+    try {
+      const dto = {
+        orderIdx: orderIdx,
+        outTime: new Date().toISOString()
+      };
+      
+      const response = await axiosInstance.post(checkoutApi_url, dto);
+      if (response.data.success) {
+        alert(response.data.message);
+      } else {
+        alert(response.data.message);
+      }
+      getData();
+    } catch (error) {
+      console.error('체크아웃 처리 오류:', error);
+      alert('체크아웃 처리 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // 새로고침 (더미)
+  const handleCheckout = async (orderIdx) => {
+    if (!confirm('체크아웃을 처리하시겠습니까?')) return;
+
+    checkOutData(orderIdx);
+    
+    // 성공 후 목록 새로고침
+    getData();
+  };
+
+  // 새로고침
   const fetchData = () => {
-    setCheckoutList(dummyData);
-    setFilteredList(dummyData);
-    alert('데이터가 새로고침되었습니다.');
+    getData();
   };
 
   return (
@@ -141,10 +161,10 @@ const CheckoutPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredList.map((reservation) => (
-                    <tr key={reservation.reservIdx} className="hover:bg-gray-50">
+                  filteredList.map((reservation, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {reservation.reservIdx}
+                        {index+1}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {reservation.customer?.name || '정보 없음'}
@@ -153,20 +173,20 @@ const CheckoutPage = () => {
                         {reservation.customer?.phone || '정보 없음'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {reservation.roomIdx}호
+                        {reservation.roomName}호
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {reservation.checkinDate}
+                        {reservation.roomReservation.checkinDate}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {reservation.checkoutDate}
+                        {reservation.roomReservation.checkoutDate}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {reservation.guest}명
+                        {reservation.roomReservation.guest}명
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button 
-                          onClick={() => handleCheckout(reservation.reservIdx)}
+                          onClick={() => handleCheckout(reservation.orderIdx)}
                           className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
                         >
                           체크아웃 처리

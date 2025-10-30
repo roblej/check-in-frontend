@@ -1,19 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { CheckCircle, Building2, Sparkles, Wrench, HelpCircle, Home, DollarSign, X, Eye, Calendar } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
-const RoomsPage = () => {
-  const searchParams = useSearchParams();
+const RoomsInner = () => {
   const router = useRouter();
-  
-  // URL에서 날짜 파라미터 가져오기 (없으면 오늘 날짜)
-  const selectedDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
-
   const api_url = "/admin/roomList";
+  const searchParams = useSearchParams();
+  const selectedDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
   const [roomStatusList, setRoomStatusList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -225,6 +222,14 @@ const RoomsPage = () => {
         )}
       </div>
     </AdminLayout>
+  );
+};
+
+const RoomsPage = () => {
+  return (
+    <Suspense fallback={<div className="p-6">로딩 중...</div>}>
+      <RoomsInner />
+    </Suspense>
   );
 };
 

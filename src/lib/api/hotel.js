@@ -14,10 +14,15 @@ export const hotelAPI = {
     return response.data;
   },
 
-  // 호텔 객실 목록 조회
+  // 호텔 객실 목록 조회 (날짜 파라미터 포함 지원)
   getHotelRooms: async (contentId, params = {}) => {
     const response = await axiosInstance.get(`/hotels/${contentId}/rooms`, {
-      params,
+      params: {
+        ...params,
+        // 날짜가 있으면 예약 가능성 조회 포함
+        checkinDate: params.checkinDate,
+        checkoutDate: params.checkoutDate,
+      },
     });
     return response.data;
   },
@@ -38,21 +43,15 @@ export const hotelAPI = {
 
   // 호텔 리뷰 조회
   getHotelReviews: async (contentId, params = {}) => {
-    const response = await axiosInstance.get(
-      `/hotels/${contentId}/reviews`,
-      {
-        params,
-      }
-    );
+    const response = await axiosInstance.get(`/hotels/${contentId}/reviews`, {
+      params,
+    });
     return response.data;
   },
 
   // 호텔 검색
   searchHotels: async (searchParams) => {
-    const response = await axiosInstance.post(
-      "/hotels/search",
-      searchParams
-    );
+    const response = await axiosInstance.post("/hotels/search", searchParams);
     return response.data;
   },
   /**
@@ -76,7 +75,9 @@ export const hotelAPI = {
   /** 현재 조회자 수 조회 (선택적으로 sessionId 전달하여 TTL 갱신) */
   getHotelViews: async (contentId, sessionId = null) => {
     const params = sessionId ? { sessionId } : {};
-    const res = await axiosInstance.get(`/hotels/${contentId}/views`, { params });
+    const res = await axiosInstance.get(`/hotels/${contentId}/views`, {
+      params,
+    });
     return res.data;
   },
   // 여러 호텔의 실시간 조회수 조회 (선택) 안쓸 가능성 큼
@@ -95,9 +96,7 @@ export const hotelAPI = {
 
   // 호텔 편의시설 및 위치 정보 조회
   getHotelFacilities: async (contentId) => {
-    const response = await axiosInstance.get(
-      `/hotels/${contentId}/facilities`
-    );
+    const response = await axiosInstance.get(`/hotels/${contentId}/facilities`);
     return response.data;
   },
 
