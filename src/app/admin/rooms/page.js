@@ -256,7 +256,7 @@ const RoomDetailModal = ({ room, onClose, onUpdate }) => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-      <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+      <div className="absolute inset-0 bg-opacity-50"></div>
       <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
         {/* 헤더 */}
         <div className="px-6 py-4 border-b flex items-center justify-between">

@@ -38,7 +38,7 @@ const AdminLayout = ({ children, currentPage }) => {
         />
         
         {/* 페이지 콘텐츠 */}
-        <main className="flex-1 p-3 sm:p-6 overflow-y-auto">
+        <main className="flex-1 p-3 sm:p-12 overflow-y-auto">
           <div className="w-full">
             {children}
           </div>
