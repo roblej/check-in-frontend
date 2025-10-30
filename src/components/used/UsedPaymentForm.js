@@ -612,6 +612,9 @@ const UsedPaymentForm = ({ initialData }) => {
                   customerName={paymentInfo.customerName}
                   customerEmail={paymentInfo.customerEmail}
                   customerMobilePhone={paymentInfo.customerPhone}
+                  paymentType="used_hotel"
+                  successUrl="/used-payment/success"
+                  failUrl="/used-payment/fail"
                   hotelInfo={{
                     usedItemIdx: paymentInfo.usedItemIdx,
                     usedTradeIdx: paymentInfo.usedTradeIdx,
@@ -628,6 +631,9 @@ const UsedPaymentForm = ({ initialData }) => {
                     email: paymentInfo.customerEmail,
                     phone: paymentInfo.customerPhone,
                     specialRequests: paymentInfo.specialRequests,
+                    useCash: paymentInfo.useCash,
+                    usePoint: paymentInfo.usePoint,
+                    actualPaymentAmount: paymentAmounts.actualPaymentAmount,
                   }}
                   onSuccess={handlePaymentSuccess}
                   onFail={handlePaymentFail}
