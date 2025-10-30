@@ -7,6 +7,8 @@ const DartGameModal = ({ isOpen, onClose }) => {
   const [isThrowing, setIsThrowing] = useState(false);
   const [targetLocation, setTargetLocation] = useState(null);
   const [recommendedHotels, setRecommendedHotels] = useState([]);
+  const [nearbyTours, setNearbyTours] = useState([]);
+  const [isTourLoading, setIsTourLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isCharging, setIsCharging] = useState(false);
@@ -295,6 +297,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
     // 마커가 찍히고, 지역코드가 정상적으로 들어왔을 때 호텔 검색 실행
     if (targetLocation && targetLocation.areaCode) {
       searchHotelsNearLocation(targetLocation);
+      fetchNearbyTours(targetLocation);
     }
   }, [targetLocation]);
 
@@ -320,6 +323,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
     // 이전 결과 초기화
     setTargetLocation(null);
     setRecommendedHotels([]);
+    setNearbyTours([]);
   };
 
   // 랜덤 좌표 생성 (한국 육지 내부만)
@@ -621,6 +625,45 @@ const DartGameModal = ({ isOpen, onClose }) => {
       setRecommendedHotels([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 위치 기반 관광정보 검색 (TourAPI via server route)
+  const fetchNearbyTours = async (location) => {
+    try {
+      setIsTourLoading(true);
+      // Kakao 지도 좌표는 기본 WGS84이며 TourAPI는 mapX(경도), mapY(위도)를 사용합니다.
+      // 소수점 정밀도 확보 (TourAPI는 소수점 좌표 허용, 6~7자리 권장)
+      const wgs84Lat = typeof location.lat === 'number' ? location.lat : parseFloat(location.lat);
+      const wgs84Lng = typeof location.lng === 'number' ? location.lng : parseFloat(location.lng);
+      const latStr = Number.isFinite(wgs84Lat) ? wgs84Lat.toFixed(7) : String(location.lat);
+      const lngStr = Number.isFinite(wgs84Lng) ? wgs84Lng.toFixed(7) : String(location.lng);
+      const params = new URLSearchParams({
+        mapY: latStr,            // 위도(Y) - 7자리
+        mapX: lngStr,            // 경도(X) - 7자리
+        radius: "30000",         // 30km (값/주석 일치)
+        numOfRows: "18",
+        arrange: "E",           // 거리순
+      });
+      console.log("[TourAPI] 좌표(위도,경도):", latStr, lngStr);
+      const url = `/api/tour/nearby?${params.toString()}`;
+      console.log("[TourAPI] 요청 URL:", url);
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.warn("[TourAPI] 요청 실패:", res.status);
+        setNearbyTours([]);
+        return;
+      }
+      const data = await res.json();
+      console.log("[TourAPI] 응답 데이터:", data);
+      const items = Array.isArray(data.items) ? data.items : [];
+      console.log(`[TourAPI] 항목 수: ${items.length}`);
+      setNearbyTours(items);
+    } catch (e) {
+      console.error('관광정보 조회 실패:', e);
+      setNearbyTours([]);
+    } finally {
+      setIsTourLoading(false);
     }
   };
 
@@ -1024,6 +1067,42 @@ const DartGameModal = ({ isOpen, onClose }) => {
                   <p className="text-sm">다른 지역을 시도해보세요!</p>
                 </div>
               )}
+
+              {/* 근처 관광정보 (TourAPI) */}
+              <div className="mt-10">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                  🗺️ 근처 관광지 추천
+                </h4>
+                {isTourLoading ? (
+                  <div className="text-center py-6 text-gray-600">관광정보를 불러오는 중...</div>
+                ) : nearbyTours.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {nearbyTours.map((item, idx) => (
+                      <div key={(item.contentid || idx) + '_' + idx} className="bg-white rounded-lg overflow-hidden border hover:shadow-md transition-shadow h-full flex flex-col">
+                        {item.firstimage ? (
+                          <div className="h-40 overflow-hidden">
+                            <img src={item.firstimage} alt={item.title || 'tour'} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="h-40 bg-gray-100" />
+                        )}
+                        <div className="p-4 flex-1 flex flex-col">
+                          <div className="font-bold text-gray-900 mb-1 line-clamp-1">{item.title || '이름 미상'}</div>
+                          {item.addr1 && (
+                            <div className="text-sm text-gray-600 line-clamp-2">{item.addr1}</div>
+                          )}
+                          <div className="mt-auto pt-3 flex gap-2 text-xs text-gray-500">
+                            {item.contenttypeid && <span className="px-2 py-1 bg-gray-100 rounded">type {item.contenttypeid}</span>}
+                            {item.tel && <span className="px-2 py-1 bg-gray-100 rounded">{item.tel}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500">근처 관광정보가 없습니다.</div>
+                )}
+              </div>
             </div>
           )}
         </div>
