@@ -32,18 +32,19 @@ export async function GET(req) {
     };
 
     const build = (base, extra) => `${base}?${new URLSearchParams({ ...commonParams, ...extra }).toString()}`;
-    const base = "https://apis.data.go.kr/B551011/KorService2";
+    const baseV2 = "https://apis.data.go.kr/B551011/KorService2";
+    const baseV1 = "https://apis.data.go.kr/B551011/KorService1";
 
-    const urls = {
-      common: build(`${base}/detailCommon2`, { overviewYN: "Y", defaultYN: "Y", addrinfoYN: "Y", mapinfoYN: "Y", areacodeYN: "Y" }),
-      intro: build(`${base}/detailIntro2`, {}),
-      images: build(`${base}/detailImage2`, { imageYN: "Y", subImageYN: "Y" }),
+    const urlsV2 = {
+      common: build(`${baseV2}/detailCommon2`, { overviewYN: "Y", defaultYN: "Y", addrinfoYN: "Y", mapinfoYN: "Y", areacodeYN: "Y" }),
+      intro: build(`${baseV2}/detailIntro2`, {}),
+      images: build(`${baseV2}/detailImage2`, { imageYN: "Y", subImageYN: "Y" }),
     };
 
-    const [cRes, iRes, imgRes] = await Promise.all([
-      fetch(urls.common, { headers: { Accept: "application/json" }, cache: "no-store" }),
-      fetch(urls.intro, { headers: { Accept: "application/json" }, cache: "no-store" }),
-      fetch(urls.images, { headers: { Accept: "application/json" }, cache: "no-store" }),
+    let [cRes, iRes, imgRes] = await Promise.all([
+      fetch(urlsV2.common, { headers: { Accept: "application/json" }, cache: "no-store" }),
+      fetch(urlsV2.intro, { headers: { Accept: "application/json" }, cache: "no-store" }),
+      fetch(urlsV2.images, { headers: { Accept: "application/json" }, cache: "no-store" }),
     ]);
 
     const toItems = async (res) => {
@@ -53,11 +54,31 @@ export async function GET(req) {
       return Array.isArray(it) ? it : it ? [it] : [];
     };
 
-    const [commonItems, introItems, imageItems] = await Promise.all([
+    let [commonItems, introItems, imageItems] = await Promise.all([
       toItems(cRes),
       toItems(iRes),
       toItems(imgRes),
     ]);
+
+    // 폴백: V2 응답이 실패/빈 경우 V1 재시도
+    const isEmpty = (arr) => !arr || (Array.isArray(arr) && arr.length === 0);
+    if (isEmpty(commonItems) && isEmpty(introItems) && isEmpty(imageItems)) {
+      const urlsV1 = {
+        common: build(`${baseV1}/detailCommon1`, { overviewYN: "Y", defaultYN: "Y", addrinfoYN: "Y", mapinfoYN: "Y", areacodeYN: "Y" }),
+        intro: build(`${baseV1}/detailIntro1`, {}),
+        images: build(`${baseV1}/detailImage1`, { imageYN: "Y", subImageYN: "Y" }),
+      };
+      [cRes, iRes, imgRes] = await Promise.all([
+        fetch(urlsV1.common, { headers: { Accept: "application/json" }, cache: "no-store" }),
+        fetch(urlsV1.intro, { headers: { Accept: "application/json" }, cache: "no-store" }),
+        fetch(urlsV1.images, { headers: { Accept: "application/json" }, cache: "no-store" }),
+      ]);
+      [commonItems, introItems, imageItems] = await Promise.all([
+        toItems(cRes),
+        toItems(iRes),
+        toItems(imgRes),
+      ]);
+    }
 
     return NextResponse.json({
       common: commonItems && commonItems[0],
