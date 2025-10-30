@@ -1,15 +1,25 @@
 "use client";
 
-import { Suspense } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
 import DiningSearchClient from "./DiningSearchClient";
+import { Suspense } from "react";
 
-const DiningSearchPageContent = ({ searchParams }) => {
-  // URL 파라미터 추출
-  const destination = searchParams?.destination || "";
-  const diningDate = searchParams?.diningDate || "";
-  const mealType = searchParams?.mealType || "";
-  const adults = searchParams?.adults || "";
+const DiningSearchPageContent = () => {
+  const searchParams = useSearchParams();
+  const [destination, setDestination] = useState(searchParams.get("destination") || "");
+  const [diningDate, setDiningDate] = useState(searchParams.get("diningDate") || "");
+  const [mealType, setMealType] = useState(searchParams.get("mealType") || "");
+  const [adults, setAdults] = useState(searchParams.get("adults") || "");
+
+  useEffect(() => {
+    // 파라미터 초기화
+    setDestination(searchParams.get("destination") || "");
+    setDiningDate(searchParams.get("diningDate") || "");
+    setMealType(searchParams.get("mealType") || "");
+    setAdults(searchParams.get("adults") || "");
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -24,7 +34,7 @@ const DiningSearchPageContent = ({ searchParams }) => {
   );
 };
 
-const DiningSearchPage = ({ searchParams }) => {
+const DiningSearchPage = () => {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50">
@@ -34,7 +44,7 @@ const DiningSearchPage = ({ searchParams }) => {
         </div>
       </div>
     }>
-      <DiningSearchPageContent searchParams={searchParams} />
+      <DiningSearchPageContent />
     </Suspense>
   );
 };

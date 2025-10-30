@@ -64,7 +64,7 @@ const UsedPaymentForm = ({ initialData }) => {
       setPaymentInfo(prev => ({
         ...prev,
         customerIdx: customer.customerIdx,
-        customerName: customer.nickname,
+        customerName: customer.name || "", // 구매 시에는 실명 사용
         customerEmail: customer.email,
         customerPhone: customer.phone,
         customerCash: parseInt(customer.cash) || 0,

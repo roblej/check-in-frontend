@@ -1,80 +1,32 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import RoomCard from "./RoomCard";
-import LiveViewerCount from "./LiveViewerCount";
 import HotelGallery from "./HotelGallery";
 import HotelInfo from "./HotelInfo";
 import HotelAmenities from "./HotelAmenities";
 import HotelReviews from "./HotelReviews";
 import HotelLocation from "./HotelLocation";
 import HotelPolicy from "./HotelPolicy";
-import { hotelAPI } from "@/lib/api/hotel";
+import HotelHeader from "./HotelHeader";
+import BookingSummary from "./BookingSummary";
+import HotelNavBar from "./HotelNavBar";
 import SearchConditionModal from "./SearchConditionModal";
 import { useSearchStore } from "@/stores/searchStore";
 import { updateUrlParams, formatSearchParamsForUrl } from "@/utils/urlUtils";
-import { useRouter } from "next/navigation";
-
-/**
- * @typedef {Object} SearchParams
- * @property {string} [roomName] - 객실 이름 검색
- * @property {string} [checkIn] - 체크인 날짜
- * @property {string} [checkOut] - 체크아웃 날짜
- * @property {number} [adults] - 성인 인원
- * @property {number} [children] - 어린이 인원
- * @property {number} [nights] - 숙박 일수
- * @property {string} [destination] - 목적지
- * @property {string|number} [roomIdx] - 특정 객실 인덱스
- */
-
-/**
- * @typedef {Object} Room
- * @property {string} id - 객실 고유 ID
- * @property {string|number} roomIdx - 객실 인덱스
- * @property {string|number} contentId - 호텔 콘텐츠 ID
- * @property {string} name - 객실 이름
- * @property {string} description - 객실 설명
- * @property {string} size - 객실 크기
- * @property {string} bedType - 침대 타입
- * @property {number} capacity - 수용 인원
- * @property {number} maxOccupancy - 최대 수용 인원 (하위 호환성)
- * @property {string[]} amenities - 편의시설 목록
- * @property {string} checkInInfo - 체크인 정보
- * @property {number} originalPrice - 원가
- * @property {number} price - 판매가
- * @property {number} basePrice - 기본 가격
- * @property {number} discount - 할인율
- * @property {string} imageUrl - 객실 이미지 URL
- * @property {boolean} refundable - 환불 가능 여부
- * @property {boolean} breakfastIncluded - 조식 포함 여부
- * @property {boolean} smoking - 흡연실 여부
- * @property {number} roomCount - 객실 개수
- */
-
-/**
- * @typedef {Object} HotelData
- * @property {string|number} id - 호텔 ID
- * @property {string} name - 호텔 이름
- * @property {string} description - 호텔 설명
- * @property {string} location - 호텔 위치
- * @property {number} rating - 평점
- * @property {number} reviewCount - 리뷰 개수
- * @property {number} starRating - 별점
- * @property {string} checkInTime - 체크인 시간
- * @property {string} checkOutTime - 체크아웃 시간
- * @property {string[]} amenities - 편의시설 목록
- * @property {string[]} images - 이미지 URL 목록
- * @property {string} district - 지역 코드
- */
+import { useHotelData } from "./hooks/useHotelData";
+import { useHotelNavigation } from "./hooks/useHotelNavigation";
 
 /**
  * 호텔 상세 정보 컴포넌트
  * @param {Object} props
  * @param {number|string} props.contentId - 호텔 ID
- * @param {SearchParams} [props.searchParams={}] - 검색 파라미터
+ * @param {Object} [props.searchParams={}] - 검색 파라미터
  * @param {boolean} [props.isModal=false] - 모달 모드 여부
  * @param {React.RefObject} [props.scrollContainerRef] - 외부 스크롤 컨테이너 ref
  * @param {Function} [props.onSearchParamsChange] - 검색 조건 변경 콜백
+ * @param {Function} [props.onLoadingChange] - 로딩 상태 변경 콜백
  * @param {Function} [props.onClose] - 모달 닫기 콜백
  */
 const HotelDetail = ({
@@ -87,518 +39,61 @@ const HotelDetail = ({
   onClose,
 }) => {
   const router = useRouter();
-  const { updateSearchParams, searchParams: storeSearchParams } =
-    useSearchStore();
+  const { updateSearchParams } = useSearchStore();
 
-  const [activeSection, setActiveSection] = useState("rooms");
-  const [isScrollingToSection, setIsScrollingToSection] = useState(false);
-  const [headerHeight, setHeaderHeight] = useState(0);
-  const [hotelData, setHotelData] = useState(null);
-  const [rooms, setRooms] = useState([]);
-  const [isMounted, setIsMounted] = useState(true);
-  const abortControllerRef = useRef(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // 컴포넌트 언마운트 감지
-  useEffect(() => {
-    return () => {
-      setIsMounted(false);
-      // 진행 중인 API 요청 중단
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [localSearchParams, setLocalSearchParams] = useState(searchParams);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
-  // 로딩 상태 변경 시 부모 컴포넌트에 알림 (의존성 배열에서 제외)
-  useEffect(() => {
-    if (onLoadingChange) {
-      onLoadingChange(isLoading);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading]); // onLoadingChange 제거
-
-  const navRef = useRef(null);
-  const headerRef = useRef(null);
-  const sectionsRef = useRef({});
   const internalScrollRef = useRef(null);
 
-  // 외부에서 전달된 scrollContainerRef가 있으면 사용, 없으면 내부 ref 사용
-  const scrollContainerRef = externalScrollRef || internalScrollRef;
+  // 전체 페이지 모드에서는 window를 스크롤 컨테이너로 사용
+  const [windowScrollRef, setWindowScrollRef] = useState({ current: null });
+
+  useEffect(() => {
+    if (!isModal && typeof window !== "undefined") {
+      setWindowScrollRef({ current: window });
+    }
+  }, [isModal]);
+
+  const scrollContainerRef = isModal
+    ? externalScrollRef || internalScrollRef
+    : windowScrollRef;
+
+  // 커스텀 훅 사용
+  const { hotelData, rooms, isLoading, errorMessage, formatPrice } =
+    useHotelData(contentId, localSearchParams, onLoadingChange);
+
+  const {
+    activeSection,
+    navSections,
+    navRef,
+    headerRef,
+    scrollToSection,
+    setSectionRef,
+  } = useHotelNavigation(scrollContainerRef, isModal);
 
   /**
    * 로컬 검색 조건 업데이트 함수
-   * @param {SearchParams} newParams - 새로운 검색 조건
    */
   const updateLocalSearchParams = useCallback(
     (newParams) => {
       const updatedParams = { ...localSearchParams, ...newParams };
       setLocalSearchParams(updatedParams);
 
-      // 외부에서 검색 조건 변경 콜백이 제공된 경우 사용
       if (onSearchParamsChange) {
         onSearchParamsChange(updatedParams);
         return;
       }
 
-      // 모달인 경우 로컬 상태만 업데이트 (전체 스토어에 영향 없음)
       if (isModal) {
         return;
       }
 
-      // 호텔 상세 페이지인 경우 URL만 업데이트 (스토어는 업데이트하지 않음)
       const urlParams = formatSearchParamsForUrl(updatedParams);
       const newUrl = updateUrlParams(urlParams);
-
-      // 브라우저 히스토리 업데이트 (페이지 새로고침 없이)
       router.replace(newUrl, { scroll: false });
     },
     [localSearchParams, isModal, router, onSearchParamsChange]
-  );
-
-  /**
-   * 가격 포맷팅 함수
-   * @param {number|string} price - 포맷팅할 가격
-   * @returns {string} 포맷팅된 가격 문자열
-   */
-  const formatPrice = useCallback(
-    (price) => new Intl.NumberFormat("ko-KR").format(Number(price || 0)),
-    []
-  );
-
-  /**
-   * 백엔드 호텔 데이터를 프론트엔드 형식으로 매핑
-   * @param {Object} hotel - 백엔드 호텔 데이터
-   * @returns {HotelData} 매핑된 호텔 데이터
-   */
-  const mapHotelData = useCallback(
-    (hotel) => {
-      if (!hotel) return null;
-
-      return {
-        id: hotel.contentId ?? contentId,
-        name: hotel.title ?? "",
-        description: hotel.hotelDetail?.scalelodging || "",
-        location: hotel.adress ?? "",
-        rating: hotel.rating ?? 0,
-        reviewCount: hotel.reviewCount ?? 0,
-        starRating: hotel.starRating ?? 0,
-        checkInTime: hotel.checkInTime ?? "",
-        checkOutTime: hotel.checkOutTime ?? "",
-        amenities: [
-          hotel.hotelDetail?.foodplace,
-          hotel.hotelDetail?.parkinglodging,
-          hotel.hotelDetail?.reservationlodging,
-        ].filter(Boolean),
-        images: hotel.images ?? (hotel.imageUrl ? [hotel.imageUrl] : []),
-        district: hotel.areaCode ?? "",
-      };
-    },
-    [contentId]
-  );
-
-  /**
-   * 백엔드 객실 데이터를 프론트엔드 형식으로 매핑
-   * @param {Object[]} roomList - 백엔드 객실 데이터 배열
-   * @param {string} checkInTime - 체크인 시간
-   * @param {string|number} [roomIdx] - 특정 객실 ID (선택사항)
-   * @returns {Room[]} 매핑된 객실 데이터 배열
-   */
-  const mapRoomData = useCallback((roomList, checkInTime, roomIdx = null) => {
-    const safeRoomList = Array.isArray(roomList) ? roomList : [];
-
-    // roomIdx가 있으면 해당 객실만 필터링
-    const filteredRooms = roomIdx
-      ? safeRoomList.filter((room) => room.roomIdx == roomIdx)
-      : safeRoomList;
-
-    return filteredRooms.map((room, index) => ({
-      id: room.roomIdx
-        ? `${room.contentId}-${room.roomIdx}`
-        : `${room.contentId}-${room.name}-${index}`,
-      roomIdx: room.roomIdx,
-      contentId: room.contentId,
-      name: room.name || "",
-      description: room.description || "",
-      size: room.size || "",
-      bedType: room.bedType || "",
-      capacity: room.capacity || 2,
-      maxOccupancy: room.capacity || 2, // 하위 호환성을 위해 유지
-      amenities: Array.isArray(room.amenities) ? room.amenities : [],
-      checkInInfo: checkInTime ? `${checkInTime} 이후 체크인` : "",
-      originalPrice: Number(room.basePrice ?? 0),
-      price: Number(room.basePrice ?? 0),
-      basePrice: Number(room.basePrice ?? 0),
-      discount: 0,
-      imageUrl: room.imageUrl || "",
-      refundable: room.refundable === 1 || room.refundable === true,
-      breakfastIncluded:
-        room.breakfastIncluded === 1 || room.breakfastIncluded === true,
-      smoking: room.smoking === 1 || room.smoking === true,
-      roomCount: room.roomCount || 1,
-    }));
-  }, []);
-
-  /**
-   * 수용인원 초과 시 추가 요금 계산
-   * @param {number} capacity - 기본 수용인원
-   * @param {number} adults - 실제 인원
-   * @returns {number} 추가 요금
-   */
-  const calculateAdditionalFee = useCallback((capacity, adults) => {
-    if (adults <= capacity) return 0;
-
-    const excessGuests = adults - capacity;
-
-    if (capacity === 4) {
-      // 4인방: 초과 인원당 1만원
-      return excessGuests * 10000;
-    } else if (capacity === 8) {
-      // 8인방: 초과 인원당 1만원
-      return excessGuests * 10000;
-    }
-
-    return 0;
-  }, []);
-
-  /**
-   * 백엔드 객실 데이터를 프론트엔드 형식으로 매핑 (예약 가능성 포함)
-   * @param {Object[]} roomList - 백엔드 객실 데이터 배열
-   * @param {string} checkInTime - 체크인 시간
-   * @param {string|number} [roomIdx] - 특정 객실 ID (선택사항)
-   * @param {boolean} hasAvailabilityData - 예약 가능성 데이터 포함 여부
-   * @param {number} adults - 예약 인원
-   * @returns {Room[]} 매핑된 객실 데이터 배열
-   */
-  const mapRoomDataWithAvailability = useCallback(
-    (
-      roomList,
-      checkInTime,
-      roomIdx = null,
-      hasAvailabilityData = false,
-      adults = 0
-    ) => {
-      const safeRoomList = Array.isArray(roomList) ? roomList : [];
-
-      // roomIdx가 있으면 해당 객실만 필터링
-      const filteredRooms = roomIdx
-        ? safeRoomList.filter((room) => room.roomIdx == roomIdx)
-        : safeRoomList;
-
-      return filteredRooms.map((room, index) => {
-        // 예약 가능성 메시지 처리
-        let availabilityMessage = "";
-        let isAvailable = true;
-
-        if (hasAvailabilityData && room.availabilityMessage) {
-          availabilityMessage = room.availabilityMessage;
-          isAvailable =
-            !availabilityMessage.includes("불가능") &&
-            !availabilityMessage.includes("예약된");
-        } else {
-          // 기본 상태 처리 (예약 가능성 데이터가 없는 경우)
-          if (room.status === 0) {
-            availabilityMessage = "숙소 측 요청으로 사용 불가능한 방입니다";
-            isAvailable = false;
-          } else {
-            availabilityMessage = "예약 가능한 방입니다";
-            isAvailable = true;
-          }
-        }
-
-        // 추가 요금 계산
-        const additionalFee = calculateAdditionalFee(
-          room.capacity || 4,
-          adults
-        );
-        const totalPrice = (room.basePrice || 0) + additionalFee;
-
-        return {
-          id: room.roomIdx
-            ? `${room.contentId}-${room.roomIdx}`
-            : `${room.contentId}-${room.name}-${index}`,
-          roomIdx: room.roomIdx,
-          contentId: room.contentId,
-          name: room.name || "",
-          description: room.description || "",
-          size: room.size || "",
-          bedType: room.bedType || "",
-          capacity: room.capacity || 2,
-          maxOccupancy: room.capacity || 2, // 하위 호환성을 위해 유지
-          amenities: Array.isArray(room.amenities) ? room.amenities : [],
-          checkInInfo: checkInTime ? `${checkInTime} 이후 체크인` : "",
-          originalPrice: Number(room.basePrice ?? 0),
-          price: totalPrice,
-          basePrice: Number(room.basePrice ?? 0),
-          additionalFee: additionalFee,
-          discount: 0,
-          imageUrl: room.imageUrl || "",
-          refundable: room.refundable === 1 || room.refundable === true,
-          breakfastIncluded:
-            room.breakfastIncluded === 1 || room.breakfastIncluded === true,
-          smoking: room.smoking === 1 || room.smoking === true,
-          roomCount: room.roomCount || 1,
-          status: room.status || 1,
-          availabilityMessage: availabilityMessage,
-          isAvailable: isAvailable,
-        };
-      });
-    },
-    [calculateAdditionalFee]
-  );
-
-  // 데이터 로드: 호텔 상세 + 객실 목록
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchData = async () => {
-      //기존 데이터 초기화 잔상 없앰
-      setHotelData(null);
-      setRooms([]);
-      setErrorMessage("");
-      //패널에 로딩 시작
-      setIsLoading(true);
-      onLoadingChange?.(true);
-
-      // 이전 요청이 있다면 중단
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      // 새로운 AbortController 생성
-      abortControllerRef.current = new AbortController();
-
-      try {
-        // 체크인/체크아웃 날짜가 있으면 예약 가능성 API 사용, 없으면 기본 객실 목록 API 사용
-        const hasDateRange =
-          localSearchParams?.checkIn && localSearchParams?.checkOut;
-
-        const [hotelRes, roomsRes] = await Promise.all([
-          hotelAPI.getHotelDetail(contentId, {
-            signal: abortControllerRef.current.signal,
-          }),
-          hasDateRange
-            ? hotelAPI.getRoomAvailability(
-                contentId,
-                localSearchParams.checkIn,
-                localSearchParams.checkOut,
-                { signal: abortControllerRef.current.signal }
-              )
-            : hotelAPI.getHotelRooms(contentId, {
-                name: localSearchParams?.roomName || undefined,
-                signal: abortControllerRef.current.signal,
-              }),
-        ]);
-
-        // 백엔드 응답 정규화
-        const hotel = hotelRes?.data ?? hotelRes;
-        const roomList = roomsRes?.data ?? roomsRes;
-
-        // 데이터 매핑
-        const mappedHotel = mapHotelData(hotel);
-        const mappedRooms = mapRoomDataWithAvailability(
-          roomList,
-          mappedHotel?.checkInTime,
-          localSearchParams?.roomIdx,
-          hasDateRange,
-          localSearchParams?.adults || 0
-        );
-
-        console.log("HotelDetail 데이터 로드:", {
-          contentId,
-          roomIdx: localSearchParams?.roomIdx,
-          originalRoomCount: roomList?.length,
-          filteredRoomCount: mappedRooms?.length,
-          localSearchParams,
-        });
-
-        if (isMounted) {
-          setHotelData(mappedHotel);
-          setRooms(mappedRooms);
-        }
-      } catch (err) {
-        // AbortError는 무시 (컴포넌트 언마운트로 인한 정상적인 중단)
-        if (err.name === "AbortError") {
-          console.log("API 요청이 취소되었습니다 (정상):", contentId);
-          return;
-        }
-
-        console.error("호텔 데이터 로드 실패:", err);
-        if (isMounted) {
-          // 타임아웃 오류인 경우 더 구체적인 메시지
-          if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
-            setErrorMessage(
-              "서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요."
-            );
-          } else {
-            setErrorMessage("호텔 정보를 불러오지 못했습니다.");
-          }
-        }
-      } finally {
-        if (isMounted) {
-          //패널로딩 종료
-          setIsLoading(false);
-          onLoadingChange?.(false);
-        }
-      }
-    };
-
-    if (contentId) fetchData();
-
-    return () => {
-      isMounted = false;
-      // 컴포넌트 언마운트 시 진행 중인 요청 취소
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [
-    contentId,
-    localSearchParams,
-    mapHotelData,
-    mapRoomDataWithAvailability,
-    onLoadingChange,
-  ]);
-
-  // 네비게이션 섹션
-  const navSections = [
-    { id: "rooms", label: "객실" },
-    { id: "amenities", label: "편의시설" },
-    { id: "reviews", label: "리뷰" },
-    { id: "location", label: "위치" },
-    { id: "policy", label: "정책" },
-  ];
-
-  /**
-   * 헤더 높이 측정 및 업데이트
-   * - 모달 모드: HotelDetail의 헤더만 측정
-   * - 전체 페이지 모드: 메인 Header + HotelDetail 헤더 높이 합산
-   */
-  useEffect(() => {
-    const updateHeaderHeight = () => {
-      if (!headerRef.current || !navRef.current) return;
-
-      let totalHeight =
-        headerRef.current.offsetHeight + navRef.current.offsetHeight;
-
-      // 전체 페이지 모드에서는 메인 Header 높이도 포함
-      if (!isModal) {
-        const mainHeader = document.querySelector("header");
-        if (mainHeader) {
-          totalHeight += mainHeader.offsetHeight;
-        }
-      }
-
-      setHeaderHeight(totalHeight);
-    };
-
-    updateHeaderHeight();
-    window.addEventListener("resize", updateHeaderHeight);
-
-    // 폰트 로딩 등을 고려한 지연 재측정
-    const timeoutId = setTimeout(updateHeaderHeight, 100);
-
-    return () => {
-      window.removeEventListener("resize", updateHeaderHeight);
-      clearTimeout(timeoutId);
-    };
-  }, [isModal]);
-
-  /**
-   * 스크롤 이벤트 처리 - 현재 보이는 섹션 감지
-   * requestAnimationFrame을 사용하여 성능 최적화
-   */
-  useEffect(() => {
-    let ticking = false;
-
-    const handleScroll = () => {
-      if (ticking) return;
-
-      ticking = true;
-      requestAnimationFrame(() => {
-        const scrollElement = scrollContainerRef.current;
-        if (!scrollElement || !navRef.current) {
-          ticking = false;
-          return;
-        }
-
-        // 사용자가 수동으로 섹션 이동 중이면 감지 스킵
-        if (isScrollingToSection) {
-          ticking = false;
-          return;
-        }
-
-        const scrollY = scrollElement.scrollTop;
-        const threshold = 10; // 헤더와 네비게이션이 고정되어 있으므로 간단한 오프셋만 사용
-
-        let currentSection = "rooms";
-        let closestDistance = Infinity;
-
-        // 가장 가까운 섹션 찾기
-        Object.entries(sectionsRef.current).forEach(([key, element]) => {
-          if (!element) return;
-
-          const elementTop = element.offsetTop;
-          const distance = Math.abs(scrollY + threshold - elementTop);
-
-          if (distance < closestDistance) {
-            closestDistance = distance;
-            currentSection = key;
-          }
-        });
-
-        // 스크롤이 바닥에 닿으면 마지막 섹션 활성화
-        const scrollTop = scrollElement.scrollTop;
-        const maxScroll =
-          scrollElement.scrollHeight - scrollElement.clientHeight;
-
-        if (scrollTop >= maxScroll - 20) {
-          currentSection = "policy";
-        }
-
-        setActiveSection(currentSection);
-        ticking = false;
-      });
-    };
-
-    const scrollElement = scrollContainerRef.current;
-    if (scrollElement) {
-      scrollElement.addEventListener("scroll", handleScroll, { passive: true });
-    }
-
-    return () => {
-      if (scrollElement) {
-        scrollElement.removeEventListener("scroll", handleScroll);
-      }
-    };
-  }, [scrollContainerRef, isScrollingToSection]);
-
-  /**
-   * 섹션 클릭 시 해당 섹션으로 스크롤
-   * @param {string} sectionId - 이동할 섹션 ID ("rooms" | "amenities" | "reviews" | "location" | "policy")
-   */
-  const scrollToSection = useCallback(
-    (sectionId) => {
-      const element = sectionsRef.current[sectionId];
-      const scrollElement = scrollContainerRef.current;
-
-      if (!element || !scrollElement) return;
-
-      setActiveSection(sectionId);
-      setIsScrollingToSection(true);
-
-      // 헤더와 네비게이션이 고정되어 있으므로 간단한 오프셋만 사용
-      const offsetTop = element.offsetTop - 10;
-
-      scrollElement.scrollTo({ top: offsetTop, behavior: "smooth" });
-
-      // 스크롤 완료 후 플래그 해제 (600ms는 smooth scroll 완료 시간)
-      setTimeout(() => setIsScrollingToSection(false), 600);
-    },
-    [scrollContainerRef]
   );
 
   // 로딩 상태
@@ -645,229 +140,93 @@ const HotelDetail = ({
     <div
       id={`hotel-${hotelData.id}`}
       className={`bg-gray-50 ${
-        isModal ? "flex flex-col h-full" : "min-h-screen max-w-6xl mx-auto"
+        isModal ? "flex flex-col h-full" : "min-h-screen"
       }`}
     >
       {/* 고정 헤더 */}
       <div
         ref={headerRef}
-        className={`bg-white border-b z-40 shadow-sm flex-shrink-0 ${
-          isModal ? "relative" : "sticky top-[56px]"
+        className={`w-full bg-gray-50 flex-shrink-0 ${
+          isModal ? "relative z-40" : "sticky z-40"
         }`}
+        style={!isModal ? { top: "56px" } : undefined}
       >
         <div
-          className={`${
-            isModal ? "px-4 sm:px-6 lg:px-8" : "px-4 sm:px-6 lg:px-8"
-          } py-3`}
+          className={
+            isModal
+              ? "px-4 sm:px-6 lg:px-8"
+              : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
+          }
         >
-          <div className="flex items-center justify-between">
-            {/* 호텔 기본 정보 */}
-            <div className="flex-1 min-w-0">
-              <h1
-                className={`font-bold text-gray-900 truncate ${
-                  isModal ? "text-lg" : "text-2xl"
-                }`}
-              >
-                {hotelData.name}
-              </h1>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {hotelData.rating > 0 && (
-                  <div className="flex items-center">
-                    <span className="text-yellow-500 text-sm">⭐</span>
-                    <span className="text-sm font-medium ml-1">
-                      {hotelData.rating.toFixed(1)}
-                    </span>
-                    <span className="text-sm text-gray-500 ml-1">
-                      ({hotelData.reviewCount})
-                    </span>
-                  </div>
-                )}
-                {hotelData.location && (
-                  <span className="text-sm text-gray-600 truncate">
-                    {hotelData.location}
-                  </span>
-                )}
-              </div>
-            </div>
+          <HotelHeader
+            hotelData={hotelData}
+            contentId={contentId}
+            rooms={rooms}
+            searchParams={localSearchParams}
+            formatPrice={formatPrice}
+            isModal={isModal}
+            onClose={onClose}
+          />
 
-            {/* 가격 및 조회수 - 모달일 때 세로 배치 */}
-            {isModal ? (
-              <div className="flex items-start gap-4 ml-4">
-                <div className="flex flex-col items-end gap-1">
-                  <LiveViewerCount contentId={contentId} />
-                  <p className="text-sm text-gray-500 mt-1">평균가</p>
-                  <p className="text-xl font-bold text-blue-600">
-                    ₩
-                    {formatPrice(
-                      Array.isArray(rooms) && rooms.length > 0
-                        ? (rooms[0]?.basePrice || rooms[0]?.price || 0) *
-                            (localSearchParams?.nights || 1)
-                        : 0
-                    )}
-                  </p>
-                </div>
-                {onClose && (
-                  <button
-                    onClick={onClose}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                    aria-label="닫기"
-                  >
-                    <svg
-                      className="w-6 h-6 text-gray-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-6 ml-4">
-                <LiveViewerCount contentId={contentId} />
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">평균가</p>
-                  <p className="text-xl font-bold text-blue-600">
-                    ₩
-                    {formatPrice(
-                      Array.isArray(rooms) && rooms.length > 0
-                        ? (rooms[0]?.basePrice || rooms[0]?.price || 0) *
-                            (localSearchParams?.nights || 1)
-                        : 0
-                    )}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* 검색 조건 표시 */}
+          <BookingSummary
+            searchParams={localSearchParams}
+            onEdit={() => setIsSearchModalOpen(true)}
+          />
         </div>
-
-        {/* 검색 조건 표시 */}
-        {localSearchParams &&
-          (localSearchParams.checkIn ||
-            localSearchParams.checkOut ||
-            localSearchParams.adults) && (
-            <div className="border-t bg-gray-50 px-4 sm:px-6 lg:px-8 py-3">
-              {/* 첫 번째 이미지 스타일의 검색 조건 표시 */}
-              <div
-                className="flex items-center justify-between bg-white rounded-lg border border-gray-300 px-4 py-3 cursor-pointer hover:border-blue-500 transition-colors"
-                onClick={() => setIsSearchModalOpen(true)}
-              >
-                <div className="flex items-center gap-4 text-sm text-gray-900">
-                  {localSearchParams.checkIn && localSearchParams.checkOut && (
-                    <>
-                      <span className="font-medium">
-                        {new Date(localSearchParams.checkIn).toLocaleDateString(
-                          "ko-KR",
-                          {
-                            year: "numeric",
-                            month: "2-digit",
-                            day: "2-digit",
-                            weekday: "short",
-                          }
-                        )}
-                      </span>
-                      <span>~</span>
-                      <span className="font-medium">
-                        {new Date(
-                          localSearchParams.checkOut
-                        ).toLocaleDateString("ko-KR", {
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                          weekday: "short",
-                        })}
-                      </span>
-                    </>
-                  )}
-                  {(!localSearchParams.checkIn ||
-                    !localSearchParams.checkOut) && (
-                    <span className="text-gray-500">날짜 미선택</span>
-                  )}
-                  <span className="text-gray-400">|</span>
-                  <span className="font-medium">
-                    {localSearchParams.nights || 1}박
-                  </span>
-                  <span className="text-gray-400">|</span>
-                  <span className="font-medium">
-                    성인 {localSearchParams.adults || 2}명
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              {/* 세금 포함 가격 안내 */}
-              <div className="flex items-center gap-1 mt-2 text-xs text-red-600">
-                <span>①</span>
-                <span>{localSearchParams.nights || 1}박 세금포함 가격</span>
-              </div>
-            </div>
-          )}
       </div>
 
       {/* 고정 네비게이션 */}
       <div
         ref={navRef}
-        className="bg-white border-b shadow-md z-30 flex-shrink-0"
+        className={`w-full bg-gray-50 flex-shrink-0 ${
+          isModal ? "relative z-30" : "sticky z-30"
+        }`}
+        style={
+          !isModal
+            ? {
+                top:
+                  (headerRef.current?.offsetHeight || 0) +
+                  (typeof window !== "undefined"
+                    ? document.querySelector("header")?.offsetHeight || 56
+                    : 56) +
+                  "px",
+              }
+            : undefined
+        }
       >
         <div
-          className={`${
-            isModal ? "px-4 sm:px-6 lg:px-8" : "px-4 sm:px-6 lg:px-8"
-          }`}
+          className={
+            isModal
+              ? "px-4 sm:px-6 lg:px-8"
+              : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
+          }
         >
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide">
-            {navSections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => scrollToSection(section.id)}
-                className={`${
-                  isModal ? "px-3 py-2" : "px-6 py-3"
-                } font-medium transition-colors whitespace-nowrap ${
-                  activeSection === section.id
-                    ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-                aria-label={`${section.label} 섹션으로 이동`}
-              >
-                {section.label}
-              </button>
-            ))}
-          </div>
+          <HotelNavBar
+            sections={navSections}
+            activeSection={activeSection}
+            onSectionClick={scrollToSection}
+            isModal={isModal}
+          />
         </div>
       </div>
 
-      {/* 스크롤 가능한 메인 컨텐츠 */}
+      {/* 메인 컨텐츠 */}
       <div
-        ref={scrollContainerRef}
-        className={`flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 ${
+        ref={isModal ? internalScrollRef : null}
+        className={`${
           isModal
-            ? "px-4 sm:px-6 lg:px-8 py-4 pb-8"
-            : "px-4 sm:px-6 lg:px-8 py-6 pt-6"
+            ? "flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 px-4 sm:px-6 lg:px-8 py-4 pb-8"
+            : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-6"
         }`}
-        style={{
-          scrollbarWidth: "thin",
-          scrollbarColor: "#d1d5db #f3f4f6",
-        }}
+        style={
+          isModal
+            ? {
+                scrollbarWidth: "thin",
+                scrollbarColor: "#d1d5db #f3f4f6",
+              }
+            : undefined
+        }
       >
         {/* 이미지 갤러리 */}
         <HotelGallery contentId={contentId} isModal={isModal} />
@@ -877,7 +236,7 @@ const HotelDetail = ({
 
         {/* 객실 목록 */}
         <section
-          ref={(el) => (sectionsRef.current["rooms"] = el)}
+          ref={setSectionRef("rooms")}
           className="mb-8"
           aria-labelledby="rooms-heading"
         >
@@ -905,7 +264,7 @@ const HotelDetail = ({
 
         {/* 편의시설 */}
         <section
-          ref={(el) => (sectionsRef.current["amenities"] = el)}
+          ref={setSectionRef("amenities")}
           aria-labelledby="amenities-heading"
         >
           <HotelAmenities contentId={contentId} />
@@ -913,7 +272,7 @@ const HotelDetail = ({
 
         {/* 리뷰 */}
         <section
-          ref={(el) => (sectionsRef.current["reviews"] = el)}
+          ref={setSectionRef("reviews")}
           aria-labelledby="reviews-heading"
         >
           <HotelReviews
@@ -925,17 +284,14 @@ const HotelDetail = ({
 
         {/* 위치 정보 */}
         <section
-          ref={(el) => (sectionsRef.current["location"] = el)}
+          ref={setSectionRef("location")}
           aria-labelledby="location-heading"
         >
           <HotelLocation location={hotelData.location} />
         </section>
 
         {/* 호텔 정책 */}
-        <section
-          ref={(el) => (sectionsRef.current["policy"] = el)}
-          aria-labelledby="policy-heading"
-        >
+        <section ref={setSectionRef("policy")} aria-labelledby="policy-heading">
           <HotelPolicy
             checkInTime={hotelData.checkInTime}
             checkOutTime={hotelData.checkOutTime}
