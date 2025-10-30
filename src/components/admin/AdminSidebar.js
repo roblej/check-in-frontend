@@ -51,9 +51,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       icon: <Bed size={20} />,
       path: '/admin/rooms',
       submenu: [
-        { id: 'room-list', name: '객실 현황', path: '/admin/rooms' },
-        { id: 'room-pricing', name: '가격 설정', path: '/admin/room-pricing' },
-        { id: 'room-types', name: '객실 타입', path: '/admin/room-types' }
+        { id: 'room-list', name: '객실 현황', path: '/admin/rooms' }
       ]
     },
     {
@@ -73,8 +71,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       icon: <Gift size={20} />,
       path: '/admin/coupon-issue',
       submenu: [
-        { id: 'coupon-issue', name: '쿠폰 발급', path: '/admin/coupon-issue' },
-        { id: 'coupon-batch', name: '쿠폰 일괄 처리', path: '/admin/coupon-batch' }
+        { id: 'coupon-issue', name: '쿠폰 발급', path: '/admin/coupon-issue' }
       ]
     },
     {
