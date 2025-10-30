@@ -76,8 +76,8 @@ check-in-frontend/src/
 
 ```env
 # TossPayments 설정
-NEXT_PUBLIC_TOSS_CLIENT_KEY=test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq
-TOSS_SECRET_KEY=test_sk_4vOrk2RZbz5oVn3xMQ1gLzN97Eoq
+NEXT_PUBLIC_TOSS_CLIENT_KEY=your_client_key_here
+TOSS_SECRET_KEY=your_secret_key_here
 
 # 백엔드 API URL
 NEXT_PUBLIC_API_URL=http://localhost:8888
