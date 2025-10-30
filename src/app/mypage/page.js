@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { mypageAPI } from '@/lib/api/mypage';
 import { useCustomerStore } from '@/stores/customerStore';
 
@@ -382,6 +382,163 @@ export default function MyPage() {
 
   // 리뷰 작성 완료된 예약 ID Set (빠른 조회를 위해)
   const [reviewedReservationIds, setReviewedReservationIds] = useState(new Set());
+  // 내 리뷰 섹션 열림 여부 (닫힌 상태는 캡처처럼 제목+꺾쇠만 표시)
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+
+  // 리뷰 수정 모달 상태
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingReview, setEditingReview] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const editContentRef = useRef(null);
+  const editModalRef = useRef(null);
+  const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
+  const confirmModalRef = useRef(null);
+  const confirmPrimaryRef = useRef(null);
+
+  const openEditModal = (review) => {
+    setEditingReview(review);
+    setEditContent(review.content || '');
+    setIsEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingReview(null);
+    setEditContent('');
+  };
+
+  const handleSaveEditedReview = () => {
+    if (!editContent.trim() || editContent.trim().length < 10) {
+      alert('리뷰는 최소 10자 이상 입력해주세요.');
+      return;
+    }
+    if (editContent.length > 300) {
+      alert('리뷰는 최대 300자까지 작성할 수 있습니다.');
+      return;
+    }
+
+    // 로컬 상태 업데이트 (UI 전용)
+    setWrittenReviews(prev => prev.map(r => {
+      if (r.reviewIdx === editingReview.reviewIdx) {
+        return {
+          ...r,
+          content: editContent,
+          isEdited: true,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return r;
+    }));
+
+    closeEditModal();
+  };
+
+  // 모달 열릴 때 textarea 자동 포커스
+  useEffect(() => {
+    if (isEditModalOpen && editContentRef.current) {
+      editContentRef.current.focus();
+    }
+  }, [isEditModalOpen]);
+
+  // Esc 키로 모달 닫기 (확인 모달 우선)
+  useEffect(() => {
+    if (!isEditModalOpen && !isConfirmCancelOpen) return;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        if (isConfirmCancelOpen) {
+          setIsConfirmCancelOpen(false);
+        } else if (isEditModalOpen) {
+          closeEditModal();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
+  }, [isEditModalOpen, isConfirmCancelOpen]);
+
+  // Body 스크롤 락 (스크롤바 보정 포함) - 어느 모달이든 열리면 적용
+  useEffect(() => {
+    if (!isEditModalOpen && !isConfirmCancelOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = 'hidden';
+    if (scrollBarWidth > 0) {
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
+    }
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+    };
+  }, [isEditModalOpen, isConfirmCancelOpen]);
+
+  // 포커스 트랩 (수정 모달 내부에서 Tab 순환)
+  useEffect(() => {
+    if (!isEditModalOpen || !editModalRef.current) return;
+    const container = editModalRef.current;
+    const focusableSelectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+    const getFocusables = () => Array.from(container.querySelectorAll(focusableSelectors))
+      .filter(el => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true');
+
+    const onKeyDown = (e) => {
+      if (e.key !== 'Tab') return;
+      const focusables = getFocusables();
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    container.addEventListener('keydown', onKeyDown);
+    return () => container.removeEventListener('keydown', onKeyDown);
+  }, [isEditModalOpen]);
+
+  // 포커스 트랩 (확인 모달 내부에서 Tab 순환) 및 기본 포커스
+  useEffect(() => {
+    if (!isConfirmCancelOpen || !confirmModalRef.current) return;
+    const container = confirmModalRef.current;
+    const focusableSelectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+    const getFocusables = () => Array.from(container.querySelectorAll(focusableSelectors))
+      .filter(el => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true');
+
+    // 기본 포커스: 확인 버튼
+    if (confirmPrimaryRef.current) {
+      confirmPrimaryRef.current.focus();
+    }
+
+    const onKeyDown = (e) => {
+      if (e.key !== 'Tab') return;
+      const focusables = getFocusables();
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    container.addEventListener('keydown', onKeyDown);
+    return () => container.removeEventListener('keydown', onKeyDown);
+  }, [isConfirmCancelOpen]);
 
   // 특정 예약에 대해 리뷰가 작성되었는지 확인
   const isReviewWritten = (reservation) => {
@@ -731,121 +888,139 @@ export default function MyPage() {
           </div>
         </section>
 
-        {/* 내 후기 관리 */}
-        <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Star className="w-6 h-6 text-blue-600" />
-              내 리뷰
-            </h2>
-          </div>
+        {/* 내 후기 관리 - 접기/펼치기 */}
+        {!isReviewOpen ? (
+          <button
+            onClick={() => router.push('/mypage/reviews')}
+            aria-label="내 리뷰 페이지로 이동"
+            className="w-full bg-white rounded-2xl shadow-lg p-5 mb-6 border border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <span className="text-base font-semibold text-gray-900">내 리뷰</span>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </button>
+        ) : (
+          <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Star className="w-6 h-6 text-blue-600" />
+                내 리뷰
+              </h2>
+              <button onClick={() => setIsReviewOpen(false)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500">
+                <ChevronRight className="w-5 h-5 rotate-180" />
+              </button>
+            </div>
 
-          {/* 탭 */}
-          <div className="flex gap-2 mb-6 border-b border-gray-200">
-            <button
-              onClick={() => setReviewTab('writable')}
-              className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                reviewTab === 'writable'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              작성 가능한 리뷰 ({writableReviews.length})
-              {/* 디버깅 */}
-              {/* {console.log('🖥️ 렌더링 시 writableReviews:', writableReviews)} */}
-            </button>
-            <button
-              onClick={() => setReviewTab('written')}
-              className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                reviewTab === 'written'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              내가 작성한 리뷰 ({writtenReviews.length})
-            </button>
-          </div>
+            {/* 탭 */}
+            <div className="flex gap-2 mb-6 border-b border-gray-200">
+              <button
+                onClick={() => setReviewTab('writable')}
+                className={`px-6 py-3 font-medium transition-all border-b-2 ${
+                  reviewTab === 'writable'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                작성 가능한 리뷰 ({writableReviews.length})
+              </button>
+              <button
+                onClick={() => setReviewTab('written')}
+                className={`px-6 py-3 font-medium transition-all border-b-2 ${
+                  reviewTab === 'written'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                내가 작성한 리뷰 ({writtenReviews.length})
+              </button>
+            </div>
 
-          {/* 리뷰 카드 */}
-          <div className="space-y-4">
-            {reviewTab === 'writable' ? (
-              writableReviewsLoading ? (
-                <div className="flex justify-center items-center py-12">
-                  <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="ml-3 text-gray-600">데이터를 불러오는 중...</span>
-                </div>
-              ) : writableReviews.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-500">작성 가능한 리뷰가 없습니다.</p>
-                </div>
-              ) : (
-                writableReviews.map((review) => (
-                  <div key={review.reservationIdx} className="border border-blue-200 bg-blue-50 rounded-xl p-5">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900 mb-1">{review.hotelName}</h3>
-                        <p className="text-sm text-gray-500">{review.location} · 체크아웃: {review.checkOutDate}</p>
-                      </div>
-                      {review.daysLeft !== undefined && review.daysLeft > 0 && (
-                        <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
-                          {review.daysLeft}일 남음
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleWriteReview({ id: review.reservationIdx })}
-                      className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                    >
-                      리뷰 작성
-                    </button>
+            {/* 리뷰 카드 */}
+            <div className="space-y-4">
+              {reviewTab === 'writable' ? (
+                writableReviewsLoading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="ml-3 text-gray-600">데이터를 불러오는 중...</span>
                   </div>
-                ))
-              )
-            ) : (
-              writtenReviewsLoading ? (
-                <div className="flex justify-center items-center py-12">
-                  <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="ml-3 text-gray-600">데이터를 불러오는 중...</span>
-                </div>
-              ) : writtenReviews.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-500">작성한 리뷰가 없습니다.</p>
-                </div>
-              ) : (
-                writtenReviews.map((review) => (
-                  <div key={review.reviewIdx} className="border border-gray-200 rounded-xl p-5">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-bold text-gray-900 mb-1">
-                          {review.hotelName || review.hotelInfo?.title || '호텔 정보 없음'}
-                        </h3>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <Star key={i} className={`w-4 h-4 ${i < (review.star || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-                            ))}
-                          </div>
-                          <span className="text-sm text-gray-500">
-                            {review.createdAt ? new Date(review.createdAt).toLocaleDateString('ko-KR') : ''}
-                          </span>
+                ) : writableReviews.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">작성 가능한 리뷰가 없습니다.</p>
+                  </div>
+                ) : (
+                  writableReviews.map((review) => (
+                    <div key={review.reservationIdx} className="border border-blue-200 bg-blue-50 rounded-xl p-5">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900 mb-1">{review.hotelName}</h3>
+                          <p className="text-sm text-gray-500">{review.location} · 체크아웃: {review.checkOutDate}</p>
                         </div>
-                        <p className="text-gray-700 mb-3">{review.content}</p>
+                        {review.daysLeft !== undefined && review.daysLeft > 0 && (
+                          <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+                            {review.daysLeft}일 남음
+                          </span>
+                        )}
                       </div>
-                      <div className="flex gap-2">
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                          <Edit className="w-4 h-4 text-gray-600" />
-                        </button>
-                        <button className="p-2 hover:bg-red-50 rounded-lg transition-colors">
-                          <Trash2 className="w-4 h-4 text-red-600" />
-                        </button>
+                      <button
+                        onClick={() => handleWriteReview({ id: review.reservationIdx })}
+                        className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                      >
+                        리뷰 작성
+                      </button>
+                    </div>
+                  ))
+                )
+              ) : (
+                writtenReviewsLoading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="ml-3 text-gray-600">데이터를 불러오는 중...</span>
+                  </div>
+                ) : writtenReviews.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">작성한 리뷰가 없습니다.</p>
+                  </div>
+                ) : (
+                  writtenReviews.map((review) => (
+                    <div key={review.reviewIdx} className="border border-gray-200 rounded-xl p-5">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold text-gray-900 mb-1">
+                            {review.hotelName || review.hotelInfo?.title || '호텔 정보 없음'}
+                          </h3>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="flex">
+                              {[...Array(5)].map((_, i) => (
+                                <Star key={i} className={`w-4 h-4 ${i < (review.star || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                              ))}
+                            </div>
+                            <span className="text-sm text-gray-500">
+                              {review.createdAt ? new Date(review.createdAt).toLocaleDateString('ko-KR') : ''}
+                            </span>
+                            {review.isEdited && (
+                              <span className="text-[11px] leading-none px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">수정됨</span>
+                            )}
+                          </div>
+                          <p className="text-gray-700 mb-3">{review.content}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => openEditModal(review)}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          >
+                            <Edit className="w-4 h-4 text-gray-600" />
+                          </button>
+                          <button className="p-2 hover:bg-red-50 rounded-lg transition-colors">
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              )
-            )}
-          </div>
-        </section>
+                  ))
+                )
+              )}
+            </div>
+          </section>
+        )}
 
         {/* 찜목록 & 최근본호텔 */}
         <div className="grid md:grid-cols-2 gap-6 mb-6">
@@ -957,6 +1132,107 @@ export default function MyPage() {
       </div>
 
       <Footer />
+
+      {/* 리뷰 수정 모달 (UI 전용) */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={closeEditModal} />
+          <div ref={editModalRef} className="relative z-10 w-full max-w-lg mx-4 bg-white rounded-2xl shadow-xl border border-gray-200" role="dialog" aria-modal="true">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">리뷰 수정</h3>
+              <button
+                aria-label="닫기"
+                onClick={closeEditModal}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+              >
+                X
+              </button>
+            </div>
+
+            <div className="px-6 py-5">
+              {/* 호텔/메타 */}
+              {editingReview && (
+                <div className="mb-4">
+                  <p className="text-sm text-gray-500">{editingReview.hotelName || editingReview.hotelInfo?.title}</p>
+                  <p className="text-xs text-gray-400">작성일: {editingReview.createdAt ? new Date(editingReview.createdAt).toLocaleDateString('ko-KR') : '-'}</p>
+                </div>
+              )}
+
+              {/* 읽기전용 별점 */}
+              {editingReview && (
+                <div className="mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={`w-5 h-5 ${i < (Number(editingReview.star) || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                      ))}
+                    </div>
+                    <span className="text-xs text-gray-500">
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* 내용 */}
+              <div className="mb-6">
+                <p className="text-sm font-medium text-gray-500 mt-1">리뷰 내용</p>
+                &nbsp;
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  placeholder="호텔 이용 경험을 자세히 작성해주세요. (최소 10자 이상)"
+                  rows={6}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  ref={editContentRef}
+                  maxLength={300}
+                />
+                <p className="text-xs text-gray-500 mt-1 text-right">{editContent.length} / 300자</p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+              <button onClick={() => setIsConfirmCancelOpen(true)} className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">취소</button>
+              <button onClick={handleSaveEditedReview} className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 취소 확인 모달 */}
+      {isConfirmCancelOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setIsConfirmCancelOpen(false)} />
+          <div
+            ref={confirmModalRef}
+            className="relative z-10 w-full max-w-md mx-4 bg-white rounded-2xl shadow-xl border border-gray-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-cancel-title"
+          >
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h4 id="confirm-cancel-title" className="text-base font-bold text-gray-900">변경 내용 취소</h4>
+            </div>
+            <div className="px-6 py-5 text-center">
+              <p id="confirm-cancel-desc" className="text-sm text-gray-800">수정한 내용이 저장되지 않습니다. 정말 취소하시겠습니까?</p>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+              <button
+                onClick={() => setIsConfirmCancelOpen(false)}
+                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+              >
+                아니오
+              </button>
+              <button
+                ref={confirmPrimaryRef}
+                onClick={() => { setIsConfirmCancelOpen(false); closeEditModal(); }}
+                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              >
+                예
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
