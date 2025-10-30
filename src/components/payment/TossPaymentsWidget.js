@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 
@@ -30,6 +30,8 @@ import Script from "next/script";
  * @param {string} [props.successUrl] - 결제 성공 리다이렉트 경로
  * @param {string} [props.failUrl] - 결제 실패 리다이렉트 경로
  * @param {"카드"|"카카오페이"} [props.paymentMethod="카드"] - 결제수단
+ * @param {"hotel_reservation"|"used_hotel"|"dining_reservation"} [props.paymentType] - 결제 타입 명시(데스크톱 검증 시 사용)
+ * @param {Object} [props.diningInfo] - 다이닝 결제에 필요한 메타(diningIdx, diningDate, diningTime, guests, totalPrice, specialRequests)
  */
 const TossPaymentsWidget = ({
   clientKey,
@@ -47,6 +49,8 @@ const TossPaymentsWidget = ({
   successUrl,
   failUrl,
   paymentMethod = "카드",
+  paymentType,
+  diningInfo,
 }) => {
   const widgetRef = useRef(null);
   const router = useRouter();
@@ -99,38 +103,41 @@ const TossPaymentsWidget = ({
    * - 모바일은 리다이렉트되어 성공 페이지에서 검증 수행
    * @param {Object} paymentResult - 결제 결과 객체
    */
-  const verifyPaymentWithBackend = async (paymentResult) => {
+  const verifyPaymentWithBackend = useCallback(async (paymentResult) => {
     try {
       setIsVerifying(true);
 
-      // 중고 호텔 결제 여부
-      const isUsedHotelPayment = orderId && orderId.includes("used_hotel");
+      // 중고 호텔 결제 여부 (orderId 문자열 대신 명시 필드 기반으로 판정)
+      const isUsedHotelPayment = !!(hotelInfo?.usedTradeIdx || hotelInfo?.usedItemIdx);
 
       if (!paymentResult?.paymentKey) {
         throw new Error("결제 응답에 paymentKey가 없습니다.");
+      }
+
+      const resolvedType = paymentType || (isUsedHotelPayment ? "used_hotel" : (diningInfo ? "dining_reservation" : "hotel_reservation"));
+
+      // 중고 호텔은 공통 결제 검증 API를 사용하지 않고, 호출자(onSuccess)에서 처리하도록 위임
+      if (resolvedType === "used_hotel") {
+        setIsVerifying(false);
+        if (onSuccess) onSuccess(paymentResult);
+        return;
       }
 
       const requestData = {
         paymentKey: paymentResult.paymentKey,
         orderId: paymentResult.orderId,
         amount: customerInfo?.actualPaymentAmount || amount,
-        type: isUsedHotelPayment ? "used_hotel" : "hotel_reservation",
+        type: resolvedType,
         customerIdx: customerInfo?.customerIdx || 1,
+        // 호텔 결제 필드 (resolvedType이 호텔/중고일 때만 의미)
         contentId: String(hotelInfo?.contentId || hotelInfo?.hotelId || ""),
-        roomId:
-          hotelInfo?.roomIdx || hotelInfo?.roomId
-            ? parseInt(hotelInfo.roomIdx || hotelInfo.roomId, 10)
-            : null,
-        checkIn: hotelInfo?.checkIn,
-        checkOut: hotelInfo?.checkOut,
-        guests: hotelInfo?.guests ? parseInt(hotelInfo.guests, 10) : null,
-        nights: hotelInfo?.nights ? parseInt(hotelInfo.nights, 10) : null,
-        roomPrice: hotelInfo?.roomPrice
-          ? parseInt(hotelInfo.roomPrice, 10)
-          : null,
-        totalPrice: hotelInfo?.totalPrice
-          ? parseInt(hotelInfo.totalPrice, 10)
-          : null,
+        roomId: (hotelInfo?.roomIdx || hotelInfo?.roomId) ? parseInt(hotelInfo.roomIdx || hotelInfo.roomId, 10) : null,
+        checkIn: hotelInfo?.checkIn || undefined,
+        checkOut: hotelInfo?.checkOut || undefined,
+        guests: hotelInfo?.guests ? parseInt(hotelInfo.guests, 10) : undefined,
+        nights: hotelInfo?.nights ? parseInt(hotelInfo.nights, 10) : undefined,
+        roomPrice: hotelInfo?.roomPrice ? parseInt(hotelInfo.roomPrice, 10) : undefined,
+        totalPrice: hotelInfo?.totalPrice ? parseInt(hotelInfo.totalPrice, 10) : undefined,
         // 이메일 필수 - customerInfo 우선, 없으면 props에서 가져오기
         customerName: customerInfo?.name || customerName || "",
         customerEmail: customerInfo?.email || customerEmail || "",
@@ -147,7 +154,7 @@ const TossPaymentsWidget = ({
           paymentMethod:
             customerInfo?.actualPaymentAmount > 0 ? "mixed" : "cash_point_only",
         },
-        ...(isUsedHotelPayment && {
+        ...(resolvedType === "used_hotel" && {
           usedItemIdx: hotelInfo?.usedItemIdx,
           usedTradeIdx: hotelInfo?.usedTradeIdx,
           hotelName: hotelInfo?.hotelName,
@@ -160,6 +167,15 @@ const TossPaymentsWidget = ({
               paymentResult.amount || paymentResult.totalAmount || amount,
             paymentMethod: "card",
           },
+        }),
+        ...(resolvedType === "dining_reservation" && {
+          diningIdx: diningInfo?.diningIdx,
+          diningDate: diningInfo?.diningDate,
+          diningTime: diningInfo?.diningTime,
+          reservationTime: diningInfo?.diningTime,
+          guests: diningInfo?.guests,
+          totalPrice: diningInfo?.totalPrice,
+          specialRequests: diningInfo?.specialRequests,
         }),
       };
 
@@ -178,7 +194,7 @@ const TossPaymentsWidget = ({
       if (result?.success) {
         if (onSuccess) onSuccess(result);
         router.push(
-          `/checkout/success?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}&type=hotel_reservation`
+          `/checkout/success?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}&type=${resolvedType}`
         );
       } else {
         if (onFail) onFail(new Error(result?.message || "결제 검증 실패"));
@@ -193,14 +209,27 @@ const TossPaymentsWidget = ({
       if (onFail) onFail(err);
       router.push(`/checkout/fail?error=${encodeURIComponent(err.message)}`);
     }
-  };
+  }, [
+    amount,
+    customerEmail,
+    customerMobilePhone,
+    customerInfo,
+    customerName,
+    hotelInfo,
+    onFail,
+    onSuccess,
+    paymentMethod,
+    paymentType,
+    diningInfo,
+    router,
+  ]);
 
   /**
    * 결제 요청 핸들러
    * - 모바일: 리다이렉트 플로우(앱/브라우저). QR 미노출이 정상.
    * - 데스크톱: Promise 플로우로 결과를 받고 즉시 검증.
    */
-  const handlePayment = async () => {
+  const handlePayment = useCallback(async () => {
     try {
       const tp = widgetRef.current;
       if (!tp) throw new Error("토스페이먼츠가 초기화되지 않았습니다.");
@@ -209,6 +238,45 @@ const TossPaymentsWidget = ({
         typeof window !== "undefined" ? window.location.origin : "";
 
       /** success/fail URL은 모든 환경에서 반드시 포함 */
+      const resolvedType = paymentType || (orderId && orderId.includes("used_hotel") ? "used_hotel" : (diningInfo ? "dining_reservation" : "hotel_reservation"));
+
+      const buildUrl = (base, params) => {
+        const u = new URL(base, origin);
+        Object.entries(params || {}).forEach(([k, v]) => {
+          if (v !== undefined && v !== null && v !== "") u.searchParams.set(k, String(v));
+        });
+        return u.pathname + (u.search || "");
+      };
+
+      let successPath = successUrl || "/checkout/success";
+      let failPath = failUrl || "/checkout/fail";
+
+      if (resolvedType === "hotel_reservation") {
+        successPath = buildUrl(successPath, {
+          type: resolvedType,
+          contentId: hotelInfo?.contentId || hotelInfo?.hotelId,
+          roomId: hotelInfo?.roomIdx || hotelInfo?.roomId,
+          checkIn: hotelInfo?.checkIn,
+          checkOut: hotelInfo?.checkOut,
+          guests: hotelInfo?.guests,
+          nights: hotelInfo?.nights,
+          totalPrice: hotelInfo?.totalPrice,
+        });
+        failPath = buildUrl(failPath, { type: resolvedType });
+      } else if (resolvedType === "dining_reservation") {
+        successPath = buildUrl(successPath, {
+          type: resolvedType,
+          diningIdx: diningInfo?.diningIdx,
+          diningDate: diningInfo?.diningDate,
+          diningTime: diningInfo?.diningTime,
+          guests: diningInfo?.guests,
+        });
+        failPath = buildUrl(failPath, { type: resolvedType });
+      } else if (resolvedType === "used_hotel") {
+        successPath = buildUrl(successPath, { type: resolvedType, usedTradeIdx: hotelInfo?.usedTradeIdx });
+        failPath = buildUrl(failPath, { type: resolvedType });
+      }
+
       const paymentData = {
         orderId,
         orderName,
@@ -216,8 +284,8 @@ const TossPaymentsWidget = ({
         customerName,
         customerEmail,
         customerMobilePhone,
-        successUrl: `${origin}${successUrl || "/checkout/success"}`,
-        failUrl: `${origin}${failUrl || "/checkout/fail"}`,
+        successUrl: `${origin}${successPath}`,
+        failUrl: `${origin}${failPath}`,
       };
 
       const isMobile =
@@ -271,7 +339,31 @@ const TossPaymentsWidget = ({
       }
       if (onFail) onFail(error);
     }
-  };
+  }, [
+    amount,
+    customerEmail,
+    customerMobilePhone,
+    customerName,
+    failUrl,
+    diningInfo,
+    hotelInfo?.checkIn,
+    hotelInfo?.checkOut,
+    hotelInfo?.contentId,
+    hotelInfo?.guests,
+    hotelInfo?.hotelId,
+    hotelInfo?.nights,
+    hotelInfo?.roomId,
+    hotelInfo?.roomIdx,
+    hotelInfo?.totalPrice,
+    hotelInfo?.usedTradeIdx,
+    paymentType,
+    verifyPaymentWithBackend,
+    onFail,
+    orderId,
+    orderName,
+    paymentMethod,
+    successUrl,
+  ]);
 
   // 결제 핸들러를 전역에 등록 (기존 구조 유지)
   useEffect(() => {
@@ -281,7 +373,22 @@ const TossPaymentsWidget = ({
     return () => {
       if (window.tossPaymentHandler) delete window.tossPaymentHandler;
     };
-  }, [isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+    // 결제 파라미터가 바뀌면 최신 값으로 핸들러 갱신
+  }, [
+    isLoading,
+    paymentMethod,
+    amount,
+    orderId,
+    orderName,
+    customerName,
+    customerEmail,
+    customerMobilePhone,
+    successUrl,
+    failUrl,
+    paymentType,
+    diningInfo?.diningTime,
+    handlePayment,
+  ]);
 
   if (error) {
     return (
