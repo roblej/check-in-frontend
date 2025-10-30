@@ -20,6 +20,12 @@ const DartGameModal = ({ isOpen, onClose }) => {
   const markerRef = useRef(null);
   const gaugeIntervalRef = useRef(null);
   const hotelMarkersRef = useRef([]);
+  const tourMarkersRef = useRef([]);
+
+  const [selectedTour, setSelectedTour] = useState(null);
+  const [tourNearbyHotels, setTourNearbyHotels] = useState([]);
+  const [isTourHotelsLoading, setIsTourHotelsLoading] = useState(false);
+  const [selectedTourDetail, setSelectedTourDetail] = useState(null);
 
   // 한국관광공사 지역코드 매핑
   const areaCodeMap = {
@@ -584,7 +590,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (mapLoaded && recommendedHotels) {
       if (recommendedHotels.length > 0) {
-        displayHotelMarkers(recommendedHotels);
+        // displayHotelMarkers(recommendedHotels);
       } else {
         clearHotelMarkers();
       }
@@ -659,12 +665,153 @@ const DartGameModal = ({ isOpen, onClose }) => {
       const items = Array.isArray(data.items) ? data.items : [];
       console.log(`[TourAPI] 항목 수: ${items.length}`);
       setNearbyTours(items);
+      // 지도에는 관광지 마커만 유지
+      clearHotelMarkers();
+      if (items.length) {
+        // 지도 마커 표시
+        displayTourMarkers(items);
+        fitMapToTours(items);
+      } else {
+        clearTourMarkers();
+      }
     } catch (e) {
       console.error('관광정보 조회 실패:', e);
       setNearbyTours([]);
     } finally {
       setIsTourLoading(false);
     }
+  };
+
+  // 관광지 마커 제거
+  const clearTourMarkers = () => {
+    tourMarkersRef.current.forEach(marker => marker.setMap(null));
+    tourMarkersRef.current = [];
+  };
+
+  // 관광지 마커 표시
+  const displayTourMarkers = (tours) => {
+    if (!window.kakao || !window.kakao.maps || !mapInstanceRef.current) return;
+    clearTourMarkers();
+
+    tours.forEach((t) => {
+      const x = parseFloat(t.mapx); // 경도
+      const y = parseFloat(t.mapy); // 위도
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      const pos = new window.kakao.maps.LatLng(y, x);
+
+      const marker = new window.kakao.maps.Marker({
+        position: pos,
+        map: mapInstanceRef.current,
+        title: t.title || "tour",
+      });
+
+      const iw = new window.kakao.maps.InfoWindow({
+        content: `<div style="padding:6px 10px;font-size:12px;">${t.title || "tour"}</div>`,
+        disableAutoPan: true,
+      });
+
+      window.kakao.maps.event.addListener(marker, 'mouseover', () => iw.open(mapInstanceRef.current, marker));
+      window.kakao.maps.event.addListener(marker, 'mouseout', () => iw.close());
+      window.kakao.maps.event.addListener(marker, 'click', () => {
+        handleSelectTour(t);
+      });
+
+      tourMarkersRef.current.push(marker);
+    });
+  };
+
+  // 관광지가 화면에 가득 차도록 지도 영역 맞춤
+  const fitMapToTours = (tours) => {
+    if (!window.kakao || !window.kakao.maps || !mapInstanceRef.current) return;
+    if (!Array.isArray(tours) || tours.length === 0) return;
+    const bounds = new window.kakao.maps.LatLngBounds();
+    let added = 0;
+    tours.forEach((t) => {
+      const x = parseFloat(t.mapx);
+      const y = parseFloat(t.mapy);
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        bounds.extend(new window.kakao.maps.LatLng(y, x));
+        added += 1;
+      }
+    });
+    if (added > 0) {
+      mapInstanceRef.current.setBounds(bounds);
+    }
+  };
+
+  // 관광지 선택 핸들러 (카드/마커 공통)
+  const handleSelectTour = (tour) => {
+    setSelectedTour(tour);
+    // 상세와 호텔을 병렬로 조회
+    fetchTourDetail(tour);
+    fetchHotelsNearTour(tour);
+    // 지도 중심 이동
+    if (mapInstanceRef.current && window.kakao) {
+      const x = parseFloat(tour.mapx);
+      const y = parseFloat(tour.mapy);
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        mapInstanceRef.current.panTo(new window.kakao.maps.LatLng(y, x));
+      }
+    }
+  };
+
+  // 상세 정보 통합 조회
+  const fetchTourDetail = async (tour) => {
+    try {
+      const contentId = tour.contentid || tour.contentId;
+      const contentTypeId = tour.contenttypeid || tour.contentTypeId;
+      if (!contentId || !contentTypeId) { setSelectedTourDetail(null); return; }
+      const url = `/api/tour/detail?contentId=${encodeURIComponent(contentId)}&contentTypeId=${encodeURIComponent(contentTypeId)}`;
+      const res = await fetch(url);
+      if (!res.ok) { setSelectedTourDetail(null); return; }
+      const data = await res.json();
+      setSelectedTourDetail(data);
+    } catch (e) {
+      console.error('관광지 상세 조회 실패:', e);
+      setSelectedTourDetail(null);
+    }
+  };
+
+  // 선택된 관광지 인근 호텔 조회 (최대 10개)
+  const fetchHotelsNearTour = async (tour) => {
+    try {
+      setIsTourHotelsLoading(true);
+      const x = parseFloat(tour.mapx);
+      const y = parseFloat(tour.mapy);
+      const areaCode = tour.areacode || targetLocation?.areaCode || null;
+      const response = await hotelAPI.getHotelsByAreaCode(
+        areaCode,
+        10,
+        y,
+        x
+      );
+      // 거리 보강(응답에 없으면 계산)
+      const withDistance = (response || []).map((h) => {
+        if (typeof h.distance === 'number') return h;
+        if (typeof h.lat === 'number' && typeof h.lng === 'number') {
+          const d = haversineKm(y, x, h.lat, h.lng);
+          return { ...h, distance: d };
+        }
+        return h;
+      });
+      setTourNearbyHotels(withDistance);
+    } catch (e) {
+      console.error('관광지 인근 호텔 조회 실패:', e);
+      setTourNearbyHotels([]);
+    } finally {
+      setIsTourHotelsLoading(false);
+    }
+  };
+
+  // 하버사인 거리 계산(km)
+  const haversineKm = (lat1, lon1, lat2, lon2) => {
+    const toRad = (v) => (v * Math.PI) / 180;
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   };
 
   // 다트 리셋
@@ -1078,7 +1225,8 @@ const DartGameModal = ({ isOpen, onClose }) => {
                 ) : nearbyTours.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {nearbyTours.map((item, idx) => (
-                      <div key={(item.contentid || idx) + '_' + idx} className="bg-white rounded-lg overflow-hidden border hover:shadow-md transition-shadow h-full flex flex-col">
+                      <div key={(item.contentid || idx) + '_' + idx} className="bg-white rounded-lg overflow-hidden border hover:shadow-md transition-shadow h-full flex flex-col cursor-pointer"
+                           onClick={() => handleSelectTour(item)}>
                         {item.firstimage ? (
                           <div className="h-40 overflow-hidden">
                             <img src={item.firstimage} alt={item.title || 'tour'} className="w-full h-full object-cover" />
@@ -1103,6 +1251,67 @@ const DartGameModal = ({ isOpen, onClose }) => {
                   <div className="text-sm text-gray-500">근처 관광정보가 없습니다.</div>
                 )}
               </div>
+              {/* 우측 사이드 모달: 선택된 관광지 상세 + 인근 호텔 */}
+              {selectedTour && (
+                <div className="fixed right-4 top-20 bottom-6 z-50 w-full max-w-md bg-white shadow-2xl border rounded-2xl overflow-hidden flex flex-col">
+                  <div className="px-4 py-3 border-b flex items-center justify-between">
+                    <div className="font-bold text-gray-900 line-clamp-1">
+                      {selectedTour.title || '선택한 관광지'}
+                    </div>
+                    <button
+                      onClick={() => { setSelectedTour(null); setTourNearbyHotels([]); }}
+                      className="p-2 rounded hover:bg-gray-100"
+                      aria-label="닫기"
+                    >
+                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                  <div className="px-4 py-3 border-b">
+                    {selectedTourDetail ? (
+                      <div className="space-y-2">
+                        {selectedTourDetail.images?.[0]?.originimgurl && (
+                          <div className="h-36 overflow-hidden rounded-lg">
+                            <img src={selectedTourDetail.images[0].originimgurl} alt={selectedTour.title} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        {selectedTourDetail.common?.overview && (
+                          <div className="text-sm text-gray-700 line-clamp-4" dangerouslySetInnerHTML={{ __html: selectedTourDetail.common.overview }} />
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500">관광지 정보를 불러오는 중...</div>
+                    )}
+                  </div>
+                  <div className="px-4 py-2 text-sm text-gray-600 border-b">인근 호텔 10개 추천</div>
+                  <div className="flex-1 overflow-auto p-4 space-y-3">
+                    {isTourHotelsLoading ? (
+                      <div className="text-center py-8 text-gray-600">불러오는 중...</div>
+                    ) : tourNearbyHotels.length ? (
+                      tourNearbyHotels.map((hotel, i) => (
+                        <div key={hotel.contentId || i} className="border rounded-lg overflow-hidden hover:shadow transition cursor-pointer"
+                             onClick={() => window.open(`/hotel/${hotel.contentId}`, '_blank')}>
+                          {hotel.imageUrl ? (
+                            <div className="h-32 overflow-hidden">
+                              <img src={hotel.imageUrl} alt={hotel.title} className="w-full h-full object-cover" />
+                            </div>
+                          ) : null}
+                          <div className="p-3">
+                            <div className="font-semibold text-gray-900 line-clamp-1">{hotel.title}</div>
+                            {typeof hotel.distance === 'number' && (
+                              <div className="text-xs text-green-600 mt-1">관광지로부터 {hotel.distance.toFixed(1)}km</div>
+                            )}
+                            {hotel.adress && (
+                              <div className="text-xs text-gray-600 line-clamp-2 mt-1">{hotel.adress}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-gray-500">주변 호텔 정보를 찾지 못했습니다.</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
