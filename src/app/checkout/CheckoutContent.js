@@ -53,13 +53,16 @@ const CheckoutContent = ({ searchParams }) => {
       if (!clientKey) throw new Error("Toss client key 미설정");
       const tossPayments = await loadTossPayments(clientKey);
 
+      // successUrl에 type 파라미터 추가
+      const reservationType = draft.meta?.type || "hotel_reservation";
+
       await tossPayments.requestPayment("카드", {
         amount: draft.finalAmount,
         orderId: draft.orderId,
         orderName: draft.orderName,
         customerEmail: draft.email,
         customerName: draft.customerId,
-        successUrl: `${window.location.origin}/checkout/success`,
+        successUrl: `${window.location.origin}/checkout/success?type=${reservationType}`,
         failUrl: `${window.location.origin}/checkout/fail`,
       });
     } catch (e) {

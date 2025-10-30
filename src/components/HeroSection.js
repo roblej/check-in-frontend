@@ -16,10 +16,31 @@ import axios from "axios";
  * - 예약 양도 중고거래 버튼
  */
 const HeroSection = () => {
+  // 오늘 날짜와 내일 날짜를 YYYY-MM-DD 형식으로 가져오기
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, "0");
+    const day = String(tomorrow.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayDate = getTodayDate();
+  const tomorrowDate = getTomorrowDate();
+
   const [destination, setDestination] = useState("");
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
-  const [diningDate, setDiningDate] = useState("");
+  const [checkIn, setCheckIn] = useState(todayDate); // 기본값: 오늘 날짜
+  const [checkOut, setCheckOut] = useState(tomorrowDate); // 기본값: 내일 날짜
+  const [diningDate, setDiningDate] = useState(todayDate); // 기본값: 오늘 날짜
   const [mealType, setMealType] = useState("lunch");
   const [adults, setAdults] = useState(2);
   const [selectedType, setSelectedType] = useState("hotel");
@@ -65,24 +86,38 @@ const HeroSection = () => {
     }
     if (storeSearchParams.checkIn) {
       setCheckIn(storeSearchParams.checkIn);
+    } else {
+      // 스토어에 체크인 날짜가 없으면 기본값(오늘) 설정
+      setCheckIn(todayDate);
     }
     if (storeSearchParams.checkOut) {
       setCheckOut(storeSearchParams.checkOut);
+    } else {
+      // 스토어에 체크아웃 날짜가 없으면 기본값(내일) 설정
+      setCheckOut(tomorrowDate);
     }
     if (storeSearchParams.adults) {
       setAdults(storeSearchParams.adults);
     }
   }, [storeSearchParams]);
 
-  // 검색 타입 변경 시 상태 초기화 (다이닝으로 변경할 때만)
+  // 검색 타입 변경 시 상태 초기화
   useEffect(() => {
+    const today = getTodayDate();
+    const tomorrow = getTomorrowDate();
+    
     if (selectedType === "dining") {
-      setCheckIn(null);
-      setCheckOut(null);
-      setDiningDate(null);
-      setMealType(null);
+      // 다이닝으로 변경: 다이닝 날짜를 오늘로 설정
+      setCheckIn("");
+      setCheckOut("");
+      setDiningDate(today);
+      setMealType("lunch");
       setAdults(2);
-      setDestination("");
+    } else if (selectedType === "hotel") {
+      // 호텔로 변경: 체크인/체크아웃을 오늘/내일로 설정
+      if (!checkIn) setCheckIn(today);
+      if (!checkOut) setCheckOut(tomorrow);
+      setDiningDate("");
     }
   }, [selectedType]);
 
