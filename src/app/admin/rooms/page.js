@@ -1,19 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { CheckCircle, Building2, Sparkles, Wrench, HelpCircle, Home, DollarSign, X, Eye, Calendar } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
 const RoomsPage = () => {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  
-  // URL에서 날짜 파라미터 가져오기 (없으면 오늘 날짜)
-  const selectedDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
   const api_url = "/admin/roomList";
+
+  // URL 파라미터(date) 읽기 - Suspense 경계 내에서 안전하게 사용
+  const searchParams = useSearchParams();
+  const selectedDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
   const [roomStatusList, setRoomStatusList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +21,8 @@ const RoomsPage = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [availableRoomCount, setAvailableRoomCount] = useState(0);
   const [totalRoomCount, setTotalRoomCount] = useState(0);
+
+  // selectedDate가 변경될 때마다 데이터 로드
 
   useEffect(() => {
     fetchRoomStatus();
@@ -80,6 +82,7 @@ const RoomsPage = () => {
   };
 
   return (
+    <Suspense fallback={<div className="p-6">로딩 중...</div>}>
     <AdminLayout>
       <div className="space-y-6 p-6">
         {/* 페이지 헤더 */}
@@ -225,6 +228,7 @@ const RoomsPage = () => {
         )}
       </div>
     </AdminLayout>
+    </Suspense>
   );
 };
 
