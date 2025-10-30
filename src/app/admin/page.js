@@ -18,11 +18,11 @@ const AdminDashboard = () => {
   
   const api_url = "/admin/dashboard"; // lib/axios의 baseURL과 함께 사용
 
-  const [todayCheckinCount, setTodayCheckinCount] = useState(0); // 오늘 체크인 수
-  const [todayCheckoutCount, setTodayCheckoutCount] = useState(0); // 오늘 체크아웃 수
-  const [reservationCount, setReservationCount] = useState(0); // 예약 확정 수
-  const [thisMonthSales, setThisMonthSales] = useState(0); // 이번달 매출
-  const [roomReservationList, setRoomReservationList] = useState([]); // 최근 예약 목록
+  const [todayCheckinCount, setTodayCheckinCount] = useState(0);
+  const [todayCheckoutCount, setTodayCheckoutCount] = useState(0);
+  const [reservationCount, setReservationCount] = useState(0);
+  const [thisMonthSales, setThisMonthSales] = useState(0);
+  const [roomReservationList, setRoomReservationList] = useState([]);
   const [isLoading, setIsLoading] = useState(true); // 로딩 상태
   const [selectedReservation, setSelectedReservation] = useState(null); // 선택된 예약
   const [showDetailModal, setShowDetailModal] = useState(false); // 상세보기 모달 상태
@@ -38,7 +38,7 @@ const AdminDashboard = () => {
 
       // 대시보드 데이터 로드 (JWT 쿠키 자동 전송)
       await loadDashboardData();
-      
+
     } catch (error) {
       console.error('초기화 실패:', error);
       router.push('/login');
@@ -52,12 +52,13 @@ const AdminDashboard = () => {
     try {
       // 쿠키가 자동으로 전송됨 (withCredentials: true)
       const response = await axiosInstance.get(api_url);
-      console.log('대시보드 응답:', response.data);
-      setTodayCheckinCount(response.data.todayCheckinCount);
-      setTodayCheckoutCount(response.data.todayCheckoutCount);
-      setReservationCount(response.data.reservationCount);
-      setThisMonthSales(response.data.thisMonthSales);
-      setRoomReservationList(response.data.roomReservationList);
+      const data = response.data;
+      console.log('대시보드 응답:', data);
+      setTodayCheckinCount(data?.today?.checkinCount || 0);
+      setTodayCheckoutCount(data?.today?.checkoutCount || 0);
+      setReservationCount(data?.today?.reservationCount || 0);
+      setThisMonthSales(data?.today?.thisMonthSales || 0);
+      setRoomReservationList(data?.recentReservations || []);
     } catch (error) {
       console.error('대시보드 데이터 로드 실패:', error);
     }

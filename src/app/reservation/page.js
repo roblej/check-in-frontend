@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
+import axios from "@/lib/axios";
 import TossPaymentsWidget from "@/components/payment/TossPaymentsWidget";
 import PaymentSummary from "@/components/payment/PaymentSummary";
 import Header from "@/components/Header";
@@ -653,7 +654,34 @@ const HotelReservationPage = () => {
               isFormValid={isFormValid}
               isLoading={isLoading}
               onPaymentClick={async () => {
-                // 토스페이먼츠 결제 핸들러 직접 호출
+                // 호텔 일반 결제에 대해서만 Redis 락 선취득
+                try {
+                  const roomId =
+                    paymentDraft?.meta?.roomIdx || paymentDraft?.meta?.roomId;
+                  const checkIn = paymentDraft?.meta?.checkIn;
+                  if (!roomId || !checkIn) {
+                    alert(
+                      "객실 정보가 올바르지 않습니다. 처음부터 다시 시도해주세요."
+                    );
+                    return;
+                  }
+                  await axios.post(`/payments/lock`, {
+                    roomId: String(roomId),
+                    checkIn: String(checkIn),
+                  });
+                } catch (err) {
+                  const status = err?.response?.status;
+                  if (status === 409) {
+                    alert("이미 다른 사용자가 결제 진행중입니다.");
+                  } else {
+                    alert(
+                      "결제 잠금 처리에 실패했습니다. 잠시 후 다시 시도해주세요."
+                    );
+                  }
+                  return;
+                }
+
+                // 락 획득 후에만 Toss 결제 진행
                 if (window.tossPaymentHandler) {
                   try {
                     await window.tossPaymentHandler();

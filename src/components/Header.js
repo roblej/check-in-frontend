@@ -2,17 +2,28 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useAdminStore } from "@/stores/adminStore";
 import { deleteAdminIdxCookie } from "@/utils/cookieUtils";
+import axios from "axios";
 const Header = () => {
   const router = useRouter();
-  const { inlogged, resetAccessToken, setInlogged, readAccessToken, verifyTokenWithBackend } = useCustomerStore();
+  const { resetAccessToken, setInlogged, readAccessToken, verifyTokenWithBackend, isInlogged } = useCustomerStore();
   const { resetAdminData } = useAdminStore();
+  const logout_url = "/api/login/logout";
+  
+  // Hydration 오류 방지를 위한 상태
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   
 
   const handleLogout = () => {
     // 고객 스토어 초기화
+    axios.get(logout_url,{withCredentials: true});
     resetAccessToken("");
     setInlogged(false);
     
@@ -33,6 +44,9 @@ const Header = () => {
    // MY 버튼 클릭 시 백엔드 토큰 검증
    const handleMyPageClick = async (e) => {
     e.preventDefault();
+    
+    // 클라이언트에서만 실행
+    if (!isClient) return;
     
     const result = await verifyTokenWithBackend();
     
@@ -80,8 +94,8 @@ const Header = () => {
             >
               MY
             </button>
-            <Link href= {inlogged ? "/" : "/login"} onClick={inlogged ? handleLogout : ""} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
-              {inlogged ? "로그아웃" : "로그인"} 
+            <Link href= {isClient && isInlogged() ? "/" : "/login"} onClick={isClient && isInlogged() ? handleLogout : ""} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
+              {isClient && isInlogged() ? "로그아웃" : "로그인"}
             </Link>
           </div>
         </div>
