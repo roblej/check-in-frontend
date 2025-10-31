@@ -16,6 +16,11 @@ const HotelSearchResults = ({
   showFiltersPanel,
   setShowFiltersPanel,
   filteredHotels,
+  currentPage = 0,
+  totalPages = 0,
+  totalElements = 0,
+  pageSize = 10,
+  onPageChange,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -78,7 +83,7 @@ const HotelSearchResults = ({
         </div>
 
         {/* 스크롤 가능한 호텔 리스트 */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4" data-hotel-results>
           {/* 트래블클럽 배너 */}
           <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
             <div className="flex items-center gap-2">
@@ -197,15 +202,17 @@ const HotelSearchResults = ({
           </div>
 
           {/* Pagination - 스크롤 영역 안에 포함 */}
-          <div className="mt-6">
-            <Pagination
-              currentPage={0}
-              totalPages={4}
-              totalElements={19}
-              pageSize={10}
-              onPageChange={1}
-            />
-          </div>
+          {onPageChange && (
+            <div className="mt-6">
+              <Pagination
+                currentPage={currentPage || 0}
+                totalPages={totalPages || 0}
+                totalElements={totalElements || 0}
+                pageSize={pageSize || 10}
+                onPageChange={onPageChange}
+              />
+            </div>
+          )}
         </div>
 
         {/* 필터 패널 (하단에서 올라옴 - 오버레이 없음) */}

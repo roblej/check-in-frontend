@@ -94,6 +94,10 @@ const HotelSearchPageContent = () => {
   // 호텔 데이터 (임시)
   const [filteredHotels, setFilteredHotels] = useState([]);
 
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(0);
+  const pageSize = 10;
+
   const getHotels = useCallback(async () => {
     try {
       console.log("=== getHotels 디버깅 ===");
@@ -113,7 +117,9 @@ const HotelSearchPageContent = () => {
         title: localSearchParams.destination,
       });
       if (res.data) {
-        console.log(res.data);
+        console.log("=== 호텔 검색 결과 ===");
+        console.log("총 호텔 개수:", Array.isArray(res.data) ? res.data.length : 0);
+        console.log("호텔 데이터:", res.data);
         setSearchResults(res.data);
         return res.data;
       }
@@ -172,7 +178,43 @@ const HotelSearchPageContent = () => {
     }
 
     setFilteredHotels(filtered);
+    // 필터링이 변경되면 첫 페이지로 리셋
+    setCurrentPage(0);
   }, [sortBy, filters, searchResults]);
+
+  // 현재 페이지에 해당하는 호텔 계산
+  const currentPageHotels = useMemo(() => {
+    const startIndex = currentPage * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredHotels.slice(startIndex, endIndex);
+  }, [filteredHotels, currentPage, pageSize]);
+
+  // 전체 페이지 수 계산
+  const totalPages = useMemo(() => {
+    const pages = Math.ceil(filteredHotels.length / pageSize);
+    console.log('=== 페이지네이션 계산 ===');
+    console.log('필터링된 호텔 개수:', filteredHotels.length);
+    console.log('페이지 크기:', pageSize);
+    console.log('총 페이지 수:', pages);
+    console.log('페이지네이션 표시 여부:', pages > 1 ? 'YES' : 'NO (페이지가 1개 이하)');
+    return pages;
+  }, [filteredHotels.length, pageSize]);
+
+  // 페이지 변경 핸들러
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+    // 페이지 변경 시 호텔 상세 패널 닫기
+    setSelectedcontentId(null);
+    // URL에서 selectedHotel 파라미터 제거
+    const urlParams = new URLSearchParams(searchParams.toString());
+    urlParams.delete("selectedHotel");
+    router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
+    // 페이지 변경 시 스크롤을 상단으로 이동
+    const resultsPanel = document.querySelector('[data-hotel-results]');
+    if (resultsPanel) {
+      resultsPanel.scrollTop = 0;
+    }
+  }, [searchParams, router]);
 
   const formatPrice = (price) => new Intl.NumberFormat("ko-KR").format(price);
 
@@ -284,7 +326,7 @@ const HotelSearchPageContent = () => {
       <div className="flex flex-1 relative overflow-hidden">
         {/* 좌측: 호텔 검색 결과 */}
         <HotelSearchResults
-          hotels={filteredHotels}
+          hotels={currentPageHotels}
           formatPrice={formatPrice}
           handleHotelClick={handleHotelClick}
           handleHotelDetailOpen={handleHotelDetailOpen}
@@ -294,6 +336,11 @@ const HotelSearchPageContent = () => {
           showFiltersPanel={showFiltersPanel}
           setShowFiltersPanel={setShowFiltersPanel}
           filteredHotels={filteredHotels}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalElements={filteredHotels.length}
+          pageSize={pageSize}
+          onPageChange={handlePageChange}
         />
 
         {/* 우측: 지도 */}
@@ -325,7 +372,7 @@ const HotelSearchPageContent = () => {
 
             {/* 카카오맵 영역 */}
             <KakaoMapWithMarkers
-              hotels={filteredHotels}
+              hotels={currentPageHotels}
               selectedHotelId={selectedcontentId}
               onMarkerClick={handleHotelClick}
             />
