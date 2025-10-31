@@ -50,4 +50,10 @@ export const mypageAPI = {
     const response = await axiosInstance.get("/reviews/my-reviews");
     return response.data;
   },
+
+  // 리뷰 수정
+  updateReview: async (reviewId, payload) => {
+    const response = await axiosInstance.put(`/reviews/${reviewId}`, payload);
+    return response.data;
+  },
 };
