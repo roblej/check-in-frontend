@@ -7,7 +7,7 @@ import FilterSection from './FilterSection';
 import UsedList from './UsedList';
 import ResaleSearch from './UsedSearch';
 import HotelDetailModal from '../hotel/HotelDetailModal';
-import axiosInstance from '@/lib/axios';
+import { usedAPI } from '@/lib/api/used';
 
 const UsedPageContent = ({ initialData, initialSearchParams }) => {
   const router = useRouter();
@@ -28,8 +28,8 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const response = await axiosInstance.get('/customer/me');
-        setCustomer(response.data);
+        const customerData = await usedAPI.getCustomerInfo();
+        setCustomer(customerData);
       } catch (error) {
         if (error.response?.status === 401) {
           // 인증 실패 시 null로 설정 (로그인하지 않은 상태)

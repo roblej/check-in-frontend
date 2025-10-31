@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import TossPaymentsWidget from '@/components/payment/TossPaymentsWidget';
 import { usePaymentStore } from '@/stores/paymentStore';
-import axiosInstance from '@/lib/axios';
+import { usedAPI } from '@/lib/api/used';
 
 const UsedPaymentForm = ({ initialData }) => {
   const router = useRouter();
@@ -16,8 +16,8 @@ const UsedPaymentForm = ({ initialData }) => {
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const response = await axiosInstance.get('/customer/me');
-        setCustomer(response.data);
+        const customerData = await usedAPI.getCustomerInfo();
+        setCustomer(customerData);
       } catch (error) {
         console.error('사용자 정보 가져오기 실패:', error);
         if (error.response?.status === 401) {
@@ -138,12 +138,11 @@ const UsedPaymentForm = ({ initialData }) => {
         
         console.log(`${reason} 감지 - 거래 삭제 시작:`, paymentInfo.usedTradeIdx);
         
-        axiosInstance.delete(`/used/trade/${paymentInfo.usedTradeIdx}/delete`, {
-          data: { 
-            reason: reason,
-            timestamp: new Date().toISOString()
-          }
-        }).then(() => {
+        usedAPI.deleteTrade(
+          paymentInfo.usedTradeIdx,
+          reason,
+          new Date().toISOString()
+        ).then(() => {
           console.log('거래 삭제 완료:', paymentInfo.usedTradeIdx);
         }).catch(error => {
           console.error('거래 삭제 실패:', error);
@@ -324,7 +323,7 @@ const UsedPaymentForm = ({ initialData }) => {
         // 1. 거래 확정 (중요: 결제 완료 후 거래 확정)
         if (paymentInfo.usedTradeIdx) {
           try {
-            await axiosInstance.post(`/used/trade/${paymentInfo.usedTradeIdx}/confirm`);
+            await usedAPI.confirmTrade(paymentInfo.usedTradeIdx);
           } catch (error) {
             console.error("거래 확정 실패:", error.response?.data?.message || error.message);
             alert("거래 확정에 실패했습니다. 고객센터에 문의해주세요.");
@@ -349,8 +348,8 @@ const UsedPaymentForm = ({ initialData }) => {
       };
 
       try {
-        const savedPayment = await axiosInstance.post('/used/payment', paymentData);
-        console.log("결제 내역 저장 성공:", savedPayment.data);
+        const savedPayment = await usedAPI.createPayment(paymentData);
+        console.log("결제 내역 저장 성공:", savedPayment);
 
         // 3. 성공 페이지로 리다이렉트
         clearPaymentDraft();

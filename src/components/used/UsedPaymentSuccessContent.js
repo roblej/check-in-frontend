@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import axiosInstance from '@/lib/axios';
+import { usedAPI } from '@/lib/api/used';
 
 const UsedPaymentSuccessContent = ({ initialData }) => {
   const router = useRouter();
@@ -26,7 +26,7 @@ const UsedPaymentSuccessContent = ({ initialData }) => {
 
         // 1) 거래 확정
         try {
-          await axiosInstance.post(`/used/trade/${usedTradeIdx}/confirm`);
+          await usedAPI.confirmTrade(usedTradeIdx);
         } catch (error) {
           // 실패해도 결제 저장은 시도
           console.warn('거래 확정 실패:', error.response?.data?.message || error.message);
@@ -50,7 +50,7 @@ const UsedPaymentSuccessContent = ({ initialData }) => {
         };
 
         try {
-          await axiosInstance.post('/used/payment', paymentData);
+          await usedAPI.createPayment(paymentData);
         } catch (error) {
           console.error('모바일 결제 내역 저장 실패:', error.response?.data?.message || error.message);
         }

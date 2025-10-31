@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import axiosInstance from '@/lib/axios';
+import { usedAPI } from '@/lib/api/used';
 
 /**
  * 중고 호텔 거래 동시성 관리 훅
@@ -20,8 +20,8 @@ export const useUsedHotelTrade = () => {
       setIsLoading(true);
       setError(null);
 
-      const response = await axiosInstance.get(`/used-hotels/${usedItemIdx}/availability`);
-      return response.data.available;
+      const response = await usedAPI.checkAvailability(usedItemIdx);
+      return response.available;
     } catch (err) {
       setError(err.response?.data?.message || '거래 가능성 체크 중 오류가 발생했습니다.');
       return false;
@@ -36,11 +36,11 @@ export const useUsedHotelTrade = () => {
       setIsLoading(true);
       setError(null);
 
-      const response = await axiosInstance.post('/used-hotels/trade', tradeData);
+      const response = await usedAPI.createTrade(tradeData);
       
       setTrade({
-        usedTradeIdx: response.data.usedTradeIdx,
-        status: response.data.status
+        usedTradeIdx: response.usedTradeIdx,
+        status: response.status
       });
       return true;
     } catch (err) {
@@ -57,11 +57,11 @@ export const useUsedHotelTrade = () => {
       setIsLoading(true);
       setError(null);
 
-      const response = await axiosInstance.post(`/used-hotels/trade/${usedTradeIdx}/confirm`);
+      const response = await usedAPI.confirmTrade(usedTradeIdx);
       
       setTrade(prev => ({
         ...prev,
-        status: response.data.status
+        status: response.status
       }));
       return true;
     } catch (err) {
@@ -78,7 +78,7 @@ export const useUsedHotelTrade = () => {
       setIsLoading(true);
       setError(null);
 
-      await axiosInstance.post(`/used-hotels/trade/${usedTradeIdx}/cancel`, { reason });
+      await usedAPI.cancelTrade(usedTradeIdx, reason);
       
       setTrade(null);
       return true;
