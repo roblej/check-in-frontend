@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import Header from "@/components/Header";
 import HotelDetailPanel from "@/components/hotel/HotelDetailPanel";
 import HotelSearchResults from "@/components/hotelSearch/HotelSearchResults";
+import KakaoMapWithMarkers from "@/components/hotelSearch/KakaoMapWithMarkers";
 import { useSearchStore } from "@/stores/searchStore";
 import {
   createHotelDetailUrl,
@@ -322,37 +323,12 @@ const HotelSearchPageContent = () => {
               <button className="ml-2">✕</button>
             </div>
 
-            {/* 지도 영역 */}
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="text-center p-8">
-                <div className="mb-4">
-                  <svg
-                    className="w-24 h-24 mx-auto text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1}
-                      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-700 mb-2">
-                  지도 영역
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  네이버 지도 API를 연동하여
-                  <br />
-                  호텔 위치를 표시합니다
-                </p>
-                <button className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors">
-                  지도 보기
-                </button>
-              </div>
-            </div>
+            {/* 카카오맵 영역 */}
+            <KakaoMapWithMarkers
+              hotels={filteredHotels}
+              selectedHotelId={selectedcontentId}
+              onMarkerClick={handleHotelClick}
+            />
 
             {/* 우측 하단 축척 */}
             <div className="absolute bottom-6 right-6 bg-white px-3 py-1 rounded shadow text-xs">
