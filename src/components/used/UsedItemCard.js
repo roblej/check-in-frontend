@@ -3,39 +3,10 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Button from '../Button';
-import { useState, useEffect } from 'react';
 import { usedAPI } from '@/lib/api/used';
 
-const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
+const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail, customer, customerLoading }) => {
   const router = useRouter();
-  const [customer, setCustomer] = useState(null);
-  const [loading, setLoading] = useState(true);
-  
-  // httpOnly 쿠키에서 사용자 정보 가져오기
-  useEffect(() => {
-    const fetchUserInfo = async () => {
-      try {
-        const response = await fetch('/api/customer/me', {
-          credentials: 'include' // httpOnly 쿠키 포함
-        });
-        
-        if (response.ok) {
-          const userData = await response.json();
-          setCustomer(userData);
-        } else if (response.status === 401) {
-          console.log('인증이 필요합니다');
-          setCustomer(null);
-        }
-      } catch (error) {
-        console.error('사용자 정보 가져오기 실패:', error);
-        setCustomer(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchUserInfo();
-  }, []);
   
   const formatPrice = (price) => {
     return new Intl.NumberFormat('ko-KR').format(price);
@@ -241,15 +212,15 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail }) => {
             variant="primary"
             className="flex-1 bg-orange-500 hover:bg-orange-600"
             onClick={handleInquire}
-            disabled={loading || (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx)}
+            disabled={customerLoading || (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx)}
           >
-            {loading ? '로딩중...' : (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx ? '본인 매물' : '결제하기')}
+            {customerLoading ? '로딩중...' : (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx ? '본인 매물' : '결제하기')}
           </Button>
           <Button
             variant="outline"
             className="px-4"
             onClick={handleBookmark}
-            disabled={loading || (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx)}
+            disabled={customerLoading || (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx)}
           >
             찜하기
           </Button>
