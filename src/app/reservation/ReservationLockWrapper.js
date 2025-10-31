@@ -55,7 +55,10 @@ export default function ReservationLockWrapper({ children }) {
   useEffect(() => {
     if (!paymentDraft?.meta) return;
 
-    isMountedRef.current = true;
+    // 마운트 완료 표시 (비동기로 설정하여 StrictMode 초기 cleanup 구분)
+    const timer = setTimeout(() => {
+      isMountedRef.current = true;
+    }, 0);
 
     // beforeunload 플래그 설정
     const handleBeforeUnloadFlag = () => {
@@ -64,10 +67,14 @@ export default function ReservationLockWrapper({ children }) {
     window.addEventListener("beforeunload", handleBeforeUnloadFlag);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener("beforeunload", handleBeforeUnloadFlag);
 
-      // StrictMode 초기 cleanup 무시
-      if (!isMountedRef.current) return;
+      // StrictMode 초기 cleanup 무시 (아직 마운트 완료되지 않음)
+      if (!isMountedRef.current) {
+        console.log("⏭️ StrictMode 초기 cleanup: unlock 무시");
+        return;
+      }
 
       // 새로고침 중이면 unlock 안 보냄
       if (isUnloadingRef.current) {

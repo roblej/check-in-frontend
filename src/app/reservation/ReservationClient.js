@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
 import axios from "@/lib/axios";
@@ -86,45 +86,6 @@ const ReservationClient = () => {
 
     fetchUserInfo();
   }, [router]);
-
-  // 뒤로가기/닫기 시에만 unlock (새로고침은 유지)
-  const isUnloadingRef = useRef(false);
-  useEffect(() => {
-    if (!paymentDraft?.meta) return;
-
-    const handleBeforeUnloadFlag = () => {
-      isUnloadingRef.current = true;
-    };
-    window.addEventListener("beforeunload", handleBeforeUnloadFlag);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnloadFlag);
-
-      // 새로고침(beforeunload 발동) 중이면 unlock 안 보냄
-      if (isUnloadingRef.current) {
-        isUnloadingRef.current = false;
-        return;
-      }
-
-      const contentId = paymentDraft.meta.contentId;
-      const roomId = paymentDraft.meta.roomIdx || paymentDraft.meta.roomId;
-      const checkIn = paymentDraft.meta.checkIn;
-      if (!contentId || !roomId || !checkIn) return;
-
-      const payload = JSON.stringify({
-        contentId: String(contentId),
-        roomId: Number(roomId),
-        checkIn: String(checkIn),
-      });
-      const apiUrl = `${
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
-      }/api/reservations/unlock`;
-      if (navigator.sendBeacon) {
-        const blob = new Blob([payload], { type: "application/json" });
-        navigator.sendBeacon(apiUrl, blob);
-      }
-    };
-  }, [paymentDraft]);
 
   // 고정된 키들 생성
   const paymentKeys = useMemo(
