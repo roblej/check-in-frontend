@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import ReservationDetailModal from '@/components/admin/ReservationDetailModal';
@@ -17,6 +17,9 @@ const AdminCalendar = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedReservationDetail, setSelectedReservationDetail] = useState(null);
   const [showReservationDetailModal, setShowReservationDetailModal] = useState(false);
+
+  const didFetch = useRef(false);
+  const lastFetchedDateRef = useRef(null);
 
   // 달력 데이터 계산
   const calendarData = useMemo(() => {
@@ -75,6 +78,11 @@ const AdminCalendar = () => {
   };
 
   useEffect(() => {
+    const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}`;
+    if (didFetch.current && lastFetchedDateRef.current === dateKey) return;
+    didFetch.current = true;
+    lastFetchedDateRef.current = dateKey;
+    
     fetchReservations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDate]);

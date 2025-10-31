@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { CheckCircle, Building2, Sparkles, Wrench, HelpCircle, Home, DollarSign, X, Eye, Calendar } from 'lucide-react';
@@ -22,7 +22,14 @@ const RoomsInner = () => {
   const [availableRoomCount, setAvailableRoomCount] = useState(0);
   const [totalRoomCount, setTotalRoomCount] = useState(0);
 
+  const didFetch = useRef(false);
+  const lastFetchedDateRef = useRef(null);
+
   useEffect(() => {
+    if (didFetch.current && lastFetchedDateRef.current === selectedDate) return;
+    didFetch.current = true;
+    lastFetchedDateRef.current = selectedDate;
+    
     fetchRoomStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
