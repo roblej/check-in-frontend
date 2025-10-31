@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { usedAPI } from '@/lib/api/used';
 
 /**
  * 중고 호텔 거래 동시성 관리 훅
@@ -19,17 +20,10 @@ export const useUsedHotelTrade = () => {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/used-hotels/${usedItemIdx}/availability`);
-      const data = await response.json();
-      
-      if (response.ok) {
-        return data.available;
-      } else {
-        setError(data.message);
-        return false;
-      }
+      const response = await usedAPI.checkAvailability(usedItemIdx);
+      return response.available;
     } catch (err) {
-      setError('거래 가능성 체크 중 오류가 발생했습니다.');
+      setError(err.response?.data?.message || '거래 가능성 체크 중 오류가 발생했습니다.');
       return false;
     } finally {
       setIsLoading(false);
@@ -42,26 +36,15 @@ export const useUsedHotelTrade = () => {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('/api/used-hotels/trade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(tradeData)
-      });
-
-      const data = await response.json();
+      const response = await usedAPI.createTrade(tradeData);
       
-      if (response.ok) {
-        setTrade({
-          usedTradeIdx: data.usedTradeIdx,
-          status: data.status
-        });
-        return true;
-      } else {
-        setError(data.message);
-        return false;
-      }
+      setTrade({
+        usedTradeIdx: response.usedTradeIdx,
+        status: response.status
+      });
+      return true;
     } catch (err) {
-      setError('거래 생성 중 오류가 발생했습니다.');
+      setError(err.response?.data?.message || '거래 생성 중 오류가 발생했습니다.');
       return false;
     } finally {
       setIsLoading(false);
@@ -74,24 +57,15 @@ export const useUsedHotelTrade = () => {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/used-hotels/trade/${usedTradeIdx}/confirm`, {
-        method: 'POST'
-      });
-
-      const data = await response.json();
+      const response = await usedAPI.confirmTrade(usedTradeIdx);
       
-      if (response.ok) {
-        setTrade(prev => ({
-          ...prev,
-          status: data.status
-        }));
-        return true;
-      } else {
-        setError(data.message);
-        return false;
-      }
+      setTrade(prev => ({
+        ...prev,
+        status: response.status
+      }));
+      return true;
     } catch (err) {
-      setError('거래 확정 중 오류가 발생했습니다.');
+      setError(err.response?.data?.message || '거래 확정 중 오류가 발생했습니다.');
       return false;
     } finally {
       setIsLoading(false);
@@ -104,23 +78,12 @@ export const useUsedHotelTrade = () => {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/used-hotels/trade/${usedTradeIdx}/cancel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason })
-      });
-
-      const data = await response.json();
+      await usedAPI.cancelTrade(usedTradeIdx, reason);
       
-      if (response.ok) {
-        setTrade(null);
-        return true;
-      } else {
-        setError(data.message);
-        return false;
-      }
+      setTrade(null);
+      return true;
     } catch (err) {
-      setError('거래 취소 중 오류가 발생했습니다.');
+      setError(err.response?.data?.message || '거래 취소 중 오류가 발생했습니다.');
       return false;
     } finally {
       setIsLoading(false);

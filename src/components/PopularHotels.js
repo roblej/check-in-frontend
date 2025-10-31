@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import axios from "axios";
+import axiosInstance from "@/lib/axios";
 import { useState, useEffect, useRef } from "react";
 /**
  * 인기 호텔 섹션 컴포넌트
@@ -15,7 +15,6 @@ import { useState, useEffect, useRef } from "react";
 // 인기 호텔 컴포넌트
 const PopularHotels = () => {
   const router = useRouter();
-  const api_url = "/api/hotel/popular";
   const [popularHotels, setPopularHotels] = useState([]);
   const didFetch = useRef(false);
 
@@ -24,11 +23,11 @@ const PopularHotels = () => {
     if (didFetch.current) return;
     didFetch.current = true;
 
-    axios.get(api_url).then(res => {
+    axiosInstance.get('/hotel/popular').then(res => {
       console.log('PopularHotels API 응답:', res.data);
       setPopularHotels(res.data);
     }).catch(err => {
-      console.error('PopularHotels API 에러:', err);
+      console.error('PopularHotels API 에러:', err.response?.data?.message || err.message);
     });
   }, []);
 

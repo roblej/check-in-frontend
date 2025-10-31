@@ -43,3 +43,6 @@ yarn-error.log*
 next-env.d.ts
 
 .cursor/
+#용준 개인 md파일 ignore
+RESERVATION_LOCK_GUIDE.md
+LOCK_IMPLEMENTATION_SUMMARY.md
