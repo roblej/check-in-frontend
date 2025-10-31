@@ -74,8 +74,8 @@ const KakaoMapWithMarkers = ({ hotels = [], selectedHotelId, onMarkerClick }) =>
             mapY = parseFloat(hotel.hotelLocation.mapY);
             mapX = parseFloat(hotel.hotelLocation.mapX);
           }
-          // 직접 mapX, mapY가 있는 경우 (호환성)
-          else if (hotel.mapY && hotel.mapX) {
+          // 직접 mapX, mapY가 있는 경우 (HotelcardResponse에서 온 경우)
+          else if (hotel.mapY != null && hotel.mapX != null) {
             mapY = parseFloat(hotel.mapY);
             mapX = parseFloat(hotel.mapX);
           }

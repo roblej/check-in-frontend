@@ -147,34 +147,68 @@ const HotelSearchPageContent = () => {
     }
 
     let filtered = hotels.filter((hotel) => {
-      if (hotel.price < filters.priceMin || hotel.price > filters.priceMax)
-        return false;
+      // 가격 필터링 (가격 정보가 있는 경우에만 필터링)
+      // minPrice, maxPrice, price 중 하나라도 있으면 필터링 적용
+      const hotelPrice = hotel.minPrice || hotel.maxPrice || hotel.price || null;
+      if (hotelPrice !== null) {
+        const price = Number(hotelPrice);
+        if (price < filters.priceMin || price > filters.priceMax) {
+          return false;
+        }
+      }
+      
+      // 별점 필터링
       if (
         filters.starRatings.length > 0 &&
+        hotel.starRating !== undefined &&
         !filters.starRatings.includes(hotel.starRating)
-      )
+      ) {
         return false;
-      if (
-        filters.amenities.length > 0 &&
-        !filters.amenities.some((amenity) => hotel.amenities.includes(amenity))
-      )
-        return false;
+      }
+      
+      // 편의시설 필터링
+      if (filters.amenities.length > 0) {
+        const hotelAmenities = hotel.amenities || [];
+        if (!Array.isArray(hotelAmenities)) {
+          return false;
+        }
+        if (!filters.amenities.some((amenity) => hotelAmenities.includes(amenity))) {
+          return false;
+        }
+      }
+      
       return true;
     });
 
     // 정렬
     switch (sortBy) {
       case "낮은 가격순":
-        filtered.sort((a, b) => a.price - b.price);
+        filtered.sort((a, b) => {
+          const priceA = Number(a.minPrice || a.maxPrice || a.price || 0);
+          const priceB = Number(b.minPrice || b.maxPrice || b.price || 0);
+          return priceA - priceB;
+        });
         break;
       case "높은 가격순":
-        filtered.sort((a, b) => b.price - a.price);
+        filtered.sort((a, b) => {
+          const priceA = Number(a.minPrice || a.maxPrice || a.price || 0);
+          const priceB = Number(b.minPrice || b.maxPrice || b.price || 0);
+          return priceB - priceA;
+        });
         break;
       case "평점순":
-        filtered.sort((a, b) => b.rating - a.rating);
+        filtered.sort((a, b) => {
+          const ratingA = Number(a.rating || 0);
+          const ratingB = Number(b.rating || 0);
+          return ratingB - ratingA;
+        });
         break;
       default: // 인기순
-        filtered.sort((a, b) => b.reviewCount - a.reviewCount);
+        filtered.sort((a, b) => {
+          const reviewA = Number(a.reviewCount || 0);
+          const reviewB = Number(b.reviewCount || 0);
+          return reviewB - reviewA;
+        });
     }
 
     setFilteredHotels(filtered);
@@ -226,6 +260,24 @@ const HotelSearchPageContent = () => {
         : [...prev[type], value],
     }));
   };
+
+  // 필터 변경 핸들러
+  const handleFilterChange = useCallback((newFilterValues) => {
+    setFilters((prev) => ({
+      ...prev,
+      ...newFilterValues,
+    }));
+  }, []);
+
+  // 필터 초기화 핸들러
+  const handleFilterReset = useCallback(() => {
+    setFilters({
+      priceMin: 0,
+      priceMax: 500000,
+      starRatings: [],
+      amenities: [],
+    });
+  }, []);
 
   const handleHotelClick = (hotelId) => {
     // 이미 같은 호텔이 선택되어 있으면 패널 닫기
@@ -293,10 +345,11 @@ const HotelSearchPageContent = () => {
     <div className="h-screen bg-gray-50 overflow-hidden flex flex-col">
       <Header />
 
-      {/* 검색 조건 바 */}
+      {/* 검색 조건 및 필터 바 */}
       <div className="bg-white border-b flex-shrink-0">
         <div className="max-w-[1200px] mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          {/* 검색 조건 */}
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-700">
@@ -319,68 +372,95 @@ const HotelSearchPageContent = () => {
               </button>
             </div>
           </div>
+
+          {/* 필터 및 정렬 */}
+          <div className="flex flex-wrap gap-4 items-center justify-between pt-3 border-t border-gray-200">
+            <div className="flex flex-wrap gap-4 items-center">
+              {/* 정렬 필터 */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">정렬:</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                >
+                  <option value="인기순">인기순</option>
+                  <option value="낮은 가격순">낮은 가격순</option>
+                  <option value="높은 가격순">높은 가격순</option>
+                  <option value="평점순">평점순</option>
+                </select>
+              </div>
+
+              {/* 필터 버튼 */}
+              <button
+                onClick={() => setShowFiltersPanel(!showFiltersPanel)}
+                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm font-medium text-gray-700"
+              >
+                <span>🔍</span>
+                <span>필터</span>
+              </button>
+            </div>
+
+            {/* 결과 개수 및 필터 초기화 */}
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-500">
+                {filteredHotels.length > 0 ? (
+                  <span>총 <span className="font-semibold text-orange-600">{filteredHotels.length}</span>개의 호텔</span>
+                ) : (
+                  <span className="text-gray-400">검색 결과가 없습니다</span>
+                )}
+              </div>
+              
+              {(filters.priceMin > 0 || filters.priceMax < 500000 || filters.starRatings.length > 0 || filters.amenities.length > 0) && (
+                <button
+                  onClick={handleFilterReset}
+                  className="px-3 py-2 text-sm text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors border border-gray-300 hover:border-orange-300"
+                >
+                  필터 초기화
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 메인 컨텐츠 */}
+      {/* 메인 컨텐츠 - 좌우 분할 */}
       <div className="flex flex-1 relative overflow-hidden">
-        {/* 좌측: 호텔 검색 결과 */}
-        <HotelSearchResults
-          hotels={currentPageHotels}
-          formatPrice={formatPrice}
-          handleHotelClick={handleHotelClick}
-          handleHotelDetailOpen={handleHotelDetailOpen}
-          sortBy={sortBy}
-          setSortBy={setSortBy}
-          days={localSearchParams.nights}
-          showFiltersPanel={showFiltersPanel}
-          setShowFiltersPanel={setShowFiltersPanel}
-          filteredHotels={filteredHotels}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalElements={filteredHotels.length}
-          pageSize={pageSize}
-          onPageChange={handlePageChange}
-        />
+        {/* 좌측: 호텔 검색 결과 (그리드) */}
+        <div className="flex-1 lg:w-[30%] overflow-y-auto">
+          <div className="p-4">
+            <HotelSearchResults
+              hotels={currentPageHotels}
+              formatPrice={formatPrice}
+              handleHotelClick={handleHotelClick}
+              handleHotelDetailOpen={handleHotelDetailOpen}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              days={localSearchParams.nights}
+              showFiltersPanel={showFiltersPanel}
+              setShowFiltersPanel={setShowFiltersPanel}
+              filteredHotels={filteredHotels}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalElements={filteredHotels.length}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              onFilterReset={handleFilterReset}
+            />
+          </div>
+        </div>
 
         {/* 우측: 지도 */}
-        <div
-          className={`
-          hidden lg:block lg:flex-shrink-0 flex-1 lg:w-[70%]
-          ${
-            showMobileMap ? "!block fixed inset-0 z-50 w-full h-full top-0" : ""
-          }
-        `}
-        >
+        <div className="hidden lg:block lg:w-[70%] lg:flex-shrink-0 border-l border-gray-200">
           <div className="w-full h-full bg-gray-100 relative">
-            {/* 모바일 닫기 버튼 */}
-            {showMobileMap && (
-              <button
-                onClick={() => setShowMobileMap(false)}
-                className="lg:hidden absolute top-4 left-4 z-10 bg-white p-3 rounded-full shadow-lg"
-              >
-                <span className="text-xl">←</span>
-              </button>
-            )}
-
-            {/* 이벤트 알림 배너 */}
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-              <span>→</span>
-              <span className="font-medium">이번트 · 혜택 알림 받기</span>
-              <button className="ml-2">✕</button>
-            </div>
-
             {/* 카카오맵 영역 */}
             <KakaoMapWithMarkers
               hotels={currentPageHotels}
               selectedHotelId={selectedcontentId}
               onMarkerClick={handleHotelClick}
             />
-
-            {/* 우측 하단 축척 */}
-            <div className="absolute bottom-6 right-6 bg-white px-3 py-1 rounded shadow text-xs">
-              5km
-            </div>
           </div>
         </div>
       </div>

@@ -74,9 +74,9 @@ const HotelDetailPanel = ({
       <div
         className="hotel-detail-panel fixed top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in-right
                     w-full sm:top-16 sm:h-[calc(100vh-4rem)]
-                    lg:left-[calc(30%+1rem)] lg:right-auto lg:w-[555px]
+                    lg:left-0 lg:right-auto lg:w-[555px]
                     lg:top-[120px] lg:h-[calc(100vh-140px)]
-                    lg:rounded-xl lg:max-w-[555px]"
+                    lg:rounded-tr-xl lg:rounded-br-xl lg:max-w-[555px]"
       >
         {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b bg-white flex-shrink-0">
