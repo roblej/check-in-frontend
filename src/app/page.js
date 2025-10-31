@@ -3,7 +3,6 @@ import Footer from "@/components/Footer";
 import HeroSection from "@/components/HeroSection";
 import PopularHotels from "@/components/PopularHotels";
 import DartGameSection from "@/components/DartGameSection";
-import SetAccessToken from "@/components/login/SetAccessToken";
 import ReadToken from "@/components/token/readToken";
 
 /**
