@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { CheckCircle, Building2, Sparkles, Wrench, HelpCircle, Home, DollarSign, X, Eye, Calendar } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
+  const roomUpdate_url = "/admin/roomUpdate";
+  const roomStatus_url = "/admin/roomStatus";
+
 const RoomsInner = () => {
   const router = useRouter();
-  const api_url = "/admin/roomList";
+  const roomList_url = "/admin/roomList";
   const searchParams = useSearchParams();
   const selectedDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
@@ -19,7 +22,14 @@ const RoomsInner = () => {
   const [availableRoomCount, setAvailableRoomCount] = useState(0);
   const [totalRoomCount, setTotalRoomCount] = useState(0);
 
+  const didFetch = useRef(false);
+  const lastFetchedDateRef = useRef(null);
+
   useEffect(() => {
+    if (didFetch.current && lastFetchedDateRef.current === selectedDate) return;
+    didFetch.current = true;
+    lastFetchedDateRef.current = selectedDate;
+    
     fetchRoomStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
@@ -27,7 +37,7 @@ const RoomsInner = () => {
   const fetchRoomStatus = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get(api_url, {
+      const response = await axiosInstance.get(roomList_url, {
         params: { date: selectedDate }
       });
       if (response.data.success) {
@@ -236,6 +246,7 @@ const RoomsPage = () => {
 // 객실 상세 정보 모달 컴포넌트
 const RoomDetailModal = ({ room, onClose, onUpdate }) => {
   const [roomData, setRoomData] = useState({
+    roomIdx: room.roomIdx || 0,
     name: room.name || '',
     capacity: room.capacity || 0,
     basePrice: room.basePrice || 0,
@@ -245,13 +256,35 @@ const RoomDetailModal = ({ room, onClose, onUpdate }) => {
   const handleSubmit = async () => {
     // TODO: 객실 수정 API 호출
     console.log('객실 수정:', roomData);
-    alert('객실 수정 기능은 추후 구현 예정입니다.');
+    alert('객실 정보를 수정 하시겠습니까?');
+    try {
+      const response = await axiosInstance.post(roomUpdate_url, roomData);
+      if (response.data.success) {
+        alert('객실 정보가 수정되었습니다.');
+        onUpdate();
+        onClose();
+      }
+    } catch (error) {
+      console.error('객실 수정 오류:', error);
+    }
   };
 
   const handleDeactivate = async () => {
     // TODO: 객실 비활성화 API 호출
     console.log('객실 비활성화:', room.roomIdx, room.contentId);
-    alert('객실 비활성화 기능은 추후 구현 예정입니다.');
+    alert('해당 객실을 비활성화 처리 하겠습니까?');
+    try {
+      const response = await axiosInstance.post(roomStatus_url, {
+        roomIdx: room.roomIdx,
+        status: 0
+      });
+      if (response.data.success) {
+        alert('객실 비활성화 처리가 완료되었습니다.');
+        onUpdate();
+      }
+    } catch (error) {
+      console.error('객실 비활성화 오류:', error);
+    }
   };
 
   return (
