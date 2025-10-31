@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import UsedItemCard from './UsedItemCard';
 import Pagination from '@/components/Pagination';
 
@@ -14,7 +13,9 @@ const UsedList = ({
   onPageChange,
   onInquire,
   onBookmark,
-  onHotelDetail
+  onHotelDetail,
+  customer,
+  customerLoading
 }) => {
   if (loading) {
     return (
@@ -39,6 +40,8 @@ const UsedList = ({
               onInquire={onInquire}
               onBookmark={onBookmark}
               onHotelDetail={onHotelDetail}
+              customer={customer}
+              customerLoading={customerLoading}
             />
           );
         })}

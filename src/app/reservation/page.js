@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
+import axios from "@/lib/axios";
 import TossPaymentsWidget from "@/components/payment/TossPaymentsWidget";
 import PaymentSummary from "@/components/payment/PaymentSummary";
 import Header from "@/components/Header";
@@ -653,7 +654,7 @@ const HotelReservationPage = () => {
               isFormValid={isFormValid}
               isLoading={isLoading}
               onPaymentClick={async () => {
-                // 토스페이먼츠 결제 핸들러 직접 호출
+                // 결제하기 버튼 클릭 시 Toss 결제 진행 (락은 예약하기 버튼에서 이미 걸림)
                 if (window.tossPaymentHandler) {
                   try {
                     await window.tossPaymentHandler();

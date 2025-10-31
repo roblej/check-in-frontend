@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadTossPayments } from "@tosspayments/payment-sdk";
 import { usePaymentStore } from "@/stores/paymentStore";
+import axios from "@/lib/axios";
 
 const KRW = (v) => new Intl.NumberFormat("ko-KR").format(v || 0);
 
@@ -49,12 +50,10 @@ const CheckoutContent = ({ searchParams }) => {
     setLoading(true);
     setError("");
     try {
+      const reservationType = draft.meta?.type || "hotel_reservation";
       const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
       if (!clientKey) throw new Error("Toss client key 미설정");
       const tossPayments = await loadTossPayments(clientKey);
-
-      // successUrl에 type 파라미터 추가
-      const reservationType = draft.meta?.type || "hotel_reservation";
 
       await tossPayments.requestPayment("카드", {
         amount: draft.finalAmount,

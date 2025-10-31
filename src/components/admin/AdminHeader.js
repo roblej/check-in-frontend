@@ -84,8 +84,7 @@ const AdminHeader = ({ onMenuClick }) => {
             {/* 사용자 프로필 */}
             <div className="flex items-center gap-1 sm:gap-3">
               <div className="text-right hidden sm:block">
-                <p className="text-xs sm:text-sm font-medium text-gray-900">관리자</p>
-                <p className="text-xs text-gray-500">admin@checkin.com</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-900">사업자</p>
               </div>
               
               {/* 프로필 아바타 */}

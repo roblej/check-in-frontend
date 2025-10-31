@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+//애초에 persit 로컬 스토리지에 존재하는거니 뺼 가능성 큼큼
 export const useCustomerStore = create(persist((set,get) => ({
         accessToken: "",
         inlogged: false,

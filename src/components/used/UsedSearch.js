@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { usedAPI } from '@/lib/api/used';
 
 const ResaleSearch = ({ 
   initialData, 
@@ -73,12 +73,13 @@ const ResaleSearch = ({
         console.log('검색 API 호출:', requestBody);
         
         // 검색 API 호출 (POST)
-        response = await axios.post('/api/used/search', requestBody);
+        const searchResult = await usedAPI.searchUsedItems(requestBody);
+        response = { data: searchResult };
       } else {
         // 전체 목록 API 호출 (GET)
-        const apiUrl = `/api/used/list?page=${page}&size=${pageSize}`;
-        console.log('전체 목록 API 호출:', apiUrl);
-        response = await axios.get(apiUrl);
+        console.log('전체 목록 API 호출:', { page, size: pageSize });
+        const listResult = await usedAPI.getUsedItems({ page, size: pageSize });
+        response = { data: listResult };
       }
       
       if (response.data) {
