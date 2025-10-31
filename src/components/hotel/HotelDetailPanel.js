@@ -79,7 +79,7 @@ const HotelDetailPanel = ({
                     lg:rounded-tr-xl lg:rounded-br-xl lg:max-w-[555px]"
       >
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-white flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
           <h2 className="text-xl font-bold text-gray-900">호텔 상세</h2>
           <button
             onClick={handleClose}

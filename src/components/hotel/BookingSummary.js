@@ -15,9 +15,9 @@ const BookingSummary = ({ searchParams, onEdit }) => {
   }
 
   return (
-    <div className="border-t bg-gray-50 px-4 sm:px-6 lg:px-8 py-3">
+    <div className="border-t border-gray-200 bg-gray-50 px-2.5 py-3">
       <div
-        className="flex items-center justify-between bg-white rounded-lg border border-gray-300 px-4 py-3 cursor-pointer hover:border-blue-500 transition-colors"
+        className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-4 py-3 cursor-pointer hover:border-blue-500 transition-colors"
         onClick={onEdit}
       >
         <div className="flex items-center gap-4 text-sm text-gray-900">

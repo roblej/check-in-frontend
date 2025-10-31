@@ -421,7 +421,7 @@ const HotelSearchPageContent = () => {
       <Header />
 
       {/* 검색 조건 및 필터 바 */}
-      <div className="bg-white border-b flex-shrink-0 shadow-sm">
+      <div className="bg-white border-b border-gray-200 flex-shrink-0 shadow-sm">
         <div className="max-w-[1200px] mx-auto px-4 py-3">
           <div className="flex items-center gap-4 flex-wrap">
             {/* 왼쪽: 검색 폼 */}
@@ -437,7 +437,7 @@ const HotelSearchPageContent = () => {
                   }
                 }}
                 placeholder="목적지"
-                className="px-3 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm bg-white text-gray-700 min-w-[100px]"
+                className="px-3 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-700 min-w-[100px]"
               />
 
               {/* 체크인/체크아웃 */}
@@ -503,10 +503,9 @@ const HotelSearchPageContent = () => {
               {/* 검색 버튼 */}
               <button
                 onClick={handleFilterSearch}
-                className="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-1.5"
+                className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium transition-colors"
               >
-                <span>🔍</span>
-                <span>검색</span>
+                검색
               </button>
             </div>
 
@@ -517,7 +516,7 @@ const HotelSearchPageContent = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm bg-white text-gray-700 font-medium hover:border-gray-300 transition-colors"
+                  className="px-3 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-700 font-medium hover:border-gray-300 transition-colors"
                 >
                   <option value="인기순">인기순</option>
                   <option value="낮은 가격순">낮은 가격순</option>
@@ -539,7 +538,7 @@ const HotelSearchPageContent = () => {
               {(filters.priceMin > 0 || filters.priceMax < 500000 || filters.starRatings.length > 0 || filters.amenities.length > 0) && (
                 <button
                   onClick={handleFilterReset}
-                  className="px-3 py-1.5 text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-md transition-colors font-medium"
+                  className="px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors font-medium"
                 >
                   초기화
                 </button>
@@ -548,7 +547,7 @@ const HotelSearchPageContent = () => {
               {/* 총 개수 (최우측) */}
               <div className="text-sm text-gray-600 ml-2 pl-3 border-l border-gray-200">
                 {filteredHotels.length > 0 ? (
-                  <span className="font-medium">총 <span className="font-bold text-orange-600">{filteredHotels.length}</span>개</span>
+                  <span className="font-medium">총 <span className="font-bold text-blue-600">{filteredHotels.length}</span>개</span>
                 ) : (
                   <span className="text-gray-400">검색 결과 없음</span>
                 )}
@@ -587,7 +586,7 @@ const HotelSearchPageContent = () => {
         </div>
 
         {/* 우측: 지도 */}
-        <div className="hidden lg:block lg:w-[70%] lg:flex-shrink-0 border-l border-gray-200">
+        <div className="hidden lg:block lg:w-[70%] lg:flex-shrink-0 border-l border-gray-100">
           <div className="w-full h-full bg-gray-100 relative">
             {/* 카카오맵 영역 */}
             <KakaoMapWithMarkers

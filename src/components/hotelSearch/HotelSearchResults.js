@@ -180,7 +180,7 @@ const HotelSearchResults = ({
                 </button>
                 <button
                   onClick={() => setShowFiltersPanel(false)}
-                  className="flex-1 bg-orange-500 text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors"
+                  className="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors"
                 >
                   {filteredHotels.length}개 호텔 보기
                 </button>

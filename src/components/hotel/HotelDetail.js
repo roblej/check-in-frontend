@@ -184,7 +184,7 @@ const HotelDetail = ({
         <div
           className={
             isModal
-              ? "px-4 sm:px-6 lg:px-8"
+              ? "px-2.5"
               : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
           }
         >
@@ -235,7 +235,7 @@ const HotelDetail = ({
         <div
           className={
             isModal
-              ? "px-4 sm:px-6 lg:px-8"
+              ? "px-2.5"
               : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
           }
         >
@@ -253,7 +253,7 @@ const HotelDetail = ({
         ref={isModal ? null : null}
         className={`${
           isModal
-            ? "flex-1 px-4 sm:px-6 lg:px-8 py-4 pb-8"
+            ? "flex-1 px-2.5 py-4 pb-8"
             : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-6"
         }`}
         style={
@@ -331,7 +331,6 @@ const HotelDetail = ({
         <section 
           ref={setSectionRef("policy")} 
           aria-labelledby="policy-heading"
-          className={isModal ? "mb-[100vh]" : ""}
         >
           <HotelPolicy
             checkInTime={hotelData.checkInTime}
