@@ -217,12 +217,14 @@ function WriteReviewPageContent() {
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="호텔 이용 경험을 자세히 작성해주세요. (최소 10자 이상)&#10;&#10;예시:&#10;- 객실은 어땠나요?&#10;- 직원 서비스는 만족스러웠나요?&#10;- 조식은 맛있었나요?&#10;- 위치는 편리했나요?"
+            placeholder="호텔 이용 경험을 자세히 작성해주세요. (최소 10자 이상) &#10;&#10; 예시:&#10;- 객실은 어땠나요?&#10;- 직원 서비스는 만족스러웠나요?&#10;- 조식은 맛있었나요?&#10;- 위치는 편리했나요?"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             rows="8"
+            maxLength={300}
           />
           <p className="text-sm text-gray-500 mt-2">
-            {content.length} / 500자 (최소 10자)
+            {content.length} / 300자 (최소 10자)
+            
           </p>
         </div>
 
@@ -291,7 +293,7 @@ function WriteReviewPageContent() {
             disabled={isSubmitting}
             className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? '등록 중...' : '리뷰 등록하기'}
+            {isSubmitting ? '등록 중...' : '저장'}
           </button>
         </div>
       </div>
