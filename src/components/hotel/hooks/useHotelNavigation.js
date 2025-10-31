@@ -162,55 +162,101 @@ export const useHotelNavigation = (scrollContainerRef, isModal) => {
    */
   const scrollToSection = useCallback(
     (sectionId) => {
-      const element = sectionsRef.current[sectionId];
-      const scrollElement = scrollContainerRef.current;
+      // 섹션이 아직 렌더링되지 않았을 수 있으므로 약간의 지연 후 실행
+      let retryCount = 0;
+      const maxRetries = 10;
+      
+      const tryScroll = () => {
+        const element = sectionsRef.current[sectionId];
+        const scrollElement = scrollContainerRef.current;
 
-      if (!element) {
-        return;
-      }
+        if (!element) {
+          // 섹션이 아직 로드되지 않았다면 재시도 (최대 10회)
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(tryScroll, 100);
+            return;
+          }
+          console.warn(`섹션 ${sectionId}을 찾을 수 없습니다.`);
+          return;
+        }
 
-      if (!scrollElement) {
-        return;
-      }
+        if (!scrollElement) {
+          console.warn('스크롤 컨테이너를 찾을 수 없습니다.');
+          return;
+        }
 
-      setActiveSection(sectionId);
-      setIsScrollingToSection(true);
+        setActiveSection(sectionId);
+        setIsScrollingToSection(true);
 
-      // 현재 headerHeight 실시간 계산
-      let currentHeaderHeight = 0;
-      if (headerRef.current && navRef.current) {
-        currentHeaderHeight =
-          headerRef.current.offsetHeight + navRef.current.offsetHeight;
-        if (!isModal) {
-          const mainHeader = document.querySelector("header");
-          if (mainHeader) {
-            currentHeaderHeight += mainHeader.offsetHeight;
+        // 현재 headerHeight 실시간 계산
+        let currentHeaderHeight = 0;
+        if (headerRef.current && navRef.current) {
+          currentHeaderHeight =
+            headerRef.current.offsetHeight + navRef.current.offsetHeight;
+          if (!isModal) {
+            const mainHeader = document.querySelector("header");
+            if (mainHeader) {
+              currentHeaderHeight += mainHeader.offsetHeight;
+            }
           }
         }
-      }
 
-      // 스크롤 실행
-      if (scrollElement === window) {
-        // window 스크롤 (전체 페이지 모드)
-        const elementTop = element.getBoundingClientRect().top + window.scrollY;
-        const offsetTop = elementTop - currentHeaderHeight;
+        // 스크롤 실행
+        if (scrollElement === window || scrollElement === window.document) {
+          // window 스크롤 (전체 페이지 모드)
+          const elementTop = element.getBoundingClientRect().top + window.scrollY;
+          const offsetTop = elementTop - currentHeaderHeight;
 
-        window.scrollTo({ top: Math.max(0, offsetTop), behavior: "smooth" });
-      } else {
-        // div 스크롤 (패널 모드)
-        const containerRect = scrollElement.getBoundingClientRect();
-        const elementRect = element.getBoundingClientRect();
-        const relativeTop = elementRect.top - containerRect.top;
-        const currentScroll = scrollElement.scrollTop;
-        const targetScroll = currentScroll + relativeTop - currentHeaderHeight;
+          window.scrollTo({ top: Math.max(0, offsetTop), behavior: "smooth" });
+        } else {
+          // div 스크롤 (패널 모드)
+          // requestAnimationFrame을 사용하여 레이아웃이 완료된 후 계산
+          requestAnimationFrame(() => {
+            const elementRect = element.getBoundingClientRect();
+            const containerRect = scrollElement.getBoundingClientRect();
+            
+            // 요소가 컨테이너 내부에서 얼마나 떨어져 있는지 (뷰포트 기준)
+            const relativeTop = elementRect.top - containerRect.top;
+            
+            // 현재 스크롤 위치
+            const currentScrollTop = scrollElement.scrollTop;
+            
+            // 요소의 절대 위치 (스크롤 컨테이너 기준)
+            // 뷰포트 기준 상대 위치를 현재 스크롤 위치에 더함
+            const elementAbsoluteTop = currentScrollTop + relativeTop;
+            
+            // 헤더 높이를 고려한 목표 스크롤 위치
+            // 헤더가 스크롤 컨테이너 상단에 고정되어 있다고 가정
+            const targetScroll = Math.max(0, elementAbsoluteTop - currentHeaderHeight - 20);
 
-        scrollElement.scrollTo({
-          top: Math.max(0, targetScroll),
-          behavior: "smooth",
-        });
-      }
+            console.log('모달 스크롤 계산:', {
+              sectionId,
+              currentScrollTop,
+              relativeTop,
+              elementAbsoluteTop,
+              currentHeaderHeight,
+              targetScroll,
+              elementTop: elementRect.top,
+              containerTop: containerRect.top,
+              scrollHeight: scrollElement.scrollHeight,
+              clientHeight: scrollElement.clientHeight,
+            });
 
-      setTimeout(() => setIsScrollingToSection(false), 600);
+            if (targetScroll !== currentScrollTop) {
+              scrollElement.scrollTo({
+                top: targetScroll,
+                behavior: "smooth",
+              });
+            }
+          });
+        }
+
+        setTimeout(() => setIsScrollingToSection(false), 600);
+      };
+
+      // 즉시 시도
+      tryScroll();
     },
     [scrollContainerRef, isModal, headerRef, navRef]
   );
