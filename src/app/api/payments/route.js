@@ -62,15 +62,37 @@ export async function POST(req) {
 
     // 호텔 예약 또는 다이닝 예약인 경우 백엔드로 전달
     try {
+      // type 검증 및 강제 설정
+      let paymentType = body.type;
+      
+      // type이 없으면 body 데이터로부터 추론
+      if (!paymentType) {
+        if (body.diningIdx || body.diningDate || body.diningTime) {
+          paymentType = "dining_reservation";
+          console.log("[payments/api] type이 없어서 다이닝 예약으로 추론");
+        } else if (body.usedTradeIdx || body.usedItemIdx || body.hotelInfo?.usedTradeIdx) {
+          paymentType = "used_hotel";
+          console.log("[payments/api] type이 없어서 중고 호텔로 추론");
+        } else if (body.contentId || body.hotelInfo?.contentId || body.roomId || body.hotelInfo?.roomId) {
+          paymentType = "hotel_reservation";
+          console.log("[payments/api] type이 없어서 호텔 예약으로 추론");
+        } else {
+          return NextResponse.json(
+            { success: false, message: "결제 타입(type)이 명시되지 않았고 데이터로부터 추론할 수 없습니다." },
+            { status: 400 }
+          );
+        }
+      }
+      
       let backendRequestData;
 
-      if (body.type === "dining_reservation") {
+      if (paymentType === "dining_reservation") {
         // 다이닝 예약 데이터 구성
         backendRequestData = {
           paymentKey,
           orderId,
           amount,
-          type: "dining_reservation",
+          type: paymentType,
           customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1,
           diningIdx: body.diningIdx,
           diningDate: body.diningDate,
@@ -92,13 +114,13 @@ export async function POST(req) {
           reservationTimeFromBody: body?.reservationTime,
           diningTimeToBackend: backendRequestData.diningTime,
         });
-      } else if (body.type === "used_hotel") {
+      } else if (paymentType === "used_hotel") {
         // 중고 호텔 결제 데이터 구성
         backendRequestData = {
           paymentKey,
           orderId,
           amount,
-          type: "used_hotel",
+          type: paymentType,
           customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1,
           usedTradeIdx: body.hotelInfo?.usedTradeIdx || body.usedTradeIdx,
           usedItemIdx: body.hotelInfo?.usedItemIdx || body.usedItemIdx,
@@ -134,7 +156,7 @@ export async function POST(req) {
           paymentKey,
           orderId,
           amount,
-          type: "hotel_reservation",
+          type: paymentType,
           customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1, // 실제 고객 ID
           contentId: body.hotelInfo?.contentId || body.contentId, // String 타입
           roomId: roomIdInt, // Integer 타입으로 변환
@@ -162,7 +184,9 @@ export async function POST(req) {
         type: backendRequestData.type,
         diningIdx: backendRequestData.diningIdx,
         contentId: backendRequestData.contentId,
+        usedTradeIdx: backendRequestData.usedTradeIdx,
       });
+      console.log("✅ 결제 타입 분기 성공:", paymentType);
       console.log(
         "백엔드 URL:",
         `${

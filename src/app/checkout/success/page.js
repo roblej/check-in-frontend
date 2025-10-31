@@ -32,11 +32,39 @@ const SuccessPageContent = () => {
       // localStorage에서 paymentDraft 복원 시도
       usePaymentStore.getState().loadFromStorage();
 
-      // type은 URL이 아니라 paymentDraft에서 가져옴
       const { paymentDraft } = usePaymentStore.getState();
       console.log("🔍 paymentDraft 전체:", paymentDraft);
-      const type = paymentDraft?.meta?.type || search.get("type");
-      console.log("🔍 추출된 type:", type);
+      
+      // type 추출: URL 파라미터 우선, 그 다음 paymentDraft
+      let type = search.get("type") || paymentDraft?.meta?.type;
+      
+      // type이 없으면 URL 파라미터로부터 추론 시도
+      if (!type) {
+        // 다이닝 관련 파라미터가 있으면 다이닝 예약
+        if (search.get("diningIdx") || search.get("diningDate") || search.get("diningTime")) {
+          type = "dining_reservation";
+          console.log("🔍 URL 파라미터로부터 다이닝 예약으로 추론");
+        }
+        // 중고 호텔 관련 파라미터가 있으면 중고 호텔
+        else if (search.get("usedTradeIdx") || search.get("usedItemIdx")) {
+          type = "used_hotel";
+          console.log("🔍 URL 파라미터로부터 중고 호텔으로 추론");
+        }
+        // 호텔 관련 파라미터가 있으면 호텔 예약
+        else if (search.get("contentId") || search.get("roomId") || paymentDraft?.meta?.contentId) {
+          type = "hotel_reservation";
+          console.log("🔍 URL 파라미터 또는 paymentDraft로부터 호텔 예약으로 추론");
+        }
+      }
+      
+      console.log("🔍 최종 추출된 type:", type);
+      
+      // type이 여전히 없으면 에러
+      if (!type) {
+        setError("결제 타입을 확인할 수 없습니다. URL 파라미터에 type을 포함해주세요.");
+        setLoading(false);
+        return;
+      }
 
       // 같은 마운트 내 중복 호출 방지 + 재방문 가드
       const processedKey = orderId ? `payment_processed_${orderId}` : null;
@@ -83,7 +111,9 @@ const SuccessPageContent = () => {
             credentials: "include",
           });
           if (meRes.ok) me = await meRes.json();
-        } catch {}
+        } catch (err) {
+          console.warn("고객 정보 조회 실패 (무시됨):", err);
+        }
 
         const payload = {
           paymentKey,
@@ -132,6 +162,7 @@ const SuccessPageContent = () => {
         const res = await fetch("/api/payments/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include", // HttpOnly 쿠키 전송을 위해 필요
           body: JSON.stringify(payload),
         });
 
