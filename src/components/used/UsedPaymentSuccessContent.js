@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import axiosInstance from '@/lib/axios';
 
 const UsedPaymentSuccessContent = ({ initialData }) => {
   const router = useRouter();
@@ -24,10 +25,11 @@ const UsedPaymentSuccessContent = ({ initialData }) => {
         if (sessionStorage.getItem(processedKey) === '1') return;
 
         // 1) 거래 확정
-        const confirmRes = await fetch(`/api/used/trade/${usedTradeIdx}/confirm`, { method: 'POST' });
-        if (!confirmRes.ok) {
+        try {
+          await axiosInstance.post(`/used/trade/${usedTradeIdx}/confirm`);
+        } catch (error) {
           // 실패해도 결제 저장은 시도
-          console.warn('거래 확정 실패');
+          console.warn('거래 확정 실패:', error.response?.data?.message || error.message);
         }
 
         // 2) 결제 내역 저장 (모바일은 분할 정보 없음 -> 전액 카드 처리)
@@ -47,13 +49,10 @@ const UsedPaymentSuccessContent = ({ initialData }) => {
           approvedAt: new Date().toISOString(),
         };
 
-        const saveRes = await fetch('/api/used/payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(paymentData),
-        });
-        if (!saveRes.ok) {
-          console.error('모바일 결제 내역 저장 실패');
+        try {
+          await axiosInstance.post('/used/payment', paymentData);
+        } catch (error) {
+          console.error('모바일 결제 내역 저장 실패:', error.response?.data?.message || error.message);
         }
 
         sessionStorage.setItem(processedKey, '1');

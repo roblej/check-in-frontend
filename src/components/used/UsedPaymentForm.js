@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import TossPaymentsWidget from '@/components/payment/TossPaymentsWidget';
 import { usePaymentStore } from '@/stores/paymentStore';
+import axiosInstance from '@/lib/axios';
 
 const UsedPaymentForm = ({ initialData }) => {
   const router = useRouter();
@@ -15,20 +16,15 @@ const UsedPaymentForm = ({ initialData }) => {
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const response = await fetch('/api/customer/me', {
-          credentials: 'include' // httpOnly 쿠키 포함
-        });
-        
-        if (response.ok) {
-          const userData = await response.json();
-          setCustomer(userData);
-        } else if (response.status === 401) {
+        const response = await axiosInstance.get('/customer/me');
+        setCustomer(response.data);
+      } catch (error) {
+        console.error('사용자 정보 가져오기 실패:', error);
+        if (error.response?.status === 401) {
           console.log('인증이 필요합니다');
           router.push('/login');
           return;
         }
-      } catch (error) {
-        console.error('사용자 정보 가져오기 실패:', error);
         router.push('/login');
         return;
       } finally {
@@ -142,13 +138,11 @@ const UsedPaymentForm = ({ initialData }) => {
         
         console.log(`${reason} 감지 - 거래 삭제 시작:`, paymentInfo.usedTradeIdx);
         
-        fetch(`/api/used/trade/${paymentInfo.usedTradeIdx}/delete`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+        axiosInstance.delete(`/used/trade/${paymentInfo.usedTradeIdx}/delete`, {
+          data: { 
             reason: reason,
             timestamp: new Date().toISOString()
-          })
+          }
         }).then(() => {
           console.log('거래 삭제 완료:', paymentInfo.usedTradeIdx);
         }).catch(error => {
@@ -329,20 +323,14 @@ const UsedPaymentForm = ({ initialData }) => {
     try {
         // 1. 거래 확정 (중요: 결제 완료 후 거래 확정)
         if (paymentInfo.usedTradeIdx) {
-          const tradeConfirmResponse = await fetch(
-            `/api/used/trade/${paymentInfo.usedTradeIdx}/confirm`,
-            {
-              method: "POST",
-            }
-          );
-
-        if (!tradeConfirmResponse.ok) {
-          const errorData = await tradeConfirmResponse.json();
-          console.error("거래 확정 실패:", errorData.message);
-          alert("거래 확정에 실패했습니다. 고객센터에 문의해주세요.");
-          return;
+          try {
+            await axiosInstance.post(`/used/trade/${paymentInfo.usedTradeIdx}/confirm`);
+          } catch (error) {
+            console.error("거래 확정 실패:", error.response?.data?.message || error.message);
+            alert("거래 확정에 실패했습니다. 고객센터에 문의해주세요.");
+            return;
+          }
         }
-      }
 
       // 2. 백엔드에 결제 내역 저장
       const paymentData = {
@@ -360,41 +348,32 @@ const UsedPaymentForm = ({ initialData }) => {
         approvedAt: new Date().toISOString(),
       };
 
-      const backendResponse = await fetch('/api/used/payment', {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(paymentData),
-      });
+      try {
+        const savedPayment = await axiosInstance.post('/used/payment', paymentData);
+        console.log("결제 내역 저장 성공:", savedPayment.data);
 
-      if (!backendResponse.ok) {
-        const errorData = await backendResponse.json();
-        console.error("결제 내역 저장 실패:", errorData.message);
+        // 3. 성공 페이지로 리다이렉트
+        clearPaymentDraft();
+        const successParams = new URLSearchParams({
+          orderId: paymentResult.orderId,
+          amount: paymentAmounts.totalAmount,
+          type: "used_hotel",
+          cash: paymentAmounts.useCash,
+          point: paymentAmounts.usePoint,
+          card: paymentAmounts.actualPaymentAmount,
+          tradeIdx: paymentInfo.usedTradeIdx,
+          hotelName: paymentInfo.hotelName,
+          roomType: paymentInfo.roomType,
+          checkIn: paymentInfo.checkIn,
+          checkOut: paymentInfo.checkOut,
+        });
+
+        router.push(`/used-payment/success?${successParams.toString()}`);
+      } catch (error) {
+        console.error("결제 내역 저장 실패:", error.response?.data?.message || error.message);
         alert("결제 내역 저장에 실패했습니다. 고객센터에 문의해주세요.");
-        return;
+        throw error; // 상위 catch로 전달
       }
-
-      const savedPayment = await backendResponse.json();
-      console.log("결제 내역 저장 성공:", savedPayment);
-
-      // 3. 성공 페이지로 리다이렉트
-      clearPaymentDraft();
-      const successParams = new URLSearchParams({
-        orderId: paymentResult.orderId,
-        amount: paymentAmounts.totalAmount,
-        type: "used_hotel",
-        cash: paymentAmounts.useCash,
-        point: paymentAmounts.usePoint,
-        card: paymentAmounts.actualPaymentAmount,
-        tradeIdx: paymentInfo.usedTradeIdx,
-        hotelName: paymentInfo.hotelName,
-        roomType: paymentInfo.roomType,
-        checkIn: paymentInfo.checkIn,
-        checkOut: paymentInfo.checkOut,
-      });
-
-      router.push(`/used-payment/success?${successParams.toString()}`);
     } catch (error) {
       console.error("결제 완료 처리 오류:", error);
       alert(

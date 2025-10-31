@@ -7,6 +7,7 @@ import FilterSection from './FilterSection';
 import UsedList from './UsedList';
 import ResaleSearch from './UsedSearch';
 import HotelDetailModal from '../hotel/HotelDetailModal';
+import axiosInstance from '@/lib/axios';
 
 const UsedPageContent = ({ initialData, initialSearchParams }) => {
   const router = useRouter();
@@ -27,20 +28,16 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const response = await fetch('/api/customer/me', {
-          credentials: 'include' // httpOnly 쿠키 포함
-        });
-        
-        if (response.ok) {
-          const userData = await response.json();
-          setCustomer(userData);
-        } else if (response.status === 401) {
+        const response = await axiosInstance.get('/customer/me');
+        setCustomer(response.data);
+      } catch (error) {
+        if (error.response?.status === 401) {
           // 인증 실패 시 null로 설정 (로그인하지 않은 상태)
           setCustomer(null);
+        } else {
+          console.error('사용자 정보 가져오기 실패:', error);
+          setCustomer(null);
         }
-      } catch (error) {
-        console.error('사용자 정보 가져오기 실패:', error);
-        setCustomer(null);
       } finally {
         setCustomerLoading(false);
       }
