@@ -19,6 +19,36 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
     currentPage: initialSearchParams?.page || 0
   });
 
+  // 사용자 정보 상태 (상위에서 한 번만 가져오기)
+  const [customer, setCustomer] = useState(null);
+  const [customerLoading, setCustomerLoading] = useState(true);
+
+  // 사용자 정보를 한 번만 가져오기
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await fetch('/api/customer/me', {
+          credentials: 'include' // httpOnly 쿠키 포함
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setCustomer(userData);
+        } else if (response.status === 401) {
+          // 인증 실패 시 null로 설정 (로그인하지 않은 상태)
+          setCustomer(null);
+        }
+      } catch (error) {
+        console.error('사용자 정보 가져오기 실패:', error);
+        setCustomer(null);
+      } finally {
+        setCustomerLoading(false);
+      }
+    };
+    
+    fetchUserInfo();
+  }, []);
+
   // 모달 상태 관리 - URL과 동기화
   const [modalState, setModalState] = useState({
     isOpen: false,
@@ -153,6 +183,8 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
           onInquire={searchState.handleInquire}
           onBookmark={searchState.handleBookmark}
           onHotelDetail={handleHotelDetail}
+          customer={customer}
+          customerLoading={customerLoading}
         />
       </div>
 
