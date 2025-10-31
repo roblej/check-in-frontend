@@ -227,7 +227,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       {/* 모바일/태블릿 오버레이 */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-75 z-40 xl:hidden"
+          className="fixed inset-0 bg-opacity-75 z-40 xl:hidden"
           onClick={onClose}
         ></div>
       )}

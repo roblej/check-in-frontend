@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, Gift, User, Calendar, DollarSign, CheckCircle, XCircle } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import Pagination from '@/components/Pagination';
@@ -29,6 +29,9 @@ const CouponIssueManagement = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [pageSize, setPageSize] = useState(5);
+
+  const didFetch = useRef(false);
+  const didFetchCustomers = useRef(false);
 
   function getTemplates(page = currentPage, size = pageSize){
     axiosInstance.get(couponIssue_url, {
@@ -140,6 +143,9 @@ const CouponIssueManagement = () => {
   }
 
   useEffect(() => {
+    if (didFetch.current) return;
+    didFetch.current = true;
+    
     getTemplates();
   }, []);
 
