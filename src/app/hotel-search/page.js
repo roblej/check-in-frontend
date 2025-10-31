@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import HotelDetailPanel from "@/components/hotel/HotelDetailPanel";
 import HotelSearchResults from "@/components/hotelSearch/HotelSearchResults";
 import KakaoMapWithMarkers from "@/components/hotelSearch/KakaoMapWithMarkers";
+import SearchCondition from "@/components/hotelSearch/SearchCondition";
 import { useSearchStore } from "@/stores/searchStore";
 import {
   createHotelDetailUrl,
@@ -78,15 +79,77 @@ const HotelSearchPageContent = () => {
   const localSearchParams = storeSearchParams;
 
   const [sortBy, setSortBy] = useState("인기순");
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+  const [showMobileMap, setShowMobileMap] = useState(false);
   const [filters, setFilters] = useState({
     priceMin: 0,
     priceMax: 500000,
     starRatings: [],
     amenities: [],
   });
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [localDestination, setLocalDestination] = useState(localSearchParams.destination || "");
 
-  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
-  const [showMobileMap, setShowMobileMap] = useState(false);
+  // localSearchParams 변경 시 localDestination 동기화
+  useEffect(() => {
+    setLocalDestination(localSearchParams.destination || "");
+  }, [localSearchParams.destination]);
+
+  // 날짜 포맷팅 함수
+  const formatDateDisplay = useCallback((date) => {
+    if (!date) return "";
+    const d = new Date(date + "T00:00:00");
+    return `${d.getMonth() + 1}.${d.getDate()}. ${
+      ["일", "월", "화", "수", "목", "금", "토"][d.getDay()]
+    }`;
+  }, []);
+
+  // 날짜 변경 핸들러
+  const handleDateChange = useCallback((newCheckIn, newCheckOut) => {
+    const urlParams = new URLSearchParams(searchParams.toString());
+    urlParams.set("checkIn", newCheckIn);
+    urlParams.set("checkOut", newCheckOut);
+    if (newCheckIn && newCheckOut) {
+      const nights = Math.ceil(
+        (new Date(newCheckOut) - new Date(newCheckIn)) / (1000 * 60 * 60 * 24)
+      );
+      urlParams.set("nights", nights.toString());
+    }
+    router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
+    setIsDatePickerOpen(false);
+  }, [searchParams, router]);
+
+  // 검색 실행 핸들러
+  const handleFilterSearch = useCallback((e) => {
+    e?.preventDefault();
+    const urlParams = new URLSearchParams();
+    if (localDestination) {
+      urlParams.set("destination", localDestination);
+    }
+    if (localSearchParams.checkIn) {
+      urlParams.set("checkIn", localSearchParams.checkIn);
+    }
+    if (localSearchParams.checkOut) {
+      urlParams.set("checkOut", localSearchParams.checkOut);
+    }
+    if (localSearchParams.adults) {
+      urlParams.set("adults", localSearchParams.adults.toString());
+    }
+    router.push(`/hotel-search?${urlParams.toString()}`);
+  }, [localDestination, localSearchParams.checkIn, localSearchParams.checkOut, localSearchParams.adults, router]);
+
+  // 외부 클릭 시 날짜 선택기 닫기
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (isDatePickerOpen && !e.target.closest(".date-picker-container")) {
+        setIsDatePickerOpen(false);
+      }
+    };
+    if (isDatePickerOpen) {
+      document.addEventListener("click", handleOutsideClick);
+      return () => document.removeEventListener("click", handleOutsideClick);
+    }
+  }, [isDatePickerOpen]);
 
   const [searchHotels, setSearchHotels] = useState([]);
   const hotel_url = "api/hotel/search";
@@ -358,43 +421,103 @@ const HotelSearchPageContent = () => {
       <Header />
 
       {/* 검색 조건 및 필터 바 */}
-      <div className="bg-white border-b flex-shrink-0">
+      <div className="bg-white border-b flex-shrink-0 shadow-sm">
         <div className="max-w-[1200px] mx-auto px-4 py-3">
-          {/* 검색 조건 */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-700">
-                  {localSearchParams.destination}
-                </span>
-                <span className="text-gray-400">|</span>
-                <span className="text-sm text-gray-600">
-                  {localSearchParams.checkIn} - {localSearchParams.checkOut}
-                </span>
-                <span className="text-gray-400">|</span>
-                <span className="text-sm text-gray-600">
-                  성인 {localSearchParams.adults}명
-                </span>
-              </div>
-            </div>
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* 왼쪽: 검색 폼 */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              {/* 목적지 */}
+              <input
+                type="text"
+                value={localDestination}
+                onChange={(e) => setLocalDestination(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleFilterSearch(e);
+                  }
+                }}
+                placeholder="목적지"
+                className="px-3 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm bg-white text-gray-700 min-w-[100px]"
+              />
 
-            <div className="flex items-center gap-2">
-              <button className="px-3 py-1 text-sm text-gray-600 hover:text-blue-600">
-                검색 조건 변경
+              {/* 체크인/체크아웃 */}
+              <div className="relative date-picker-container">
+                <div
+                  className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-md hover:border-gray-300 cursor-pointer bg-white"
+                  onClick={() => setIsDatePickerOpen(true)}
+                >
+                  <div className="text-xs text-gray-500 min-w-[60px]">
+                    {localSearchParams.checkIn ? formatDateDisplay(localSearchParams.checkIn) : "체크인"}
+                  </div>
+                  <span className="text-gray-300">-</span>
+                  <div className="text-xs text-gray-500 min-w-[60px]">
+                    {localSearchParams.checkOut ? formatDateDisplay(localSearchParams.checkOut) : "체크아웃"}
+                  </div>
+                </div>
+
+                {/* 날짜 선택 컴포넌트 */}
+                {isDatePickerOpen && (
+                  <div className="absolute top-full left-0 z-50 mt-1">
+                    <SearchCondition
+                      isOpen={isDatePickerOpen}
+                      onClose={() => setIsDatePickerOpen(false)}
+                      checkIn={localSearchParams.checkIn || ""}
+                      checkOut={localSearchParams.checkOut || ""}
+                      onDateChange={handleDateChange}
+                      selectedType="hotel"
+                      className="max-w-md"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* 성인 인원 */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const newAdults = Math.max(1, (localSearchParams.adults || 2) - 1);
+                    const urlParams = new URLSearchParams(searchParams.toString());
+                    urlParams.set("adults", newAdults.toString());
+                    router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
+                  }}
+                  className="w-8 h-8 rounded border border-gray-200 flex items-center justify-center hover:bg-gray-50 text-sm font-semibold"
+                >
+                  -
+                </button>
+                <div className="px-3 py-1.5 border border-gray-200 rounded-md text-sm font-medium min-w-[40px] text-center bg-white">
+                  {localSearchParams.adults || 2}
+                </div>
+                <button
+                  onClick={() => {
+                    const newAdults = (localSearchParams.adults || 2) + 1;
+                    const urlParams = new URLSearchParams(searchParams.toString());
+                    urlParams.set("adults", newAdults.toString());
+                    router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
+                  }}
+                  className="w-8 h-8 rounded border border-gray-200 flex items-center justify-center hover:bg-gray-50 text-sm font-semibold"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* 검색 버튼 */}
+              <button
+                onClick={handleFilterSearch}
+                className="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-1.5"
+              >
+                <span>🔍</span>
+                <span>검색</span>
               </button>
             </div>
-          </div>
 
-          {/* 필터 및 정렬 */}
-          <div className="flex flex-wrap gap-4 items-center justify-between pt-3 border-t border-gray-200">
-            <div className="flex flex-wrap gap-4 items-center">
-              {/* 정렬 필터 */}
+            {/* 필터 (우측 정렬) */}
+            <div className="flex items-center gap-3 ml-auto">
+              {/* 정렬 */}
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">정렬:</label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                  className="px-3 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm bg-white text-gray-700 font-medium hover:border-gray-300 transition-colors"
                 >
                   <option value="인기순">인기순</option>
                   <option value="낮은 가격순">낮은 가격순</option>
@@ -406,31 +529,30 @@ const HotelSearchPageContent = () => {
               {/* 필터 버튼 */}
               <button
                 onClick={() => setShowFiltersPanel(!showFiltersPanel)}
-                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm font-medium text-gray-700"
+                className="px-4 py-1.5 border border-gray-200 rounded-md hover:bg-gray-50 flex items-center gap-2 text-sm font-medium text-gray-700 hover:border-gray-300 transition-colors"
               >
-                <span>🔍</span>
+                <span className="text-base">🔍</span>
                 <span>필터</span>
               </button>
-            </div>
 
-            {/* 결과 개수 및 필터 초기화 */}
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-500">
-                {filteredHotels.length > 0 ? (
-                  <span>총 <span className="font-semibold text-orange-600">{filteredHotels.length}</span>개의 호텔</span>
-                ) : (
-                  <span className="text-gray-400">검색 결과가 없습니다</span>
-                )}
-              </div>
-              
+              {/* 필터 초기화 (활성 필터가 있을 때만 표시) */}
               {(filters.priceMin > 0 || filters.priceMax < 500000 || filters.starRatings.length > 0 || filters.amenities.length > 0) && (
                 <button
                   onClick={handleFilterReset}
-                  className="px-3 py-2 text-sm text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors border border-gray-300 hover:border-orange-300"
+                  className="px-3 py-1.5 text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-md transition-colors font-medium"
                 >
-                  필터 초기화
+                  초기화
                 </button>
               )}
+
+              {/* 총 개수 (최우측) */}
+              <div className="text-sm text-gray-600 ml-2 pl-3 border-l border-gray-200">
+                {filteredHotels.length > 0 ? (
+                  <span className="font-medium">총 <span className="font-bold text-orange-600">{filteredHotels.length}</span>개</span>
+                ) : (
+                  <span className="text-gray-400">검색 결과 없음</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
