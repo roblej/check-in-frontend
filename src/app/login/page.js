@@ -81,7 +81,7 @@ export default function LoginPage() {
     await login();
     setIsSubmitting(true);
 
-    if(isInlogged) {
+    if(isInlogged()) {
       // TODO: API 연동
       // const response = await axios.post('/api/auth/login', {
       //   id: formData.id,
