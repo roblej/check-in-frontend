@@ -4,6 +4,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Star, CheckCircle } from 'lucide-react';
 
 const CustomerFeedbackPage = () => {
+  // 여기는 주말동안 작업할래요
   const feedbacks = [
     {
       id: 'F001',
