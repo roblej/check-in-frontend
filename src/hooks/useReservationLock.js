@@ -16,7 +16,7 @@ import { reservationLockAPI } from "@/lib/api/reservation";
  * @param {boolean} enabled - 락 활성화 여부
  * @returns {Object} { createLock, releaseLock, isLocked }
  */
-const useReservationLock = (contentId, roomId, enabled = true) => {
+const useReservationLock = (contentId, roomId, checkIn, enabled = true) => {
   const lockCreatedRef = useRef(false);
   const lockDataRef = useRef({ contentId: null, roomId: null });
 
@@ -24,13 +24,22 @@ const useReservationLock = (contentId, roomId, enabled = true) => {
    * 예약 락 생성
    */
   const createLock = useCallback(async () => {
-    if (!enabled || !contentId || !roomId) {
-      console.warn("락 생성 조건 미충족:", { enabled, contentId, roomId });
+    if (!enabled || !contentId || !roomId || !checkIn) {
+      console.warn("락 생성 조건 미충족:", {
+        enabled,
+        contentId,
+        roomId,
+        checkIn,
+      });
       return { success: false, message: "락 생성 조건이 충족되지 않았습니다." };
     }
 
     try {
-      const result = await reservationLockAPI.createLock(contentId, roomId);
+      const result = await reservationLockAPI.createLock(
+        contentId,
+        roomId,
+        checkIn
+      );
 
       if (result.success) {
         lockCreatedRef.current = true;
@@ -49,7 +58,7 @@ const useReservationLock = (contentId, roomId, enabled = true) => {
           error.response?.data?.message || "락 생성 중 오류가 발생했습니다.",
       };
     }
-  }, [contentId, roomId, enabled]);
+  }, [contentId, roomId, checkIn, enabled]);
 
   /**
    * 예약 락 해제
@@ -66,7 +75,9 @@ const useReservationLock = (contentId, roomId, enabled = true) => {
     try {
       const result = await reservationLockAPI.releaseLock(
         lockContentId,
-        lockRoomId
+        lockRoomId,
+        null,
+        checkIn
       );
 
       if (result.success) {
@@ -84,7 +95,7 @@ const useReservationLock = (contentId, roomId, enabled = true) => {
           error.response?.data?.message || "락 해제 중 오류가 발생했습니다.",
       };
     }
-  }, []);
+  }, [checkIn]);
 
   /**
    * beforeunload 이벤트 핸들러 (페이지 이탈 시 락 해제)
@@ -101,6 +112,7 @@ const useReservationLock = (contentId, roomId, enabled = true) => {
         const data = JSON.stringify({
           contentId: lockContentId,
           roomId: lockRoomId,
+          checkIn,
         });
 
         const apiUrl = `${
@@ -128,7 +140,7 @@ const useReservationLock = (contentId, roomId, enabled = true) => {
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [enabled]);
+  }, [enabled, checkIn]);
 
   /**
    * 컴포넌트 언마운트 시 락 해제
