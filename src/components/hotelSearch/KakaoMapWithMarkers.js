@@ -13,8 +13,17 @@ const KakaoMapWithMarkers = ({ hotels = [], selectedHotelId, onMarkerClick }) =>
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
+  const eventListenersRef = useRef([]);
+  const onMarkerClickRef = useRef(onMarkerClick);
+  const clickedMarkerIdRef = useRef(null);
+  const clickTimeoutRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState(null);
+
+  // onMarkerClick ref 업데이트
+  useEffect(() => {
+    onMarkerClickRef.current = onMarkerClick;
+  }, [onMarkerClick]);
 
   // 카카오맵 SDK 로드
   useEffect(() => {
@@ -54,6 +63,14 @@ const KakaoMapWithMarkers = ({ hotels = [], selectedHotelId, onMarkerClick }) =>
   useEffect(() => {
     const initializeMap = () => {
       if (!mapRef.current || !window.kakao || !window.kakao.maps || !isLoaded) return;
+
+      // 기존 이벤트 리스너 제거
+      eventListenersRef.current.forEach((listener) => {
+        if (listener && window.kakao && window.kakao.maps && window.kakao.maps.event) {
+          window.kakao.maps.event.removeListener(listener.marker, "click", listener.handler);
+        }
+      });
+      eventListenersRef.current = [];
 
       // 기존 마커 제거
       markersRef.current.forEach((marker) => {
@@ -152,11 +169,40 @@ const KakaoMapWithMarkers = ({ hotels = [], selectedHotelId, onMarkerClick }) =>
 
         markersRef.current.push(marker);
 
-        // 마커 클릭 이벤트
-        window.kakao.maps.event.addListener(marker, "click", () => {
-          if (onMarkerClick) {
-            onMarkerClick(hotel.contentId);
+        // 마커 클릭 이벤트 (디바운싱으로 중복 실행 방지)
+        const handleMarkerClick = () => {
+          const contentId = hotel.contentId;
+          
+          // 같은 마커가 최근에 클릭되었으면 무시
+          if (clickedMarkerIdRef.current === contentId) {
+            return;
           }
+
+          // 이전 타이머 클리어
+          if (clickTimeoutRef.current) {
+            clearTimeout(clickTimeoutRef.current);
+          }
+
+          // 클릭된 마커 ID 저장
+          clickedMarkerIdRef.current = contentId;
+
+          // 콜백 실행
+          if (onMarkerClickRef.current) {
+            onMarkerClickRef.current(contentId);
+          }
+
+          // 일정 시간 후 플래그 해제 (500ms)
+          clickTimeoutRef.current = setTimeout(() => {
+            clickedMarkerIdRef.current = null;
+          }, 500);
+        };
+
+        window.kakao.maps.event.addListener(marker, "click", handleMarkerClick);
+        
+        // 리스너 추적을 위해 저장
+        eventListenersRef.current.push({
+          marker: marker,
+          handler: handleMarkerClick,
         });
       });
 
@@ -191,7 +237,16 @@ const KakaoMapWithMarkers = ({ hotels = [], selectedHotelId, onMarkerClick }) =>
       });
       mapInstanceRef.current = map;
     }
-  }, [isLoaded, hotels, selectedHotelId, onMarkerClick]);
+  }, [isLoaded, hotels, selectedHotelId]);
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // 지도 크기 조정 (컨테이너 크기 변경 시)
   useEffect(() => {

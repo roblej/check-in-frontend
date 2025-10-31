@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import Header from "@/components/Header";
 import HotelDetailPanel from "@/components/hotel/HotelDetailPanel";
 import HotelSearchResults from "@/components/hotelSearch/HotelSearchResults";
@@ -279,7 +279,19 @@ const HotelSearchPageContent = () => {
     });
   }, []);
 
-  const handleHotelClick = (hotelId) => {
+  const processingRef = useRef(null);
+  const handleHotelClick = useCallback((hotelId) => {
+    // 중복 클릭 방지: 현재 처리 중인 호텔 ID 추적 (useRef 사용)
+    if (processingRef.current === hotelId) {
+      return;
+    }
+    processingRef.current = hotelId;
+    
+    // 약간의 지연 후 처리 중 플래그 해제
+    setTimeout(() => {
+      processingRef.current = null;
+    }, 500);
+
     // 이미 같은 호텔이 선택되어 있으면 패널 닫기
     if (selectedcontentId === hotelId) {
       // URL 먼저 변경
@@ -298,7 +310,7 @@ const HotelSearchPageContent = () => {
     const urlParams = new URLSearchParams(searchParams.toString());
     urlParams.set("selectedHotel", hotelId);
     router.replace(`?${urlParams.toString()}`, { scroll: false ,shallow: true,});
-  };
+  }, [selectedcontentId, searchParams, router]);
 
   // 호텔별 검색 조건 업데이트 함수 (localStorage에 저장)
   const updateHotelSearchParams = (hotelId, newParams) => {
