@@ -29,7 +29,6 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       icon: <Calendar size={20} />,
       path: '/admin/reservations',
       submenu: [
-        { id: 'reservation-list', name: '예약 현황', path: '/admin/reservations' },
         { id: 'reservation-calendar', name: '예약 캘린더', path: '/admin/calendar' }
       ]
     },
@@ -49,18 +48,14 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       id: 'rooms',
       name: '객실 관리',
       icon: <Bed size={20} />,
-      path: '/admin/rooms',
-      submenu: [
-        { id: 'room-list', name: '객실 현황', path: '/admin/rooms' }
-      ]
+      path: '/admin/rooms'
     },
     {
       id: 'customers',
-      name: '고객 관리',
+      name: '고객 목록',
       icon: <Users size={20} />,
       path: '/admin/customers',
       submenu: [
-        { id: 'customer-list', name: '고객 목록', path: '/admin/customers' },
         { id: 'customer-history', name: '이용 이력', path: '/admin/customer-history' },
         { id: 'customer-feedback', name: '고객 피드백', path: '/admin/feedback' }
       ]
@@ -69,31 +64,19 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       id: 'coupon',
       name: '쿠폰 관리',
       icon: <Gift size={20} />,
-      path: '/admin/coupon-issue',
-      submenu: [
-        { id: 'coupon-issue', name: '쿠폰 발급', path: '/admin/coupon-issue' }
-      ]
+      path: '/admin/coupon-issue'
     },
     {
       id: 'revenue',
       name: '매출 관리',
       icon: <TrendingUp size={20} />,
-      path: '/admin/revenue',
-      submenu: [
-        { id: 'revenue-dashboard', name: '매출 현황', path: '/admin/revenue' },
-        { id: 'settlement', name: '정산 관리', path: '/admin/settlement' }
-      ]
+      path: '/admin/revenue'
     },
     {
       id: 'settings',
-      name: '설정',
+      name: '호텔 설정',
       icon: <Settings size={20} />,
-      path: '/admin/settings',
-      submenu: [
-        { id: 'hotel-info', name: '호텔 정보', path: '/admin/hotel-info' },
-        { id: 'operational-settings', name: '운영 설정', path: '/admin/operational-settings' },
-        { id: 'user-management', name: '사용자 관리', path: '/admin/users' }
-      ]
+      path: '/admin/settings'
     }
   ];
 

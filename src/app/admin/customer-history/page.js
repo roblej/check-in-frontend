@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Star, User, Calendar, Building2, DollarSign, Filter, Search } from 'lucide-react';
@@ -418,6 +418,14 @@ const CustomerHistoryPage = () => {
         )}
       </div>
     </AdminLayout>
+  );
+};
+
+const RoomsPage = () => {
+  return (
+    <Suspense fallback={<div className="p-6">로딩 중...</div>}>
+      <CustomerHistoryPage />
+    </Suspense>
   );
 };
 
