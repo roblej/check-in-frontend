@@ -229,7 +229,7 @@ export default function MyReviewsPage() {
                         예약 상세 확인
                       </button>
                       <button
-                        onClick={() => handleWriteReview({ id: r.reservIdx || r.id })}
+                        onClick={() => router.push('/mypage?tab=completed')}
                         className="flex-1 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm"
                       >
                         리뷰 쓰기
@@ -254,7 +254,7 @@ export default function MyReviewsPage() {
               <p className="text-gray-700 font-medium mb-1">작성한 리뷰가 없습니다.</p>
               <p className="text-gray-500 text-sm mb-4">나의 발자취를 소중한 기록으로 남겨보세요.</p>
               <button
-                onClick={() => router.push('/mypage')}
+                onClick={() => router.push('/mypage?tab=completed')}
                 className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm"
               >
                 리뷰쓰기
@@ -274,7 +274,7 @@ export default function MyReviewsPage() {
               <p className="text-gray-700 font-medium mb-1">작성한 리뷰가 없습니다.</p>
               <p className="text-gray-500 text-sm mb-4">나의 발자취를 소중한 기록으로 남겨보세요.</p>
               <button
-                onClick={() => router.push('/mypage')}
+                onClick={() => router.push('/mypage?tab=completed')}
                 className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm"
               >
                 리뷰쓰기
