@@ -7,15 +7,16 @@ import { useCustomerStore } from '@/stores/customerStore';
 import { 
   Calendar, Heart, MapPin, Gift, User,
   MessageSquare, ChevronRight, Star, Clock,
-  Edit, Trash2, Share2, Hotel
+  Edit, Trash2, Share2, Hotel, X
 } from 'lucide-react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 export default function MyPage() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   
   // Zustand에서 고객 정보 가져오기
   const { verifyTokenWithBackend, isRecentlyVerified } = useCustomerStore();
@@ -74,6 +75,23 @@ export default function MyPage() {
       return null;
     }
   };
+
+  // URL 쿼리 파라미터에서 탭 설정 읽기
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'completed' || tab === 'upcoming' || tab === 'cancelled') {
+      setReservationTab(tab);
+      loadReservations(tab);
+      // 예약 내역 섹션으로 스크롤
+      setTimeout(() => {
+        const reservationSection = document.getElementById('reservation-section');
+        if (reservationSection) {
+          reservationSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // 실제 토큰 검증 및 초기 데이터 로드
   // 경로 변경 시 리뷰 목록 갱신 (리뷰 작성 후 마이페이지로 돌아왔을 때)
@@ -624,7 +642,7 @@ export default function MyPage() {
         </section>
 
         {/* 예약 내역 */}
-        <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
+        <section id="reservation-section" className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Calendar className="w-6 h-6 text-blue-600" />
@@ -814,86 +832,15 @@ export default function MyPage() {
           </div>
         </section>
 
-        {/* 쿠폰 관리 */}
-        <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Gift className="w-6 h-6 text-blue-600" />
-              쿠폰 관리
-            </h2>
-          </div>
-
-          {/* 탭 */}
-          <div className="flex gap-2 mb-6 border-b border-gray-200">
-            <button
-              onClick={() => setCouponTab('available')}
-              className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                couponTab === 'available'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              사용가능 ({coupons.available.length})
-            </button>
-            <button
-              onClick={() => setCouponTab('used')}
-              className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                couponTab === 'used'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              사용완료 ({coupons.used.length})
-            </button>
-            <button
-              onClick={() => setCouponTab('expired')}
-              className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                couponTab === 'expired'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              기간만료 ({coupons.expired.length})
-            </button>
-          </div>
-
-          {/* 쿠폰 카드 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {coupons[couponTab].map((coupon) => (
-              <div key={coupon.id} className={`border-2 rounded-xl p-5 transition-all ${
-                couponTab === 'available' 
-                  ? 'border-blue-300 bg-blue-50 hover:shadow-lg' 
-                  : 'border-gray-200 bg-gray-50'
-              }`}>
-                <div className="flex items-start justify-between mb-3">
-                  <Gift className={`w-8 h-8 ${couponTab === 'available' ? 'text-blue-600' : 'text-gray-400'}`} />
-                  <span className={`text-2xl font-bold ${couponTab === 'available' ? 'text-blue-600' : 'text-gray-400'}`}>
-                    {coupon.discount}
-                  </span>
-                </div>
-                <h3 className={`font-bold mb-2 ${couponTab === 'available' ? 'text-gray-900' : 'text-gray-500'}`}>
-                  {coupon.name}
-                </h3>
-                <p className="text-xs text-gray-500 mb-3">{coupon.condition}</p>
-                <div className="text-xs">
-                  <span className={couponTab === 'available' ? 'text-gray-600' : 'text-gray-400'}>
-                    {couponTab === 'used' ? `사용일: ${coupon.usedDate}` : `만료일: ${coupon.expiry}`}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* 내 후기 관리 - 접기/펼치기 */}
         {!isReviewOpen ? (
           <button
             onClick={() => router.push('/mypage/reviews')}
             aria-label="내 리뷰 페이지로 이동"
-            className="w-full bg-white rounded-2xl shadow-lg p-5 mb-6 border border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            className="w-full bg-white rounded-2xl shadow-lg p-9 mb-6 border border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
           >
-            <span className="text-base font-semibold text-gray-900">내 리뷰</span>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
+            <span className="text-lg font-semibold text-gray-900">내 리뷰</span>
+            <ChevronRight className="w-6 h-6 text-gray-400" />
           </button>
         ) : (
           <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
@@ -932,7 +879,7 @@ export default function MyPage() {
             </div>
 
             {/* 리뷰 카드 */}
-            <div className="space-y-4">
+            <div className="space-y-5">
               {reviewTab === 'writable' ? (
                 writableReviewsLoading ? (
                   <div className="flex justify-center items-center py-12">
@@ -945,11 +892,11 @@ export default function MyPage() {
                   </div>
                 ) : (
                   writableReviews.map((review) => (
-                    <div key={review.reservationIdx} className="border border-blue-200 bg-blue-50 rounded-xl p-5">
-                      <div className="flex justify-between items-start mb-3">
+                    <div key={review.reservationIdx} className="border border-blue-200 bg-blue-50 rounded-xl p-7">
+                      <div className="flex justify-between items-start mb-4">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-900 mb-1">{review.hotelName}</h3>
-                          <p className="text-sm text-gray-500">{review.location} · 체크아웃: {review.checkOutDate}</p>
+                          <h3 className="text-xl font-bold text-gray-900 mb-2">{review.hotelName}</h3>
+                          <p className="text-base text-gray-500">{review.location} · 체크아웃: {review.checkOutDate}</p>
                         </div>
                         {review.daysLeft !== undefined && review.daysLeft > 0 && (
                           <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
@@ -959,7 +906,7 @@ export default function MyPage() {
                       </div>
                       <button
                         onClick={() => handleWriteReview({ id: review.reservationIdx })}
-                        className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                        className="flex-1 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-base"
                       >
                         리뷰 작성
                       </button>
@@ -978,36 +925,36 @@ export default function MyPage() {
                   </div>
                 ) : (
                   writtenReviews.map((review) => (
-                    <div key={review.reviewIdx} className="border border-gray-200 rounded-xl p-5">
-                      <div className="flex justify-between items-start mb-3">
+                    <div key={review.reviewIdx} className="border border-gray-200 rounded-xl p-7">
+                      <div className="flex justify-between items-start mb-4">
                         <div className="flex-1">
-                          <h3 className="text-lg font-bold text-gray-900 mb-1">
+                          <h3 className="text-xl font-bold text-gray-900 mb-2">
                             {review.hotelName || review.hotelInfo?.title || '호텔 정보 없음'}
                           </h3>
-                          <div className="flex items-center gap-2 mb-2">
+                          <div className="flex items-center gap-2 mb-3">
                             <div className="flex">
                               {[...Array(5)].map((_, i) => (
-                                <Star key={i} className={`w-4 h-4 ${i < (review.star || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                                <Star key={i} className={`w-5 h-5 ${i < (review.star || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
                               ))}
                             </div>
-                            <span className="text-sm text-gray-500">
+                            <span className="text-base text-gray-500">
                               {review.createdAt ? new Date(review.createdAt).toLocaleDateString('ko-KR') : ''}
                             </span>
                             {review.isEdited && (
-                              <span className="text-[11px] leading-none px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">수정됨</span>
+                              <span className="text-xs leading-none px-2 py-1 rounded bg-gray-100 text-gray-600">수정됨</span>
                             )}
                           </div>
-                          <p className="text-gray-700 mb-3">{review.content}</p>
+                          <p className="text-gray-700 mb-4 text-base leading-relaxed">{review.content}</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 ml-4">
                           <button
                             onClick={() => openEditModal(review)}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-2.5 hover:bg-gray-100 rounded-lg transition-colors"
                           >
-                            <Edit className="w-4 h-4 text-gray-600" />
+                            <Edit className="w-5 h-5 text-gray-600" />
                           </button>
-                          <button className="p-2 hover:bg-red-50 rounded-lg transition-colors">
-                            <Trash2 className="w-4 h-4 text-red-600" />
+                          <button className="p-2.5 hover:bg-red-50 rounded-lg transition-colors">
+                            <Trash2 className="w-5 h-5 text-red-600" />
                           </button>
                         </div>
                       </div>
@@ -1086,6 +1033,77 @@ export default function MyPage() {
             </div>
           </section>
         </div>
+
+        {/* 쿠폰 관리 */}
+        <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <Gift className="w-6 h-6 text-blue-600" />
+              쿠폰 관리
+            </h2>
+          </div>
+
+          {/* 탭 */}
+          <div className="flex gap-2 mb-6 border-b border-gray-200">
+            <button
+              onClick={() => setCouponTab('available')}
+              className={`px-6 py-3 font-medium transition-all border-b-2 ${
+                couponTab === 'available'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              사용가능 ({coupons.available.length})
+            </button>
+            <button
+              onClick={() => setCouponTab('used')}
+              className={`px-6 py-3 font-medium transition-all border-b-2 ${
+                couponTab === 'used'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              사용완료 ({coupons.used.length})
+            </button>
+            <button
+              onClick={() => setCouponTab('expired')}
+              className={`px-6 py-3 font-medium transition-all border-b-2 ${
+                couponTab === 'expired'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              기간만료 ({coupons.expired.length})
+            </button>
+          </div>
+
+          {/* 쿠폰 카드 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {coupons[couponTab].map((coupon) => (
+              <div key={coupon.id} className={`border-2 rounded-xl p-5 transition-all ${
+                couponTab === 'available' 
+                  ? 'border-blue-300 bg-blue-50 hover:shadow-lg' 
+                  : 'border-gray-200 bg-gray-50'
+              }`}>
+                <div className="flex items-start justify-between mb-3">
+                  <Gift className={`w-8 h-8 ${couponTab === 'available' ? 'text-blue-600' : 'text-gray-400'}`} />
+                  <span className={`text-2xl font-bold ${couponTab === 'available' ? 'text-blue-600' : 'text-gray-400'}`}>
+                    {coupon.discount}
+                  </span>
+                </div>
+                <h3 className={`font-bold mb-2 ${couponTab === 'available' ? 'text-gray-900' : 'text-gray-500'}`}>
+                  {coupon.name}
+                </h3>
+                <p className="text-xs text-gray-500 mb-3">{coupon.condition}</p>
+                <div className="text-xs">
+                  <span className={couponTab === 'available' ? 'text-gray-600' : 'text-gray-400'}>
+                    {couponTab === 'used' ? `사용일: ${coupon.usedDate}` : `만료일: ${coupon.expiry}`}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* 1:1 문의 내역 */}
         <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
