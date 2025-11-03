@@ -253,7 +253,7 @@ const HotelDetail = ({
         ref={isModal ? null : null}
         className={`${
           isModal
-            ? "flex-1 px-2.5 py-4 pb-8"
+            ? "flex-1 px-2.5 py-4 pb-0.5"
             : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-6"
         }`}
         style={

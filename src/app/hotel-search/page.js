@@ -560,7 +560,7 @@ const HotelSearchPageContent = () => {
       {/* 메인 컨텐츠 - 좌우 분할 */}
       <div className="flex flex-1 relative overflow-hidden">
         {/* 좌측: 호텔 검색 결과 (그리드) */}
-        <div className="flex-1 lg:w-[22%] overflow-y-auto">
+        <div className="flex-1 lg:w-[20%] overflow-y-auto">
           <div className="p-4">
             <HotelSearchResults
               hotels={currentPageHotels}
@@ -586,7 +586,7 @@ const HotelSearchPageContent = () => {
         </div>
 
         {/* 우측: 지도 */}
-        <div className="hidden lg:block lg:w-[78%] lg:flex-shrink-0 border-l border-gray-100">
+        <div className="hidden lg:block lg:w-[80%] lg:flex-shrink-0 border-l border-gray-100">
           <div className="w-full h-full bg-gray-100 relative">
             {/* 카카오맵 영역 */}
             <KakaoMapWithMarkers
