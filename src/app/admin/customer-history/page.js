@@ -6,7 +6,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Star, User, Calendar, Building2, DollarSign, Filter, Search } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
-const CustomerHistoryPage = () => {
+const CustomerHistoryContent = () => {
   const searchParams = useSearchParams();
   const [history, setHistory] = useState([]);
   const [filteredHistory, setFilteredHistory] = useState([]);
@@ -421,10 +421,19 @@ const CustomerHistoryPage = () => {
   );
 };
 
-const RoomsPage = () => {
+const CustomerHistoryPage = () => {
   return (
-    <Suspense fallback={<div className="p-6">로딩 중...</div>}>
-      <CustomerHistoryPage />
+    <Suspense fallback={
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">로딩 중...</p>
+          </div>
+        </div>
+      </AdminLayout>
+    }>
+      <CustomerHistoryContent />
     </Suspense>
   );
 };
