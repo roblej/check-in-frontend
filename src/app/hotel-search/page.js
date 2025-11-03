@@ -217,6 +217,15 @@ const HotelSearchPageContent = () => {
     if (!currentDestination) {
       return null;
     }
+    
+    // 최소 2글자 이상 검증
+    const trimmedDestination = currentDestination.trim();
+    if (trimmedDestination.length < 2) {
+      console.log("검색어가 2글자 미만입니다. 검색을 수행하지 않습니다.");
+      setIsSearching(false);
+      setSearchResults([]);
+      return null;
+    }
 
     try {
       isFetchingRef.current = true;
@@ -232,7 +241,7 @@ const HotelSearchPageContent = () => {
       console.log("전체 localSearchParams:", localSearchParams);
 
       const res = await axios.post(hotel_url, {
-        title: currentDestination,
+        title: trimmedDestination,
       });
       if (res.data) {
         console.log("=== 호텔 검색 결과 ===");
