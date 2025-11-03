@@ -81,7 +81,6 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       path: '/admin/revenue',
       submenu: [
         { id: 'revenue-dashboard', name: '매출 현황', path: '/admin/revenue' },
-        { id: 'revenue-analysis', name: '수익 분석', path: '/admin/revenue-analysis' },
         { id: 'settlement', name: '정산 관리', path: '/admin/settlement' }
       ]
     },

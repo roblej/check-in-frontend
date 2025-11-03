@@ -10,7 +10,7 @@ const CouponIssueManagement = () => {
 
   const couponIssue_url = "/admin/couponIssue";
   const couponCreate_url = "/admin/couponCreate";
-  // 해당 호텔을 사용한 고객만 조회
+  // 해당 호텔을 사용했던 고객만 조회
   const hotelCustomers_url = "/admin/hotelCustomers";
   // 최근 이용 고객 조회 (모달 열릴 때 자동 로드)
   const recentCustomers_url = "/admin/recentCustomers";
