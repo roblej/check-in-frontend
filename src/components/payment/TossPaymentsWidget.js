@@ -317,6 +317,45 @@ const TossPaymentsWidget = ({
         failUrl: `${origin}${failPath}`,
       };
 
+      // 성공 페이지 병합용 lastPaymentPayload 저장 (모바일 리다이렉트 대비)
+      try {
+        const lastPayload = {
+          type: resolvedType,
+          customerIdx: customerInfo?.customerIdx,
+          customerEmail: customerInfo?.email || customerEmail,
+          customerName: customerInfo?.name || customerName,
+          customerPhone: customerInfo?.phone || customerMobilePhone,
+          // 호텔/다이닝 메타(있을 경우)
+          contentId: hotelInfo?.contentId || hotelInfo?.hotelId,
+          roomId: hotelInfo?.roomIdx || hotelInfo?.roomId,
+          checkIn: hotelInfo?.checkIn,
+          checkOut: hotelInfo?.checkOut,
+          guests: hotelInfo?.guests,
+          nights: hotelInfo?.nights,
+          roomPrice: hotelInfo?.roomPrice,
+          // 금액 정보
+          totalPrice: customerInfo?.actualPaymentAmount || amount,
+          // 고객 입력값
+          specialRequests: customerInfo?.specialRequests || "",
+          pointsUsed: Number(customerInfo?.usePoint || 0),
+          cashUsed: Number(customerInfo?.useCash || 0),
+        };
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem(
+            "lastPaymentPayload",
+            JSON.stringify(lastPayload)
+          );
+        }
+        console.log("[PAY][Widget] lastPaymentPayload 저장:", {
+          type: lastPayload.type,
+          pointsUsed: lastPayload.pointsUsed,
+          cashUsed: lastPayload.cashUsed,
+          specialRequestsLen: lastPayload.specialRequests?.length || 0,
+        });
+      } catch (e) {
+        console.warn("[PAY][Widget] lastPaymentPayload 저장 실패(무시):", e);
+      }
+
       const isMobile =
         typeof window !== "undefined" &&
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(

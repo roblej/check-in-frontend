@@ -13,5 +13,10 @@ export const userAPI = {
     const response = await axiosInstance.put("/customer/profile", data);
     return response.data;
   },
-};
 
+  // 보유 쿠폰 목록 조회 (고객 본인)
+  getMyCoupons: async () => {
+    const response = await axiosInstance.get("/coupons/my");
+    return response.data;
+  },
+};
