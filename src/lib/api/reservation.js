@@ -10,10 +10,11 @@ export const reservationLockAPI = {
    * @param {number} roomId - 객실 ID
    * @returns {Promise} 락 생성 결과
    */
-  createLock: async (contentId, roomId) => {
+  createLock: async (contentId, roomId, checkIn) => {
     const response = await axiosInstance.post("/reservations/lock", {
       contentId,
       roomId,
+      checkIn,
     });
     return response.data;
   },
@@ -25,11 +26,12 @@ export const reservationLockAPI = {
    * @param {number} customerIdx - 고객 식별자 (선택)
    * @returns {Promise} 락 해제 결과
    */
-  releaseLock: async (contentId, roomId, customerIdx = null) => {
+  releaseLock: async (contentId, roomId, customerIdx = null, checkIn) => {
     const response = await axiosInstance.post("/reservations/unlock", {
       contentId,
       roomId,
       customerIdx,
+      checkIn,
     });
     return response.data;
   },
@@ -40,9 +42,9 @@ export const reservationLockAPI = {
    * @param {number} roomId - 객실 ID
    * @returns {Promise} 락 상태
    */
-  getLockStatus: async (contentId, roomId) => {
+  getLockStatus: async (contentId, roomId, checkIn) => {
     const response = await axiosInstance.get("/reservations/lock/status", {
-      params: { contentId, roomId },
+      params: { contentId, roomId, checkIn },
     });
     return response.data;
   },
