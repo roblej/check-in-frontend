@@ -72,10 +72,6 @@ const RoomsInner = () => {
     return status || '알 수 없음';
   };
 
-  const tabs = [
-    { id: 'status', name: '객실 현황', icon: <Building2 size={20} /> },
-  ];
-
   const handleDetailClick = (room) => {
     setSelectedRoom(room);
     setShowDetailModal(true);
@@ -99,21 +95,6 @@ const RoomsInner = () => {
             </span>
           </div>
           <p className="text-gray-600">해당 날짜 기준 객실 현황을 확인하세요</p>
-        </div>
-
-        {/* 탭 네비게이션 */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                className={`py-2 px-1 border-b-2 font-medium text-sm border-[#3B82F6] text-[#3B82F6]`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.name}
-              </button>
-            ))}
-          </nav>
         </div>
 
         {/* 객실 현황 통계 */}

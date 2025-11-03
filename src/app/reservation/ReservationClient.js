@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
 import axios from "@/lib/axios";
+import { userAPI } from "@/lib/api/user";
+import { reservationLockAPI } from "@/lib/api/reservation";
 import TossPaymentsWidget from "@/components/payment/TossPaymentsWidget";
 import PaymentSummary from "@/components/payment/PaymentSummary";
 import ReservationLockWrapper from "./ReservationLockWrapper";
@@ -31,8 +33,17 @@ const ReservationClient = () => {
     usePoint: 0,
   });
 
+  // 쿠폰 상태 (목록 + 단일 선택)
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [isCouponLoading, setIsCouponLoading] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // 타이머 관리 (10분 = 600초)
+  const [remainingSeconds, setRemainingSeconds] = useState(600);
+  const timerRef = useRef(null);
 
   // 결제 정보 로드 + 로드 완료 플래그
   const [draftReady, setDraftReady] = useState(false);
@@ -52,6 +63,54 @@ const ReservationClient = () => {
       router.push("/");
     }
   }, [draftReady, paymentDraft, router]);
+
+  /**
+   * 시간 만료 시 Lock 해제 처리
+   */
+  const handleTimeExpired = useCallback(async () => {
+    try {
+      if (paymentDraft?.meta) {
+        await reservationLockAPI.releaseLock(
+          paymentDraft.meta.contentId || paymentDraft.meta.hotelId,
+          paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
+          paymentInfo.customerIdx,
+          paymentDraft.meta.checkIn
+        );
+      }
+      alert("결제 시간이 만료되었습니다. 다시 예약해주세요.");
+    } catch (error) {
+      console.error("Lock 해제 실패:", error);
+    }
+  }, [paymentDraft, paymentInfo.customerIdx]);
+
+  /**
+   * 타이머 초기화 및 관리
+   * - 10분(600초)부터 시작
+   * - 1초마다 감소
+   * - 이벤트 발생 시 1초 추가 감소
+   */
+  useEffect(() => {
+    if (!paymentDraft) return;
+
+    // 타이머 시작
+    timerRef.current = setInterval(() => {
+      setRemainingSeconds((prev) => {
+        if (prev <= 1) {
+          // 시간 종료 - Lock 해제
+          clearInterval(timerRef.current);
+          handleTimeExpired();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [paymentDraft, handleTimeExpired]);
 
   // httpOnly 쿠키에서 사용자 정보 가져오기
   useEffect(() => {
@@ -87,6 +146,41 @@ const ReservationClient = () => {
     fetchUserInfo();
   }, [router]);
 
+  // 고객 보유 쿠폰 목록 조회
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      if (!paymentInfo.customerIdx) return;
+      try {
+        setIsCouponLoading(true);
+        const data = await userAPI.getMyCoupons();
+        // 기대 응답 형태 정규화: { data: Coupon[] } 또는 Array
+        const list = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+          ? data
+          : [];
+        // 사용 가능(status==0 등)만 필터링(백엔드 규약에 따라 조정 가능)
+        const normalized = list
+          .filter(
+            (c) =>
+              c.status === 0 || c.status === "0" || c.status === "AVAILABLE"
+          )
+          .map((c) => ({
+            couponIdx: c.couponIdx ?? c.id ?? c.templateIdx,
+            name: c.templateName ?? c.name ?? "쿠폰",
+            discountAmount: Number(c.discount ?? c.discountAmount ?? 0),
+            endDate: c.endDate ?? c.expiresAt ?? null,
+          }));
+        setAvailableCoupons(normalized);
+      } catch (e) {
+        // 조용히 무시 (알림 표시 안 함)
+      } finally {
+        setIsCouponLoading(false);
+      }
+    };
+    fetchCoupons();
+  }, [paymentInfo.customerIdx]);
+
   // 고정된 키들 생성
   const paymentKeys = useMemo(
     () => ({
@@ -96,31 +190,42 @@ const ReservationClient = () => {
     [paymentDraft]
   );
 
-  // 결제 금액 계산
+  // 결제 금액 계산 (쿠폰 최우선 적용)
   const paymentAmounts = useMemo(() => {
     if (!paymentDraft)
       return {
         totalAmount: 0,
+        couponDiscount: 0,
         useCash: 0,
         usePoint: 0,
         actualPaymentAmount: 0,
       };
 
     const totalAmount = paymentDraft.finalAmount;
+    const couponDiscount = appliedCoupon?.discountAmount || 0;
+
+    // 쿠폰 적용 후 남은 금액
+    const afterCoupon = Math.max(0, totalAmount - couponDiscount);
+
     const maxCash = Math.min(paymentInfo.useCash, paymentInfo.customerCash);
     const maxPoint = Math.min(paymentInfo.usePoint, paymentInfo.customerPoint);
+
+    // 쿠폰 적용 후 남은 금액에서 캐시/포인트 차감
     const availableCashPoint = maxCash + maxPoint;
-    const actualPaymentAmount = Math.max(0, totalAmount - availableCashPoint);
+    const actualPaymentAmount = Math.max(0, afterCoupon - availableCashPoint);
 
     return {
       totalAmount,
+      couponDiscount,
       useCash: maxCash,
       usePoint: maxPoint,
       actualPaymentAmount,
       availableCashPoint,
+      afterCoupon,
     };
   }, [
     paymentDraft,
+    appliedCoupon,
     paymentInfo.useCash,
     paymentInfo.usePoint,
     paymentInfo.customerCash,
@@ -215,8 +320,43 @@ const ReservationClient = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // 입력 필드 변경 핸들러
+  /**
+   * UTF-8 바이트 길이 계산 (utf8mb4 기준)
+   * @param {string} str - 문자열
+   * @returns {number} - 바이트 길이
+   */
+  const getUtf8ByteLength = (str) => {
+    let byteLength = 0;
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      if (code <= 0x7f) {
+        byteLength += 1; // ASCII
+      } else if (code <= 0x7ff) {
+        byteLength += 2;
+      } else if (code >= 0xd800 && code <= 0xdfff) {
+        // Surrogate pair (이모지 등)
+        byteLength += 4;
+        i++; // Skip next char
+      } else {
+        byteLength += 3; // 한글 등
+      }
+    }
+    return byteLength;
+  };
+
+  /**
+   * 입력 필드 변경 핸들러
+   */
   const handleInputChange = (field, value) => {
+    // specialRequests 1000자(바이트) 제한
+    if (field === "specialRequests") {
+      const byteLength = getUtf8ByteLength(value);
+      if (byteLength > 1000) {
+        alert("특별 요청사항은 최대 1000자(영문 기준)까지 입력 가능합니다.");
+        return;
+      }
+    }
+
     setPaymentInfo((prev) => ({
       ...prev,
       [field]: value,
@@ -230,48 +370,156 @@ const ReservationClient = () => {
     }
   };
 
-  // 캐시 사용량 변경 핸들러
+  /**
+   * 캐시 사용량 변경 핸들러
+   * - 쿠폰 포함 90% 제한 검증
+   */
   const handleCashChange = (value) => {
+    const totalAmount = paymentDraft?.finalAmount || 0;
     const cashAmount = Math.max(
       0,
       Math.min(parseInt(value) || 0, paymentInfo.customerCash)
     );
+
+    // 쿠폰 포함 90% 제한 검증
+    const currentPoint = paymentInfo.usePoint || 0;
+    const couponAmount = appliedCoupon?.discountAmount || 0;
+    const totalUsage = couponAmount + cashAmount + currentPoint;
+    const maxAllowed = Math.floor(totalAmount * 0.9);
+
+    if (totalUsage > maxAllowed) {
+      alert(
+        "쿠폰, 포인트, 캐시를 합쳐서 상품 금액의 90% 이상 사용할 수 없습니다."
+      );
+      return;
+    }
+
     setPaymentInfo((prev) => ({
       ...prev,
       useCash: cashAmount,
     }));
   };
 
-  // 포인트 사용량 변경 핸들러
+  /**
+   * 포인트 사용량 변경 핸들러
+   * - 쿠폰 포함 90% 제한 검증
+   */
   const handlePointChange = (value) => {
+    const totalAmount = paymentDraft?.finalAmount || 0;
     const pointAmount = Math.max(
       0,
       Math.min(parseInt(value) || 0, paymentInfo.customerPoint)
     );
+
+    // 쿠폰 포함 90% 제한 검증
+    const currentCash = paymentInfo.useCash || 0;
+    const couponAmount = appliedCoupon?.discountAmount || 0;
+    const totalUsage = couponAmount + currentCash + pointAmount;
+    const maxAllowed = Math.floor(totalAmount * 0.9);
+
+    if (totalUsage > maxAllowed) {
+      alert(
+        "쿠폰, 포인트, 캐시를 합쳐서 상품 금액의 90% 이상 사용할 수 없습니다."
+      );
+      return;
+    }
+
     setPaymentInfo((prev) => ({
       ...prev,
       usePoint: pointAmount,
     }));
   };
 
-  // 전체 캐시 사용
+  /**
+   * 전체 캐시 사용
+   * - 쿠폰 포함 90% 제한 적용
+   */
   const useAllCash = () => {
     const totalAmount = paymentDraft?.finalAmount || 0;
-    const maxCash = Math.min(paymentInfo.customerCash, totalAmount);
+    const maxAllowed = Math.floor(totalAmount * 0.9);
+    const currentPoint = paymentInfo.usePoint || 0;
+    const couponAmount = appliedCoupon?.discountAmount || 0;
+    const availableForCash = Math.max(
+      0,
+      maxAllowed - couponAmount - currentPoint
+    );
+    const maxCash = Math.min(
+      paymentInfo.customerCash,
+      availableForCash,
+      totalAmount
+    );
+
+    if (couponAmount + currentPoint + maxCash > maxAllowed) {
+      alert(
+        "쿠폰, 포인트, 캐시를 합쳐서 상품 금액의 90% 이상 사용할 수 없습니다."
+      );
+      return;
+    }
+
     setPaymentInfo((prev) => ({
       ...prev,
       useCash: maxCash,
     }));
   };
 
-  // 전체 포인트 사용
+  /**
+   * 전체 포인트 사용
+   * - 쿠폰 포함 90% 제한 적용
+   */
   const useAllPoint = () => {
     const totalAmount = paymentDraft?.finalAmount || 0;
-    const maxPoint = Math.min(paymentInfo.customerPoint, totalAmount);
+    const maxAllowed = Math.floor(totalAmount * 0.9);
+    const currentCash = paymentInfo.useCash || 0;
+    const couponAmount = appliedCoupon?.discountAmount || 0;
+    const availableForPoint = Math.max(
+      0,
+      maxAllowed - couponAmount - currentCash
+    );
+    const maxPoint = Math.min(
+      paymentInfo.customerPoint,
+      availableForPoint,
+      totalAmount
+    );
+
+    if (couponAmount + currentCash + maxPoint > maxAllowed) {
+      alert(
+        "쿠폰, 포인트, 캐시를 합쳐서 상품 금액의 90% 이상 사용할 수 없습니다."
+      );
+      return;
+    }
+
     setPaymentInfo((prev) => ({
       ...prev,
       usePoint: maxPoint,
     }));
+  };
+
+  /**
+   * 쿠폰 적용 핸들러
+   */
+  const handleSelectCoupon = (coupon) => {
+    if (!coupon) return;
+    const totalAmount = paymentDraft?.finalAmount || 0;
+    const maxAllowed = Math.floor(totalAmount * 0.9);
+    const currentCash = paymentInfo.useCash || 0;
+    const currentPoint = paymentInfo.usePoint || 0;
+    if (
+      (coupon.discountAmount || 0) + currentCash + currentPoint >
+      maxAllowed
+    ) {
+      alert(
+        "쿠폰, 포인트, 캐시를 합쳐서 상품 금액의 90% 이상 사용할 수 없습니다."
+      );
+      return;
+    }
+    setAppliedCoupon(coupon);
+  };
+
+  /**
+   * 쿠폰 취소 핸들러
+   */
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
   };
 
   // 토스페이먼츠 결제 성공 처리
@@ -279,43 +527,54 @@ const ReservationClient = () => {
     try {
       setIsLoading(true);
 
-      await axios.post("/payments", {
+      // 백엔드 DTO(PaymentRequestDto) 스펙에 맞춰 평탄화하여 전송
+      const payload = {
         paymentKey: paymentResult.paymentKey,
         orderId: paymentResult.orderId,
-        amount: paymentAmounts.actualPaymentAmount,
+        amount: paymentAmounts.actualPaymentAmount, // 카드 결제 금액
         type: "hotel_reservation",
-        hotelInfo: {
-          contentId: paymentDraft.meta.contentId,
-          hotelName: paymentDraft.meta.hotelName,
-          roomId: paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
-          roomName: paymentDraft.meta.roomName,
-          checkIn: paymentDraft.meta.checkIn,
-          checkOut: paymentDraft.meta.checkOut,
-          guests: paymentDraft.meta.guests,
-          nights: paymentDraft.meta.nights,
-          roomPrice: paymentDraft.meta.roomPrice,
-          totalPrice: paymentDraft.meta.totalPrice,
-          roomImage: paymentDraft.meta.roomImage,
-          amenities: paymentDraft.meta.amenities,
-        },
-        customerInfo: {
-          customerIdx: paymentInfo.customerIdx,
-          name: paymentInfo.customerName,
-          email: paymentInfo.customerEmail,
-          phone: paymentInfo.customerPhone,
-          specialRequests: paymentInfo.specialRequests,
-        },
-        paymentInfo: {
-          totalAmount: paymentAmounts.totalAmount,
-          cashAmount: paymentAmounts.useCash,
-          pointAmount: paymentAmounts.usePoint,
-          cardAmount: paymentAmounts.actualPaymentAmount,
-          paymentMethod:
-            paymentAmounts.actualPaymentAmount > 0
-              ? "mixed"
-              : "cash_point_only",
-        },
+        customerIdx: paymentInfo.customerIdx,
+        contentId: paymentDraft.meta.contentId,
+        roomId: paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
+        checkIn: paymentDraft.meta.checkIn,
+        checkOut: paymentDraft.meta.checkOut,
+        guests: paymentDraft.meta.guests,
+        nights: paymentDraft.meta.nights,
+        roomPrice: paymentDraft.meta.roomPrice,
+        // totalPrice는 실 결제 금액(카드 결제 금액)과 동일하게 전송
+        totalPrice: paymentAmounts.actualPaymentAmount,
+        customerName: paymentInfo.customerName,
+        customerEmail: paymentInfo.customerEmail,
+        customerPhone: paymentInfo.customerPhone,
+        specialRequests: paymentInfo.specialRequests,
+        method:
+          paymentAmounts.actualPaymentAmount > 0 ? "mixed" : "cash_point_only",
+        pointsUsed: Number(paymentAmounts.usePoint || 0),
+        cashUsed: Number(paymentAmounts.useCash || 0),
+        couponIdx: appliedCoupon?.couponIdx || null,
+        couponDiscount: appliedCoupon?.discountAmount || 0,
+      };
+      // 디버깅을 위한 콘솔 출력 (민감정보 제외)
+      console.log("[CONFIRM] payload:", {
+        orderId: payload.orderId,
+        amount: payload.amount,
+        type: payload.type,
+        customerIdx: payload.customerIdx,
+        contentId: payload.contentId,
+        roomId: payload.roomId,
+        totalPrice: payload.totalPrice,
+        pointsUsed: payload.pointsUsed,
+        cashUsed: payload.cashUsed,
+        couponIdx: payload.couponIdx,
+        couponDiscount: payload.couponDiscount,
+        specialRequestsLen: payload.specialRequests?.length || 0,
       });
+      try {
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("lastPaymentPayload", JSON.stringify(payload));
+        }
+      } catch {}
+      await axios.post("/payments/confirm", payload);
 
       clearPaymentDraft();
       const params = new URLSearchParams({
@@ -323,6 +582,7 @@ const ReservationClient = () => {
         paymentKey: paymentResult.paymentKey,
         amount: paymentAmounts.actualPaymentAmount.toString(),
         type: "hotel_reservation",
+        confirmed: "1",
       });
       router.push(`/checkout/success?${params.toString()}`);
     } catch (error) {
@@ -345,7 +605,8 @@ const ReservationClient = () => {
     );
   };
 
-  const remaining = getRemainingMs();
+  // 포인트/캐시 전액 사용 시 결제 버튼 비활성화
+  const isCashPointOnly = paymentAmounts.actualPaymentAmount <= 0;
 
   if (gateContent) return gateContent;
 
@@ -373,17 +634,17 @@ const ReservationClient = () => {
                 <div className="flex gap-6">
                   {(() => {
                     const S3_BASE_URL =
-                        "https://sist-checkin.s3.ap-northeast-2.amazonaws.com/hotelroom/";
+                      "https://sist-checkin.s3.ap-northeast-2.amazonaws.com/hotelroom/";
                     const roomImageUrl = paymentDraft.meta.roomImage
-                        ? `${S3_BASE_URL}${paymentDraft.meta.roomImage}`
-                        : `${S3_BASE_URL}default.jpg`;
+                      ? `${S3_BASE_URL}${paymentDraft.meta.roomImage}`
+                      : `${S3_BASE_URL}default.jpg`;
 
                     return (
-                        <img
-                            src={roomImageUrl}
-                            alt={paymentDraft.meta.roomName || "호텔 이미지"}
-                            className="w-40 h-36 object-cover rounded-lg"
-                        />
+                      <img
+                        src={roomImageUrl}
+                        alt={paymentDraft.meta.roomName || "호텔 이미지"}
+                        className="w-40 h-36 object-cover rounded-lg"
+                      />
                     );
                   })()}
 
@@ -583,6 +844,10 @@ const ReservationClient = () => {
                     </p>
                   )}
                 </div>
+                <p className="mt-4 text-xs text-gray-600">
+                  포인트 악용 시 계정 정지 및 환불 불가합니다. 쿠폰과 포인트는
+                  환불 시 복구되지 않습니다.
+                </p>
               </div>
 
               {/* 토스페이먼츠 결제 위젯 */}
@@ -634,7 +899,7 @@ const ReservationClient = () => {
             <div className="lg:col-span-1">
               <PaymentSummary
                 paymentDraft={paymentDraft}
-                remaining={remaining}
+                remainingSeconds={remainingSeconds}
                 customerCash={paymentInfo.customerCash}
                 customerPoint={paymentInfo.customerPoint}
                 useCash={paymentInfo.useCash}
@@ -643,10 +908,73 @@ const ReservationClient = () => {
                 onPointChange={handlePointChange}
                 onUseAllCash={useAllCash}
                 onUseAllPoint={useAllPoint}
+                availableCoupons={availableCoupons}
+                onSelectCoupon={handleSelectCoupon}
+                onRemoveCoupon={handleRemoveCoupon}
+                appliedCoupon={appliedCoupon}
+                isCouponLoading={isCouponLoading}
                 paymentAmounts={paymentAmounts}
                 isFormValid={isFormValid}
                 isLoading={isLoading}
+                isCashPointOnly={isCashPointOnly}
                 onPaymentClick={async () => {
+                  // 캐시/포인트 전액 사용 시 경고
+                  if (isCashPointOnly) {
+                    alert(
+                      "포인트 및 캐시만으로는 전액 결제할 수 없습니다. 최소 10%는 카드로 결제해야 합니다."
+                    );
+                    return;
+                  }
+
+                  // 성공 페이지 병합을 위한 직전 결제 페이로드 저장 (모바일 리다이렉트 대비)
+                  try {
+                    const lastPayload = {
+                      // 공통 결제 필드
+                      type: "hotel_reservation",
+                      customerIdx: paymentInfo.customerIdx,
+                      customerEmail: paymentInfo.customerEmail,
+                      customerName: paymentInfo.customerName,
+                      customerPhone: paymentInfo.customerPhone,
+                      // 호텔 메타
+                      contentId: paymentDraft?.meta?.contentId,
+                      roomId:
+                        paymentDraft?.meta?.roomIdx ||
+                        paymentDraft?.meta?.roomId,
+                      checkIn: paymentDraft?.meta?.checkIn,
+                      checkOut: paymentDraft?.meta?.checkOut,
+                      guests: paymentDraft?.meta?.guests,
+                      nights: paymentDraft?.meta?.nights,
+                      roomPrice: paymentDraft?.meta?.roomPrice,
+                      // 금액 정보
+                      totalPrice: paymentAmounts?.actualPaymentAmount,
+                      // 고객 입력값
+                      specialRequests: paymentInfo.specialRequests || "",
+                      pointsUsed: Number(paymentAmounts?.usePoint || 0),
+                      cashUsed: Number(paymentAmounts?.useCash || 0),
+                      // 쿠폰
+                      couponIdx: appliedCoupon?.couponIdx ?? null,
+                      couponDiscount: Number(
+                        appliedCoupon?.discountAmount || 0
+                      ),
+                    };
+                    if (typeof window !== "undefined") {
+                      sessionStorage.setItem(
+                        "lastPaymentPayload",
+                        JSON.stringify(lastPayload)
+                      );
+                    }
+                    console.log("[PAY] lastPaymentPayload 저장:", {
+                      pointsUsed: lastPayload.pointsUsed,
+                      cashUsed: lastPayload.cashUsed,
+                      specialRequestsLen:
+                        lastPayload.specialRequests?.length || 0,
+                      couponIdx: lastPayload.couponIdx,
+                      couponDiscount: lastPayload.couponDiscount,
+                    });
+                  } catch (e) {
+                    console.warn("lastPaymentPayload 저장 실패(무시):", e);
+                  }
+
                   if (window.tossPaymentHandler) {
                     try {
                       await window.tossPaymentHandler();
