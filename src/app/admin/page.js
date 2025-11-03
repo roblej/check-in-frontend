@@ -52,6 +52,14 @@ const AdminDashboard = () => {
     try {
       // 쿠키가 자동으로 전송됨 (withCredentials: true)
       const response = await axiosInstance.get(api_url);
+      
+      // 403 Forbidden 응답이고 redirect 플래그가 있으면 메인 화면으로 리다이렉트
+      if (response.status === 403 || (response.data && response.data.redirect)) {
+        alert(response.data?.message || '호텔이 등록되지 않은 관리자입니다.');
+        router.push('/');
+        return;
+      }
+      
       const data = response.data;
       console.log('대시보드 응답:', data);
       setTodayCheckinCount(data?.today?.checkinCount || 0);
@@ -61,6 +69,13 @@ const AdminDashboard = () => {
       setRoomReservationList(data?.recentReservations || []);
     } catch (error) {
       console.error('대시보드 데이터 로드 실패:', error);
+      
+      // 403 Forbidden 에러인 경우 메인 화면으로 리다이렉트
+      if (error.response?.status === 403 || error.response?.data?.redirect) {
+        alert(error.response?.data?.message || '호텔이 등록되지 않은 관리자입니다.');
+        router.push('/');
+        return;
+      }
     }
   };
 

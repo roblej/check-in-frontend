@@ -21,7 +21,7 @@ const formatCurrency = (value) => `₩${(value || 0).toLocaleString()}`;
 
 const RevenuePage = () => {
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState({ todayRevenue: 0, todayPayments: 0, monthlyRevenue: [], revenueByRoom: [] });
+  const [summary, setSummary] = useState({ todayRevenue: 0, todayPayments: 0, monthlyRevenue: [] });
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
   const [granularity, setGranularity] = useState('day'); // 'month' | 'day'
   const [dailySeries, setDailySeries] = useState([]); // [{ date: 'YYYY-MM-DD', revenue: number, payments?: number }]
@@ -36,7 +36,7 @@ const RevenuePage = () => {
       try {
         setLoading(true);
         const res = await axiosInstance.get('/admin/revenueSummary');
-        setSummary(res.data || { todayRevenue: 0, todayPayments: 0, monthlyRevenue: [], revenueByRoom: [] });
+        setSummary(res.data || { todayRevenue: 0, todayPayments: 0, monthlyRevenue: [] });
       } catch (e) {
         console.error('매출 요약 조회 실패:', e);
       } finally {
