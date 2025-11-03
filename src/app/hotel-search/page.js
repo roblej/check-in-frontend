@@ -20,39 +20,63 @@ const HotelSearchPageContent = () => {
   const { updateFromUrlParams, searchParams: storeSearchParams } =
     useSearchStore();
 
-  // URL에서 파라미터 추출
-  const destination = searchParams.get("destination");
-  const checkIn = searchParams.get("checkIn");
-  const checkOut = searchParams.get("checkOut");
-  const adults = searchParams.get("adults");
-
-  console.log("URL 파라미터:", { destination, checkIn, checkOut, adults });
+  // URL에서 파라미터 추출 (메모이제이션으로 불필요한 재계산 방지)
+  const urlDestination = searchParams.get("destination");
+  const urlCheckIn = searchParams.get("checkIn");
+  const urlCheckOut = searchParams.get("checkOut");
+  const urlAdults = searchParams.get("adults");
+  
+  const urlParams = useMemo(() => ({
+    destination: urlDestination,
+    checkIn: urlCheckIn,
+    checkOut: urlCheckOut,
+    adults: urlAdults,
+  }), [urlDestination, urlCheckIn, urlCheckOut, urlAdults]);
+  
+  const { destination, checkIn, checkOut, adults } = urlParams;
+  
+  // URL 파라미터 변경 시에만 로그 출력
+  const prevUrlParamsForLogRef = useRef(urlParams);
+  useEffect(() => {
+    const changed = 
+      prevUrlParamsForLogRef.current.destination !== urlParams.destination ||
+      prevUrlParamsForLogRef.current.checkIn !== urlParams.checkIn ||
+      prevUrlParamsForLogRef.current.checkOut !== urlParams.checkOut ||
+      prevUrlParamsForLogRef.current.adults !== urlParams.adults;
+    
+    if (changed) {
+      console.log("URL 파라미터:", { destination, checkIn, checkOut, adults });
+      prevUrlParamsForLogRef.current = urlParams;
+    }
+  }, [urlParams, destination, checkIn, checkOut, adults]);
 
   const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // URL에서 선택된 호텔 ID 가져오기 (새로고침 시 패널 유지)
   const selectedHotelId = searchParams.get("selectedHotel");
   const [selectedcontentId, setSelectedcontentId] = useState(selectedHotelId);
 
-  // URL 파라미터를 Zustand 스토어에 동기화
+  // URL 파라미터를 Zustand 스토어에 동기화 (URL 변경 시에만)
+  const prevUrlParamsRef = useRef(urlParams);
   useEffect(() => {
-    if (destination || checkIn || checkOut || adults) {
+    const urlChanged = 
+      prevUrlParamsRef.current.destination !== urlParams.destination ||
+      prevUrlParamsRef.current.checkIn !== urlParams.checkIn ||
+      prevUrlParamsRef.current.checkOut !== urlParams.checkOut ||
+      prevUrlParamsRef.current.adults !== urlParams.adults;
+    
+    if (urlChanged && (urlParams.destination || urlParams.checkIn || urlParams.checkOut || urlParams.adults)) {
       console.log("URL 파라미터를 스토어에 동기화:", {
-        destination,
-        checkIn,
-        checkOut,
-        adults,
+        destination: urlParams.destination,
+        checkIn: urlParams.checkIn,
+        checkOut: urlParams.checkOut,
+        adults: urlParams.adults,
       });
       updateFromUrlParams(searchParams);
+      prevUrlParamsRef.current = urlParams;
     }
-  }, [
-    destination,
-    checkIn,
-    checkOut,
-    adults,
-    searchParams,
-    updateFromUrlParams,
-  ]);
+  }, [urlParams, searchParams, updateFromUrlParams]);
 
   // URL에서 선택된 호텔 ID 동기화 (뒤로가기/앞으로가기 지원)
   useEffect(() => {
@@ -157,27 +181,67 @@ const HotelSearchPageContent = () => {
   // 호텔 데이터 (임시)
   const [filteredHotels, setFilteredHotels] = useState([]);
 
-  // 페이지네이션 상태
-  const [currentPage, setCurrentPage] = useState(0);
+  // 페이지네이션 상태 (URL에서 초기값 읽기)
+  const urlPage = searchParams.get("page");
+  const [currentPage, setCurrentPage] = useState(() => {
+    const page = urlPage ? parseInt(urlPage, 10) : 0;
+    return isNaN(page) || page < 0 ? 0 : page;
+  });
   const pageSize = 10;
+  
+  // URL에서 페이지 정보 동기화 (URL 변경 시에만, 무한 루프 방지)
+  useEffect(() => {
+    const urlPage = searchParams.get("page");
+    const page = urlPage ? parseInt(urlPage, 10) : 0;
+    const validPage = isNaN(page) || page < 0 ? 0 : page;
+    // 현재 상태와 다를 때만 업데이트
+    setCurrentPage((prevPage) => {
+      if (prevPage !== validPage) {
+        return validPage;
+      }
+      return prevPage;
+    });
+  }, [searchParams]); // currentPage를 dependency에서 제거하여 무한 루프 방지
 
-  const getHotels = useCallback(async () => {
+  // API 호출 중복 방지 플래그
+  const isFetchingRef = useRef(false);
+  const lastFetchedDestinationRef = useRef(null);
+  
+  const getHotels = useCallback(async (destinationParam) => {
+    // 이미 호출 중이거나 같은 destination으로 이미 호출했으면 스킵
+    const currentDestination = destinationParam || localSearchParams.destination;
+    if (isFetchingRef.current || lastFetchedDestinationRef.current === currentDestination) {
+      return null;
+    }
+
+    if (!currentDestination) {
+      return null;
+    }
+    
+    // 최소 2글자 이상 검증
+    const trimmedDestination = currentDestination.trim();
+    if (trimmedDestination.length < 2) {
+      console.log("검색어가 2글자 미만입니다. 검색을 수행하지 않습니다.");
+      setIsSearching(false);
+      setSearchResults([]);
+      return null;
+    }
+
     try {
+      isFetchingRef.current = true;
+      lastFetchedDestinationRef.current = currentDestination;
+      setIsSearching(true); // 로딩 상태 시작
+      
       console.log("=== getHotels 디버깅 ===");
-      console.log("URL에서 받은 destination:", destination);
+      console.log("URL에서 받은 destination:", urlDestination);
       console.log(
         "localSearchParams.destination:",
-        localSearchParams.destination
+        currentDestination
       );
       console.log("전체 localSearchParams:", localSearchParams);
 
-      if (!localSearchParams.destination) {
-        console.log("destination이 없어서 API 호출하지 않음");
-        return null;
-      }
-
       const res = await axios.post(hotel_url, {
-        title: localSearchParams.destination,
+        title: trimmedDestination,
       });
       if (res.data) {
         console.log("=== 호텔 검색 결과 ===");
@@ -188,24 +252,66 @@ const HotelSearchPageContent = () => {
       }
     } catch (error) {
       console.error("호텔 데이터 가져오기 실패:", error);
+      lastFetchedDestinationRef.current = null; // 실패 시 재시도 가능하도록
       return null;
+    } finally {
+      isFetchingRef.current = false;
+      setIsSearching(false); // 로딩 상태 종료
     }
-  }, [destination, localSearchParams]);
+  }, [localSearchParams, urlDestination]);
 
-  useEffect(
-    function () {
-      if (localSearchParams.destination) {
-        getHotels();
+  // destination 변경 시에만 호텔 데이터 가져오기
+  // URL 파라미터와 스토어 모두 확인하여 검색 실행
+  const prevDestinationRef = useRef(localSearchParams.destination);
+  const prevUrlDestinationRef = useRef(urlParams.destination);
+  const hasInitializedRef = useRef(false);
+  
+  useEffect(() => {
+    // URL 파라미터에서 destination이 있고, 스토어의 destination과 다르면 스토어 업데이트 대기
+    const urlDestination = urlParams.destination;
+    const storeDestination = localSearchParams.destination;
+    
+    // 초기 마운트 시 URL에 destination이 있으면 즉시 검색 실행
+    if (!hasInitializedRef.current && urlDestination) {
+      hasInitializedRef.current = true;
+      prevUrlDestinationRef.current = urlDestination;
+      prevDestinationRef.current = storeDestination || urlDestination;
+      if (urlDestination !== lastFetchedDestinationRef.current) {
+        getHotels(urlDestination);
       }
-    },
-    [localSearchParams.destination, getHotels]
-  );
+      return;
+    }
+    
+    // URL에 destination이 있고, 변경된 경우
+    if (urlDestination && urlDestination !== prevUrlDestinationRef.current) {
+      hasInitializedRef.current = true;
+      prevUrlDestinationRef.current = urlDestination;
+      // URL 파라미터를 직접 사용하여 검색 실행 (스토어 동기화 완료를 기다리지 않음)
+      if (urlDestination !== lastFetchedDestinationRef.current) {
+        getHotels(urlDestination);
+      }
+    }
+    // 스토어의 destination이 변경된 경우 (URL이 없거나 같을 때)
+    else if (storeDestination && storeDestination !== prevDestinationRef.current) {
+      hasInitializedRef.current = true;
+      prevDestinationRef.current = storeDestination;
+      if (storeDestination !== lastFetchedDestinationRef.current) {
+        getHotels(storeDestination);
+      }
+    }
+  }, [urlParams.destination, localSearchParams.destination, getHotels]);
+  // 이전 필터/정렬 값 추적 (실제 변경 감지용)
+  const prevFiltersRef = useRef(null);
+  
   // 필터링
   useEffect(() => {
     const hotels = searchResults || [];
     console.log("hotels:", hotels);
     if (!Array.isArray(hotels) || hotels.length === 0) {
       setFilteredHotels([]);
+      if (!prevFiltersRef.current) {
+        prevFiltersRef.current = { sortBy, filters, searchResults };
+      }
       return;
     }
 
@@ -229,14 +335,25 @@ const HotelSearchPageContent = () => {
         return false;
       }
       
-      // 편의시설 필터링
+      // 편의시설 필터링 (주차, 식당)
       if (filters.amenities.length > 0) {
-        const hotelAmenities = hotel.amenities || [];
-        if (!Array.isArray(hotelAmenities)) {
-          return false;
+        const hasParking = filters.amenities.includes("주차");
+        const hasRestaurant = filters.amenities.includes("식당");
+        
+        // 주차 필터 체크
+        if (hasParking) {
+          const parkinglodging = hotel.parkinglodging || "";
+          if (!parkinglodging.includes("가능")) {
+            return false;
+          }
         }
-        if (!filters.amenities.some((amenity) => hotelAmenities.includes(amenity))) {
-          return false;
+        
+        // 식당 필터 체크
+        if (hasRestaurant) {
+          const foodplace = hotel.foodplace || "";
+          if (!foodplace || foodplace.trim() === "") {
+            return false;
+          }
         }
       }
       
@@ -275,9 +392,37 @@ const HotelSearchPageContent = () => {
     }
 
     setFilteredHotels(filtered);
-    // 필터링이 변경되면 첫 페이지로 리셋
-    setCurrentPage(0);
-  }, [sortBy, filters, searchResults]);
+    
+    // 필터/정렬이 실제로 변경되었을 때만 페이지 리셋 (첫 실행이 아닐 때만)
+    // searchResults 변경은 제외 (검색 결과가 업데이트되는 것은 정상이며, 페이지를 리셋할 필요 없음)
+    let filtersChanged = false;
+    let sortByChanged = false;
+    
+    if (prevFiltersRef.current !== null) {
+      filtersChanged = JSON.stringify(prevFiltersRef.current.filters) !== JSON.stringify(filters);
+      sortByChanged = prevFiltersRef.current.sortBy !== sortBy;
+      
+      // 필터나 정렬이 변경되었을 때만 페이지 리셋
+      if (filtersChanged || sortByChanged) {
+        // 필터링이 변경되면 첫 페이지로 리셋
+        setCurrentPage(0);
+        setSelectedcontentId(null);
+        
+        // URL에서 page 파라미터 제거
+        if (typeof window !== "undefined") {
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get("page")) {
+            urlParams.delete("page");
+            urlParams.delete("selectedHotel");
+            router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
+          }
+        }
+      }
+    }
+    
+    // 현재 값 저장 (searchResults는 저장하되, 변경 감지에는 사용하지 않음)
+    prevFiltersRef.current = { sortBy, filters, searchResults };
+  }, [sortBy, filters, searchResults, router]); // searchResults는 필터링에 필요하지만 페이지 리셋에는 사용하지 않음
 
   // 현재 페이지에 해당하는 호텔 계산
   const currentPageHotels = useMemo(() => {
@@ -299,17 +444,23 @@ const HotelSearchPageContent = () => {
 
   // 페이지 변경 핸들러
   const handlePageChange = useCallback((page) => {
-    setCurrentPage(page);
     // 페이지 변경 시 호텔 상세 패널 닫기
     setSelectedcontentId(null);
-    // URL에서 selectedHotel 파라미터 제거
+    // URL 먼저 업데이트 (상태는 URL 동기화 useEffect에서 처리)
     const urlParams = new URLSearchParams(searchParams.toString());
     urlParams.delete("selectedHotel");
+    if (page > 0) {
+      urlParams.set("page", page.toString());
+    } else {
+      urlParams.delete("page");
+    }
     router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
     // 페이지 변경 시 스크롤을 상단으로 이동
-    const resultsPanel = document.querySelector('[data-hotel-results]');
-    if (resultsPanel) {
-      resultsPanel.scrollTop = 0;
+    if (typeof window !== "undefined") {
+      const resultsPanel = document.querySelector('[data-hotel-results]');
+      if (resultsPanel) {
+        resultsPanel.scrollTop = 0;
+      }
     }
   }, [searchParams, router]);
 
@@ -372,8 +523,12 @@ const HotelSearchPageContent = () => {
     setSelectedcontentId(hotelId);
     const urlParams = new URLSearchParams(searchParams.toString());
     urlParams.set("selectedHotel", hotelId);
+    // 현재 페이지 정보 유지
+    if (currentPage > 0) {
+      urlParams.set("page", currentPage.toString());
+    }
     router.replace(`?${urlParams.toString()}`, { scroll: false ,shallow: true,});
-  }, [selectedcontentId, searchParams, router]);
+  }, [selectedcontentId, searchParams, router, currentPage]);
 
   // 호텔별 검색 조건 업데이트 함수 (localStorage에 저장)
   const updateHotelSearchParams = (hotelId, newParams) => {
@@ -423,7 +578,7 @@ const HotelSearchPageContent = () => {
       {/* 검색 조건 및 필터 바 */}
       <div className="bg-white border-b border-gray-200 flex-shrink-0 shadow-sm">
         <div className="max-w-[1200px] mx-auto px-4 py-3">
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             {/* 왼쪽: 검색 폼 */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
               {/* 목적지 */}
@@ -510,7 +665,7 @@ const HotelSearchPageContent = () => {
             </div>
 
             {/* 필터 (우측 정렬) */}
-            <div className="flex items-center gap-3 ml-auto">
+            <div className="flex items-center gap-3 lg:ml-auto w-full lg:w-auto">
               {/* 정렬 */}
               <div className="flex items-center gap-2">
                 <select
@@ -560,7 +715,7 @@ const HotelSearchPageContent = () => {
       {/* 메인 컨텐츠 - 좌우 분할 */}
       <div className="flex flex-1 relative overflow-hidden">
         {/* 좌측: 호텔 검색 결과 (그리드) */}
-        <div className="flex-1 lg:w-[30%] overflow-y-auto">
+        <div className="flex-1 lg:w-[20%] overflow-y-auto">
           <div className="p-4">
             <HotelSearchResults
               hotels={currentPageHotels}
@@ -581,18 +736,21 @@ const HotelSearchPageContent = () => {
               filters={filters}
               onFilterChange={handleFilterChange}
               onFilterReset={handleFilterReset}
+              isLoading={isSearching}
             />
           </div>
         </div>
 
         {/* 우측: 지도 */}
-        <div className="hidden lg:block lg:w-[70%] lg:flex-shrink-0 border-l border-gray-100">
+        <div className="hidden lg:block lg:w-[80%] lg:flex-shrink-0 border-l border-gray-100">
           <div className="w-full h-full bg-gray-100 relative">
             {/* 카카오맵 영역 */}
             <KakaoMapWithMarkers
               hotels={currentPageHotels}
               selectedHotelId={selectedcontentId}
               onMarkerClick={handleHotelClick}
+              isModalOpen={!!selectedcontentId}
+              modalWidth={selectedcontentId ? 555 : 0}
             />
           </div>
         </div>

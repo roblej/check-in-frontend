@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Users, Star, Calendar, DollarSign } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
@@ -187,7 +188,7 @@ const CustomerManagementPage = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{customer.name || '-'}</div>
+                          <div className="text-sm font-medium text-gray-900">{customer.name || '-'} / {customer.id || '-'}</div>
                           <div className="text-sm text-gray-500">{customer.email || '-'}</div>
                           <div className="text-sm text-gray-500">{customer.phone || '-'}</div>
                         </div>
@@ -207,9 +208,12 @@ const CustomerManagementPage = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button className="text-green-600 hover:text-green-800">
+                        <Link 
+                          href={`/admin/customer-history?customerId=${customer.id}`}
+                          className="text-green-600 hover:text-green-800 hover:underline"
+                        >
                           이용 이력
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   ))

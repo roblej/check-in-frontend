@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Star, User, Calendar, Building2, DollarSign, Filter, Search } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
 const CustomerHistoryPage = () => {
+  const searchParams = useSearchParams();
   const [history, setHistory] = useState([]);
   const [filteredHistory, setFilteredHistory] = useState([]);
   const [stats, setStats] = useState({
@@ -14,11 +16,15 @@ const CustomerHistoryPage = () => {
   });
   const [loading, setLoading] = useState(true);
   
-  // 필터 상태
-  const [customerIdSearch, setCustomerIdSearch] = useState('');
+  // 필터 상태 - 초기값을 쿼리 파라미터에서 가져오기
+  const [customerIdSearch, setCustomerIdSearch] = useState(() => {
+    return searchParams.get('customerId') || '';
+  });
   const [statusFilter, setStatusFilter] = useState('all');
   const [ratingFilter, setRatingFilter] = useState('all');
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(() => {
+    return !!searchParams.get('customerId');
+  });
 
   const didFetchStats = useRef(false);
 

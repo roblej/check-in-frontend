@@ -140,8 +140,8 @@ const HotelFilters = ({ filters, onFilterChange, onReset }) => {
       {/* 편의시설 */}
       <div className="mb-6">
         <h4 className="font-semibold mb-3">편의시설</h4>
-        <div className="grid grid-cols-2 gap-2">
-          {["무료 WiFi", "주차장", "수영장", "피트니스", "레스토랑", "바"].map((amenity) => (
+        <div className="space-y-2">
+          {["주차", "식당"].map((amenity) => (
             <label
               key={amenity}
               className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-50 rounded transition-colors"
