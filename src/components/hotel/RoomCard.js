@@ -286,7 +286,7 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
 
           {/* 하단: 가격 & 예약 버튼 */}
           <div
-            className={`mt-auto border-t border-gray-200 ${
+            className={`mt-auto border-t border-gray-100 ${
               isModal ? "pt-3" : "pt-4"
             }`}
           >

@@ -7,6 +7,8 @@ const DartGameModal = ({ isOpen, onClose }) => {
   const [isThrowing, setIsThrowing] = useState(false);
   const [targetLocation, setTargetLocation] = useState(null);
   const [recommendedHotels, setRecommendedHotels] = useState([]);
+  const [nearbyTours, setNearbyTours] = useState([]);
+  const [isTourLoading, setIsTourLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isCharging, setIsCharging] = useState(false);
@@ -18,6 +20,13 @@ const DartGameModal = ({ isOpen, onClose }) => {
   const markerRef = useRef(null);
   const gaugeIntervalRef = useRef(null);
   const hotelMarkersRef = useRef([]);
+  const tourMarkersRef = useRef([]);
+
+  const [selectedTour, setSelectedTour] = useState(null);
+  const [tourNearbyHotels, setTourNearbyHotels] = useState([]);
+  const [isTourHotelsLoading, setIsTourHotelsLoading] = useState(false);
+  const [isTourDetailLoading, setIsTourDetailLoading] = useState(false);
+  const [selectedTourDetail, setSelectedTourDetail] = useState(null);
 
   // 한국관광공사 지역코드 매핑
   const areaCodeMap = {
@@ -295,6 +304,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
     // 마커가 찍히고, 지역코드가 정상적으로 들어왔을 때 호텔 검색 실행
     if (targetLocation && targetLocation.areaCode) {
       searchHotelsNearLocation(targetLocation);
+      fetchNearbyTours(targetLocation);
     }
   }, [targetLocation]);
 
@@ -320,6 +330,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
     // 이전 결과 초기화
     setTargetLocation(null);
     setRecommendedHotels([]);
+    setNearbyTours([]);
   };
 
   // 랜덤 좌표 생성 (한국 육지 내부만)
@@ -580,7 +591,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (mapLoaded && recommendedHotels) {
       if (recommendedHotels.length > 0) {
-        displayHotelMarkers(recommendedHotels);
+        // displayHotelMarkers(recommendedHotels);
       } else {
         clearHotelMarkers();
       }
@@ -622,6 +633,260 @@ const DartGameModal = ({ isOpen, onClose }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // 위치 기반 관광정보 검색 (TourAPI via server route)
+  const fetchNearbyTours = async (location) => {
+    try {
+      setIsTourLoading(true);
+      // Kakao 지도 좌표는 기본 WGS84이며 TourAPI는 mapX(경도), mapY(위도)를 사용합니다.
+      // 소수점 정밀도 확보 (TourAPI는 소수점 좌표 허용, 6~7자리 권장)
+      const wgs84Lat = typeof location.lat === 'number' ? location.lat : parseFloat(location.lat);
+      const wgs84Lng = typeof location.lng === 'number' ? location.lng : parseFloat(location.lng);
+      const latStr = Number.isFinite(wgs84Lat) ? wgs84Lat.toFixed(7) : String(location.lat);
+      const lngStr = Number.isFinite(wgs84Lng) ? wgs84Lng.toFixed(7) : String(location.lng);
+      const params = new URLSearchParams({
+        mapY: latStr,            // 위도(Y) - 7자리
+        mapX: lngStr,            // 경도(X) - 7자리
+        radius: "30000",         // 30km (값/주석 일치)
+        numOfRows: "18",
+        arrange: "E",           // 거리순
+      });
+      console.log("[TourAPI] 좌표(위도,경도):", latStr, lngStr);
+      const url = `/api/tour/nearby?${params.toString()}`;
+      console.log("[TourAPI] 요청 URL:", url);
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.warn("[TourAPI] 요청 실패:", res.status);
+        setNearbyTours([]);
+        return;
+      }
+      const data = await res.json();
+      console.log("[TourAPI] 응답 데이터:", data);
+      const items = Array.isArray(data.items) ? data.items : [];
+      console.log(`[TourAPI] 항목 수: ${items.length}`);
+      setNearbyTours(items);
+      // 지도에는 관광지 마커만 유지
+      clearHotelMarkers();
+      if (items.length) {
+        // 지도 마커 표시
+        displayTourMarkers(items);
+        fitMapToTours(items);
+      } else {
+        clearTourMarkers();
+      }
+    } catch (e) {
+      console.error('관광정보 조회 실패:', e);
+      setNearbyTours([]);
+    } finally {
+      setIsTourLoading(false);
+    }
+  };
+
+  // 관광지 마커 제거
+  const clearTourMarkers = () => {
+    tourMarkersRef.current.forEach(marker => marker.setMap(null));
+    tourMarkersRef.current = [];
+  };
+
+  // 관광지 마커 표시
+  const displayTourMarkers = (tours) => {
+    if (!window.kakao || !window.kakao.maps || !mapInstanceRef.current) return;
+    clearTourMarkers();
+
+    tours.forEach((t) => {
+      const x = parseFloat(t.mapx); // 경도
+      const y = parseFloat(t.mapy); // 위도
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      const pos = new window.kakao.maps.LatLng(y, x);
+
+      const marker = new window.kakao.maps.Marker({
+        position: pos,
+        map: mapInstanceRef.current,
+        title: t.title || "tour",
+      });
+
+      const iw = new window.kakao.maps.InfoWindow({
+        content: `<div style="padding:6px 10px;font-size:12px;">${t.title || "tour"}</div>`,
+        disableAutoPan: true,
+      });
+
+      window.kakao.maps.event.addListener(marker, 'mouseover', () => iw.open(mapInstanceRef.current, marker));
+      window.kakao.maps.event.addListener(marker, 'mouseout', () => iw.close());
+      window.kakao.maps.event.addListener(marker, 'click', () => {
+        handleSelectTour(t);
+      });
+
+      tourMarkersRef.current.push(marker);
+    });
+  };
+
+  // 관광지가 화면에 가득 차도록 지도 영역 맞춤
+  const fitMapToTours = (tours) => {
+    if (!window.kakao || !window.kakao.maps || !mapInstanceRef.current) return;
+    if (!Array.isArray(tours) || tours.length === 0) return;
+    const bounds = new window.kakao.maps.LatLngBounds();
+    let added = 0;
+    tours.forEach((t) => {
+      const x = parseFloat(t.mapx);
+      const y = parseFloat(t.mapy);
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        bounds.extend(new window.kakao.maps.LatLng(y, x));
+        added += 1;
+      }
+    });
+    if (added > 0) {
+      mapInstanceRef.current.setBounds(bounds);
+    }
+  };
+
+  // 관광지 선택 핸들러 (카드/마커 공통)
+  const handleSelectTour = (tour) => {
+    setSelectedTour(tour);
+    // 상세와 호텔을 병렬로 조회
+    setIsTourDetailLoading(true);
+    fetchTourDetail(tour);
+    fetchHotelsNearTour(tour);
+    // 지도 중심 이동
+    if (mapInstanceRef.current && window.kakao) {
+      const x = parseFloat(tour.mapx);
+      const y = parseFloat(tour.mapy);
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        mapInstanceRef.current.panTo(new window.kakao.maps.LatLng(y, x));
+      }
+    }
+  };
+
+  // 상세 정보 통합 조회
+  const fetchTourDetail = async (tour) => {
+    try {
+      setIsTourDetailLoading(true);
+      const contentId = tour.contentid || tour.contentId;
+      const contentTypeId = tour.contenttypeid || tour.contentTypeId;
+      if (!contentId || !contentTypeId) { setSelectedTourDetail(null); return; }
+      const url = `/api/tour/detail?contentId=${encodeURIComponent(contentId)}&contentTypeId=${encodeURIComponent(contentTypeId)}`;
+      const res = await fetch(url);
+      if (!res.ok) { setSelectedTourDetail(null); return; }
+      const data = await res.json();
+      console.log('[TourDetail] detail response:', data);
+      setSelectedTourDetail(data);
+    } catch (e) {
+      console.error('관광지 상세 조회 실패:', e);
+      setSelectedTourDetail(null);
+    }
+    finally {
+      setIsTourDetailLoading(false);
+    }
+  };
+
+  // 선택된 관광지 인근 호텔 조회 (최대 10개)
+  const fetchHotelsNearTour = async (tour) => {
+    try {
+      setIsTourHotelsLoading(true);
+      const x = parseFloat(tour.mapx);
+      const y = parseFloat(tour.mapy);
+      const areaCode = tour.areacode || targetLocation?.areaCode || null;
+      const response = await hotelAPI.getHotelsByAreaCode(
+        areaCode,
+        10,
+        y,
+        x
+      );
+      // 거리 보강(응답에 없으면 계산)
+      const withDistance = (response || []).map((h) => {
+        if (typeof h.distance === 'number') return h;
+        if (typeof h.lat === 'number' && typeof h.lng === 'number') {
+          const d = haversineKm(y, x, h.lat, h.lng);
+          return { ...h, distance: d };
+        }
+        return h;
+      });
+      setTourNearbyHotels(withDistance);
+    } catch (e) {
+      console.error('관광지 인근 호텔 조회 실패:', e);
+      setTourNearbyHotels([]);
+    } finally {
+      setIsTourHotelsLoading(false);
+    }
+  };
+
+  // 하버사인 거리 계산(km)
+  const haversineKm = (lat1, lon1, lat2, lon2) => {
+    const toRad = (v) => (v * Math.PI) / 180;
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // 값이 없을 때 "정보 없음"으로 출력하는 헬퍼
+  const valueOrNA = (v) => {
+    if (v === null || v === undefined) return '정보 없음';
+    const s = String(v).trim();
+    return s.length === 0 ? '정보 없음' : s;
+  };
+
+  // <br> 태그를 개행으로 치환
+  const br2nl = (v) => {
+    const s = valueOrNA(v);
+    return s.replace(/<br\s*\/?>(\s*)/gi, '\n');
+  };
+
+  // intro 필드 정규화: contentType에 따라 붙는 접미사(culture, festival 등)를 제거해 표준 키로 병합
+  const normalizeIntro = (rawIntro) => {
+    const intro = rawIntro || {};
+    const suffixes = [
+      'culture', 'festival', 'course', 'leports', 'leisure', 'stay', 'shopping', 'food', 'tour', 'sports'
+    ];
+    const baseKeys = [
+      'infocenter', 'usetime', 'restdate', 'parking', 'chkcreditcard', 'chkbabycarriage', 'chkpet',
+      'usefee', 'spendtime', 'parkingfee', 'accomcount', 'useseason', 'opendate',
+      // festival-specific
+      'eventstartdate', 'eventenddate', 'playtime', 'eventplace', 'sponsor1', 'sponsor2', 'sponsor1tel', 'progresstype', 'festivaltype'
+    ];
+
+    // 특수 리맵: 접미사 제거만으로는 의미가 달라지는 키 보정
+    const specialRemap = {
+      // 축제 요금 정보가 usetimefestival 키로 오기도 함
+      'usetimefestival': 'usefee',
+    };
+
+    const normalized = {};
+    const consumed = new Set();
+
+    // 1) 기본 키 우선 채우기
+    baseKeys.forEach((k) => {
+      if (intro[k] !== undefined && String(intro[k]).trim() !== '') {
+        normalized[k] = intro[k];
+        consumed.add(k);
+      }
+    });
+
+    // 2) 접미사 키를 기본 키로 병합 (기본 키가 비어있을 때만 대체)
+    Object.keys(intro).forEach((key) => {
+      suffixes.forEach((suf) => {
+        const suffix = suf.toLowerCase();
+        if (key.toLowerCase().endsWith(suffix)) {
+          const rawBase = key.slice(0, key.length - suffix.length); // ex) usetimeculture -> usetime
+          const base = specialRemap[key.toLowerCase()] || rawBase;
+          if (baseKeys.includes(base)) {
+            if (!normalized[base] || String(normalized[base]).trim() === '') {
+              normalized[base] = intro[key];
+            }
+            consumed.add(key);
+          }
+        }
+      });
+    });
+
+    // 3) 남은 항목은 extras로 반환 (빈값 제외)
+    const extras = Object.entries(intro)
+      .filter(([k, v]) => !consumed.has(k) && v !== undefined && String(v).trim() !== '')
+      .map(([k, v]) => [k, v]);
+
+    return { normalized, extras };
   };
 
   // 다트 리셋
@@ -817,7 +1082,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
                     {[...Array(10)].map((_, i) => (
                       <div 
                         key={i} 
-                        className="flex-1 border-b border-gray-300"
+                        className="flex-1 border-b border-gray-200"
                         style={{ 
                           backgroundColor: (9 - i) < 3 ? 'rgba(34, 197, 94, 0.2)' : 
                                          (9 - i) < 7 ? 'rgba(251, 191, 36, 0.2)' : 
@@ -951,77 +1216,188 @@ const DartGameModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* 추천 호텔 */}
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">호텔을 찾는 중...</p>
-                </div>
-              ) : recommendedHotels.length > 0 ? (
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                    🏨 추천 호텔 ({recommendedHotels.length}개)
-                  </h4>
+  
+
+              {/* 근처 관광정보 (TourAPI) */}
+              <div className="mt-10">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                  🗺️ 근처 관광지 추천
+                </h4>
+                {isTourLoading ? (
+                  <div className="text-center py-6 text-gray-600">관광정보를 불러오는 중...</div>
+                ) : nearbyTours.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {recommendedHotels.map((hotel, index) => (
-                      <div 
-                        key={hotel.contentId || index} 
-                        className="bg-white rounded-lg overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 cursor-pointer"
-                        onClick={() => window.open(`/hotel/${hotel.contentId}`, '_blank')}
-                      >
-                        {hotel.imageUrl && (
-                          <div className="relative h-40 overflow-hidden">
-                            <img 
-                              src={hotel.imageUrl} 
-                              alt={hotel.title}
-                              className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
-                            />
+                    {nearbyTours.map((item, idx) => (
+                      <div key={(item.contentid || idx) + '_' + idx} className="bg-white rounded-lg overflow-hidden border border-gray-200 hover:shadow-md transition-shadow h-full flex flex-col cursor-pointer"
+                           onClick={() => handleSelectTour(item)}>
+                        {item.firstimage ? (
+                          <div className="h-40 overflow-hidden">
+                            <img src={item.firstimage} alt={item.title || 'tour'} className="w-full h-full object-cover" />
                           </div>
+                        ) : (
+                          <div className="h-40 bg-gray-100" />
                         )}
-                        <div className="p-4">
-                          <h5 className="font-bold text-gray-900 mb-2 line-clamp-1">{hotel.title}</h5>
-                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">{hotel.adress}</p>
-                          
-                          {/* 거리 정보 */}
-                          {hotel.distance && (
-                            <div className="mb-3">
-                              <p className="text-sm text-green-600 font-medium">
-                                📍 다트 위치로부터 {hotel.distance.toFixed(1)}km
-                              </p>
-                            </div>
+                        <div className="p-4 flex-1 flex flex-col">
+                          <div className="font-bold text-gray-900 mb-1 line-clamp-1">{item.title || '이름 미상'}</div>
+                          {item.addr1 && (
+                            <div className="text-sm text-gray-600 line-clamp-2">{item.addr1}</div>
                           )}
-                          
-                          {/* 가격 정보 */}
-                          {(hotel.minPrice || hotel.maxPrice) && (
-                            <div className="border-t pt-3 mt-3">
-                              <p className="text-xs text-gray-500 mb-1">1박 기준</p>
-                              <div className="flex items-center justify-between">
-                                {hotel.minPrice && hotel.maxPrice && hotel.minPrice !== hotel.maxPrice ? (
-                                  <p className="text-lg font-bold text-blue-600">
-                                    {new Intl.NumberFormat('ko-KR').format(hotel.minPrice)}원 ~
-                                  </p>
-                                ) : hotel.minPrice ? (
-                                  <p className="text-lg font-bold text-blue-600">
-                                    {new Intl.NumberFormat('ko-KR').format(hotel.minPrice)}원
-                                  </p>
-                                ) : (
-                                  <p className="text-sm text-gray-500">가격 문의</p>
-                                )}
-                                <button className="text-sm bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition-colors">
-                                  보기
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                          <div className="mt-auto pt-3 flex gap-2 text-xs text-gray-500">
+                            {item.contenttypeid && <span className="px-2 py-1 bg-gray-100 rounded">type {item.contenttypeid}</span>}
+                            {item.tel && <span className="px-2 py-1 bg-gray-100 rounded">{item.tel}</span>}
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <p className="mb-2">이 지역의 호텔을 찾을 수 없습니다.</p>
-                  <p className="text-sm">다른 지역을 시도해보세요!</p>
+                ) : (
+                  <div className="text-sm text-gray-500">근처 관광정보가 없습니다.</div>
+                )}
+              </div>
+              {/* 우측 사이드 모달: 선택된 관광지 상세 + 인근 호텔 */}
+              {selectedTour && (
+                <div className="fixed right-4 top-20 bottom-6 z-50 w-full max-w-5xl bg-white shadow-2xl border border-gray-200 rounded-2xl overflow-hidden flex flex-col">
+                  <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                    <div className="font-bold text-gray-900 line-clamp-1">
+                      {selectedTour.title || '선택한 관광지'}
+                    </div>
+                    <button
+                      onClick={() => { setSelectedTour(null); setTourNearbyHotels([]); }}
+                      className="p-2 rounded hover:bg-gray-100"
+                      aria-label="닫기"
+                    >
+                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                  {(isTourDetailLoading || isTourHotelsLoading) ? (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600 mx-auto mb-3" />
+                        <div className="text-sm text-gray-600">관광지 정보를 불러오는 중...</div>
+                      </div>
+                    </div>
+                  ) : (
+                  <div className="flex-1 overflow-hidden">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 h-full">
+                      {/* 상세 정보 영역 (좌측) */}
+                      <div className="border-r border-gray-200 overflow-auto p-5 space-y-4">
+                        {selectedTourDetail ? (
+                          <>
+                            {(selectedTourDetail.images?.[0]?.originimgurl || selectedTour?.firstimage) && (
+                              <div className="h-56 overflow-hidden rounded-xl">
+                                <img src={selectedTourDetail.images?.[0]?.originimgurl || selectedTour.firstimage} alt={selectedTour.title} className="w-full h-full object-cover" />
+                              </div>
+                            )}
+                            <div className="space-y-2">
+                              {(selectedTourDetail.common?.addr1 || selectedTour?.addr1) && (
+                                <div className="text-sm text-gray-700">📍 {(selectedTourDetail.common?.addr1 || selectedTour?.addr1)}{selectedTourDetail.common?.addr2 ? ` ${selectedTourDetail.common.addr2}` : ''}</div>
+                              )}
+                              {selectedTourDetail.intro?.infocenter && (
+                                <div className="text-sm text-gray-700">☎️ {selectedTourDetail.intro.infocenter}</div>
+                              )}
+                              {selectedTourDetail.common?.homepage && (
+                                <div className="text-sm text-blue-600 underline" dangerouslySetInnerHTML={{ __html: selectedTourDetail.common.homepage }} />
+                              )}
+                            </div>
+                            {selectedTourDetail.common?.overview && (
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900 mb-2">소개</div>
+                                <div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: selectedTourDetail.common.overview }} />
+                              </div>
+                            )}
+                            {/* 운영/이용 정보 */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {selectedTourDetail.intro?.usetime && (
+                                <div className="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                  <div className="font-medium text-gray-900 mb-1">이용시간</div>
+                                  <div className="text-gray-700 whitespace-pre-line">{br2nl(selectedTourDetail.intro.usetime)}</div>
+                                </div>
+                              )}
+                              {selectedTourDetail.intro?.restdate && (
+                                <div className="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                  <div className="font-medium text-gray-900 mb-1">휴무일</div>
+                                  <div className="text-gray-700 whitespace-pre-line">{br2nl(selectedTourDetail.intro.restdate)}</div>
+                                </div>
+                              )}
+                              {selectedTourDetail.intro?.parking && (
+                                <div className="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                  <div className="font-medium text-gray-900 mb-1">주차</div>
+                                  <div className="text-gray-700 whitespace-pre-line">{br2nl(selectedTourDetail.intro.parking)}</div>
+                                </div>
+                              )}
+                              {selectedTourDetail.intro?.chkcreditcard && (
+                                <div className="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                  <div className="font-medium text-gray-900 mb-1">카드결제</div>
+                                  <div className="text-gray-700 whitespace-pre-line">{br2nl(selectedTourDetail.intro.chkcreditcard)}</div>
+                                </div>
+                              )}
+                              {selectedTourDetail.intro?.chkbabycarriage && (
+                                <div className="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                  <div className="font-medium text-gray-900 mb-1">유모차 대여</div>
+                                  <div className="text-gray-700 whitespace-pre-line">{br2nl(selectedTourDetail.intro.chkbabycarriage)}</div>
+                                </div>
+                              )}
+                              {selectedTourDetail.intro?.chkpet && (
+                                <div className="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                  <div className="font-medium text-gray-900 mb-1">반려동물</div>
+                                  <div className="text-gray-700 whitespace-pre-line">{br2nl(selectedTourDetail.intro.chkpet)}</div>
+                                </div>
+                              )}
+                              {/* 남은 intro 필드 일반 목록 출력 (중복/빈값 제외) */}
+                              {(() => {
+                                const i = selectedTourDetail.intro || {};
+                                const known = new Set(['contentid','contenttypeid','infocenter','usetime','restdate','parking','chkcreditcard','chkbabycarriage','chkpet','expagerange','expguide','heritage1','heritage2','heritage3','opendate','useseason']);
+                                const entries = Object.entries(i).filter(([k,v]) => !known.has(k) && v && String(v).trim() !== '');
+                                if (!entries.length) return null;
+                                return (
+                                  <div className="md:col-span-2 text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                    <div className="font-medium text-gray-900 mb-2">기타 정보</div>
+                                    <ul className="list-disc ml-5 space-y-1 text-gray-700">
+                                      {entries.map(([k,v]) => (
+                                        <li key={k}><span className="font-medium">{k}</span>: <span className="whitespace-pre-line">{String(v)}</span></li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-sm text-gray-500">관광지 정보를 불러오는 중...</div>
+                        )}
+                      </div>
+                      {/* 인근 호텔 리스트 (우측) */}
+                      <div className="overflow-auto p-5 space-y-3">
+                        <div className="text-sm text-gray-600 mb-1">인근 호텔 10개 추천</div>
+                        {isTourHotelsLoading ? (
+                          <div className="text-center py-8 text-gray-600">불러오는 중...</div>
+                        ) : tourNearbyHotels.length ? (
+                          tourNearbyHotels.map((hotel, i) => (
+                            <div key={hotel.contentId || i} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow transition cursor-pointer"
+                                 onClick={() => window.open(`/hotel/${hotel.contentId}`, '_blank')}>
+                              {hotel.imageUrl ? (
+                                <div className="h-32 overflow-hidden">
+                                  <img src={hotel.imageUrl} alt={hotel.title} className="w-full h-full object-cover" />
+                                </div>
+                              ) : null}
+                              <div className="p-3">
+                                <div className="font-semibold text-gray-900 line-clamp-1">{hotel.title}</div>
+                                {typeof hotel.distance === 'number' && (
+                                  <div className="text-xs text-green-600 mt-1">관광지로부터 {hotel.distance.toFixed(1)}km</div>
+                                )}
+                                {hotel.adress && (
+                                  <div className="text-xs text-gray-600 line-clamp-2 mt-1">{hotel.adress}</div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-sm text-gray-500">주변 호텔 정보를 찾지 못했습니다.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  )}
                 </div>
               )}
             </div>

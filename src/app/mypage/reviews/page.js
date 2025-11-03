@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { mypageAPI } from '@/lib/api/mypage';
 import { 
-  ChevronLeft, ChevronRight, Star
+  ChevronLeft, ChevronRight, Star, Pencil
 } from 'lucide-react';
 
 export default function MyReviewsPage() {
@@ -299,7 +299,16 @@ export default function MyReviewsPage() {
                         <p className="font-semibold text-gray-900 truncate">
                           {review.hotelName || review.hotelInfo?.title || '호텔 정보 없음'}
                         </p>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => router.push(`/mypage/review/edit?reviewId=${review.reviewIdx}`)}
+                            className="p-1.5 rounded hover:bg-gray-50"
+                            aria-label="리뷰 수정"
+                          >
+                            <Pencil className="w-4 h-4 text-gray-500" />
+                          </button>
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </div>
                       </div>
                       {/* 지역 */}
                       {(review.region || review.hotelInfo?.adress || review.location) && (

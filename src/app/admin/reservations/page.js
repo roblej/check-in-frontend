@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import ReservationDetailModal from '@/components/admin/ReservationDetailModal';
 import { ClipboardList, Calendar, Building2 } from 'lucide-react';
@@ -21,7 +21,14 @@ const ReservationsPage = () => {
   const [totalElements, setTotalElements] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
+  const didFetch = useRef(false);
+  const lastFetchedPageRef = useRef(null);
+
   useEffect(() => {
+    if (didFetch.current && lastFetchedPageRef.current === currentPage) return;
+    didFetch.current = true;
+    lastFetchedPageRef.current = currentPage;
+    
     fetchReservations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]);

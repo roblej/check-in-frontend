@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { mypageAPI } from '@/lib/api/mypage';
 import { useCustomerStore } from '@/stores/customerStore';
 
@@ -389,11 +389,8 @@ export default function MyPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingReview, setEditingReview] = useState(null);
   const [editContent, setEditContent] = useState('');
-  const editContentRef = useRef(null);
-  const editModalRef = useRef(null);
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
-  const confirmModalRef = useRef(null);
-  const confirmPrimaryRef = useRef(null);
+
 
   const openEditModal = (review) => {
     setEditingReview(review);

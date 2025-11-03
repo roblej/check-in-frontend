@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import axiosInstance from '@/lib/axios';
 
@@ -39,6 +39,8 @@ const CheckinPage = () => {
   const [filteredList, setFilteredList] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const didFetch = useRef(false);
+
   function getData(){
     axiosInstance.get(api_url).then(res => {
       console.log(res.data);
@@ -47,6 +49,9 @@ const CheckinPage = () => {
   }
   
   useEffect(() => {
+    if (didFetch.current) return;
+    didFetch.current = true;
+    
     getData();
   }, []);
 

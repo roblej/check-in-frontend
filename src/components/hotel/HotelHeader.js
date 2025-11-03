@@ -29,10 +29,10 @@ const HotelHeader = ({
       : 0;
 
   return (
-    <div className={`bg-white border-b z-40 shadow-sm flex-shrink-0`}>
+    <div className={`bg-white border-b border-gray-200 z-40 shadow-sm flex-shrink-0`}>
       <div
         className={`${
-          isModal ? "px-4 sm:px-6 lg:px-8" : "px-4 sm:px-6 lg:px-8"
+          isModal ? "px-2.5" : "px-4 sm:px-6 lg:px-8"
         } py-3`}
       >
         <div className="flex items-center justify-between">
