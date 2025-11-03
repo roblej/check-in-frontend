@@ -146,6 +146,20 @@ const HeroSection = () => {
   // 검색 핸들러
   const handleSearch = async (e) => {
     e.preventDefault();
+    
+    // destination 검증
+    const trimmedDestination = destination?.trim() || "";
+    if (!trimmedDestination) {
+      alert("목적지를 입력해주세요.");
+      return;
+    }
+    
+    // 최소 2글자 이상 검증
+    if (trimmedDestination.length < 2) {
+      alert("최소 2글자 이상 입력해주세요.");
+      return;
+    }
+    
     if (selectedType === "dining") {
       console.log("다이닝 검색:", {
         destination,
@@ -156,7 +170,7 @@ const HeroSection = () => {
       
       // 다이닝 검색 페이지로 이동
       const params = new URLSearchParams({
-        destination: destination,
+        destination: trimmedDestination,
         diningDate: diningDate,
         mealType: mealType,
         adults: adults.toString(),
@@ -173,7 +187,7 @@ const HeroSection = () => {
           : 1;
 
       updateSearchParams({
-        destination: destination,
+        destination: trimmedDestination,
         checkIn: checkIn,
         checkOut: checkOut,
         nights: nights,
@@ -183,7 +197,7 @@ const HeroSection = () => {
 
       // 페이지 이동
       router.push(
-        `/hotel-search?destination=${destination}&checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}`
+        `/hotel-search?destination=${encodeURIComponent(trimmedDestination)}&checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}`
       );
     }
   };
@@ -283,6 +297,11 @@ const HeroSection = () => {
                   type="text"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSearch(e);
+                    }
+                  }}
                   placeholder={
                     selectedType === "dining"
                       ? "호텔명을 입력하세요"

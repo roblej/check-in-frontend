@@ -18,6 +18,7 @@ const PaymentSummary = ({
   isLoading,
   onPaymentClick,
   onValidateForm,
+  onCancel,
 }) => {
   const minutes = Math.floor(remaining / 60000);
   const seconds = Math.floor((remaining % 60000) / 1000);
@@ -105,9 +106,19 @@ const PaymentSummary = ({
           : `₩${paymentAmounts.actualPaymentAmount.toLocaleString()} 결제하기`}
       </button>
 
-      <div className="text-xs text-gray-500 text-center">
+      <div className="text-xs text-gray-500 text-center mb-4">
         결제 완료 후 호텔 예약이 자동으로 확정됩니다.
       </div>
+
+      {/* 취소 버튼 */}
+      {onCancel && (
+        <button
+          onClick={onCancel}
+          className="w-full py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+        >
+          취소하고 돌아가기
+        </button>
+      )}
     </div>
   );
 };

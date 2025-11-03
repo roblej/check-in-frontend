@@ -37,14 +37,33 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
     setIsLocking(true);
 
     try {
-      // 1단계: 예약 락 생성
+      // 1단계: 예약 락 생성 준비
       const contentId =
         searchParams?.contentId || searchParams?.hotelId || room?.contentId;
       const roomId = room.roomIdx || room.id;
+      const checkIn = String(searchParams?.checkIn || "");
+
+      if (!contentId || !roomId || !checkIn) {
+        alert("객실/날짜 정보가 올바르지 않습니다. 날짜를 다시 선택해주세요.");
+        setIsLocking(false);
+        return;
+      }
+
+      // 사전 상태 조회(선택) - 이미 잠금 중이면 UX 알림
+      try {
+        await axiosInstance.get("/reservations/lock/status", {
+          params: {
+            contentId: String(contentId),
+            roomId: Number(roomId),
+            checkIn,
+          },
+        });
+      } catch (_) {}
 
       const lockResult = await axiosInstance.post("/reservations/lock", {
         contentId: String(contentId),
         roomId: Number(roomId),
+        checkIn,
       });
 
       if (!lockResult.data.success) {
@@ -71,7 +90,7 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
           roomId: room.id,
           roomIdx: roomId,
           roomName: room.name,
-          checkIn: searchParams?.checkIn,
+          checkIn,
           checkOut: searchParams?.checkOut,
           guests: searchParams?.guests || 2,
           nights: nights,
@@ -86,6 +105,11 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
       router.push("/reservation");
     } catch (error) {
       console.error("예약 락 생성 실패:", error);
+      if (error?.response?.status === 401) {
+        alert("로그인이 필요합니다.");
+        setIsLocking(false);
+        return;
+      }
       const errorMsg =
         error.response?.data?.message || "예약 처리 중 오류가 발생했습니다.";
       alert(errorMsg);

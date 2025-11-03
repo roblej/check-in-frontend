@@ -1,63 +1,209 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Star, CheckCircle } from 'lucide-react';
+import axiosInstance from '@/lib/axios';
 
 const CustomerFeedbackPage = () => {
-  const feedbacks = [
-    {
-      id: 'F001',
-      customerName: '김철수',
-      customerId: 'C001',
-      reservationId: 'R001',
-      roomNumber: '301',
-      rating: 5,
-      feedback: '매우 만족스러운 숙박이었습니다. 직원들이 친절하고 시설이 깔끔했습니다. 다음에도 꼭 이용하고 싶습니다.',
-      category: 'service',
-      status: 'new',
-      createdAt: '2024-01-17',
-      response: null
-    },
-    {
-      id: 'F002',
-      customerName: '이영희',
-      customerId: 'C002',
-      reservationId: 'R002',
-      roomNumber: '205',
-      rating: 4,
-      feedback: '전반적으로 좋았지만, 체크인 시간이 조금 늦었습니다. 객실은 깔끔하고 편안했습니다.',
-      category: 'facility',
-      status: 'in-progress',
-      createdAt: '2024-01-16',
-      response: '소중한 피드백 감사합니다. 체크인 프로세스를 개선하겠습니다.'
-    },
-    {
-      id: 'F003',
-      customerName: '박민수',
-      customerId: 'C003',
-      reservationId: 'R003',
-      roomNumber: '102',
-      rating: 3,
-      feedback: '가격 대비 괜찮은 편입니다. 다만 객실이 조금 작았습니다.',
-      category: 'room',
-      status: 'resolved',
-      createdAt: '2024-01-15',
-      response: '피드백 감사합니다. 객실 크기에 대한 정보를 더 명확히 제공하겠습니다.'
-    },
-    {
-      id: 'F004',
-      customerName: '최지영',
-      customerId: 'C004',
-      reservationId: 'R004',
-      roomNumber: '401',
-      rating: 2,
-      feedback: '객실 청소가 제대로 되지 않았습니다. 침대 시트에 얼룩이 있었습니다.',
-      category: 'cleaning',
-      status: 'urgent',
-      createdAt: '2024-01-14',
-      response: '심려를 끼쳐드려 죄송합니다. 즉시 청소팀에 확인하고 개선하겠습니다.'
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [filteredFeedbacks, setFilteredFeedbacks] = useState([]);
+  const [stats, setStats] = useState({
+    totalFeedback: 0,
+    inProgressFeedback: 0,
+    resolvedFeedback: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [showAnswerInput, setShowAnswerInput] = useState({});
+  const [answerContents, setAnswerContents] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState({});
+
+  const didFetch = useRef(false);
+
+  useEffect(() => {
+    if (didFetch.current) return;
+    didFetch.current = true;
+    
+    fetchFeedbacks();
+    fetchFeedbackStats();
+  }, []);
+
+  const fetchFeedbacks = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get('/admin/feedback');
+      if (response.data.success) {
+        setFeedbacks(response.data.feedbacks || []);
+        setFilteredFeedbacks(response.data.feedbacks || []);
+      }
+    } catch (error) {
+      console.error('피드백 목록 조회 오류:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const fetchFeedbackStats = async () => {
+    try {
+      const response = await axiosInstance.get('/admin/feedbackStats');
+      if (response.data) {
+        setStats({
+          totalFeedback: response.data.totalFeedback || 0,
+          inProgressFeedback: response.data.inProgressFeedback || 0,
+          resolvedFeedback: response.data.resolvedFeedback || 0
+        });
+      }
+    } catch (error) {
+      console.error('피드백 통계 조회 오류:', error);
+    }
+  };
+
+  useEffect(() => {
+    let filtered = feedbacks;
+
+    // 검색어 필터링
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(feedback =>
+        (feedback.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (feedback.customerId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (feedback.reservIdx || '').toString().includes(searchTerm) ||
+        (feedback.content || '').toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // 상태 필터링
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(feedback => feedback.status === statusFilter);
+    }
+
+    // 카테고리 필터링
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(feedback => feedback.category === categoryFilter);
+    }
+
+    setFilteredFeedbacks(filtered);
+  }, [feedbacks, searchTerm, statusFilter, categoryFilter]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (error) {
+      return dateString;
+    }
+  };
+
+  const getRatingValue = (star) => {
+    if (!star) return 0;
+    const rating = typeof star === 'number' ? star : Number(star);
+    return Math.round(rating);
+  };
+
+  const handleAnswerClick = (reviewIdx, reviewAnswerIdx, currentContent) => {
+    const isEditMode = !!reviewAnswerIdx;
+    const key = reviewIdx;
+    
+    if (showAnswerInput[key]) {
+      // 입력창이 이미 표시되어 있는 경우
+      const content = answerContents[key] || '';
+      
+      if (content.trim()) {
+        // 내용이 있으면 저장
+        if (isEditMode) {
+          updateReviewAnswer(reviewAnswerIdx, content, reviewIdx);
+        } else {
+          createReviewAnswer(reviewIdx, content);
+        }
+      }
+      // 내용이 없으면 입력창 유지
+    } else {
+      // 입력창 표시
+      setShowAnswerInput(prev => ({ ...prev, [key]: true }));
+      if (isEditMode && currentContent) {
+        setAnswerContents(prev => ({ ...prev, [key]: currentContent }));
+      }
+    }
+  };
+
+  const createReviewAnswer = async (reviewIdx, content) => {
+    try {
+      setIsSubmitting(prev => ({ ...prev, [reviewIdx]: true }));
+      const response = await axiosInstance.post(`/admin/feedback/${reviewIdx}/answer`, {
+        content: content.trim()
+      });
+      
+      if (response.data.success) {
+        // 목록 새로고침
+        await fetchFeedbacks();
+        setShowAnswerInput(prev => {
+          const newState = { ...prev };
+          delete newState[reviewIdx];
+          return newState;
+        });
+        setAnswerContents(prev => {
+          const newState = { ...prev };
+          delete newState[reviewIdx];
+          return newState;
+        });
+      }
+    } catch (error) {
+      console.error('답변 작성 오류:', error);
+      alert(error.response?.data?.message || '답변 작성 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(prev => ({ ...prev, [reviewIdx]: false }));
+    }
+  };
+
+  const updateReviewAnswer = async (reviewAnswerIdx, content, reviewIdx) => {
+    try {
+      setIsSubmitting(prev => ({ ...prev, [reviewAnswerIdx]: true }));
+      const response = await axiosInstance.put(`/admin/feedback/answer/${reviewAnswerIdx}`, {
+        content: content.trim()
+      });
+      
+      if (response.data.success) {
+        // 목록 새로고침
+        await fetchFeedbacks();
+        if (reviewIdx) {
+          setShowAnswerInput(prev => {
+            const newState = { ...prev };
+            delete newState[reviewIdx];
+            return newState;
+          });
+          setAnswerContents(prev => {
+            const newState = { ...prev };
+            delete newState[reviewIdx];
+            return newState;
+          });
+        }
+      }
+    } catch (error) {
+      console.error('답변 수정 오류:', error);
+      alert(error.response?.data?.message || '답변 수정 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(prev => ({ ...prev, [reviewAnswerIdx]: false }));
+    }
+  };
+
+  const handleCancelAnswer = (reviewIdx) => {
+    setShowAnswerInput(prev => {
+      const newState = { ...prev };
+      delete newState[reviewIdx];
+      return newState;
+    });
+    setAnswerContents(prev => {
+      const newState = { ...prev };
+      delete newState[reviewIdx];
+      return newState;
+    });
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -123,25 +269,13 @@ const CustomerFeedbackPage = () => {
         </div>
 
         {/* 피드백 통계 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="text-3xl mr-4">💬</div>
               <div>
                 <p className="text-sm font-medium text-gray-600">총 피드백</p>
-                <p className="text-2xl font-bold text-gray-900">{feedbacks.length}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="text-3xl mr-4">🔴</div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">긴급</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {feedbacks.filter(f => f.status === 'urgent').length}
-                </p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalFeedback}</p>
               </div>
             </div>
           </div>
@@ -151,9 +285,7 @@ const CustomerFeedbackPage = () => {
               <div className="text-3xl mr-4">🟡</div>
               <div>
                 <p className="text-sm font-medium text-gray-600">처리중</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {feedbacks.filter(f => f.status === 'in-progress').length}
-                </p>
+                <p className="text-2xl font-bold text-gray-900">{stats.inProgressFeedback}</p>
               </div>
             </div>
           </div>
@@ -163,9 +295,7 @@ const CustomerFeedbackPage = () => {
               <div className="text-green-600 mr-4"><CheckCircle size={32} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">해결됨</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {feedbacks.filter(f => f.status === 'resolved').length}
-                </p>
+                <p className="text-2xl font-bold text-gray-900">{stats.resolvedFeedback}</p>
               </div>
             </div>
           </div>
@@ -181,6 +311,8 @@ const CustomerFeedbackPage = () => {
               <input
                 type="text"
                 placeholder="고객명, 예약번호, 피드백 내용으로 검색..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent"
               />
             </div>
@@ -189,12 +321,15 @@ const CustomerFeedbackPage = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 상태 필터
               </label>
-              <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent">
+              <select 
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent"
+              >
                 <option value="all">전체</option>
                 <option value="new">신규</option>
                 <option value="in-progress">처리중</option>
                 <option value="resolved">해결됨</option>
-                <option value="urgent">긴급</option>
               </select>
             </div>
             
@@ -202,7 +337,11 @@ const CustomerFeedbackPage = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 카테고리
               </label>
-              <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent">
+              <select 
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent"
+              >
                 <option value="all">전체</option>
                 <option value="service">서비스</option>
                 <option value="facility">시설</option>
@@ -214,62 +353,116 @@ const CustomerFeedbackPage = () => {
         </div>
 
         {/* 피드백 목록 */}
-        <div className="space-y-4">
-          {feedbacks.map((feedback) => (
-            <div key={feedback.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-4 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{feedback.customerName}</h3>
-                    <span className="text-sm text-gray-500">예약: {feedback.reservationId}</span>
-                    <span className="text-sm text-gray-500">객실: {feedback.roomNumber}호</span>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">데이터를 불러오는 중...</p>
+            </div>
+          </div>
+        ) : filteredFeedbacks.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+            <p className="text-gray-500 text-lg">피드백이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredFeedbacks.map((feedback) => {
+              const rating = getRatingValue(feedback.star);
+              return (
+                <div key={feedback.reviewIdx} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">{feedback.customerName || '익명'}</h3>
+                        <span className="text-sm text-gray-500">예약: #{feedback.reservIdx}</span>
+                        {feedback.roomNumber && (
+                          <span className="text-sm text-gray-500">객실: {feedback.roomNumber}호</span>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-4 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600">평점:</span>
+                          <span className="text-sm display-flex">{getRatingStars(rating)}</span>
+                        </div>
+                        <span className="text-sm text-gray-500">카테고리: {getCategoryText(feedback.category)}</span>
+                        <span className="text-sm text-gray-500">작성일: {formatDate(feedback.createdAt)}</span>
+                      </div>
+                    </div>
+                    
+                    <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(feedback.status)}`}>
+                      {getStatusText(feedback.status)}
+                    </span>
                   </div>
                   
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">평점:</span>
-                      <span className="text-sm display-flex">{getRatingStars(feedback.rating)}</span>
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">피드백 내용</h4>
+                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                      {feedback.content || '내용이 없습니다.'}
+                    </p>
+                  </div>
+                  
+                  {/* 답변 입력창 */}
+                  {showAnswerInput[feedback.reviewIdx] && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">
+                        {feedback.response ? '답변 수정' : '답변 작성'}
+                      </h4>
+                      <textarea
+                        value={answerContents[feedback.reviewIdx] || ''}
+                        onChange={(e) => setAnswerContents(prev => ({
+                          ...prev,
+                          [feedback.reviewIdx]: e.target.value
+                        }))}
+                        placeholder="답변을 입력해주세요..."
+                        rows={4}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      />
                     </div>
-                    <span className="text-sm text-gray-500">카테고리: {getCategoryText(feedback.category)}</span>
-                    <span className="text-sm text-gray-500">작성일: {feedback.createdAt}</span>
+                  )}
+                  
+                  {feedback.response && !showAnswerInput[feedback.reviewIdx] && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">관리자 응답</h4>
+                      <p className="text-sm text-gray-700 bg-blue-50 p-3 rounded-lg">
+                        {feedback.response}
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleAnswerClick(feedback.reviewIdx, feedback.reviewAnswerIdx, feedback.response)}
+                      disabled={isSubmitting[feedback.reviewIdx] || isSubmitting[feedback.reviewAnswerIdx]}
+                      className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        feedback.response 
+                          ? 'bg-yellow-600 text-white hover:bg-yellow-700' 
+                          : 'bg-[#3B82F6] text-white hover:bg-blue-600'
+                      }`}
+                    >
+                      {isSubmitting[feedback.reviewIdx] || isSubmitting[feedback.reviewAnswerIdx] 
+                        ? '처리 중...' 
+                        : showAnswerInput[feedback.reviewIdx]
+                          ? '답변하기'
+                          : feedback.response 
+                            ? '답변 수정' 
+                            : '응답하기'
+                      }
+                    </button>
+                    {showAnswerInput[feedback.reviewIdx] && (
+                      <button
+                        onClick={() => handleCancelAnswer(feedback.reviewIdx)}
+                        className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        취소
+                      </button>
+                    )}
                   </div>
                 </div>
-                
-                <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(feedback.status)}`}>
-                  {getStatusText(feedback.status)}
-                </span>
-              </div>
-              
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">피드백 내용</h4>
-                <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
-                  {feedback.feedback}
-                </p>
-              </div>
-              
-              {feedback.response && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">관리자 응답</h4>
-                  <p className="text-sm text-gray-700 bg-blue-50 p-3 rounded-lg">
-                    {feedback.response}
-                  </p>
-                </div>
-              )}
-              
-              <div className="flex gap-2">
-                <button className="bg-[#3B82F6] text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-                  응답하기
-                </button>
-                <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
-                  상태 변경
-                </button>
-                <button className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors">
-                  해결 완료
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </AdminLayout>
   );
