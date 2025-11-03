@@ -20,13 +20,35 @@ const HotelSearchPageContent = () => {
   const { updateFromUrlParams, searchParams: storeSearchParams } =
     useSearchStore();
 
-  // URL에서 파라미터 추출
-  const destination = searchParams.get("destination");
-  const checkIn = searchParams.get("checkIn");
-  const checkOut = searchParams.get("checkOut");
-  const adults = searchParams.get("adults");
-
-  console.log("URL 파라미터:", { destination, checkIn, checkOut, adults });
+  // URL에서 파라미터 추출 (메모이제이션으로 불필요한 재계산 방지)
+  const urlDestination = searchParams.get("destination");
+  const urlCheckIn = searchParams.get("checkIn");
+  const urlCheckOut = searchParams.get("checkOut");
+  const urlAdults = searchParams.get("adults");
+  
+  const urlParams = useMemo(() => ({
+    destination: urlDestination,
+    checkIn: urlCheckIn,
+    checkOut: urlCheckOut,
+    adults: urlAdults,
+  }), [urlDestination, urlCheckIn, urlCheckOut, urlAdults]);
+  
+  const { destination, checkIn, checkOut, adults } = urlParams;
+  
+  // URL 파라미터 변경 시에만 로그 출력
+  const prevUrlParamsForLogRef = useRef(urlParams);
+  useEffect(() => {
+    const changed = 
+      prevUrlParamsForLogRef.current.destination !== urlParams.destination ||
+      prevUrlParamsForLogRef.current.checkIn !== urlParams.checkIn ||
+      prevUrlParamsForLogRef.current.checkOut !== urlParams.checkOut ||
+      prevUrlParamsForLogRef.current.adults !== urlParams.adults;
+    
+    if (changed) {
+      console.log("URL 파라미터:", { destination, checkIn, checkOut, adults });
+      prevUrlParamsForLogRef.current = urlParams;
+    }
+  }, [urlParams, destination, checkIn, checkOut, adults]);
 
   const [searchResults, setSearchResults] = useState([]);
 
@@ -34,25 +56,26 @@ const HotelSearchPageContent = () => {
   const selectedHotelId = searchParams.get("selectedHotel");
   const [selectedcontentId, setSelectedcontentId] = useState(selectedHotelId);
 
-  // URL 파라미터를 Zustand 스토어에 동기화
+  // URL 파라미터를 Zustand 스토어에 동기화 (URL 변경 시에만)
+  const prevUrlParamsRef = useRef(urlParams);
   useEffect(() => {
-    if (destination || checkIn || checkOut || adults) {
+    const urlChanged = 
+      prevUrlParamsRef.current.destination !== urlParams.destination ||
+      prevUrlParamsRef.current.checkIn !== urlParams.checkIn ||
+      prevUrlParamsRef.current.checkOut !== urlParams.checkOut ||
+      prevUrlParamsRef.current.adults !== urlParams.adults;
+    
+    if (urlChanged && (urlParams.destination || urlParams.checkIn || urlParams.checkOut || urlParams.adults)) {
       console.log("URL 파라미터를 스토어에 동기화:", {
-        destination,
-        checkIn,
-        checkOut,
-        adults,
+        destination: urlParams.destination,
+        checkIn: urlParams.checkIn,
+        checkOut: urlParams.checkOut,
+        adults: urlParams.adults,
       });
       updateFromUrlParams(searchParams);
+      prevUrlParamsRef.current = urlParams;
     }
-  }, [
-    destination,
-    checkIn,
-    checkOut,
-    adults,
-    searchParams,
-    updateFromUrlParams,
-  ]);
+  }, [urlParams, searchParams, updateFromUrlParams]);
 
   // URL에서 선택된 호텔 ID 동기화 (뒤로가기/앞으로가기 지원)
   useEffect(() => {
@@ -179,23 +202,35 @@ const HotelSearchPageContent = () => {
     });
   }, [searchParams]); // currentPage를 dependency에서 제거하여 무한 루프 방지
 
-  const getHotels = useCallback(async () => {
+  // API 호출 중복 방지 플래그
+  const isFetchingRef = useRef(false);
+  const lastFetchedDestinationRef = useRef(null);
+  
+  const getHotels = useCallback(async (destinationParam) => {
+    // 이미 호출 중이거나 같은 destination으로 이미 호출했으면 스킵
+    const currentDestination = destinationParam || localSearchParams.destination;
+    if (isFetchingRef.current || lastFetchedDestinationRef.current === currentDestination) {
+      return null;
+    }
+
+    if (!currentDestination) {
+      return null;
+    }
+
     try {
+      isFetchingRef.current = true;
+      lastFetchedDestinationRef.current = currentDestination;
+      
       console.log("=== getHotels 디버깅 ===");
-      console.log("URL에서 받은 destination:", destination);
+      console.log("URL에서 받은 destination:", urlDestination);
       console.log(
         "localSearchParams.destination:",
-        localSearchParams.destination
+        currentDestination
       );
       console.log("전체 localSearchParams:", localSearchParams);
 
-      if (!localSearchParams.destination) {
-        console.log("destination이 없어서 API 호출하지 않음");
-        return null;
-      }
-
       const res = await axios.post(hotel_url, {
-        title: localSearchParams.destination,
+        title: currentDestination,
       });
       if (res.data) {
         console.log("=== 호텔 검색 결과 ===");
@@ -206,18 +241,23 @@ const HotelSearchPageContent = () => {
       }
     } catch (error) {
       console.error("호텔 데이터 가져오기 실패:", error);
+      lastFetchedDestinationRef.current = null; // 실패 시 재시도 가능하도록
       return null;
+    } finally {
+      isFetchingRef.current = false;
     }
-  }, [destination, localSearchParams]);
+  }, [localSearchParams, urlDestination]);
 
-  useEffect(
-    function () {
-      if (localSearchParams.destination) {
-        getHotels();
-      }
-    },
-    [localSearchParams.destination, getHotels]
-  );
+  // destination 변경 시에만 호텔 데이터 가져오기
+  const prevDestinationRef = useRef(localSearchParams.destination);
+  useEffect(() => {
+    const destinationChanged = prevDestinationRef.current !== localSearchParams.destination;
+    
+    if (destinationChanged && localSearchParams.destination) {
+      prevDestinationRef.current = localSearchParams.destination;
+      getHotels(localSearchParams.destination);
+    }
+  }, [localSearchParams.destination, getHotels]);
   // 이전 필터/정렬 값 추적 (실제 변경 감지용)
   const prevFiltersRef = useRef(null);
   

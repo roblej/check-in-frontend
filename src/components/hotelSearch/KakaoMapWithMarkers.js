@@ -26,6 +26,7 @@ const KakaoMapWithMarkers = ({ hotels = [], selectedHotelId, onMarkerClick, isMo
   const lastSelectedHotelIdRef = useRef(null);
   const lastModalStateRef = useRef({ isOpen: isModalOpen, width: modalWidth });
   const isUpdatingCenterRef = useRef(false);
+  const lastHotelsRef = useRef([]); // 이전 호텔 목록 추적
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState(null);
 
@@ -223,11 +224,75 @@ const KakaoMapWithMarkers = ({ hotels = [], selectedHotelId, onMarkerClick, isMo
           }, 100);
         }
       } else {
-        // 지도가 이미 존재하는 경우 bounds 설정을 건너뛰고 플래그만 해제
-        // (마커만 업데이트하고 중심은 유지)
-        setTimeout(() => {
-          isUpdatingCenterRef.current = false;
-        }, 100);
+        // 지도가 이미 존재하는 경우
+        // 검색 결과가 변경되었는지 확인 (호텔 목록의 ID들을 비교)
+        const currentHotelIds = hotelsWithCoords.map(h => h.contentId).sort();
+        const lastHotelIds = lastHotelsRef.current.map(h => h.contentId).sort();
+        const hotelsChanged = 
+          currentHotelIds.length !== lastHotelIds.length ||
+          currentHotelIds.some((id, index) => id !== lastHotelIds[index]);
+        
+        if (hotelsChanged && hotelsWithCoords.length > 0) {
+          // 검색 결과가 변경되었으면 새로운 bounds로 이동
+          const bounds = new window.kakao.maps.LatLngBounds();
+          hotelsWithCoords.forEach((hotel) => {
+            const position = new window.kakao.maps.LatLng(
+              hotel.mapY,
+              hotel.mapX
+            );
+            bounds.extend(position);
+          });
+
+          // 모든 마커를 볼 수 있도록 지도 범위 조정
+          map.setBounds(bounds);
+          
+          // 모달이 열려있을 때 중앙 조정
+          if (isModalOpenRef.current && modalWidthRef.current > 0) {
+            map.relayout();
+            
+            setTimeout(() => {
+              if (mapInstanceRef.current && mapRef.current) {
+                const map = mapInstanceRef.current;
+                const projection = map.getProjection();
+                
+                const currentCenter = map.getCenter();
+                const centerPoint = projection.pointFromCoords(currentCenter);
+                
+                const mapContainer = mapRef.current;
+                const mapWidth = mapContainer.clientWidth || mapContainer.offsetWidth;
+                
+                const mapCenterX = mapWidth / 2;
+                const adjustedCenterX = (mapWidth - modalWidthRef.current) / 2;
+                const offsetX = adjustedCenterX - mapCenterX;
+                
+                const adjustedPoint = new window.kakao.maps.Point(
+                  centerPoint.x + offsetX,
+                  centerPoint.y
+                );
+                
+                const adjustedCenter = projection.coordsFromPoint(adjustedPoint);
+                
+                map.panTo(adjustedCenter);
+                
+                setTimeout(() => {
+                  isUpdatingCenterRef.current = false;
+                }, 400);
+              }
+            }, 150);
+          } else {
+            setTimeout(() => {
+              isUpdatingCenterRef.current = false;
+            }, 300);
+          }
+        } else {
+          // 검색 결과가 변경되지 않았으면 플래그만 해제
+          setTimeout(() => {
+            isUpdatingCenterRef.current = false;
+          }, 100);
+        }
+        
+        // 현재 호텔 목록 저장
+        lastHotelsRef.current = hotelsWithCoords;
       }
 
       // 마커 생성
@@ -292,6 +357,11 @@ const KakaoMapWithMarkers = ({ hotels = [], selectedHotelId, onMarkerClick, isMo
 
       // 선택된 호텔에 대한 처리는 별도 useEffect에서 수행
       // 초기화 완료 후 플래그 해제는 setTimeout으로 지연
+      // 현재 호텔 목록 저장 (지도가 새로 생성된 경우)
+      if (!mapInstanceRef.current || map === mapInstanceRef.current) {
+        lastHotelsRef.current = hotelsWithCoords;
+      }
+      
       setTimeout(() => {
         isUpdatingCenterRef.current = false;
       }, 300);
