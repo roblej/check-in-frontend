@@ -56,4 +56,10 @@ export const mypageAPI = {
     const response = await axiosInstance.put(`/reviews/${reviewId}`, payload);
     return response.data;
   },
+
+  // 리뷰 삭제
+  deleteReview: async (reviewId) => {
+    const response = await axiosInstance.delete(`/reviews/${reviewId}`);
+    return response.data;
+  },
 };
