@@ -43,6 +43,7 @@ const HotelDetail = ({
 
   const [localSearchParams, setLocalSearchParams] = useState(searchParams);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   const internalScrollRef = useRef(null);
 
@@ -71,6 +72,28 @@ const HotelDetail = ({
     scrollToSection,
     setSectionRef,
   } = useHotelNavigation(scrollContainerRef, isModal);
+
+  // 모달 모드에서 헤더 높이 계산
+  useEffect(() => {
+    if (isModal && headerRef.current) {
+      const updateHeaderHeight = () => {
+        if (headerRef.current) {
+          setHeaderHeight(headerRef.current.offsetHeight);
+        }
+      };
+      // 여러 시점에 측정 (레이아웃 완료 대기)
+      const timeouts = [
+        setTimeout(updateHeaderHeight, 0),
+        setTimeout(updateHeaderHeight, 100),
+        setTimeout(updateHeaderHeight, 300),
+      ];
+      window.addEventListener("resize", updateHeaderHeight);
+      return () => {
+        window.removeEventListener("resize", updateHeaderHeight);
+        timeouts.forEach(clearTimeout);
+      };
+    }
+  }, [isModal, hotelData, headerRef]);
 
   /**
    * 로컬 검색 조건 업데이트 함수
@@ -139,22 +162,29 @@ const HotelDetail = ({
   return (
     <div
       id={`hotel-${hotelData.id}`}
-      className={`bg-gray-50 ${
-        isModal ? "flex flex-col h-full" : "min-h-screen"
+      className={`${
+        isModal ? "flex flex-col w-full bg-white" : "min-h-screen bg-gray-50"
       }`}
+      style={
+        isModal
+          ? {
+              minHeight: "calc(100% + 1px)",
+            }
+          : undefined
+      }
     >
       {/* 고정 헤더 */}
       <div
         ref={headerRef}
-        className={`w-full bg-gray-50 flex-shrink-0 ${
-          isModal ? "relative z-40" : "sticky z-40"
+        className={`w-full flex-shrink-0 ${
+          isModal ? "relative z-40 bg-white" : "sticky z-40 bg-gray-50"
         }`}
         style={!isModal ? { top: "56px" } : undefined}
       >
         <div
           className={
             isModal
-              ? "px-4 sm:px-6 lg:px-8"
+              ? "px-2.5"
               : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
           }
         >
@@ -179,11 +209,20 @@ const HotelDetail = ({
       {/* 고정 네비게이션 */}
       <div
         ref={navRef}
-        className={`w-full bg-gray-50 flex-shrink-0 ${
-          isModal ? "relative z-30" : "sticky z-30"
+        className={`w-full flex-shrink-0 ${
+          isModal 
+            ? "sticky top-0 z-30 shadow-sm bg-white" 
+            : "sticky z-30 bg-gray-50"
         }`}
         style={
-          !isModal
+          isModal
+            ? {
+                position: "sticky",
+                top: "0",
+                alignSelf: "flex-start",
+                width: "100%",
+              }
+            : !isModal
             ? {
                 top:
                   (headerRef.current?.offsetHeight || 0) +
@@ -198,7 +237,7 @@ const HotelDetail = ({
         <div
           className={
             isModal
-              ? "px-4 sm:px-6 lg:px-8"
+              ? "px-2.5"
               : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
           }
         >
@@ -213,10 +252,10 @@ const HotelDetail = ({
 
       {/* 메인 컨텐츠 */}
       <div
-        ref={isModal ? internalScrollRef : null}
+        ref={isModal ? null : null}
         className={`${
           isModal
-            ? "flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 px-4 sm:px-6 lg:px-8 py-4 pb-8"
+            ? "flex-1 px-2.5 py-4 pb-0.5"
             : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-6"
         }`}
         style={
@@ -291,7 +330,10 @@ const HotelDetail = ({
         </section>
 
         {/* 호텔 정책 */}
-        <section ref={setSectionRef("policy")} aria-labelledby="policy-heading">
+        <section 
+          ref={setSectionRef("policy")} 
+          aria-labelledby="policy-heading"
+        >
           <HotelPolicy
             checkInTime={hotelData.checkInTime}
             checkOutTime={hotelData.checkOutTime}

@@ -1,14 +1,14 @@
 import { create } from "zustand";
 
-// 15 minutes in milliseconds
-const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
+// 10 minutes in milliseconds (600 seconds)
+const TEN_MINUTES_MS = 10 * 60 * 1000;
 
 export const usePaymentStore = create((set, get) => ({
   paymentDraft: null,
   expiresAt: null,
 
   setPaymentDraft: (draft) => {
-    const expiresAt = Date.now() + FIFTEEN_MINUTES_MS;
+    const expiresAt = Date.now() + TEN_MINUTES_MS;
     set({ paymentDraft: draft, expiresAt });
     try {
       localStorage.setItem(

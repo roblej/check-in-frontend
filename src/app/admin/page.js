@@ -4,7 +4,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import ReservationDetailModal from '@/components/admin/ReservationDetailModal';
 import axiosInstance from '@/lib/axios';
 import { Building2, LogOut, Calendar, DollarSign, Users, Clock, CheckCircle, AlertCircle } from 'lucide-react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useAdminStore } from '@/stores/adminStore';
@@ -64,7 +64,11 @@ const AdminDashboard = () => {
     }
   };
 
+  const didFetch = useRef(false);
   useEffect(() => {
+    if (didFetch.current) return;
+    didFetch.current = true;
+    
     checkHotelAndLoadData();
   }, [checkHotelAndLoadData]);
 

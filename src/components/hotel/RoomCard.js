@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
+import axiosInstance from "@/lib/axios";
 
 const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
   const router = useRouter();
   const { setPaymentDraft } = usePaymentStore();
   const isReadOnly = !!searchParams?.roomIdx; // roomIdx가 있으면 읽기 전용
+  const [isLocking, setIsLocking] = useState(false); // 락 생성 중 상태
 
   // S3 기본 경로 상수
   const BASE_URL =
@@ -27,40 +30,91 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
   const roomPricePerNight = room.price || room.basePrice || 0;
   const totalPrice = roomPricePerNight * nights;
 
-  // 예약 버튼 클릭 핸들러
-  const handleReservation = () => {
-    const reservationData = {
-      orderId: `hotel_${room.id || Date.now()}_${Math.random()
-        .toString(36)
-        .substr(2, 9)}`,
-      orderName: `${searchParams?.hotelName || "호텔"} - ${room.name}`,
-      customerId: "guest", // 로그인된 사용자 ID로 변경 필요
-      email: "", // 사용자 이메일로 변경 필요
-      finalAmount: totalPrice,
-      meta: {
-        type: "hotel_reservation",
-        contentId:
-          searchParams?.contentId || searchParams?.hotelId || room?.contentId, // room.contentId 추가
-        hotelName: searchParams?.hotelName,
-        roomId: room.id,
-        roomIdx: room.roomIdx || room.id, // 추가: 복합키의 roomIdx
-        roomName: room.name,
-        checkIn: searchParams?.checkIn,
-        checkOut: searchParams?.checkOut,
-        guests: searchParams?.guests || 2,
-        nights: nights,
-        roomPrice: room.basePrice || room.price,
-        totalPrice: totalPrice,
-        roomImage: room.imageUrl,
-        amenities: room.amenities || [],
-      },
-    };
+  // 예약 버튼 클릭 핸들러 (락 적용)
+  const handleReservation = async () => {
+    if (isLocking) return; // 이미 처리 중이면 무시
 
-    // 결제 정보를 스토어에 저장
-    setPaymentDraft(reservationData);
+    setIsLocking(true);
 
-    // 결제 페이지로 이동
-    router.push("/reservation");
+    try {
+      // 1단계: 예약 락 생성 준비
+      const contentId =
+        searchParams?.contentId || searchParams?.hotelId || room?.contentId;
+      const roomId = room.roomIdx || room.id;
+      const checkIn = String(searchParams?.checkIn || "");
+
+      if (!contentId || !roomId || !checkIn) {
+        alert("객실/날짜 정보가 올바르지 않습니다. 날짜를 다시 선택해주세요.");
+        setIsLocking(false);
+        return;
+      }
+
+      // 사전 상태 조회(선택) - 이미 잠금 중이면 UX 알림
+      try {
+        await axiosInstance.get("/reservations/lock/status", {
+          params: {
+            contentId: String(contentId),
+            roomId: Number(roomId),
+            checkIn,
+          },
+        });
+      } catch (_) {}
+
+      const lockResult = await axiosInstance.post("/reservations/lock", {
+        contentId: String(contentId),
+        roomId: Number(roomId),
+        checkIn,
+      });
+
+      if (!lockResult.data.success) {
+        alert(
+          lockResult.data.message || "이미 다른 사용자가 예약 진행 중입니다."
+        );
+        setIsLocking(false);
+        return;
+      }
+
+      // 2단계: 락 생성 성공 → 결제 정보 저장 후 이동
+      const reservationData = {
+        orderId: `hotel_${room.id || Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`,
+        orderName: `${searchParams?.hotelName || "호텔"} - ${room.name}`,
+        customerId: "guest",
+        email: "",
+        finalAmount: totalPrice,
+        meta: {
+          type: "hotel_reservation",
+          contentId: contentId,
+          hotelName: searchParams?.hotelName,
+          roomId: room.id,
+          roomIdx: roomId,
+          roomName: room.name,
+          checkIn,
+          checkOut: searchParams?.checkOut,
+          guests: searchParams?.guests || 2,
+          nights: nights,
+          roomPrice: room.basePrice || room.price,
+          totalPrice: totalPrice,
+          roomImage: room.imageUrl,
+          amenities: room.amenities || [],
+        },
+      };
+
+      setPaymentDraft(reservationData);
+      router.push("/reservation");
+    } catch (error) {
+      console.error("예약 락 생성 실패:", error);
+      if (error?.response?.status === 401) {
+        alert("로그인이 필요합니다.");
+        setIsLocking(false);
+        return;
+      }
+      const errorMsg =
+        error.response?.data?.message || "예약 처리 중 오류가 발생했습니다.";
+      alert(errorMsg);
+      setIsLocking(false);
+    }
   };
 
   return (
@@ -232,7 +286,7 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
 
           {/* 하단: 가격 & 예약 버튼 */}
           <div
-            className={`mt-auto border-t border-gray-200 ${
+            className={`mt-auto border-t border-gray-100 ${
               isModal ? "pt-3" : "pt-4"
             }`}
           >
@@ -279,16 +333,25 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
               {!isReadOnly && (
                 <button
                   onClick={handleReservation}
-                  disabled={!room.isAvailable}
+                  disabled={!room.isAvailable || isLocking}
                   className={`rounded-lg font-semibold transition-all shadow-md whitespace-nowrap ${
                     isModal ? "px-6 py-2 text-sm" : "px-8 py-3"
                   } ${
-                    room.isAvailable
+                    room.isAvailable && !isLocking
                       ? "bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg"
                       : "bg-gray-300 text-gray-500 cursor-not-allowed"
                   }`}
                 >
-                  {room.isAvailable ? "예약하기" : "예약 불가"}
+                  {isLocking ? (
+                    <span className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      예약 중...
+                    </span>
+                  ) : room.isAvailable ? (
+                    "예약하기"
+                  ) : (
+                    "예약 불가"
+                  )}
                 </button>
               )}
             </div>

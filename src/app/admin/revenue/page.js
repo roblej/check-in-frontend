@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -27,7 +27,11 @@ const RevenuePage = () => {
   const [dailySeries, setDailySeries] = useState([]); // [{ date: 'YYYY-MM-DD', revenue: number, payments?: number }]
   const [yesterday, setYesterday] = useState({ revenue: null, payments: null });
 
+  const didFetch = useRef(false);
+
   useEffect(() => {
+    if (didFetch.current) return;
+    didFetch.current = true;
     const fetchSummary = async () => {
       try {
         setLoading(true);

@@ -28,15 +28,63 @@ const SuccessPageContent = () => {
       const paymentKey = search.get("paymentKey");
       const orderId = search.get("orderId");
       const amount = search.get("amount");
+      const confirmed = search.get("confirmed");
 
       // localStorage에서 paymentDraft 복원 시도
       usePaymentStore.getState().loadFromStorage();
 
-      // type은 URL이 아니라 paymentDraft에서 가져옴
       const { paymentDraft } = usePaymentStore.getState();
       console.log("🔍 paymentDraft 전체:", paymentDraft);
-      const type = paymentDraft?.meta?.type || search.get("type");
-      console.log("🔍 추출된 type:", type);
+
+      // type 추출: URL 파라미터 우선, 그 다음 paymentDraft
+      let type = search.get("type") || paymentDraft?.meta?.type;
+
+      // type이 없으면 URL 파라미터로부터 추론 시도
+      if (!type) {
+        // 다이닝 관련 파라미터가 있으면 다이닝 예약
+        if (
+          search.get("diningIdx") ||
+          search.get("diningDate") ||
+          search.get("diningTime")
+        ) {
+          type = "dining_reservation";
+          console.log("🔍 URL 파라미터로부터 다이닝 예약으로 추론");
+        }
+        // 중고 호텔 관련 파라미터가 있으면 중고 호텔
+        else if (search.get("usedTradeIdx") || search.get("usedItemIdx")) {
+          type = "used_hotel";
+          console.log("🔍 URL 파라미터로부터 중고 호텔으로 추론");
+        }
+        // 호텔 관련 파라미터가 있으면 호텔 예약
+        else if (
+          search.get("contentId") ||
+          search.get("roomId") ||
+          paymentDraft?.meta?.contentId
+        ) {
+          type = "hotel_reservation";
+          console.log(
+            "🔍 URL 파라미터 또는 paymentDraft로부터 호텔 예약으로 추론"
+          );
+        }
+      }
+
+      console.log("🔍 최종 추출된 type:", type);
+
+      // type이 여전히 없으면 에러
+      if (!type) {
+        setError(
+          "결제 타입을 확인할 수 없습니다. URL 파라미터에 type을 포함해주세요."
+        );
+        setLoading(false);
+        return;
+      }
+
+      // 이미 사전확정된 경우(confirm 호출 생략)
+      if (confirmed === "1") {
+        setResult({ orderId, amount: Number(amount), status: "DONE" });
+        setLoading(false);
+        return;
+      }
 
       // 같은 마운트 내 중복 호출 방지 + 재방문 가드
       const processedKey = orderId ? `payment_processed_${orderId}` : null;
@@ -83,7 +131,9 @@ const SuccessPageContent = () => {
             credentials: "include",
           });
           if (meRes.ok) me = await meRes.json();
-        } catch {}
+        } catch (err) {
+          console.warn("고객 정보 조회 실패 (무시됨):", err);
+        }
 
         const payload = {
           paymentKey,
@@ -106,12 +156,23 @@ const SuccessPageContent = () => {
           payload.reservationTime = diningTime;
           payload.guests = Number.isNaN(guests) ? undefined : guests;
         }
-        // 호텔 예약일 경우 결제 직전 저장된 메타를 평탄화하여 백엔드 DTO와 일치시킴
+        // 호텔 예약일 경우: 직전 결제 payload가 있으면 병합하여 백엔드 DTO와 일치시킴
         if (type === "hotel_reservation") {
+          let last = null;
+          try {
+            last =
+              typeof window !== "undefined"
+                ? sessionStorage.getItem("lastPaymentPayload")
+                : null;
+            last = last ? JSON.parse(last) : null;
+          } catch {}
+
           const meta = paymentDraft?.meta;
           console.log("paymentDraft:", paymentDraft);
           console.log("meta:", meta);
+          console.log("lastPaymentPayload:", last);
 
+          // 기본 메타 값
           if (meta) {
             payload.contentId = meta.contentId;
             payload.roomId = meta.roomIdx || meta.roomId;
@@ -120,10 +181,31 @@ const SuccessPageContent = () => {
             payload.guests = meta.guests;
             payload.nights = meta.nights;
             payload.roomPrice = meta.roomPrice;
-            payload.totalPrice = meta.totalPrice;
-            payload.specialRequests = meta.specialRequests;
-          } else {
-            console.warn("meta 정보가 없습니다. paymentDraft를 확인하세요.");
+            // totalPrice는 실결제 금액과 동일하게 사용
+            payload.totalPrice = amountNum;
+          }
+
+          // 마지막 결제 payload가 있으면 누락 필드 보강
+          if (last) {
+            payload.customerIdx = payload.customerIdx || last.customerIdx;
+            payload.customerEmail = payload.customerEmail || last.customerEmail;
+            payload.customerName = payload.customerName || last.customerName;
+            payload.customerPhone = payload.customerPhone || last.customerPhone;
+            payload.specialRequests =
+              last.specialRequests ?? payload.specialRequests;
+            payload.pointsUsed =
+              typeof last.pointsUsed === "number"
+                ? last.pointsUsed
+                : payload.pointsUsed;
+            payload.cashUsed =
+              typeof last.cashUsed === "number"
+                ? last.cashUsed
+                : payload.cashUsed;
+            payload.couponIdx = last.couponIdx ?? payload.couponIdx;
+            payload.couponDiscount =
+              typeof last.couponDiscount === "number"
+                ? last.couponDiscount
+                : payload.couponDiscount;
           }
         }
 
@@ -132,6 +214,7 @@ const SuccessPageContent = () => {
         const res = await fetch("/api/payments/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include", // HttpOnly 쿠키 전송을 위해 필요
           body: JSON.stringify(payload),
         });
 

@@ -81,7 +81,6 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       path: '/admin/revenue',
       submenu: [
         { id: 'revenue-dashboard', name: '매출 현황', path: '/admin/revenue' },
-        { id: 'revenue-analysis', name: '수익 분석', path: '/admin/revenue-analysis' },
         { id: 'settlement', name: '정산 관리', path: '/admin/settlement' }
       ]
     },
@@ -227,7 +226,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       {/* 모바일/태블릿 오버레이 */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-75 z-40 xl:hidden"
+          className="fixed inset-0 bg-opacity-75 z-40 xl:hidden"
           onClick={onClose}
         ></div>
       )}

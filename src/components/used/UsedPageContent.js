@@ -7,6 +7,7 @@ import FilterSection from './FilterSection';
 import UsedList from './UsedList';
 import ResaleSearch from './UsedSearch';
 import HotelDetailModal from '../hotel/HotelDetailModal';
+import { usedAPI } from '@/lib/api/used';
 
 const UsedPageContent = ({ initialData, initialSearchParams }) => {
   const router = useRouter();
@@ -18,6 +19,32 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
     totalElements: initialData?.totalElements || 0,
     currentPage: initialSearchParams?.page || 0
   });
+
+  // 사용자 정보 상태 (상위에서 한 번만 가져오기)
+  const [customer, setCustomer] = useState(null);
+  const [customerLoading, setCustomerLoading] = useState(true);
+
+  // 사용자 정보를 한 번만 가져오기
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const customerData = await usedAPI.getCustomerInfo();
+        setCustomer(customerData);
+      } catch (error) {
+        if (error.response?.status === 401) {
+          // 인증 실패 시 null로 설정 (로그인하지 않은 상태)
+          setCustomer(null);
+        } else {
+          console.error('사용자 정보 가져오기 실패:', error);
+          setCustomer(null);
+        }
+      } finally {
+        setCustomerLoading(false);
+      }
+    };
+    
+    fetchUserInfo();
+  }, []);
 
   // 모달 상태 관리 - URL과 동기화
   const [modalState, setModalState] = useState({
@@ -153,6 +180,8 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
           onInquire={searchState.handleInquire}
           onBookmark={searchState.handleBookmark}
           onHotelDetail={handleHotelDetail}
+          customer={customer}
+          customerLoading={customerLoading}
         />
       </div>
 

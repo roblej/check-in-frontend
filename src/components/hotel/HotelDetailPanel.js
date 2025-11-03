@@ -72,14 +72,13 @@ const HotelDetailPanel = ({
       />
       {/* 패널 자체는 절대 unmount 안 됨 */}
       <div
-        className="hotel-detail-panel fixed top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in-right
+        className="hotel-detail-panel fixed top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in-right overflow-hidden
                     w-full sm:top-16 sm:h-[calc(100vh-4rem)]
-                    lg:left-[calc(30%+1rem)] lg:right-auto lg:w-[555px]
-                    lg:top-[120px] lg:h-[calc(100vh-140px)]
+                    lg:right-auto lg:w-[555px] lg:left-[calc(20%+24px)] lg:top-[calc(56px+56px+24px)] lg:h-[calc(100vh-56px-56px-48px)]
                     lg:rounded-xl lg:max-w-[555px]"
       >
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-white flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0 rounded-t-xl">
           <h2 className="text-xl font-bold text-gray-900">호텔 상세</h2>
           <button
             onClick={handleClose}
@@ -119,6 +118,9 @@ const HotelDetailPanel = ({
             onLoadingChange={handleLoadingChange}
           />
         </div>
+
+        {/* 하단 고정 여백 영역 */}
+        <div className="flex-shrink-0 bg-gray-50 rounded-b-xl px-2.5 pb-2.5"></div>
 
         {/* 로딩 스피너 (fade-out 중 바로 표시됨) */}
         {isLoading && (

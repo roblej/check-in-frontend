@@ -89,5 +89,11 @@ export const usedAPI = {
     const response = await axiosInstance.get(`/used/check/${reservIdx}`);
     return response.data;
   },
+
+  // 사용자 정보 가져오기
+  getCustomerInfo: async () => {
+    const response = await axiosInstance.get('/customer/me');
+    return response.data;
+  },
 };
 

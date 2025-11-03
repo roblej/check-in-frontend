@@ -26,13 +26,13 @@ const Footer = () => {
           <div className="text-xs text-gray-500 space-y-1">
             <div className="font-semibold text-gray-900 mb-2 text-sm">체크인(주) 사업자 정보</div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              <span>대표이사: 최수연</span>
-              <span>사업자 등록번호: 220-81-62517</span>
-              <span>전화: 1588-3820</span>
-              <span>통신판매번호: 2006-경기성남-0692</span>
+              <span>대표이사: 장태인</span>
+              <span>사업자 등록번호: 123-45-67890</span>
+              <span>전화: 1111-2222</span>
+              <span>통신판매번호: 2025-서울강남-1234</span>
             </div>
-            <div className="mt-2">주소: 경기도 성남시 분당구 정자일로 95 체크인 1784, 13561</div>
-            <div>이메일: cccheckin@checkin.com</div>
+            <div className="mt-2">주소: 서울특별시 강남구 테헤란로 123</div>
+            <div>이메일: checkin@checkin.com</div>
             <div>호스팅 서비스 제공: Checkin Cloud</div>
           </div>
         </div>

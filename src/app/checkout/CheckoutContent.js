@@ -50,47 +50,10 @@ const CheckoutContent = ({ searchParams }) => {
     setLoading(true);
     setError("");
     try {
-      // 일반 호텔 결제에만 락 시도 (중고/다이닝 제외)
       const reservationType = draft.meta?.type || "hotel_reservation";
-      if (reservationType === "hotel_reservation") {
-        const roomId = draft.meta?.roomId;
-        const checkIn = draft.meta?.checkIn;
-        if (!roomId || !checkIn) {
-          setLoading(false);
-          setError(
-            "객실 정보가 올바르지 않습니다. 처음부터 다시 시도해주세요."
-          );
-          alert("객실 정보가 올바르지 않습니다. 처음부터 다시 시도해주세요.");
-          return;
-        }
-        try {
-          // Proxy through Next.js API → backend
-          await axios.post(`/payments/lock`, {
-            roomId: String(roomId),
-            checkIn: String(checkIn),
-          });
-        } catch (err) {
-          const status = err?.response?.status;
-          if (status === 409) {
-            const msg = "이미 다른 사용자가 결제 진행중입니다.";
-            setError(msg);
-            alert(msg);
-          } else {
-            const msg =
-              "결제 잠금 처리에 실패했습니다. 잠시 후 다시 시도해주세요.";
-            setError(msg);
-            alert(msg);
-          }
-          setLoading(false);
-          return;
-        }
-      }
-
       const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
       if (!clientKey) throw new Error("Toss client key 미설정");
       const tossPayments = await loadTossPayments(clientKey);
-
-      // successUrl에 type 파라미터 추가 (위에서 계산됨)
 
       await tossPayments.requestPayment("카드", {
         amount: draft.finalAmount,
@@ -152,21 +115,6 @@ const CheckoutContent = ({ searchParams }) => {
         </button>
         <button
           onClick={() => {
-            // 일반 호텔 취소 시 락 해제 시도 (실패 무시)
-            try {
-              if (draft?.meta?.type === "hotel_reservation") {
-                const roomId = draft?.meta?.roomId;
-                const checkIn = draft?.meta?.checkIn;
-                if (roomId && checkIn) {
-                  axios
-                    .post(`/payments/unlock`, {
-                      roomId: String(roomId),
-                      checkIn: String(checkIn),
-                    })
-                    .catch(() => {});
-                }
-              }
-            } catch (_) {}
             clearPaymentDraft();
             router.push("/");
           }}
