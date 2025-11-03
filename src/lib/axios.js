@@ -62,9 +62,16 @@ axiosInstance.interceptors.response.use(
         }
       }
 
-      // 403 에러 처리 (권한 없음)
+      // 403 에러 처리 (권한 없음 - 호텔 미등록 관리자)
       if (error.response.status === 403) {
-        console.error("권한이 없습니다.");
+        const data = error.response.data;
+        if (data && data.redirect) {
+          // 리다이렉트 플래그가 있으면 메인 화면으로 이동
+          if (typeof window !== "undefined") {
+            alert(data.message || "호텔이 등록되지 않은 관리자입니다. 메인 화면으로 이동합니다.");
+            window.location.href = '/';
+          }
+        }
       }
 
       // 500 에러 처리
