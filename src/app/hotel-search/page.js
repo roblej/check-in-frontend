@@ -335,14 +335,25 @@ const HotelSearchPageContent = () => {
         return false;
       }
       
-      // 편의시설 필터링
+      // 편의시설 필터링 (주차, 식당)
       if (filters.amenities.length > 0) {
-        const hotelAmenities = hotel.amenities || [];
-        if (!Array.isArray(hotelAmenities)) {
-          return false;
+        const hasParking = filters.amenities.includes("주차");
+        const hasRestaurant = filters.amenities.includes("식당");
+        
+        // 주차 필터 체크
+        if (hasParking) {
+          const parkinglodging = hotel.parkinglodging || "";
+          if (!parkinglodging.includes("가능")) {
+            return false;
+          }
         }
-        if (!filters.amenities.some((amenity) => hotelAmenities.includes(amenity))) {
-          return false;
+        
+        // 식당 필터 체크
+        if (hasRestaurant) {
+          const foodplace = hotel.foodplace || "";
+          if (!foodplace || foodplace.trim() === "") {
+            return false;
+          }
         }
       }
       
