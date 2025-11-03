@@ -386,11 +386,13 @@ const HotelSearchPageContent = () => {
         setSelectedcontentId(null);
         
         // URL에서 page 파라미터 제거
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get("page")) {
-          urlParams.delete("page");
-          urlParams.delete("selectedHotel");
-          router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
+        if (typeof window !== "undefined") {
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get("page")) {
+            urlParams.delete("page");
+            urlParams.delete("selectedHotel");
+            router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
+          }
         }
       }
     }
@@ -431,9 +433,11 @@ const HotelSearchPageContent = () => {
     }
     router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
     // 페이지 변경 시 스크롤을 상단으로 이동
-    const resultsPanel = document.querySelector('[data-hotel-results]');
-    if (resultsPanel) {
-      resultsPanel.scrollTop = 0;
+    if (typeof window !== "undefined") {
+      const resultsPanel = document.querySelector('[data-hotel-results]');
+      if (resultsPanel) {
+        resultsPanel.scrollTop = 0;
+      }
     }
   }, [searchParams, router]);
 
