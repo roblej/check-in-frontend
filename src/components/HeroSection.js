@@ -290,6 +290,11 @@ const HeroSection = () => {
                   type="text"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSearch(e);
+                    }
+                  }}
                   placeholder={
                     selectedType === "dining"
                       ? "호텔명을 입력하세요"

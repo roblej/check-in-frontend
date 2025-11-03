@@ -23,6 +23,7 @@ const HotelSearchResults = ({
   filters,
   onFilterChange,
   onFilterReset,
+  isLoading = false,
 }) => {
   return (
     <>
@@ -30,7 +31,17 @@ const HotelSearchResults = ({
       <div className="space-y-6" data-hotel-results>
         {/* 호텔 카드 그리드 */}
         <div className="grid grid-cols-1 gap-6">
-          {Array.isArray(hotels) && hotels.length > 0 ? (
+          {isLoading ? (
+            <div className="col-span-full text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                검색 중...
+              </h3>
+              <p className="text-gray-500">
+                호텔 정보를 불러오는 중입니다.
+              </p>
+            </div>
+          ) : Array.isArray(hotels) && hotels.length > 0 ? (
             hotels.map((hotel, index) => (
               <div
                 key={hotel.contentId}

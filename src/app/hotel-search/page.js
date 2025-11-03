@@ -51,6 +51,7 @@ const HotelSearchPageContent = () => {
   }, [urlParams, destination, checkIn, checkOut, adults]);
 
   const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // URL에서 선택된 호텔 ID 가져오기 (새로고침 시 패널 유지)
   const selectedHotelId = searchParams.get("selectedHotel");
@@ -220,6 +221,7 @@ const HotelSearchPageContent = () => {
     try {
       isFetchingRef.current = true;
       lastFetchedDestinationRef.current = currentDestination;
+      setIsSearching(true); // 로딩 상태 시작
       
       console.log("=== getHotels 디버깅 ===");
       console.log("URL에서 받은 destination:", urlDestination);
@@ -245,6 +247,7 @@ const HotelSearchPageContent = () => {
       return null;
     } finally {
       isFetchingRef.current = false;
+      setIsSearching(false); // 로딩 상태 종료
     }
   }, [localSearchParams, urlDestination]);
 
@@ -713,6 +716,7 @@ const HotelSearchPageContent = () => {
               filters={filters}
               onFilterChange={handleFilterChange}
               onFilterReset={handleFilterReset}
+              isLoading={isSearching}
             />
           </div>
         </div>
