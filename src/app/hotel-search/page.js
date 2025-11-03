@@ -249,15 +249,45 @@ const HotelSearchPageContent = () => {
   }, [localSearchParams, urlDestination]);
 
   // destination 변경 시에만 호텔 데이터 가져오기
+  // URL 파라미터와 스토어 모두 확인하여 검색 실행
   const prevDestinationRef = useRef(localSearchParams.destination);
+  const prevUrlDestinationRef = useRef(urlParams.destination);
+  const hasInitializedRef = useRef(false);
+  
   useEffect(() => {
-    const destinationChanged = prevDestinationRef.current !== localSearchParams.destination;
+    // URL 파라미터에서 destination이 있고, 스토어의 destination과 다르면 스토어 업데이트 대기
+    const urlDestination = urlParams.destination;
+    const storeDestination = localSearchParams.destination;
     
-    if (destinationChanged && localSearchParams.destination) {
-      prevDestinationRef.current = localSearchParams.destination;
-      getHotels(localSearchParams.destination);
+    // 초기 마운트 시 URL에 destination이 있으면 즉시 검색 실행
+    if (!hasInitializedRef.current && urlDestination) {
+      hasInitializedRef.current = true;
+      prevUrlDestinationRef.current = urlDestination;
+      prevDestinationRef.current = storeDestination || urlDestination;
+      if (urlDestination !== lastFetchedDestinationRef.current) {
+        getHotels(urlDestination);
+      }
+      return;
     }
-  }, [localSearchParams.destination, getHotels]);
+    
+    // URL에 destination이 있고, 변경된 경우
+    if (urlDestination && urlDestination !== prevUrlDestinationRef.current) {
+      hasInitializedRef.current = true;
+      prevUrlDestinationRef.current = urlDestination;
+      // URL 파라미터를 직접 사용하여 검색 실행 (스토어 동기화 완료를 기다리지 않음)
+      if (urlDestination !== lastFetchedDestinationRef.current) {
+        getHotels(urlDestination);
+      }
+    }
+    // 스토어의 destination이 변경된 경우 (URL이 없거나 같을 때)
+    else if (storeDestination && storeDestination !== prevDestinationRef.current) {
+      hasInitializedRef.current = true;
+      prevDestinationRef.current = storeDestination;
+      if (storeDestination !== lastFetchedDestinationRef.current) {
+        getHotels(storeDestination);
+      }
+    }
+  }, [urlParams.destination, localSearchParams.destination, getHotels]);
   // 이전 필터/정렬 값 추적 (실제 변경 감지용)
   const prevFiltersRef = useRef(null);
   
@@ -521,7 +551,7 @@ const HotelSearchPageContent = () => {
       {/* 검색 조건 및 필터 바 */}
       <div className="bg-white border-b border-gray-200 flex-shrink-0 shadow-sm">
         <div className="max-w-[1200px] mx-auto px-4 py-3">
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             {/* 왼쪽: 검색 폼 */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
               {/* 목적지 */}
@@ -608,7 +638,7 @@ const HotelSearchPageContent = () => {
             </div>
 
             {/* 필터 (우측 정렬) */}
-            <div className="flex items-center gap-3 ml-auto">
+            <div className="flex items-center gap-3 lg:ml-auto w-full lg:w-auto">
               {/* 정렬 */}
               <div className="flex items-center gap-2">
                 <select

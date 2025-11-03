@@ -162,8 +162,8 @@ const HotelDetail = ({
   return (
     <div
       id={`hotel-${hotelData.id}`}
-      className={`bg-gray-50 ${
-        isModal ? "flex flex-col w-full" : "min-h-screen"
+      className={`${
+        isModal ? "flex flex-col w-full bg-white" : "min-h-screen bg-gray-50"
       }`}
       style={
         isModal
@@ -176,8 +176,8 @@ const HotelDetail = ({
       {/* 고정 헤더 */}
       <div
         ref={headerRef}
-        className={`w-full bg-gray-50 flex-shrink-0 ${
-          isModal ? "relative z-40" : "sticky z-40"
+        className={`w-full flex-shrink-0 ${
+          isModal ? "relative z-40 bg-white" : "sticky z-40 bg-gray-50"
         }`}
         style={!isModal ? { top: "56px" } : undefined}
       >
@@ -209,8 +209,10 @@ const HotelDetail = ({
       {/* 고정 네비게이션 */}
       <div
         ref={navRef}
-        className={`w-full bg-gray-50 flex-shrink-0 ${
-          isModal ? "sticky top-0 z-30 shadow-sm" : "sticky z-30"
+        className={`w-full flex-shrink-0 ${
+          isModal 
+            ? "sticky top-0 z-30 shadow-sm bg-white" 
+            : "sticky z-30 bg-gray-50"
         }`}
         style={
           isModal

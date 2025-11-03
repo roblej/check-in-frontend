@@ -74,14 +74,8 @@ const HotelDetailPanel = ({
       <div
         className="hotel-detail-panel fixed top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in-right overflow-hidden
                     w-full sm:top-16 sm:h-[calc(100vh-4rem)]
-                    lg:right-auto lg:w-[555px]
+                    lg:right-auto lg:w-[555px] lg:left-[calc(20%+24px)] lg:top-[calc(56px+56px+24px)] lg:h-[calc(100vh-56px-56px-48px)]
                     lg:rounded-xl lg:max-w-[555px]"
-        style={{
-          // 지도 영역 기준: 헤더(56px) + 검색바(약 56px) + 상단 여백(24px)
-          left: 'calc(20% + 24px)',
-          top: 'calc(56px + 56px + 24px)', // 헤더 + 검색바 + 여백
-          height: 'calc(100vh - 56px - 56px - 48px)', // 전체 - 헤더 - 검색바 - (상단24px + 하단24px)
-        }}
       >
         {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0 rounded-t-xl">

@@ -146,6 +146,13 @@ const HeroSection = () => {
   // 검색 핸들러
   const handleSearch = async (e) => {
     e.preventDefault();
+    
+    // destination 검증
+    if (!destination || destination.trim() === "") {
+      alert("목적지를 입력해주세요.");
+      return;
+    }
+    
     if (selectedType === "dining") {
       console.log("다이닝 검색:", {
         destination,
@@ -156,7 +163,7 @@ const HeroSection = () => {
       
       // 다이닝 검색 페이지로 이동
       const params = new URLSearchParams({
-        destination: destination,
+        destination: destination.trim(),
         diningDate: diningDate,
         mealType: mealType,
         adults: adults.toString(),
@@ -173,7 +180,7 @@ const HeroSection = () => {
           : 1;
 
       updateSearchParams({
-        destination: destination,
+        destination: destination.trim(),
         checkIn: checkIn,
         checkOut: checkOut,
         nights: nights,
@@ -183,7 +190,7 @@ const HeroSection = () => {
 
       // 페이지 이동
       router.push(
-        `/hotel-search?destination=${destination}&checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}`
+        `/hotel-search?destination=${encodeURIComponent(destination.trim())}&checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}`
       );
     }
   };
