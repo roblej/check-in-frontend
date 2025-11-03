@@ -134,7 +134,7 @@ const HotelSearchResults = ({
         </div>
 
         {/* Pagination */}
-        {onPageChange && totalPages > 1 && (
+        {onPageChange && totalPages >= 1 && (
           <div className="mt-6">
             <Pagination
               currentPage={currentPage || 0}
