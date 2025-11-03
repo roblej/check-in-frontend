@@ -7,7 +7,7 @@ import { useCustomerStore } from '@/stores/customerStore';
 import { 
   Calendar, Heart, MapPin, Gift, User,
   MessageSquare, ChevronRight, Star, Clock,
-  Edit, Trash2, Share2, Hotel
+  Edit, Trash2, Share2, Hotel, X
 } from 'lucide-react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
