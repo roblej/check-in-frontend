@@ -11,7 +11,8 @@ import HotelDetailClient from "./HotelDetailClient";
  * @returns {Promise<Object>} 메타데이터 객체
  */
 export async function generateMetadata({ params, searchParams }) {
-  const contentId = params.contentId || params.id;
+  const awaitedParams = await params;
+  const contentId = awaitedParams.contentId || awaitedParams.id;
   try {
     const res = await hotelAPI.getHotelDetail(contentId);
     const hotel = res?.data ?? res ?? {};
@@ -49,7 +50,8 @@ export async function generateMetadata({ params, searchParams }) {
 }
 
 const HotelDetailPage = async ({ params, searchParams }) => {
-  const contentId = params.contentId || params.id;
+  const awaitedParams = await params;
+  const contentId = awaitedParams.contentId || awaitedParams.id;
   const resolvedSearchParams = await searchParams;
 
   return (

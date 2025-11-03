@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * 캐시 및 포인트 입력 섹션 컴포넌트
+ * @param {number} customerCash - 보유 캐시
+ * @param {number} customerPoint - 보유 포인트
+ * @param {number} useCash - 사용할 캐시
+ * @param {number} usePoint - 사용할 포인트
+ * @param {Function} onCashChange - 캐시 변경 핸들러
+ * @param {Function} onPointChange - 포인트 변경 핸들러
+ * @param {Function} onUseAllCash - 전체 캐시 사용 핸들러
+ * @param {Function} onUseAllPoint - 전체 포인트 사용 핸들러
+ * @param {number} totalAmount - 총 결제 금액
+ */
 const CashPointSection = ({
   customerCash,
   customerPoint,
@@ -15,6 +27,38 @@ const CashPointSection = ({
   const maxPoint = Math.min(usePoint, customerPoint);
   const availableCashPoint = maxCash + maxPoint;
   const actualPaymentAmount = Math.max(0, totalAmount - availableCashPoint);
+
+  /**
+   * 숫자 입력 처리 (0으로 시작 불가)
+   * @param {string} value - 입력값
+   * @returns {string} - 정제된 값
+   */
+  const handleNumericInput = (value) => {
+    // 숫자만 추출
+    const numericValue = value.replace(/[^0-9]/g, "");
+
+    // 빈 문자열이면 그대로 반환
+    if (numericValue === "") return "";
+
+    // 0으로 시작하는 경우 (예: "01000") 앞의 0 제거
+    return numericValue.replace(/^0+/, "") || "0";
+  };
+
+  /**
+   * 캐시 입력 핸들러
+   */
+  const handleCashInput = (e) => {
+    const sanitized = handleNumericInput(e.target.value);
+    onCashChange(sanitized);
+  };
+
+  /**
+   * 포인트 입력 핸들러
+   */
+  const handlePointInput = (e) => {
+    const sanitized = handleNumericInput(e.target.value);
+    onPointChange(sanitized);
+  };
 
   return (
     <div className="space-y-4 mb-6">
@@ -35,13 +79,13 @@ const CashPointSection = ({
         </div>
         <div className="flex gap-2">
           <input
-            type="number"
-            value={useCash}
-            onChange={(e) => onCashChange(e.target.value)}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={useCash || ""}
+            onChange={handleCashInput}
             className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="사용할 캐시 금액"
-            min="0"
-            max={customerCash}
           />
           <span className="text-sm text-gray-500 self-center">원</span>
         </div>
@@ -62,13 +106,13 @@ const CashPointSection = ({
         </div>
         <div className="flex gap-2">
           <input
-            type="number"
-            value={usePoint}
-            onChange={(e) => onPointChange(e.target.value)}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={usePoint || ""}
+            onChange={handlePointInput}
             className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="사용할 포인트"
-            min="0"
-            max={customerPoint}
           />
           <span className="text-sm text-gray-500 self-center">P</span>
         </div>

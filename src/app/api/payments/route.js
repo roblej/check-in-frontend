@@ -64,26 +64,39 @@ export async function POST(req) {
     try {
       // type 검증 및 강제 설정
       let paymentType = body.type;
-      
+
       // type이 없으면 body 데이터로부터 추론
       if (!paymentType) {
         if (body.diningIdx || body.diningDate || body.diningTime) {
           paymentType = "dining_reservation";
           console.log("[payments/api] type이 없어서 다이닝 예약으로 추론");
-        } else if (body.usedTradeIdx || body.usedItemIdx || body.hotelInfo?.usedTradeIdx) {
+        } else if (
+          body.usedTradeIdx ||
+          body.usedItemIdx ||
+          body.hotelInfo?.usedTradeIdx
+        ) {
           paymentType = "used_hotel";
           console.log("[payments/api] type이 없어서 중고 호텔로 추론");
-        } else if (body.contentId || body.hotelInfo?.contentId || body.roomId || body.hotelInfo?.roomId) {
+        } else if (
+          body.contentId ||
+          body.hotelInfo?.contentId ||
+          body.roomId ||
+          body.hotelInfo?.roomId
+        ) {
           paymentType = "hotel_reservation";
           console.log("[payments/api] type이 없어서 호텔 예약으로 추론");
         } else {
           return NextResponse.json(
-            { success: false, message: "결제 타입(type)이 명시되지 않았고 데이터로부터 추론할 수 없습니다." },
+            {
+              success: false,
+              message:
+                "결제 타입(type)이 명시되지 않았고 데이터로부터 추론할 수 없습니다.",
+            },
             { status: 400 }
           );
         }
       }
-      
+
       let backendRequestData;
 
       if (paymentType === "dining_reservation") {
@@ -103,7 +116,8 @@ export async function POST(req) {
           customerName: body.customerInfo?.name || body.customerName,
           customerEmail: body.customerInfo?.email || body.customerEmail,
           customerPhone: body.customerInfo?.phone || body.customerPhone,
-          specialRequests: body.customerInfo?.specialRequests || body.specialRequests,
+          specialRequests:
+            body.customerInfo?.specialRequests || body.specialRequests,
           method: body.method || "card",
           pointsUsed: body.paymentInfo?.pointAmount || body.pointsUsed || 0,
           cashUsed: body.paymentInfo?.cashAmount || body.cashUsed || 0,
@@ -165,15 +179,22 @@ export async function POST(req) {
           guests: body.hotelInfo?.guests || body.guests,
           nights: body.hotelInfo?.nights || body.nights,
           roomPrice: body.hotelInfo?.roomPrice || body.roomPrice,
-          totalPrice: body.hotelInfo?.totalPrice || body.totalPrice,
+          // totalPrice는 백엔드에서 실 결제 금액으로 사용되도록 amount와 동일하게 전달
+          totalPrice: amount,
           customerName: body.customerInfo?.name || body.customerName,
           customerEmail: body.customerInfo?.email || body.customerEmail,
           customerPhone: body.customerInfo?.phone || body.customerPhone,
           specialRequests:
-            body.customerInfo?.specialRequests || body.specialRequests,
+            body.customerInfo?.specialRequests ?? body.specialRequests ?? "",
           method: body.method || "card",
-          pointsUsed: body.paymentInfo?.pointAmount || body.pointsUsed || 0,
-          cashUsed: body.paymentInfo?.cashAmount || body.cashUsed || 0,
+          pointsUsed: Number(
+            body.paymentInfo?.pointAmount ?? body.pointsUsed ?? 0
+          ),
+          cashUsed: Number(body.paymentInfo?.cashAmount ?? body.cashUsed ?? 0),
+          couponIdx: body.couponIdx ?? body.hotelInfo?.couponIdx ?? null,
+          couponDiscount: Number(
+            body.couponDiscount ?? body.hotelInfo?.couponDiscount ?? 0
+          ),
         };
       }
 
@@ -185,6 +206,13 @@ export async function POST(req) {
         diningIdx: backendRequestData.diningIdx,
         contentId: backendRequestData.contentId,
         usedTradeIdx: backendRequestData.usedTradeIdx,
+      });
+      console.log("[payments/api] detail:", {
+        pointsUsed: backendRequestData.pointsUsed,
+        cashUsed: backendRequestData.cashUsed,
+        specialRequestsLen: backendRequestData.specialRequests?.length || 0,
+        couponIdx: backendRequestData.couponIdx,
+        couponDiscount: backendRequestData.couponDiscount,
       });
       console.log("✅ 결제 타입 분기 성공:", paymentType);
       console.log(
