@@ -370,18 +370,23 @@ const ReservationClient = () => {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   예약 정보
                 </h2>
-                <div className="flex gap-4">
-                  {paymentDraft.meta.roomImage ? (
-                    <img
-                      src={paymentDraft.meta.roomImage}
-                      alt={paymentDraft.meta.roomName}
-                      className="w-32 h-24 object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="w-32 h-24 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <span className="text-gray-400 text-sm">이미지 없음</span>
-                    </div>
-                  )}
+                <div className="flex gap-6">
+                  {(() => {
+                    const S3_BASE_URL =
+                        "https://sist-checkin.s3.ap-northeast-2.amazonaws.com/hotelroom/";
+                    const roomImageUrl = paymentDraft.meta.roomImage
+                        ? `${S3_BASE_URL}${paymentDraft.meta.roomImage}`
+                        : `${S3_BASE_URL}default.jpg`;
+
+                    return (
+                        <img
+                            src={roomImageUrl}
+                            alt={paymentDraft.meta.roomName || "호텔 이미지"}
+                            className="w-40 h-36 object-cover rounded-lg"
+                        />
+                    );
+                  })()}
+
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
                       {paymentDraft.meta.hotelName}
