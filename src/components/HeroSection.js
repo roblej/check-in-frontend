@@ -168,15 +168,15 @@ const HeroSection = () => {
         adults,
       });
       
-      // 다이닝 검색 페이지로 이동
+      // 다이닝 모드로 호텔 검색 페이지로 이동 (통합)
       const params = new URLSearchParams({
         destination: trimmedDestination,
         diningDate: diningDate,
-        mealType: mealType,
+        diningMode: "true",
         adults: adults.toString(),
       });
       
-      router.push(`/dining-search?${params.toString()}`);
+      router.push(`/hotel-search?${params.toString()}`);
     } else {
       console.log("검색:", { destination, checkIn, checkOut, adults });
       const nights =
@@ -356,8 +356,8 @@ const HeroSection = () => {
                     <SearchCondition
                       isOpen={isDatePickerOpen}
                       onClose={() => setIsDatePickerOpen(false)}
-                      checkIn={checkIn}
-                      checkOut={checkOut}
+                      checkIn={selectedType === "dining" ? diningDate : checkIn}
+                      checkOut={selectedType === "dining" ? "" : checkOut}
                       onDateChange={handleDateChange}
                       selectedType={selectedType}
                       className="max-w-md"

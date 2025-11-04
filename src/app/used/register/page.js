@@ -296,23 +296,23 @@ function UsedItemRegisterContent() {
 
           {/* 버튼 */}
           <div className="flex flex-col gap-4">
-            <div className="flex gap-4">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => router.back()}
-                className="flex-1"
-              >
+          <div className="flex gap-4">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => router.back()}
+              className="flex-1"
+            >
                 뒤로가기
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={loading}
-                className="flex-1"
-              >
-                {loading ? (isEditMode ? '수정 중...' : '등록 중...') : (isEditMode ? '수정하기' : '등록하기')}
-              </Button>
+            </Button>
+            <Button
+              variant="primary"
+              type="submit"
+              disabled={loading}
+              className="flex-1"
+            >
+              {loading ? (isEditMode ? '수정 중...' : '등록 중...') : (isEditMode ? '수정하기' : '등록하기')}
+            </Button>
             </div>
             
             {/* 수정 모드일 때만 취소 버튼 표시 */}

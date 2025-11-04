@@ -25,15 +25,22 @@ const HotelSearchPageContent = () => {
   const urlCheckIn = searchParams.get("checkIn");
   const urlCheckOut = searchParams.get("checkOut");
   const urlAdults = searchParams.get("adults");
+  const urlDiningMode = searchParams.get("diningMode") === "true";
+  const urlDiningDate = searchParams.get("diningDate");
   
   const urlParams = useMemo(() => ({
     destination: urlDestination,
     checkIn: urlCheckIn,
     checkOut: urlCheckOut,
     adults: urlAdults,
-  }), [urlDestination, urlCheckIn, urlCheckOut, urlAdults]);
+    diningMode: urlDiningMode,
+    diningDate: urlDiningDate,
+  }), [urlDestination, urlCheckIn, urlCheckOut, urlAdults, urlDiningMode, urlDiningDate]);
   
   const { destination, checkIn, checkOut, adults } = urlParams;
+  
+  // 다이닝 모드 상태
+  const [isDiningMode, setIsDiningMode] = useState(urlDiningMode || false);
   
   // URL 파라미터 변경 시에만 로그 출력
   const prevUrlParamsForLogRef = useRef(urlParams);
@@ -64,14 +71,18 @@ const HotelSearchPageContent = () => {
       prevUrlParamsRef.current.destination !== urlParams.destination ||
       prevUrlParamsRef.current.checkIn !== urlParams.checkIn ||
       prevUrlParamsRef.current.checkOut !== urlParams.checkOut ||
-      prevUrlParamsRef.current.adults !== urlParams.adults;
+      prevUrlParamsRef.current.adults !== urlParams.adults ||
+      prevUrlParamsRef.current.diningMode !== urlParams.diningMode ||
+      prevUrlParamsRef.current.diningDate !== urlParams.diningDate;
     
-    if (urlChanged && (urlParams.destination || urlParams.checkIn || urlParams.checkOut || urlParams.adults)) {
+    if (urlChanged && (urlParams.destination || urlParams.checkIn || urlParams.checkOut || urlParams.adults || urlParams.diningMode || urlParams.diningDate)) {
       console.log("URL 파라미터를 스토어에 동기화:", {
         destination: urlParams.destination,
         checkIn: urlParams.checkIn,
         checkOut: urlParams.checkOut,
         adults: urlParams.adults,
+        diningMode: urlParams.diningMode,
+        diningDate: urlParams.diningDate,
       });
       updateFromUrlParams(searchParams);
       prevUrlParamsRef.current = urlParams;
@@ -131,17 +142,32 @@ const HotelSearchPageContent = () => {
   // 날짜 변경 핸들러
   const handleDateChange = useCallback((newCheckIn, newCheckOut) => {
     const urlParams = new URLSearchParams(searchParams.toString());
-    urlParams.set("checkIn", newCheckIn);
-    urlParams.set("checkOut", newCheckOut);
-    if (newCheckIn && newCheckOut) {
-      const nights = Math.ceil(
-        (new Date(newCheckOut) - new Date(newCheckIn)) / (1000 * 60 * 60 * 24)
-      );
-      urlParams.set("nights", nights.toString());
+    if (isDiningMode) {
+      // 다이닝 모드: 단일 날짜만
+      if (newCheckIn) {
+        urlParams.set("diningDate", newCheckIn);
+        urlParams.set("diningMode", "true");
+        urlParams.delete("checkIn");
+        urlParams.delete("checkOut");
+      } else {
+        urlParams.delete("diningDate");
+      }
+    } else {
+      // 호텔 모드: 체크인/체크아웃
+      urlParams.set("checkIn", newCheckIn);
+      urlParams.set("checkOut", newCheckOut);
+      urlParams.delete("diningDate");
+      urlParams.delete("diningMode");
+      if (newCheckIn && newCheckOut) {
+        const nights = Math.ceil(
+          (new Date(newCheckOut) - new Date(newCheckIn)) / (1000 * 60 * 60 * 24)
+        );
+        urlParams.set("nights", nights.toString());
+      }
     }
     router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
     setIsDatePickerOpen(false);
-  }, [searchParams, router]);
+  }, [searchParams, router, isDiningMode]);
 
   // 검색 실행 핸들러
   const handleFilterSearch = useCallback((e) => {
@@ -150,17 +176,24 @@ const HotelSearchPageContent = () => {
     if (localDestination) {
       urlParams.set("destination", localDestination);
     }
-    if (localSearchParams.checkIn) {
-      urlParams.set("checkIn", localSearchParams.checkIn);
-    }
-    if (localSearchParams.checkOut) {
-      urlParams.set("checkOut", localSearchParams.checkOut);
+    if (isDiningMode) {
+      urlParams.set("diningMode", "true");
+      if (localSearchParams.diningDate) {
+        urlParams.set("diningDate", localSearchParams.diningDate);
+      }
+    } else {
+      if (localSearchParams.checkIn) {
+        urlParams.set("checkIn", localSearchParams.checkIn);
+      }
+      if (localSearchParams.checkOut) {
+        urlParams.set("checkOut", localSearchParams.checkOut);
+      }
     }
     if (localSearchParams.adults) {
       urlParams.set("adults", localSearchParams.adults.toString());
     }
     router.push(`/hotel-search?${urlParams.toString()}`);
-  }, [localDestination, localSearchParams.checkIn, localSearchParams.checkOut, localSearchParams.adults, router]);
+  }, [localDestination, localSearchParams.checkIn, localSearchParams.checkOut, localSearchParams.diningDate, localSearchParams.adults, router, isDiningMode]);
 
   // 외부 클릭 시 날짜 선택기 닫기
   useEffect(() => {
@@ -240,8 +273,16 @@ const HotelSearchPageContent = () => {
       );
       console.log("전체 localSearchParams:", localSearchParams);
 
+      // 다이닝 모드일 때만 hasDining 파라미터 전달 (명시적으로 true)
+      const requestParams = {};
+      if (isDiningMode) {
+        requestParams.hasDining = true;
+      }
+
       const res = await axios.post(hotel_url, {
         title: trimmedDestination,
+      }, {
+        params: Object.keys(requestParams).length > 0 ? requestParams : undefined,
       });
       if (res.data) {
         console.log("=== 호텔 검색 결과 ===");
@@ -258,7 +299,7 @@ const HotelSearchPageContent = () => {
       isFetchingRef.current = false;
       setIsSearching(false); // 로딩 상태 종료
     }
-  }, [localSearchParams, urlDestination]);
+  }, [localSearchParams, urlDestination, isDiningMode]);
 
   // destination 변경 시에만 호텔 데이터 가져오기
   // URL 파라미터와 스토어 모두 확인하여 검색 실행
@@ -300,6 +341,20 @@ const HotelSearchPageContent = () => {
       }
     }
   }, [urlParams.destination, localSearchParams.destination, getHotels]);
+  
+  // 다이닝 모드 변경 시 검색 다시 실행
+  const prevDiningModeRef = useRef(isDiningMode);
+  useEffect(() => {
+    if (prevDiningModeRef.current !== isDiningMode && localSearchParams.destination) {
+      prevDiningModeRef.current = isDiningMode;
+      // 검색어가 있으면 다시 검색
+      if (localSearchParams.destination) {
+        lastFetchedDestinationRef.current = null; // 강제 재검색
+        getHotels(localSearchParams.destination);
+      }
+    }
+    prevDiningModeRef.current = isDiningMode;
+  }, [isDiningMode, localSearchParams.destination, getHotels]);
   // 이전 필터/정렬 값 추적 (실제 변경 감지용)
   const prevFiltersRef = useRef(null);
   
@@ -571,6 +626,40 @@ const HotelSearchPageContent = () => {
     [localSearchParams, router]
   );
 
+  // 다이닝 모드 토글 핸들러
+  const handleDiningModeToggle = useCallback(() => {
+    const newDiningMode = !isDiningMode;
+    setIsDiningMode(newDiningMode);
+    
+    const urlParams = new URLSearchParams(searchParams.toString());
+    if (newDiningMode) {
+      urlParams.set("diningMode", "true");
+      // 다이닝 모드로 변경 시 체크인 날짜를 다이닝 날짜로 설정
+      // 체크인 날짜가 없으면 오늘 날짜를 기본값으로 설정
+      const diningDate = localSearchParams.checkIn || new Date().toISOString().split('T')[0];
+      urlParams.set("diningDate", diningDate);
+      urlParams.delete("checkIn");
+      urlParams.delete("checkOut");
+    } else {
+      urlParams.delete("diningMode");
+      urlParams.delete("diningDate");
+      // 호텔 모드로 변경 시 체크인/체크아웃 설정
+      const checkInDate = urlParams.get("checkIn") || new Date().toISOString().split('T')[0];
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const checkOutDate = urlParams.get("checkOut") || tomorrow.toISOString().split('T')[0];
+      
+      urlParams.set("checkIn", checkInDate);
+      urlParams.set("checkOut", checkOutDate);
+    }
+    router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
+  }, [isDiningMode, searchParams, router, localSearchParams]);
+  
+  // URL에서 다이닝 모드 동기화
+  useEffect(() => {
+    setIsDiningMode(urlDiningMode || false);
+  }, [urlDiningMode]);
+
   return (
     <div className="h-screen bg-gray-50 overflow-hidden flex flex-col">
       <Header />
@@ -581,6 +670,20 @@ const HotelSearchPageContent = () => {
           <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             {/* 왼쪽: 검색 폼 */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
+              {/* 다이닝 모드 토글 버튼 */}
+              <div className="flex items-center gap-2 border-r border-gray-200 pr-3">
+                <button
+                  onClick={handleDiningModeToggle}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    isDiningMode
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  다이닝
+                </button>
+              </div>
+
               {/* 목적지 */}
               <input
                 type="text"
@@ -591,24 +694,35 @@ const HotelSearchPageContent = () => {
                     handleFilterSearch(e);
                   }
                 }}
-                placeholder="목적지"
+                placeholder={isDiningMode ? "호텔명을 입력하세요" : "목적지"}
                 className="px-3 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-700 min-w-[100px]"
               />
 
-              {/* 체크인/체크아웃 */}
+              {/* 체크인/체크아웃 또는 다이닝 날짜 */}
               <div className="relative date-picker-container">
-                <div
-                  className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-md hover:border-gray-300 cursor-pointer bg-white"
-                  onClick={() => setIsDatePickerOpen(true)}
-                >
-                  <div className="text-xs text-gray-500 min-w-[60px]">
-                    {localSearchParams.checkIn ? formatDateDisplay(localSearchParams.checkIn) : "체크인"}
+                {isDiningMode ? (
+                  <div
+                    className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-md hover:border-gray-300 cursor-pointer bg-white"
+                    onClick={() => setIsDatePickerOpen(true)}
+                  >
+                    <div className="text-xs text-gray-500 min-w-[80px]">
+                      {urlDiningDate ? formatDateDisplay(urlDiningDate) : "다이닝 날짜"}
+                    </div>
                   </div>
-                  <span className="text-gray-300">-</span>
-                  <div className="text-xs text-gray-500 min-w-[60px]">
-                    {localSearchParams.checkOut ? formatDateDisplay(localSearchParams.checkOut) : "체크아웃"}
+                ) : (
+                  <div
+                    className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-md hover:border-gray-300 cursor-pointer bg-white"
+                    onClick={() => setIsDatePickerOpen(true)}
+                  >
+                    <div className="text-xs text-gray-500 min-w-[60px]">
+                      {localSearchParams.checkIn ? formatDateDisplay(localSearchParams.checkIn) : "체크인"}
+                    </div>
+                    <span className="text-gray-300">-</span>
+                    <div className="text-xs text-gray-500 min-w-[60px]">
+                      {localSearchParams.checkOut ? formatDateDisplay(localSearchParams.checkOut) : "체크아웃"}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* 날짜 선택 컴포넌트 */}
                 {isDatePickerOpen && (
@@ -616,10 +730,10 @@ const HotelSearchPageContent = () => {
                     <SearchCondition
                       isOpen={isDatePickerOpen}
                       onClose={() => setIsDatePickerOpen(false)}
-                      checkIn={localSearchParams.checkIn || ""}
-                      checkOut={localSearchParams.checkOut || ""}
+                      checkIn={isDiningMode ? (urlDiningDate || "") : (localSearchParams.checkIn || "")}
+                      checkOut={isDiningMode ? "" : (localSearchParams.checkOut || "")}
                       onDateChange={handleDateChange}
-                      selectedType="hotel"
+                      selectedType={isDiningMode ? "dining" : "hotel"}
                       className="max-w-md"
                     />
                   </div>
