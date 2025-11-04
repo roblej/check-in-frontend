@@ -12,7 +12,8 @@ const CustomerHistoryContent = () => {
   const [filteredHistory, setFilteredHistory] = useState([]);
   const [stats, setStats] = useState({
     averageRating: 0,
-    feedbackCount: 0
+    feedbackCount: 0,
+    totalHistoryCount: 0
   });
   const [loading, setLoading] = useState(true);
   
@@ -27,8 +28,9 @@ const CustomerHistoryContent = () => {
   });
 
   const didFetchStats = useRef(false);
+  const hasInitialLoad = useRef(false);
 
-  const fetchCustomerHistory = useCallback(async () => {
+  const fetchCustomerHistory = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -55,7 +57,17 @@ const CustomerHistoryContent = () => {
     } finally {
       setLoading(false);
     }
-  }, [customerIdSearch, statusFilter, ratingFilter]);
+  };
+
+  const handleSearch = () => {
+    fetchCustomerHistory();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
 
   const fetchCustomerHistoryStats = useCallback(async () => {
     try {
@@ -64,9 +76,11 @@ const CustomerHistoryContent = () => {
       
       const response = await axiosInstance.get('/admin/customerHistoryStats');
       if (response.data) {
+        console.log(response.data);
         setStats({
           averageRating: response.data.averageRating || 0,
-          feedbackCount: response.data.feedbackCount || 0
+          feedbackCount: response.data.feedbackCount || 0,
+          totalHistoryCount: response.data.totalHistoryCount || 0
         });
       }
     } catch (error) {
@@ -74,9 +88,21 @@ const CustomerHistoryContent = () => {
     }
   }, []);
 
+  // 초기 로드 시 쿼리 파라미터가 있으면 검색, 없으면 전체 조회
   useEffect(() => {
-    fetchCustomerHistory();
-  }, [fetchCustomerHistory]);
+    if (!hasInitialLoad.current) {
+      hasInitialLoad.current = true;
+      const initialCustomerId = searchParams.get('customerId');
+      if (initialCustomerId) {
+        // 쿼리 파라미터가 있으면 초기 검색 실행
+        fetchCustomerHistory();
+      } else {
+        // 쿼리 파라미터가 없으면 전체 데이터 조회
+        fetchCustomerHistory();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     fetchCustomerHistoryStats();
@@ -129,11 +155,10 @@ const CustomerHistoryContent = () => {
   const getRatingText = (rating) => {
     if (!rating) return '';
     const num = Number(rating);
-    if (num >= 9) return '우수';
-    if (num >= 7) return '좋음';
-    if (num >= 5) return '보통';
-    if (num >= 3) return '나쁨';
-    return '매우 나쁨';
+    if (num >= 5) return '매우 좋아요';
+    if (num >= 3) return '좋아요';
+    if (num >= 1) return '아쉬워요';
+    return '싫어요';
   };
 
   const getRatingStars = (rating) => {
@@ -202,14 +227,14 @@ const CustomerHistoryContent = () => {
                 <div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-bold text-gray-900">
-                      {stats.averageRating ? Number(stats.averageRating).toFixed(1) : '0.0'}
+                      평균: {stats.averageRating ? Number(stats.averageRating).toFixed(1) : '0.0'}
                     </span>
                     <span className="text-xl font-semibold text-gray-700">
                       {stats.averageRating ? getRatingText(Number(stats.averageRating)) : ''}
                     </span>
                   </div>
                   <div className="text-sm text-gray-600 mt-1">
-                    {stats.feedbackCount.toLocaleString()}명 평가 • {stats.feedbackCount.toLocaleString()}개 리뷰
+                    {stats.totalHistoryCount.toLocaleString()}명의 이용이력 • {stats.feedbackCount.toLocaleString()}개의 리뷰 작성
                   </div>
                 </div>
               </div>
@@ -229,52 +254,67 @@ const CustomerHistoryContent = () => {
         {/* 필터 섹션 (접기/펼치기) */}
         {showFilters && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Search className="w-4 h-4 inline mr-1" />
-                  고객 ID 검색
-                </label>
-                <input
-                  type="text"
-                  placeholder="고객 ID로 검색..."
-                  value={customerIdSearch}
-                  onChange={(e) => setCustomerIdSearch(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Search className="w-4 h-4 inline mr-1" />
+                    고객 ID 검색
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="고객 ID로 검색..."
+                    value={customerIdSearch}
+                    onChange={(e) => setCustomerIdSearch(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div className="sm:w-48">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    상태 필터
+                  </label>
+                  <select 
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">전체</option>
+                    <option value="4">완료</option>
+                    <option value="2">취소</option>
+                  </select>
+                </div>
+                
+                <div className="sm:w-48">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    평점 필터
+                  </label>
+                  <select 
+                    value={ratingFilter}
+                    onChange={(e) => setRatingFilter(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">전체</option>
+                    <option value="5">5점</option>
+                    <option value="4">4점</option>
+                    <option value="3">3점</option>
+                    <option value="2">2점</option>
+                    <option value="1">1점</option>
+                  </select>
+                </div>
               </div>
               
-              <div className="sm:w-48">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  상태 필터
-                </label>
-                <select 
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              {/* 검색 버튼 */}
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSearch}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  <option value="all">전체</option>
-                  <option value="4">완료</option>
-                  <option value="2">취소</option>
-                </select>
-              </div>
-              
-              <div className="sm:w-48">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  평점 필터
-                </label>
-                <select 
-                  value={ratingFilter}
-                  onChange={(e) => setRatingFilter(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="all">전체</option>
-                  <option value="5">5점</option>
-                  <option value="4">4점</option>
-                  <option value="3">3점</option>
-                  <option value="2">2점</option>
-                  <option value="1">1점</option>
-                </select>
+                  <Search className="w-4 h-4" />
+                  <span className="font-medium">검색</span>
+                </button>
               </div>
             </div>
           </div>
