@@ -165,12 +165,6 @@ const ReservationsPage = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const tabs = [
-    { id: 'list', name: '예약 목록', icon: <ClipboardList size={20} /> },
-    { id: 'calendar', name: '예약 캘린더', icon: <Calendar size={20} /> },
-    { id: 'checkin', name: '체크인 관리', icon: <Building2 size={20} /> }
-  ];
-
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -178,26 +172,6 @@ const ReservationsPage = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">예약 관리</h2>
           <p className="text-gray-600">호텔 예약 현황을 관리하고 체크인/체크아웃을 처리하세요</p>
-        </div>
-
-        {/* 탭 네비게이션 */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedTab(tab.id)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  selectedTab === tab.id
-                    ? 'border-[#3B82F6] text-[#3B82F6]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.name}
-              </button>
-            ))}
-          </nav>
         </div>
 
         {/* 검색 및 필터 */}
