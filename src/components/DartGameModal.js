@@ -959,7 +959,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
       {/* 모달 컨텐츠 */}
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-y-auto">
         {/* 모달 헤더 */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl z-[60]">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900">
               🎯 어디갈지 모르겠다면?
@@ -985,11 +985,11 @@ const DartGameModal = ({ isOpen, onClose }) => {
           <div className="relative bg-gradient-to-br from-blue-100 to-green-100 rounded-2xl p-6 mb-6">
             <div className="flex flex-col md:flex-row gap-4">
               {/* 카카오맵 */}
-              <div className="relative flex-1 h-[55vh] bg-gray-200 rounded-xl overflow-hidden">
+              <div className="relative flex-1 h-[55vh] bg-gray-200 rounded-xl overflow-hidden z-0">
                 <div 
                   ref={mapRef}
                   className="w-full h-full"
-                  style={{ minHeight: '384px' }}
+                  style={{ minHeight: '384px', zIndex: 0 }}
                 />
                 
                 {/* 로딩 상태 */}
@@ -1314,7 +1314,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
               </div>
               {/* 우측 사이드 모달: 선택된 관광지 상세 + 인근 호텔 */}
               {selectedTour && (
-                <div className="fixed right-4 top-20 bottom-6 z-50 w-full max-w-5xl bg-white shadow-2xl border border-gray-200 rounded-2xl overflow-hidden flex flex-col">
+                <div className="fixed right-4 top-20 bottom-6 z-[70] w-full max-w-5xl bg-white shadow-2xl border border-gray-200 rounded-2xl overflow-hidden flex flex-col">
                   <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                     <div className="font-bold text-gray-900 line-clamp-1">
                       {selectedTour.title || '선택한 관광지'}
