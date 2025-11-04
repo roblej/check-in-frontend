@@ -25,19 +25,8 @@ export default function LoginPage() {
   let accessToken = "";
 
   const login_url = "/api/login";
-
+  const naverLogin_url = "http://localhost:8888/oauth2/authorization/naver";
   // 네이버 로그인을 위한 함수
-  const handleNaverLogin = () => {
-    const client_id = 'VqsbzJuI12KsWAz74De4';
-    const state = "RAMDOM_STATE";
-    const redirectURI = encodeURIComponent("http://localhost:3333/api/oauth/naverCallback");
-    
-    // 네이버 로그인 URL로 직접 리다이렉트 (axios 불필요)
-    const naverLoginUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${client_id}&redirect_uri=${redirectURI}&state=${state}`;
-    
-    // 브라우저에서 네이버 로그인 페이지로 이동
-    window.location.href = naverLoginUrl;
-  };
 
   // 입력 필드 변경 핸들러
   const handleChange = (e) => {
@@ -300,7 +289,7 @@ export default function LoginPage() {
             <button
               type="button"
               className={styles.socialButton}
-              onClick={handleNaverLogin}
+              onClick={() => window.location.href = naverLogin_url}
             >
               <span className={styles.naverIcon}>N</span>
               네이버로 로그인
