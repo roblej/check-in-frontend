@@ -8,8 +8,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
  * @param {boolean} isModal - 모달 모드 여부
  * @returns {Object} 네비게이션 관련 상태 및 함수들
  */
-export const useHotelNavigation = (scrollContainerRef, isModal) => {
-  const [activeSection, setActiveSection] = useState("rooms");
+export const useHotelNavigation = (scrollContainerRef, isModal, defaultSection = "rooms") => {
+  const [activeSection, setActiveSection] = useState(defaultSection);
   const [isScrollingToSection, setIsScrollingToSection] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(0);
 
@@ -95,7 +95,7 @@ export const useHotelNavigation = (scrollContainerRef, isModal) => {
 
         const threshold = headerHeight + 10;
 
-        let currentSection = "rooms";
+        let currentSection = defaultSection;
         let closestDistance = Infinity;
 
         Object.entries(sectionsRef.current).forEach(([key, element]) => {
