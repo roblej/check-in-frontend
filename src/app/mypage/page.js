@@ -649,6 +649,9 @@ function MyPageContent() {
                   <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
                     포인트: {(userData?.point || 0).toLocaleString()}P
                   </span>
+                  <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
+                    캐시: {(userData?.cash || userData?.balance || 0).toLocaleString()}원
+                  </span>
                 </div>
               </div>
             </div>
