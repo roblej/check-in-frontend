@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { mypageAPI } from '@/lib/api/mypage';
 import { useCustomerStore } from '@/stores/customerStore';
 
@@ -13,10 +13,32 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
-export default function MyPage() {
+// useSearchParams를 사용하는 컴포넌트 분리
+function TabQueryHandler({ onTabChange, loadReservations }) {
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'completed' || tab === 'upcoming' || tab === 'cancelled') {
+      onTabChange(tab);
+      loadReservations(tab);
+      // 예약 내역 섹션으로 스크롤
+      setTimeout(() => {
+        const reservationSection = document.getElementById('reservation-section');
+        if (reservationSection) {
+          reservationSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+  
+  return null;
+}
+
+function MyPageContent() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   
   // Zustand에서 고객 정보 가져오기
   const { verifyTokenWithBackend, isRecentlyVerified } = useCustomerStore();
@@ -76,22 +98,7 @@ export default function MyPage() {
     }
   };
 
-  // URL 쿼리 파라미터에서 탭 설정 읽기
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'completed' || tab === 'upcoming' || tab === 'cancelled') {
-      setReservationTab(tab);
-      loadReservations(tab);
-      // 예약 내역 섹션으로 스크롤
-      setTimeout(() => {
-        const reservationSection = document.getElementById('reservation-section');
-        if (reservationSection) {
-          reservationSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  // URL 쿼리 파라미터에서 탭 설정 읽기 (TabQueryHandler 컴포넌트로 분리됨)
 
   // 실제 토큰 검증 및 초기 데이터 로드
   // 경로 변경 시 리뷰 목록 갱신 (리뷰 작성 후 마이페이지로 돌아왔을 때)
@@ -408,6 +415,12 @@ export default function MyPage() {
   const [editingReview, setEditingReview] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
+  
+  // 모달 refs
+  const editContentRef = useRef(null);
+  const editModalRef = useRef(null);
+  const confirmModalRef = useRef(null);
+  const confirmPrimaryRef = useRef(null);
 
 
   const openEditModal = (review) => {
@@ -607,6 +620,14 @@ export default function MyPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+      
+      {/* URL 쿼리 파라미터 처리 (Suspense로 감싸짐) */}
+      <Suspense fallback={null}>
+        <TabQueryHandler 
+          onTabChange={setReservationTab}
+          loadReservations={loadReservations}
+        />
+      </Suspense>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* 프로필 헤더 */}
@@ -1249,5 +1270,18 @@ export default function MyPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// 메인 컴포넌트 - Suspense로 감싸서 export
+export default function MyPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    }>
+      <MyPageContent />
+    </Suspense>
   );
 }
