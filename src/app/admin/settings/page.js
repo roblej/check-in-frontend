@@ -267,8 +267,9 @@ const SettingsPage = () => {
 
   const handleImageFiles = (files) => {
     // 파일을 미리보기용 객체로 변환
+    // 새 이미지의 ID는 타임스탬프로 생성 (Long 타입 지원)
     const newImages = files.map((file, index) => {
-      const id = Date.now() + index;
+      const id = Date.now() + index; // 타임스탬프 기반 ID 생성
       const previewUrl = URL.createObjectURL(file);
       
       return {
@@ -356,7 +357,7 @@ const SettingsPage = () => {
           areaCode: formData.area.region, // Entity 필드명 (변경 불가)
         },
         images: formData.images.map(img => ({
-          id: img.id,
+          id: img.id, // Long 타입으로 전송 (타임스탬프 값 포함)
           originUrl: img.originUrl,
           smallUrl: img.smallUrl
         })),
