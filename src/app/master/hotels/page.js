@@ -30,14 +30,20 @@ const HotelManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // API에서 호텔 데이터 가져오기
-  const getData = async (page = currentPage, size = pageSize) => {
+  const getData = async (page = currentPage, size = pageSize, search = searchTerm) => {
     try {
       setLoading(true);
       console.log('=== API 호출 시작 ===');
       console.log('API URL:', api_url);
-      console.log('Page:', page, 'Size:', size);
+      console.log('Page:', page, 'Size:', size, 'Search:', search);
       
-      const response = await fetch(`${api_url}?page=${page}&size=${size}`, {
+      // 검색어를 쿼리 파라미터로 추가
+      let url = `${api_url}?page=${page}&size=${size}`;
+      if (search && search.trim()) {
+        url += `&search=${encodeURIComponent(search.trim())}`;
+      }
+      
+      const response = await fetch(url, {
         cache: 'no-store', // SSR을 위해 캐시 비활성화
       });
       
@@ -99,10 +105,23 @@ const HotelManagement = () => {
     getData();
   }, []);
 
+  // 검색 버튼 클릭 핸들러
+  const handleSearch = () => {
+    setCurrentPage(0); // 검색 시 첫 페이지로 리셋
+    getData(0, pageSize, searchTerm);
+  };
+
+  // 엔터 키 입력 시 검색
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   // 페이지 변경 핸들러
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
-    getData(newPage, pageSize);
+    getData(newPage, pageSize, searchTerm);
   };
 
   const getStatusColor = (status) => {
@@ -127,14 +146,13 @@ const HotelManagement = () => {
     }
   };
 
+  // 클라이언트 측 필터링 (상태 필터만 적용, 검색은 서버 측에서 처리)
   const filteredHotels = hotels.filter(hotel => {
-    const matchesSearch = hotel.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         hotel.adminName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         hotel.adress.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && hotel.status === 1) ||
-                         (statusFilter === 'inactive' && hotel.status === 0);
-    return matchesSearch && matchesStatus;
+                         (statusFilter === 'active' && hotel.status === 0) ||
+                         (statusFilter === 'inactive' && hotel.status === 1) ||
+                         (statusFilter === 'suspended' && hotel.status === 2);
+    return matchesStatus;
   });
 
   const handleSelectHotel = (contentId ) => {
@@ -251,14 +269,21 @@ const HotelManagement = () => {
         {/* 검색 및 필터 */}
         <div className="bg-white p-3 sm:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-            <div className="flex-1">
+            <div className="flex-1 flex gap-2">
               <input
                 type="text"
                 placeholder="호텔명, 사업자명, 위치로 검색..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-2 sm:px-4 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-xs sm:text-sm"
+                onKeyDown={handleKeyDown}
+                className="flex-1 px-2 sm:px-4 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-xs sm:text-sm"
               />
+              <button
+                onClick={handleSearch}
+                className="px-4 sm:px-6 py-1 sm:py-2 bg-[#7C3AED] text-white rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm font-medium whitespace-nowrap"
+              >
+                검색
+              </button>
             </div>
             <div className="sm:w-48">
               <select
