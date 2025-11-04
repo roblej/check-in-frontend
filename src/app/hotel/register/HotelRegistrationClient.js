@@ -157,10 +157,20 @@ const HotelRegistrationClient = ({ initialData }) => {
 
   // 폼 데이터 업데이트
   const updateFormData = (section, data) => {
-    setFormData(prev => ({
-      ...prev,
-      [section]: { ...prev[section], ...data }
-    }));
+    setFormData(prev => {
+      // 배열인 경우 직접 할당, 객체인 경우 병합
+      if (Array.isArray(data)) {
+        return {
+          ...prev,
+          [section]: data
+        };
+      } else {
+        return {
+          ...prev,
+          [section]: { ...prev[section], ...data }
+        };
+      }
+    });
   };
 
   // 객실 추가

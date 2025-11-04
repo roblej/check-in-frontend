@@ -167,6 +167,8 @@ const TossPaymentsWidget = ({
           method: paymentMethod === "카카오페이" ? "kakaopay" : "card",
           pointsUsed: customerInfo?.usePoint || 0,
           cashUsed: customerInfo?.useCash || 0,
+          couponIdx: customerInfo?.couponIdx || null,
+          couponDiscount: Number(customerInfo?.couponDiscount || 0),
           paymentInfo: {
             totalAmount: hotelInfo?.totalPrice || amount,
             cashAmount: customerInfo?.useCash || 0,
@@ -339,6 +341,9 @@ const TossPaymentsWidget = ({
           specialRequests: customerInfo?.specialRequests || "",
           pointsUsed: Number(customerInfo?.usePoint || 0),
           cashUsed: Number(customerInfo?.useCash || 0),
+          // 쿠폰 정보
+          couponIdx: customerInfo?.couponIdx || null,
+          couponDiscount: Number(customerInfo?.couponDiscount || 0),
         };
         if (typeof window !== "undefined") {
           sessionStorage.setItem(
