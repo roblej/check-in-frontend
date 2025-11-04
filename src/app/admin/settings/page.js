@@ -36,6 +36,7 @@ const SettingsPage = () => {
   const [selectedRegion, setSelectedRegion] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [errors, setErrors] = useState({});
+  const [dragOver, setDragOver] = useState(false);
 
   // areaCode를 지역명으로 변환하는 함수
   const getRegionNameByAreaCode = (areaCode) => {
@@ -227,6 +228,78 @@ const SettingsPage = () => {
         event.id === eventId ? { ...event, ...data } : event
       )
     }));
+  };
+
+  // 이미지 업로드 관련 함수
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0) {
+      handleImageFiles(imageFiles);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0) {
+      handleImageFiles(imageFiles);
+    }
+    
+    // 같은 파일을 다시 선택할 수 있도록 input 값 초기화
+    e.target.value = '';
+  };
+
+  const handleImageFiles = (files) => {
+    // 파일을 미리보기용 객체로 변환
+    const newImages = files.map((file, index) => {
+      const id = Date.now() + index;
+      const previewUrl = URL.createObjectURL(file);
+      
+      return {
+        id,
+        file,
+        previewUrl,
+        originUrl: null,
+        smallUrl: null
+      };
+    });
+
+    setFormData(prev => ({
+      ...prev,
+      images: [...prev.images, ...newImages]
+    }));
+  };
+
+  const removeImage = (imageId) => {
+    setFormData(prev => {
+      const imageToRemove = prev.images.find(img => img.id === imageId);
+      
+      // 미리보기 URL이 있다면 메모리 해제
+      if (imageToRemove?.previewUrl) {
+        URL.revokeObjectURL(imageToRemove.previewUrl);
+      }
+      
+      return {
+        ...prev,
+        images: prev.images.filter(img => img.id !== imageId)
+      };
+    });
   };
 
   const addDining = () => {
@@ -473,22 +546,78 @@ const SettingsPage = () => {
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">호텔 이미지</h3>
         <p className="text-sm text-gray-500 mb-4">
-          호텔의 외관, 로비, 객실 등 다양한 이미지를 관리하세요.
+          호텔의 외관, 로비, 객실 등 다양한 이미지를 업로드하세요. (선택사항)
         </p>
         
+        {/* 이미지 업로드 영역 */}
+        <div
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            dragOver 
+              ? "border-blue-500 bg-blue-50" 
+              : "border-gray-300 hover:border-gray-400"
+          }`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <div className="text-gray-400 text-6xl mb-4">📸</div>
+          <h4 className="text-lg font-medium text-gray-900 mb-2">
+            이미지를 드래그하여 업로드하세요
+          </h4>
+          <p className="text-gray-500 mb-4">
+            또는 아래 버튼을 클릭하여 파일을 선택하세요
+          </p>
+          <input
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+            id="image-upload"
+          />
+          <label
+            htmlFor="image-upload"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer"
+          >
+            이미지 선택
+          </label>
+          <p className="text-xs text-gray-400 mt-2">
+            JPG, PNG, GIF 파일만 업로드 가능 (최대 10MB)
+          </p>
+        </div>
+
+        {/* 업로드된 이미지 미리보기 */}
         {formData.images.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {formData.images.map((image) => (
-              <div key={image.id} className="relative group">
-                <div className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                  {image.smallUrl || image.originUrl ? (
-                    <img src={image.smallUrl || image.originUrl} alt="호텔 이미지" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-gray-400 text-2xl">🖼️</span>
+          <div className="mt-6">
+            <h4 className="text-sm font-medium text-gray-700 mb-3">업로드된 이미지</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {formData.images.map((image, index) => (
+                <div key={image.id} className="relative group">
+                  <div className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                    {image.previewUrl || image.smallUrl || image.originUrl ? (
+                      <img 
+                        src={image.previewUrl || image.smallUrl || image.originUrl} 
+                        alt="호텔 이미지" 
+                        className="w-full h-full object-cover" 
+                      />
+                    ) : (
+                      <span className="text-gray-400 text-2xl">🖼️</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => removeImage(image.id)}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-sm"
+                  >
+                    ×
+                  </button>
+                  {index === 0 && (
+                    <div className="absolute bottom-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                      대표 이미지
+                    </div>
                   )}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </div>
