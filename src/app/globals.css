@@ -158,3 +158,27 @@
 .border-black {
   border: 1px solid #000000;
 }
+
+/* 쿠폰 목록 스크롤바 스타일 */
+.coupon-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.coupon-scroll::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+.coupon-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.coupon-scroll::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.coupon-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f3f4f6;
+}

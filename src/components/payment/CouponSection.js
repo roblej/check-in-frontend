@@ -46,7 +46,7 @@ const CouponSection = ({
       ) : (
         // 쿠폰 목록 스크롤 선택
         <div className="space-y-2">
-          <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-md divide-y">
+          <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md divide-y coupon-scroll">
             {isLoading ? (
               <div className="p-3 text-sm text-gray-500">
                 쿠폰을 불러오는 중...
@@ -60,7 +60,7 @@ const CouponSection = ({
                 <button
                   key={c.couponIdx}
                   onClick={() => onSelectCoupon && onSelectCoupon(c)}
-                  className="w-full text-left p-3 hover:bg-gray-50 focus:outline-none focus:bg-gray-50"
+                  className="w-full text-left p-3 hover:bg-gray-50 focus:outline-none focus:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -82,6 +82,11 @@ const CouponSection = ({
           </div>
           <p className="text-xs text-gray-500">
             쿠폰은 1개만 사용할 수 있습니다.
+            {availableCoupons.length > 3 && (
+              <span className="block mt-1 text-blue-600">
+                💡 쿠폰 목록을 스크롤하여 더 많은 쿠폰을 확인하세요
+              </span>
+            )}
           </p>
         </div>
       )}

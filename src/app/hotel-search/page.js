@@ -27,7 +27,7 @@ const HotelSearchPageContent = () => {
   const urlAdults = searchParams.get("adults");
   const urlDiningMode = searchParams.get("diningMode") === "true";
   const urlDiningDate = searchParams.get("diningDate");
-  
+
   const urlParams = useMemo(() => ({
     destination: urlDestination,
     checkIn: urlCheckIn,
@@ -38,10 +38,10 @@ const HotelSearchPageContent = () => {
   }), [urlDestination, urlCheckIn, urlCheckOut, urlAdults, urlDiningMode, urlDiningDate]);
   
   const { destination, checkIn, checkOut, adults } = urlParams;
-  
+
   // 다이닝 모드 상태
   const [isDiningMode, setIsDiningMode] = useState(urlDiningMode || false);
-  
+
   // URL 파라미터 변경 시에만 로그 출력
   const prevUrlParamsForLogRef = useRef(urlParams);
   useEffect(() => {
@@ -74,7 +74,7 @@ const HotelSearchPageContent = () => {
       prevUrlParamsRef.current.adults !== urlParams.adults ||
       prevUrlParamsRef.current.diningMode !== urlParams.diningMode ||
       prevUrlParamsRef.current.diningDate !== urlParams.diningDate;
-    
+
     if (urlChanged && (urlParams.destination || urlParams.checkIn || urlParams.checkOut || urlParams.adults || urlParams.diningMode || urlParams.diningDate)) {
       console.log("URL 파라미터를 스토어에 동기화:", {
         destination: urlParams.destination,
@@ -341,7 +341,7 @@ const HotelSearchPageContent = () => {
       }
     }
   }, [urlParams.destination, localSearchParams.destination, getHotels]);
-  
+
   // 다이닝 모드 변경 시 검색 다시 실행
   const prevDiningModeRef = useRef(isDiningMode);
   useEffect(() => {
@@ -614,9 +614,11 @@ const HotelSearchPageContent = () => {
     return localSearchParams;
   }, [selectedcontentId, hotelSearchParams, localSearchParams]);
 
+
   // 호텔 상세 페이지로 이동하는 함수
   const handleHotelDetailOpen = useCallback(
     (contentId) => {
+
       const urlParams = formatSearchParamsForUrl(localSearchParams);
       const detailUrl = createHotelDetailUrl(contentId, urlParams);
 
@@ -630,7 +632,7 @@ const HotelSearchPageContent = () => {
   const handleDiningModeToggle = useCallback(() => {
     const newDiningMode = !isDiningMode;
     setIsDiningMode(newDiningMode);
-    
+
     const urlParams = new URLSearchParams(searchParams.toString());
     if (newDiningMode) {
       urlParams.set("diningMode", "true");
@@ -648,13 +650,13 @@ const HotelSearchPageContent = () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const checkOutDate = urlParams.get("checkOut") || tomorrow.toISOString().split('T')[0];
-      
+
       urlParams.set("checkIn", checkInDate);
       urlParams.set("checkOut", checkOutDate);
     }
     router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
   }, [isDiningMode, searchParams, router, localSearchParams]);
-  
+
   // URL에서 다이닝 모드 동기화
   useEffect(() => {
     setIsDiningMode(urlDiningMode || false);
