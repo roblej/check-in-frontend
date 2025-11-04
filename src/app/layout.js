@@ -21,17 +21,6 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
-                window.history.scrollRestoration = 'manual';
-              }
-            `,
-          }}
-        />
-      </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <Providers>{children}</Providers>
       </body>

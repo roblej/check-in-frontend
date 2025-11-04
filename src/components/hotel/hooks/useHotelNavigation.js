@@ -12,7 +12,6 @@ export const useHotelNavigation = (scrollContainerRef, isModal, defaultSection =
   const [activeSection, setActiveSection] = useState(defaultSection);
   const [isScrollingToSection, setIsScrollingToSection] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(0);
-  const [isBackNavigation, setIsBackNavigation] = useState(false);
 
   const navRef = useRef(null);
   const headerRef = useRef(null);
@@ -83,9 +82,7 @@ export const useHotelNavigation = (scrollContainerRef, isModal, defaultSection =
           return;
         }
 
-        // 뒤로가기 중이거나 섹션 스크롤 중이면 섹션 감지 완전히 비활성화
-        // 뒤로가기 시 브라우저의 스크롤 복원이 완료될 때까지 섹션 감지를 하지 않음
-        if (isBackNavigation || isScrollingToSection) {
+        if (isScrollingToSection) {
           ticking = false;
           return;
         }
@@ -119,36 +116,18 @@ export const useHotelNavigation = (scrollContainerRef, isModal, defaultSection =
         });
 
         // 스크롤이 바닥에 닿으면 마지막 섹션 활성화
-        // 뒤로가기 중에는 바닥 감지 비활성화하여 스크롤이 맨 아래로 튕기는 것을 방지
-        // 추가로, 스크롤 위치가 페이지 높이의 절반 이하일 때는 바닥 감지를 하지 않음
-        // (뒤로가기로 돌아왔을 때 스크롤 위치가 낮으면 바닥 감지로 인해 맨 아래로 튕기는 것을 방지)
-        if (!isBackNavigation) {
-          const scrollTop =
-            scrollElement === window
-              ? window.scrollY || document.documentElement.scrollTop
-              : scrollElement.scrollTop;
+        const scrollTop =
+          scrollElement === window
+            ? window.scrollY || document.documentElement.scrollTop
+            : scrollElement.scrollTop;
 
-          const maxScroll =
-            scrollElement === window
-              ? document.documentElement.scrollHeight - window.innerHeight
-              : scrollElement.scrollHeight - scrollElement.clientHeight;
+        const maxScroll =
+          scrollElement === window
+            ? document.documentElement.scrollHeight - window.innerHeight
+            : scrollElement.scrollHeight - scrollElement.clientHeight;
 
-          // 스크롤 위치가 페이지 높이의 절반 이상일 때만 바닥 감지 실행
-          // 이렇게 하면 뒤로가기로 돌아왔을 때 스크롤 위치가 낮으면 바닥 감지가 실행되지 않음
-          const pageHeight =
-            scrollElement === window
-              ? document.documentElement.scrollHeight
-              : scrollElement.scrollHeight;
-          const viewportHeight =
-            scrollElement === window
-              ? window.innerHeight
-              : scrollElement.clientHeight;
-          const halfPageHeight = (pageHeight - viewportHeight) / 2;
-
-          // 스크롤이 절반 이상이고 바닥에 가까우면 마지막 섹션 활성화
-          if (scrollTop >= halfPageHeight && scrollTop >= maxScroll - 20) {
-            currentSection = "policy";
-          }
+        if (scrollTop >= maxScroll - 20) {
+          currentSection = "policy";
         }
 
         setActiveSection(currentSection);
@@ -176,54 +155,7 @@ export const useHotelNavigation = (scrollContainerRef, isModal, defaultSection =
         }
       }
     };
-  }, [
-    scrollContainerRef,
-    isScrollingToSection,
-    headerHeight,
-    isBackNavigation,
-  ]);
-
-  /**
-   * 뒤로가기(popstate) 혹은 히스토리 복원 감지
-   * → scroll 이벤트와 scrollToSection 둘 다 잠시 비활성화
-   * → 브라우저가 자동으로 스크롤 위치를 복원하도록 함 (개입하지 않음)
-   * → 단, 바닥 감지 로직은 비활성화하여 스크롤이 맨 아래로 튕기는 것을 방지
-   */
-  useEffect(() => {
-    const navEntry = performance.getEntriesByType("navigation")[0];
-    if (navEntry && navEntry.type === "back_forward") {
-      console.log(
-        "뒤로가기 감지됨 → scroll 이벤트 일시 비활성화 및 바닥 감지 비활성화"
-      );
-      setIsBackNavigation(true);
-      setIsScrollingToSection(true);
-
-      // 더 긴 시간 동안 비활성화하여 스크롤 복원이 완료될 때까지 기다림
-      // 스크롤 복원이 완료된 후에도 잠시 더 기다려서 안정적으로 만듦
-      setTimeout(() => {
-        setIsBackNavigation(false);
-        setIsScrollingToSection(false);
-      }, 2000);
-    }
-
-    const handlePopState = () => {
-      console.log(
-        "popstate 발생 → scroll 이벤트 일시 비활성화 및 바닥 감지 비활성화"
-      );
-      setIsBackNavigation(true);
-      setIsScrollingToSection(true);
-
-      // 더 긴 시간 동안 비활성화하여 스크롤 복원이 완료될 때까지 기다림
-      // 스크롤 복원이 완료된 후에도 잠시 더 기다려서 안정적으로 만듦
-      setTimeout(() => {
-        setIsBackNavigation(false);
-        setIsScrollingToSection(false);
-      }, 2000);
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  }, [scrollContainerRef, isScrollingToSection, headerHeight]);
 
   /**
    * 섹션 클릭 시 해당 섹션으로 스크롤
@@ -233,7 +165,7 @@ export const useHotelNavigation = (scrollContainerRef, isModal, defaultSection =
       // 섹션이 아직 렌더링되지 않았을 수 있으므로 약간의 지연 후 실행
       let retryCount = 0;
       const maxRetries = 10;
-
+      
       const tryScroll = () => {
         const element = sectionsRef.current[sectionId];
         const scrollElement = scrollContainerRef.current;
@@ -250,7 +182,7 @@ export const useHotelNavigation = (scrollContainerRef, isModal, defaultSection =
         }
 
         if (!scrollElement) {
-          console.warn("스크롤 컨테이너를 찾을 수 없습니다.");
+          console.warn('스크롤 컨테이너를 찾을 수 없습니다.');
           return;
         }
 
@@ -273,8 +205,7 @@ export const useHotelNavigation = (scrollContainerRef, isModal, defaultSection =
         // 스크롤 실행
         if (scrollElement === window || scrollElement === window.document) {
           // window 스크롤 (전체 페이지 모드)
-          const elementTop =
-            element.getBoundingClientRect().top + window.scrollY;
+          const elementTop = element.getBoundingClientRect().top + window.scrollY;
           const offsetTop = elementTop - currentHeaderHeight;
 
           window.scrollTo({ top: Math.max(0, offsetTop), behavior: "smooth" });
@@ -284,22 +215,22 @@ export const useHotelNavigation = (scrollContainerRef, isModal, defaultSection =
           requestAnimationFrame(() => {
             const elementRect = element.getBoundingClientRect();
             const containerRect = scrollElement.getBoundingClientRect();
-
+            
             // 요소가 컨테이너 내부에서 얼마나 떨어져 있는지 (뷰포트 기준)
             const relativeTop = elementRect.top - containerRect.top;
+            
             // 현재 스크롤 위치
             const currentScrollTop = scrollElement.scrollTop;
+            
             // 요소의 절대 위치 (스크롤 컨테이너 기준)
             // 뷰포트 기준 상대 위치를 현재 스크롤 위치에 더함
             const elementAbsoluteTop = currentScrollTop + relativeTop;
+            
             // 헤더 높이를 고려한 목표 스크롤 위치
             // 헤더가 스크롤 컨테이너 상단에 고정되어 있다고 가정
-            const targetScroll = Math.max(
-              0,
-              elementAbsoluteTop - currentHeaderHeight - 20
-            );
+            const targetScroll = Math.max(0, elementAbsoluteTop - currentHeaderHeight - 20);
 
-            console.log("모달 스크롤 계산:", {
+            console.log('모달 스크롤 계산:', {
               sectionId,
               currentScrollTop,
               relativeTop,
@@ -311,10 +242,6 @@ export const useHotelNavigation = (scrollContainerRef, isModal, defaultSection =
               scrollHeight: scrollElement.scrollHeight,
               clientHeight: scrollElement.clientHeight,
             });
-            if (isScrollingToSection) {
-              console.log("뒤로가기 중이라 div scroll도 실행 안 함");
-              return;
-            }
 
             if (targetScroll !== currentScrollTop) {
               scrollElement.scrollTo({
@@ -331,7 +258,7 @@ export const useHotelNavigation = (scrollContainerRef, isModal, defaultSection =
       // 즉시 시도
       tryScroll();
     },
-    [scrollContainerRef, isModal, headerRef, navRef, isScrollingToSection]
+    [scrollContainerRef, isModal, headerRef, navRef]
   );
 
   /**

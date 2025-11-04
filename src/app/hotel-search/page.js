@@ -614,88 +614,10 @@ const HotelSearchPageContent = () => {
     return localSearchParams;
   }, [selectedcontentId, hotelSearchParams, localSearchParams]);
 
-  // 스크롤 위치 저장 키
-  const SCROLL_POSITION_KEY = "hotel-search-scroll-position";
-
-  // 페이지를 떠날 때 스크롤 위치 저장 (beforeunload는 호텔 상세 페이지로 이동할 때는 실행되지 않을 수 있음)
-  // 실제로는 handleHotelDetailOpen에서 저장하므로 이 useEffect는 보조용
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      const scrollY = window.scrollY || document.documentElement.scrollTop;
-      sessionStorage.setItem(SCROLL_POSITION_KEY, scrollY.toString());
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, []);
-
-  // 뒤로가기로 돌아올 때 스크롤 위치 복원
-  useEffect(() => {
-    const restoreScrollPosition = () => {
-      const savedScrollY = sessionStorage.getItem(SCROLL_POSITION_KEY);
-      if (savedScrollY !== null) {
-        const scrollY = parseInt(savedScrollY, 10);
-        // 페이지가 완전히 로드된 후 스크롤 복원
-        // 여러 번 시도하여 확실하게 복원
-        const tryRestore = (attempts = 0) => {
-          if (attempts > 10) return; // 최대 10회 시도
-
-          requestAnimationFrame(() => {
-            const currentScrollY =
-              window.scrollY || document.documentElement.scrollTop;
-            const targetScrollY = scrollY;
-
-            // 스크롤 위치가 다르면 복원 시도
-            if (Math.abs(currentScrollY - targetScrollY) > 5) {
-              window.scrollTo({
-                top: targetScrollY,
-                behavior: "auto", // 즉시 복원 (smooth가 아닌)
-              });
-              // 계속 시도
-              setTimeout(() => tryRestore(attempts + 1), 50);
-            }
-          });
-        };
-
-        // 첫 시도는 약간의 지연 후 실행
-        setTimeout(() => {
-          tryRestore();
-        }, 50);
-      }
-    };
-
-    // 페이지 로드 시 스크롤 복원
-    const navEntry = performance.getEntriesByType("navigation")[0];
-    if (navEntry && navEntry.type === "back_forward") {
-      // 뒤로가기로 돌아온 경우
-      setTimeout(() => {
-        restoreScrollPosition();
-      }, 100);
-    }
-
-    // popstate 이벤트로도 뒤로가기 감지
-    const handlePopState = () => {
-      setTimeout(() => {
-        restoreScrollPosition();
-      }, 100);
-    };
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, []);
 
   // 호텔 상세 페이지로 이동하는 함수
   const handleHotelDetailOpen = useCallback(
     (contentId) => {
-      // 페이지를 떠나기 전에 스크롤 위치 저장
-      const scrollY = window.scrollY || document.documentElement.scrollTop;
-      sessionStorage.setItem(SCROLL_POSITION_KEY, scrollY.toString());
 
       const urlParams = formatSearchParamsForUrl(localSearchParams);
       const detailUrl = createHotelDetailUrl(contentId, urlParams);
