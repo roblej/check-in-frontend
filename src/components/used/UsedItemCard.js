@@ -58,10 +58,10 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail, customer, cu
         return;
       }
 
-      // 3. 거래 생성 성공 시 결제 페이지로 이동
-      const params = new URLSearchParams({
+      // 3. 결제 페이지 정보를 세션 스토리지에 저장 (URL 파라미터 숨기기)
+      const paymentData = {
         usedItemIdx: item.usedItemIdx || item.id,
-        usedTradeIdx: tradeData.usedTradeIdx, // 거래 ID 추가
+        usedTradeIdx: tradeData.usedTradeIdx,
         hotelName: item.hotelName || '호텔명',
         hotelImage: item.image || '',
         hotelAddress: item.location || '호텔 주소',
@@ -72,9 +72,15 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail, customer, cu
         originalPrice: item.originalPrice || 0,
         salePrice: item.salePrice || 0,
         seller: item.seller || '판매자'
-      });
+      };
 
-      router.push(`/used-payment?${params.toString()}`);
+      // 세션 스토리지에 저장 (거래 ID별 키와 현재 거래 키 모두 저장)
+      sessionStorage.setItem(`used_payment_${tradeData.usedTradeIdx}`, JSON.stringify(paymentData));
+      // 현재 결제 중인 거래 키 저장 (URL 파라미터 없이 접근하기 위함)
+      sessionStorage.setItem('used_payment_current', String(tradeData.usedTradeIdx));
+
+      // URL 파라미터 없이 이동 (완전히 숨김)
+      router.push('/used-payment');
       
     } catch (error) {
       console.error('거래 생성 오류:', error);

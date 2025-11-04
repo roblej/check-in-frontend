@@ -84,6 +84,12 @@ export const usedAPI = {
     return response.data;
   },
 
+  // 양도거래 취소
+  cancelUsedItem: async (usedItemIdx) => {
+    const response = await axiosInstance.post(`/used/${usedItemIdx}/cancel`);
+    return response.data;
+  },
+
   // 양도거래 등록 여부 확인
   checkRegistered: async (reservIdx) => {
     const response = await axiosInstance.get(`/used/check/${reservIdx}`);
