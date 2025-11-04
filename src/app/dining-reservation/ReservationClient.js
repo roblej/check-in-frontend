@@ -96,7 +96,7 @@ const ReservationClient = ({ diningInfo: initialDiningInfo }) => {
     
     // 다이닝 정보가 로드된 후에만 사용자 정보 가져오기
     if (diningInfo.diningIdx) {
-      fetchUserInfo();
+    fetchUserInfo();
     }
   }, [diningInfo.diningIdx]);
 
