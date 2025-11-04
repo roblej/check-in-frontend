@@ -10,7 +10,8 @@
  * @param {Function} onPointChange - 포인트 변경 핸들러
  * @param {Function} onUseAllCash - 전체 캐시 사용 핸들러
  * @param {Function} onUseAllPoint - 전체 포인트 사용 핸들러
- * @param {number} totalAmount - 총 결제 금액
+ * @param {number} totalAmount - 총 결제 금액 (쿠폰 할인 후 금액)
+ * @param {number} couponDiscount - 쿠폰 할인 금액
  */
 const CashPointSection = ({
   customerCash,
@@ -22,11 +23,16 @@ const CashPointSection = ({
   onUseAllCash,
   onUseAllPoint,
   totalAmount,
+  couponDiscount = 0,
 }) => {
   const maxCash = Math.min(useCash, customerCash);
   const maxPoint = Math.min(usePoint, customerPoint);
   const availableCashPoint = maxCash + maxPoint;
+  // totalAmount는 이미 쿠폰 할인이 적용된 금액이므로 그대로 사용
   const actualPaymentAmount = Math.max(0, totalAmount - availableCashPoint);
+
+  // 원래 금액 계산 (표시용)
+  const originalAmount = totalAmount + couponDiscount;
 
   /**
    * 숫자 입력 처리 (0으로 시작 불가)
@@ -123,9 +129,15 @@ const CashPointSection = ({
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">총 결제 금액</span>
           <span className="text-gray-900 font-semibold">
-            {totalAmount.toLocaleString()}원
+            {originalAmount.toLocaleString()}원
           </span>
         </div>
+        {couponDiscount > 0 && (
+          <div className="flex justify-between text-sm text-green-600 font-medium">
+            <span>쿠폰 할인</span>
+            <span>-{couponDiscount.toLocaleString()}원</span>
+          </div>
+        )}
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">캐시 결제</span>
           <span className="text-blue-600">{maxCash.toLocaleString()}원</span>

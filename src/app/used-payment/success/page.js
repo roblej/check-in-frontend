@@ -3,23 +3,23 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UsedPaymentSuccessContent from '@/components/used/UsedPaymentSuccessContent';
 
-const UsedHotelPaymentSuccessPage = async ({ searchParams }) => {
-  // searchParams를 await로 처리
-  const params = await searchParams;
-
-  // 초기 데이터 생성 (한 번만 실행)
+const UsedHotelPaymentSuccessPage = async () => {
+  // URL 파라미터를 완전히 제거하고 세션 스토리지만 사용
+  // 클라이언트에서 세션 스토리지에서 데이터를 읽어옴
+  
+  // 기본 초기 데이터 (클라이언트에서 세션 스토리지로 덮어씌움)
   const initialData = {
-    orderId: params.orderId || '',
-    amount: parseInt(params.amount) || 0,
-    type: params.type || 'used_hotel',
-    cash: parseInt(params.cash) || 0,
-    point: parseInt(params.point) || 0,
-    card: parseInt(params.card) || 0,
-    tradeIdx: params.tradeIdx || '',
-    hotelName: params.hotelName || '호텔명',
-    roomType: params.roomType || '객실 정보',
-    checkIn: params.checkIn || '',
-    checkOut: params.checkOut || ''
+    orderId: '',
+    amount: 0,
+    type: 'used_hotel',
+    cash: 0,
+    point: 0,
+    card: 0,
+    tradeIdx: '',
+    hotelName: '호텔명',
+    roomType: '객실 정보',
+    checkIn: '',
+    checkOut: ''
   };
 
   return (

@@ -137,6 +137,33 @@ function UsedItemRegisterContent() {
     }
   };
 
+  // 양도거래 취소
+  const handleCancel = async () => {
+    if (!isEditMode || !existingUsedItem) {
+      return;
+    }
+
+    const confirmCancel = window.confirm('정말 양도거래를 취소하시겠습니까? 취소된 양도거래는 복구할 수 없습니다.');
+    
+    if (!confirmCancel) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await usedAPI.cancelUsedItem(existingUsedItem.usedItemIdx);
+      alert('양도거래가 취소되었습니다.');
+      // 페이지 새로고침으로 상태 업데이트 보장
+      window.location.href = '/mypage';
+    } catch (error) {
+      console.error('양도거래 취소 실패:', error);
+      alert(error.response?.data?.message || '양도거래 취소 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 가격 포맷팅
   const formatPrice = (value) => {
     return value.replace(/\D/g, '');
@@ -268,6 +295,7 @@ function UsedItemRegisterContent() {
           </div>
 
           {/* 버튼 */}
+          <div className="flex flex-col gap-4">
           <div className="flex gap-4">
             <Button
               variant="outline"
@@ -275,7 +303,7 @@ function UsedItemRegisterContent() {
               onClick={() => router.back()}
               className="flex-1"
             >
-              취소
+                뒤로가기
             </Button>
             <Button
               variant="primary"
@@ -285,6 +313,19 @@ function UsedItemRegisterContent() {
             >
               {loading ? (isEditMode ? '수정 중...' : '등록 중...') : (isEditMode ? '수정하기' : '등록하기')}
             </Button>
+            </div>
+            
+            {/* 수정 모드일 때만 취소 버튼 표시 */}
+            {isEditMode && (
+              <Button
+                type="button"
+                onClick={handleCancel}
+                disabled={loading}
+                className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:bg-red-300 disabled:cursor-not-allowed"
+              >
+                {loading ? '처리 중...' : '양도거래 취소'}
+              </Button>
+            )}
           </div>
         </form>
       </div>

@@ -3,32 +3,25 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ReservationClient from "./ReservationClient";
 
-export default async function Page({ searchParams }) {
-  const sp = await searchParams;
-  const getNum = (key, def) => {
-    const v = sp?.get ? sp.get(key) : sp?.[key];
-    const n = parseInt(v ?? "" + "");
-    return Number.isNaN(n) ? def : n;
-  };
-  const getStr = (key, def) => {
-    const v = sp?.get ? sp.get(key) : sp?.[key];
-    return v ?? def;
-  };
+export default async function Page() {
+  // URL 파라미터를 완전히 제거하고 세션 스토리지만 사용
+  // 클라이언트에서 세션 스토리지에서 데이터를 읽어옴
 
+  // 기본 초기 데이터 (클라이언트에서 세션 스토리지로 덮어씌움)
   const diningInfo = {
-    diningIdx: getStr("diningIdx", null),
-    contentId: getStr("contentId", null),
-    diningName: getStr("diningName", ""),
-    hotelName: getStr("hotelName", ""),
-    hotelAddress: getStr("hotelAddress", ""),
-    diningDate: getStr("diningDate", ""),
-    diningTime: getStr("diningTime", ""),
-    guests: getNum("guests", 2),
-    basePrice: getNum("basePrice", 0),
-    imageUrl: getStr("imageUrl", ""),
-    openTime: getStr("openTime", "11:00:00"),
-    closeTime: getStr("closeTime", "21:00:00"),
-    slotDuration: getNum("slotDuration", 60),
+    diningIdx: null,
+    contentId: null,
+    diningName: "",
+    hotelName: "",
+    hotelAddress: "",
+    diningDate: "",
+    diningTime: "",
+    guests: 2,
+    basePrice: 0,
+    imageUrl: "",
+    openTime: "11:00:00",
+    closeTime: "21:00:00",
+    slotDuration: 60,
   };
 
   return (
