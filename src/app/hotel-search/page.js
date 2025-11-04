@@ -154,15 +154,15 @@ const HotelSearchPageContent = () => {
       }
     } else {
       // 호텔 모드: 체크인/체크아웃
-      urlParams.set("checkIn", newCheckIn);
-      urlParams.set("checkOut", newCheckOut);
+    urlParams.set("checkIn", newCheckIn);
+    urlParams.set("checkOut", newCheckOut);
       urlParams.delete("diningDate");
       urlParams.delete("diningMode");
-      if (newCheckIn && newCheckOut) {
-        const nights = Math.ceil(
-          (new Date(newCheckOut) - new Date(newCheckIn)) / (1000 * 60 * 60 * 24)
-        );
-        urlParams.set("nights", nights.toString());
+    if (newCheckIn && newCheckOut) {
+      const nights = Math.ceil(
+        (new Date(newCheckOut) - new Date(newCheckIn)) / (1000 * 60 * 60 * 24)
+      );
+      urlParams.set("nights", nights.toString());
       }
     }
     router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
@@ -182,11 +182,11 @@ const HotelSearchPageContent = () => {
         urlParams.set("diningDate", localSearchParams.diningDate);
       }
     } else {
-      if (localSearchParams.checkIn) {
-        urlParams.set("checkIn", localSearchParams.checkIn);
-      }
-      if (localSearchParams.checkOut) {
-        urlParams.set("checkOut", localSearchParams.checkOut);
+    if (localSearchParams.checkIn) {
+      urlParams.set("checkIn", localSearchParams.checkIn);
+    }
+    if (localSearchParams.checkOut) {
+      urlParams.set("checkOut", localSearchParams.checkOut);
       }
     }
     if (localSearchParams.adults) {
@@ -710,18 +710,18 @@ const HotelSearchPageContent = () => {
                     </div>
                   </div>
                 ) : (
-                  <div
-                    className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-md hover:border-gray-300 cursor-pointer bg-white"
-                    onClick={() => setIsDatePickerOpen(true)}
-                  >
-                    <div className="text-xs text-gray-500 min-w-[60px]">
-                      {localSearchParams.checkIn ? formatDateDisplay(localSearchParams.checkIn) : "체크인"}
-                    </div>
-                    <span className="text-gray-300">-</span>
-                    <div className="text-xs text-gray-500 min-w-[60px]">
-                      {localSearchParams.checkOut ? formatDateDisplay(localSearchParams.checkOut) : "체크아웃"}
-                    </div>
+                <div
+                  className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-md hover:border-gray-300 cursor-pointer bg-white"
+                  onClick={() => setIsDatePickerOpen(true)}
+                >
+                  <div className="text-xs text-gray-500 min-w-[60px]">
+                    {localSearchParams.checkIn ? formatDateDisplay(localSearchParams.checkIn) : "체크인"}
                   </div>
+                  <span className="text-gray-300">-</span>
+                  <div className="text-xs text-gray-500 min-w-[60px]">
+                    {localSearchParams.checkOut ? formatDateDisplay(localSearchParams.checkOut) : "체크아웃"}
+                  </div>
+                </div>
                 )}
 
                 {/* 날짜 선택 컴포넌트 */}
