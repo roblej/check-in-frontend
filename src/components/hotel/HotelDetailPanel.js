@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useCallback, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import HotelDetail from "./HotelDetail";
 
 /**
@@ -11,6 +12,8 @@ const HotelDetailPanel = ({
   onClose,
   onSearchParamsChange,
 }) => {
+  const router = useRouter();
+  const urlSearchParams = useSearchParams();
   const scrollContainerRef = useRef(null);
   const [currentContentId, setCurrentContentId] = useState(contentId);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +35,48 @@ const HotelDetailPanel = ({
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
   }, [handleClose]);
+
+  /** 뒤로가기 이벤트 처리: selectedHotel 파라미터 제거 (패널만 닫기) */
+  useEffect(() => {
+    if (!contentId) return;
+
+    const handlePopState = (e) => {
+      // popstate 이벤트 발생 시 URL 확인
+      setTimeout(() => {
+        const currentUrl = new URLSearchParams(window.location.search);
+        const currentSelectedHotel = currentUrl.get("selectedHotel");
+
+        // contentId가 있지만 URL에 selectedHotel이 없으면 닫기 (뒤로가기로 패널 닫힘)
+        if (contentId && !currentSelectedHotel) {
+          // URL에서 selectedHotel을 제거한 새 URL 생성
+          const urlParams = new URLSearchParams(window.location.search);
+          urlParams.delete("selectedHotel");
+          const newUrl = urlParams.toString();
+          const newPath = newUrl ? `?${newUrl}` : window.location.pathname;
+
+          // 현재 URL과 새 URL이 다르면 업데이트 (실제 페이지 이동 방지)
+          if (window.location.search !== (newUrl ? `?${newUrl}` : "")) {
+            // history.pushState로 현재 상태를 유지하면서 URL만 업데이트
+            window.history.pushState(null, "", newPath);
+
+            // router.replace로 상태 동기화
+            router.replace(newPath, {
+              scroll: false,
+              shallow: true,
+            });
+          }
+
+          // 패널 닫기
+          onClose();
+        }
+      }, 10);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [contentId, router, onClose]);
 
   /** contentId 변경 감지 → fade-out + 로딩 표시 → 내부 교체 */
   useEffect(() => {
