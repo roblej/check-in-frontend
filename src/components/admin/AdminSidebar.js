@@ -1,21 +1,29 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Calendar, 
+  CalendarDays,
   Bed, 
   Users, 
   TrendingUp, 
   Settings,
   LogIn,
   LogOut,
-  Gift
+  Gift,
+  History,
+  MessageSquare,
+  ChevronDown,
+  ChevronRight,
+  List
 } from 'lucide-react';
 
 const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
   const pathname = usePathname();
+  const [openMenus, setOpenMenus] = useState({});
   const menuItems = [
     {
       id: 'dashboard',
@@ -27,22 +35,19 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       id: 'reservations',
       name: '예약 관리',
       icon: <Calendar size={20} />,
-      path: '/admin/reservations',
       submenu: [
-        { id: 'reservation-calendar', name: '예약 캘린더', path: '/admin/calendar' }
+        { id: 'reservation-list', name: '예약 목록', path: '/admin/reservations', icon: <List size={16} /> },
+        { id: 'reservation-calendar', name: '예약 캘린더', path: '/admin/calendar', icon: <CalendarDays size={16} /> }
       ]
     },
     {
-      id: 'checkin',
-      name: '체크인 관리',
+      id: 'checkin-checkout',
+      name: '체크인/아웃 관리',
       icon: <LogIn size={20} />,
-      path: '/admin/checkin'
-    },
-    {
-      id: 'checkout',
-      name: '체크아웃 관리',
-      icon: <LogOut size={20} />,
-      path: '/admin/checkout'
+      submenu: [
+        { id: 'checkin', name: '체크인 관리', path: '/admin/checkin', icon: <LogIn size={16} /> },
+        { id: 'checkout', name: '체크아웃 관리', path: '/admin/checkout', icon: <LogOut size={16} /> }
+      ]
     },
     {
       id: 'rooms',
@@ -52,12 +57,12 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
     },
     {
       id: 'customers',
-      name: '고객 목록',
+      name: '고객 관리',
       icon: <Users size={20} />,
-      path: '/admin/customers',
       submenu: [
-        { id: 'customer-history', name: '이용 이력', path: '/admin/customer-history' },
-        { id: 'customer-feedback', name: '고객 피드백', path: '/admin/feedback' }
+        { id: 'customer-list', name: '고객 목록', path: '/admin/customers', icon: <Users size={16} /> },
+        { id: 'customer-history', name: '이용 이력', path: '/admin/customer-history', icon: <History size={16} /> },
+        { id: 'customer-feedback', name: '고객 피드백', path: '/admin/feedback', icon: <MessageSquare size={16} /> }
       ]
     },
     {
@@ -88,6 +93,24 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
     return submenu.some(item => pathname === item.path);
   };
 
+  // 서브메뉴가 활성화된 경우 자동으로 열림
+  useEffect(() => {
+    const newOpenMenus = {};
+    menuItems.forEach((item) => {
+      if (item.submenu && isSubmenuActive(item.submenu)) {
+        newOpenMenus[item.id] = true;
+      }
+    });
+    setOpenMenus(newOpenMenus);
+  }, [pathname]);
+
+  const toggleMenu = (itemId) => {
+    setOpenMenus(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
+  };
+
   return (
     <>
             {/* 데스크톱 사이드바 - 큰 화면에서만 항상 표시 */}
@@ -103,43 +126,73 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
           {/* 메뉴 아이템들 */}
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-1">
-              {menuItems.map((item) => (
-                <li key={item.id}>
-                  <div>
-                    <Link
-                      href={item.path}
-                      className={`group flex items-center gap-x-3 rounded-md p-3 text-sm leading-6 font-semibold w-full text-left transition-colors ${
-                        isActive(item.path) || isSubmenuActive(item.submenu || [])
-                          ? 'bg-[#3B82F6] text-white'
-                          : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span className="flex-shrink-0">{item.icon}</span>
-                      <span className="truncate">{item.name}</span>
-                    </Link>
-                    
-                    {/* 서브메뉴 */}
-                    {item.submenu && (
-                      <ul className="ml-8 mt-1 space-y-1">
-                        {item.submenu.map((subItem) => (
-                          <li key={subItem.id}>
-                            <Link
-                              href={subItem.path}
-                              className={`block px-3 py-2 text-sm rounded-md transition-colors w-full text-left ${
-                                isActive(subItem.path)
-                                  ? 'bg-blue-50 text-[#3B82F6] font-medium'
-                                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                              }`}
-                            >
-                              {subItem.name}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </li>
-              ))}
+              {menuItems.map((item) => {
+                const hasSubmenu = item.submenu && item.submenu.length > 0;
+                const isMenuOpen = openMenus[item.id];
+                const isMenuActive = isActive(item.path) || isSubmenuActive(item.submenu || []);
+
+                return (
+                  <li key={item.id}>
+                    <div>
+                      {hasSubmenu ? (
+                        <button
+                          onClick={() => toggleMenu(item.id)}
+                          className={`group flex items-center gap-x-3 rounded-md p-3 text-sm leading-6 font-semibold w-full text-left transition-colors ${
+                            isMenuActive
+                              ? 'bg-[#3B82F6] text-white'
+                              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="flex-shrink-0">{item.icon}</span>
+                          <span className="truncate flex-1">{item.name}</span>
+                          <span className="flex-shrink-0">
+                            {isMenuOpen ? (
+                              <ChevronDown size={16} />
+                            ) : (
+                              <ChevronRight size={16} />
+                            )}
+                          </span>
+                        </button>
+                      ) : (
+                        <Link
+                          href={item.path}
+                          className={`group flex items-center gap-x-3 rounded-md p-3 text-sm leading-6 font-semibold w-full text-left transition-colors ${
+                            isActive(item.path)
+                              ? 'bg-[#3B82F6] text-white'
+                              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="flex-shrink-0">{item.icon}</span>
+                          <span className="truncate">{item.name}</span>
+                        </Link>
+                      )}
+                      
+                      {/* 서브메뉴 */}
+                      {hasSubmenu && (
+                        <ul className={`ml-8 mt-1 space-y-1 transition-all duration-200 overflow-hidden ${
+                          isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                        }`}>
+                          {item.submenu.map((subItem) => (
+                            <li key={subItem.id}>
+                              <Link
+                                href={subItem.path}
+                                className={`flex items-center gap-x-2 px-3 py-2 text-sm rounded-md transition-colors w-full text-left ${
+                                  isActive(subItem.path)
+                                    ? 'bg-blue-50 text-[#3B82F6] font-medium'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                }`}
+                              >
+                                {subItem.icon && <span className="flex-shrink-0">{subItem.icon}</span>}
+                                <span>{subItem.name}</span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
         </div>
@@ -164,43 +217,73 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
           {/* 모바일 메뉴 */}
           <nav className="flex-1">
             <ul role="list" className="space-y-1">
-              {menuItems.map((item) => (
-                <li key={item.id}>
-                  <div>
-                    <Link
-                      href={item.path}
-                      className={`group flex gap-x-2 rounded-md p-2 text-xs leading-4 font-medium w-full text-left transition-colors ${
-                        isActive(item.path) || isSubmenuActive(item.submenu || [])
-                          ? 'bg-[#3B82F6] text-white'
-                          : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span className="flex-shrink-0 scale-75">{item.icon}</span>
-                      <span className="truncate text-xs">{item.name}</span>
-                    </Link>
-                    
-                    {/* 서브메뉴 */}
-                    {item.submenu && (
-                      <ul className="ml-4 mt-1 space-y-1">
-                        {item.submenu.map((subItem) => (
-                          <li key={subItem.id}>
-                            <Link
-                              href={subItem.path}
-                              className={`block px-2 py-1 text-xs rounded-md transition-colors w-full text-left ${
-                                isActive(subItem.path)
-                                  ? 'bg-blue-50 text-[#3B82F6] font-medium'
-                                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                              }`}
-                            >
-                              {subItem.name}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </li>
-              ))}
+              {menuItems.map((item) => {
+                const hasSubmenu = item.submenu && item.submenu.length > 0;
+                const isMenuOpen = openMenus[item.id];
+                const isMenuActive = isActive(item.path) || isSubmenuActive(item.submenu || []);
+
+                return (
+                  <li key={item.id}>
+                    <div>
+                      {hasSubmenu ? (
+                        <button
+                          onClick={() => toggleMenu(item.id)}
+                          className={`group flex gap-x-2 rounded-md p-2 text-xs leading-4 font-medium w-full text-left transition-colors ${
+                            isMenuActive
+                              ? 'bg-[#3B82F6] text-white'
+                              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="flex-shrink-0 scale-75">{item.icon}</span>
+                          <span className="truncate text-xs flex-1">{item.name}</span>
+                          <span className="flex-shrink-0 scale-75">
+                            {isMenuOpen ? (
+                              <ChevronDown size={12} />
+                            ) : (
+                              <ChevronRight size={12} />
+                            )}
+                          </span>
+                        </button>
+                      ) : (
+                        <Link
+                          href={item.path}
+                          className={`group flex gap-x-2 rounded-md p-2 text-xs leading-4 font-medium w-full text-left transition-colors ${
+                            isActive(item.path)
+                              ? 'bg-[#3B82F6] text-white'
+                              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="flex-shrink-0 scale-75">{item.icon}</span>
+                          <span className="truncate text-xs">{item.name}</span>
+                        </Link>
+                      )}
+                      
+                      {/* 서브메뉴 */}
+                      {hasSubmenu && (
+                        <ul className={`ml-4 mt-1 space-y-1 transition-all duration-200 overflow-hidden ${
+                          isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                        }`}>
+                          {item.submenu.map((subItem) => (
+                            <li key={subItem.id}>
+                              <Link
+                                href={subItem.path}
+                                className={`flex items-center gap-x-2 px-2 py-1 text-xs rounded-md transition-colors w-full text-left ${
+                                  isActive(subItem.path)
+                                    ? 'bg-blue-50 text-[#3B82F6] font-medium'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                }`}
+                              >
+                                {subItem.icon && <span className="flex-shrink-0 scale-75">{subItem.icon}</span>}
+                                <span>{subItem.name}</span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
         </div>
