@@ -92,7 +92,7 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
           roomName: room.name,
           checkIn,
           checkOut: searchParams?.checkOut,
-          guests: searchParams?.guests || 2,
+          guests: searchParams?.guests || searchParams?.adults || 2,
           nights: nights,
           roomPrice: room.basePrice || room.price,
           totalPrice: totalPrice,

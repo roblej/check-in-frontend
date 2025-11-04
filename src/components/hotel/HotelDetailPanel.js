@@ -73,7 +73,7 @@ const HotelDetailPanel = ({
       {/* 패널 자체는 절대 unmount 안 됨 */}
       <div
         className="hotel-detail-panel fixed top-0 right-0 h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in-right overflow-hidden
-                    w-full sm:top-16 sm:h-[calc(100vh-4rem)]
+                    w-full sm:top-0 sm:h-full
                     lg:right-auto lg:w-[555px] lg:left-[calc(20%+24px)] lg:top-[calc(56px+56px+24px)] lg:h-[calc(100vh-56px-56px-48px)]
                     lg:rounded-xl lg:max-w-[555px]"
       >

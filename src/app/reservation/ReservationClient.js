@@ -541,8 +541,8 @@ const ReservationClient = () => {
         guests: paymentDraft.meta.guests,
         nights: paymentDraft.meta.nights,
         roomPrice: paymentDraft.meta.roomPrice,
-        // totalPrice는 실 결제 금액(카드 결제 금액)과 동일하게 전송
-        totalPrice: paymentAmounts.actualPaymentAmount,
+        // totalPrice는 쿠폰 할인 전 원래 금액 (백엔드에서 쿠폰 할인을 차감하기 위해 필요)
+        totalPrice: paymentDraft.finalAmount,
         customerName: paymentInfo.customerName,
         customerEmail: paymentInfo.customerEmail,
         customerPhone: paymentInfo.customerPhone,
@@ -888,6 +888,8 @@ const ReservationClient = () => {
                     useCash: paymentAmounts.useCash,
                     usePoint: paymentAmounts.usePoint,
                     actualPaymentAmount: paymentAmounts.actualPaymentAmount,
+                    couponIdx: appliedCoupon?.couponIdx || null,
+                    couponDiscount: appliedCoupon?.discountAmount || 0,
                   }}
                   onSuccess={handlePaymentSuccess}
                   onFail={handlePaymentFail}
@@ -945,8 +947,10 @@ const ReservationClient = () => {
                       guests: paymentDraft?.meta?.guests,
                       nights: paymentDraft?.meta?.nights,
                       roomPrice: paymentDraft?.meta?.roomPrice,
-                      // 금액 정보
-                      totalPrice: paymentAmounts?.actualPaymentAmount,
+                      // 금액 정보 (원래 금액)
+                      totalPrice:
+                        paymentDraft?.finalAmount ||
+                        paymentAmounts?.totalAmount,
                       // 고객 입력값
                       specialRequests: paymentInfo.specialRequests || "",
                       pointsUsed: Number(paymentAmounts?.usePoint || 0),

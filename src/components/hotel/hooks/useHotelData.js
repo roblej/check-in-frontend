@@ -2,17 +2,19 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { hotelAPI } from "@/lib/api/hotel";
+import { diningAPI } from "@/lib/api/dining";
 
 /**
  * 호텔 데이터 fetching 커스텀 훅
  * @param {string|number} contentId - 호텔 ID
  * @param {Object} searchParams - 검색 파라미터
  * @param {Function} [onLoadingChange] - 로딩 상태 변경 콜백
- * @returns {Object} 호텔 데이터, 객실 목록, 로딩 상태 등
+ * @returns {Object} 호텔 데이터, 객실 목록, 다이닝 목록, 로딩 상태 등
  */
 export const useHotelData = (contentId, searchParams, onLoadingChange) => {
   const [hotelData, setHotelData] = useState(null);
   const [rooms, setRooms] = useState([]);
+  const [dinings, setDinings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const abortControllerRef = useRef(null);
@@ -150,6 +152,7 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
     const fetchData = async () => {
       setHotelData(null);
       setRooms([]);
+      setDinings([]);
       setErrorMessage("");
       setIsLoading(true);
       onLoadingChange?.(true);
@@ -163,7 +166,8 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
       try {
         const hasDateRange = searchParams?.checkIn && searchParams?.checkOut;
 
-        const [hotelRes, roomsRes] = await Promise.all([
+        // 호텔 정보, 객실 목록, 다이닝 목록 병렬로 가져오기
+        const [hotelRes, roomsRes, diningsRes] = await Promise.all([
           hotelAPI.getHotelDetail(contentId, {
             signal: abortControllerRef.current.signal,
           }),
@@ -173,10 +177,14 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
             checkoutDate: hasDateRange ? searchParams.checkOut : undefined,
             signal: abortControllerRef.current.signal,
           }),
+          diningAPI.getDiningsByHotel(contentId).catch(() => []), // 다이닝이 없어도 에러 처리
         ]);
 
         const hotel = hotelRes?.data ?? hotelRes;
         const roomList = roomsRes?.data ?? roomsRes;
+        const diningsData = Array.isArray(diningsRes) 
+          ? diningsRes 
+          : (diningsRes?.data || []);
 
         const mappedHotel = mapHotelData(hotel);
         const mappedRooms = mapRoomDataWithAvailability(
@@ -187,9 +195,13 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
           searchParams?.adults || 0
         );
 
+        // 활성화된 다이닝만 필터링
+        const activeDinings = diningsData.filter(d => d.status === 1 || d.status === undefined);
+
         if (isMounted) {
           setHotelData(mappedHotel);
           setRooms(mappedRooms);
+          setDinings(activeDinings);
         }
       } catch (err) {
         if (err.name === "AbortError") {
@@ -232,8 +244,10 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
   return {
     hotelData,
     rooms,
+    dinings,
     isLoading,
     errorMessage,
     formatPrice,
   };
 };
+
