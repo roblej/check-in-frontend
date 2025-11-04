@@ -12,6 +12,7 @@ import {
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Pagination from '@/components/Pagination';
 
 // useSearchParams를 사용하는 컴포넌트 분리
 function TabQueryHandler({ onTabChange, loadReservations }) {
@@ -21,7 +22,7 @@ function TabQueryHandler({ onTabChange, loadReservations }) {
     const tab = searchParams.get('tab');
     if (tab === 'completed' || tab === 'upcoming' || tab === 'cancelled') {
       onTabChange(tab);
-      loadReservations(tab);
+      loadReservations(tab, 0, 3); // 페이지네이션 파라미터 추가 (한 페이지에 3개)
       // 예약 내역 섹션으로 스크롤
       setTimeout(() => {
         const reservationSection = document.getElementById('reservation-section');
@@ -118,6 +119,8 @@ function MyPageContent() {
         loadAllReservations();
         loadWritableReviews();
         loadWrittenReviews();
+        // 초기 예약 내역 로드 (페이지네이션 적용)
+        loadReservations('upcoming', 0, pageSize);
         return;
       }
       
@@ -135,6 +138,8 @@ function MyPageContent() {
         loadAllReservations();
         loadWritableReviews();
         loadWrittenReviews();
+        // 초기 예약 내역 로드 (페이지네이션 적용)
+        loadReservations('upcoming', 0, pageSize);
       } else {
         // 토큰 검증 실패 - 로그인 페이지로 리다이렉트
         console.log('❌ 토큰 검증 실패 - 로그인 페이지로 이동');
@@ -172,6 +177,13 @@ function MyPageContent() {
         cancelled: cancelledData?.reservations || []
       });
 
+      // 각 탭별 전체 개수 업데이트 (초기 로드 시)
+      setReservationCounts({
+        upcoming: upcomingData?.totalElements || upcomingData?.reservations?.length || 0,
+        completed: completedData?.totalElements || completedData?.reservations?.length || 0,
+        cancelled: cancelledData?.totalElements || cancelledData?.reservations?.length || 0
+      });
+
       console.log('✅ 전체 예약 데이터 로드 완료:', {
         upcoming: upcomingData?.reservations?.length || 0,
         completed: completedData?.reservations?.length || 0,
@@ -201,24 +213,65 @@ function MyPageContent() {
     }
   };
 
-  // 예약 내역 API 호출
-  const loadReservations = async (status) => {
+  // 예약 내역 API 호출 (페이지네이션 지원)
+  const loadReservations = async (status, page = 0, size = 3) => {
     setReservationsLoading(true);
     try {
-      console.log('📤 예약 내역 요청:', status);
+      console.log('📤 예약 내역 요청:', status, `page=${page}, size=${size}`);
       
-      // 백엔드 API 호출
-      const response = await mypageAPI.getReservations(status);
+      // 백엔드 API 호출 (페이지네이션 파라미터 추가)
+      const response = await mypageAPI.getReservations(status, page, size);
       
       console.log('📥 받은 데이터:', response);
+      
+      // 백엔드가 페이지네이션을 지원하지 않을 경우를 대비한 처리
+      let allReservations = response?.reservations || response?.content || [];
+      const totalItems = response?.totalElements || allReservations.length;
+      
+      // 페이지네이션 정보 업데이트
+      if (response?.totalPages !== undefined) {
+        // 백엔드가 Page 객체를 반환하는 경우
+        setTotalPages(response.totalPages);
+        setTotalElements(response.totalElements || 0);
+        setCurrentPage(response.number !== undefined ? response.number : page);
+        setPageSize(response.size !== undefined ? response.size : size);
+        
+        // 각 탭별 전체 개수 업데이트 (페이지네이션과 무관한 전체 개수)
+        setReservationCounts(prev => ({
+          ...prev,
+          [status]: response.totalElements || 0
+        }));
+      } else {
+        // 백엔드가 전체 리스트를 반환하는 경우 - 프론트엔드에서 슬라이싱
+        const totalPagesCount = Math.ceil(totalItems / size);
+        const startIndex = page * size;
+        const endIndex = startIndex + size;
+        const paginatedReservations = allReservations.slice(startIndex, endIndex);
+        
+        setTotalPages(totalPagesCount);
+        setTotalElements(totalItems);
+        setCurrentPage(page);
+        setPageSize(size);
+        
+        // 각 탭별 전체 개수 업데이트
+        setReservationCounts(prev => ({
+          ...prev,
+          [status]: totalItems
+        }));
+        
+        // 슬라이싱된 데이터만 저장
+        allReservations = paginatedReservations;
+        
+        console.log(`📄 프론트엔드 페이지네이션 적용: 전체 ${totalItems}개 중 ${startIndex + 1}-${Math.min(endIndex, totalItems)}개 표시`);
+      }
       
       // 상태 업데이트
       setReservations(prev => ({
         ...prev,
-        [status]: response?.reservations || []
+        [status]: allReservations
       }));
       
-      console.log(`✅ ${status} 예약 내역 로드 완료:`, response?.reservations?.length || 0, '건');
+      console.log(`✅ ${status} 예약 내역 로드 완료:`, allReservations.length, '건');
       
     } catch (error) {
       console.error('❌ 예약 내역 로드 실패:', error);
@@ -238,6 +291,12 @@ function MyPageContent() {
     } finally {
       setReservationsLoading(false);
     }
+  };
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    loadReservations(reservationTab, newPage, pageSize);
   };
 
   // 더미 데이터 로드 (백엔드 미연결 시)
@@ -404,6 +463,19 @@ function MyPageContent() {
   // 작성한 리뷰 상태
   const [writtenReviews, setWrittenReviews] = useState([]);
   const [writtenReviewsLoading, setWrittenReviewsLoading] = useState(false);
+
+  // Pagination 상태 추가 (컴포넌트 내부로 이동)
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [pageSize, setPageSize] = useState(3); // 한 페이지에 3개씩 표시
+  
+  // 각 탭별 예약 개수 (전체 개수, 페이지네이션과 무관)
+  const [reservationCounts, setReservationCounts] = useState({
+    upcoming: 0,
+    completed: 0,
+    cancelled: 0
+  });
 
   // 리뷰 작성 완료된 예약 ID Set (빠른 조회를 위해)
   const [reviewedReservationIds, setReviewedReservationIds] = useState(new Set());
@@ -679,7 +751,8 @@ function MyPageContent() {
             <button
               onClick={() => {
                 setReservationTab('upcoming');
-                loadReservations('upcoming'); // API 호출 ('upcoming' 상태를 인자로 넘김)
+                setCurrentPage(0); // 탭 변경 시 첫 페이지로 리셋
+                loadReservations('upcoming', 0, pageSize); // API 호출 ('upcoming' 상태를 인자로 넘김)
               }}
               className={`px-6 py-3 font-medium transition-all border-b-2 ${
                 reservationTab === 'upcoming'
@@ -687,12 +760,13 @@ function MyPageContent() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              이용 예정 ({reservations.upcoming.length})
+              이용 예정 ({reservationCounts.upcoming || reservations.upcoming.length})
             </button>
             <button
               onClick={() => {
                 setReservationTab('completed');
-                loadReservations('completed'); // API 호출 ('completed' 상태를 인자로 넘김)
+                setCurrentPage(0); // 탭 변경 시 첫 페이지로 리셋
+                loadReservations('completed', 0, pageSize); // API 호출 ('completed' 상태를 인자로 넘김)
               }}
               className={`px-6 py-3 font-medium transition-all border-b-2 ${
                 reservationTab === 'completed'
@@ -700,12 +774,13 @@ function MyPageContent() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              이용 완료 ({reservations.completed.length})
+              이용 완료 ({reservationCounts.completed || reservations.completed.length})
             </button>
             <button
               onClick={() => {
                 setReservationTab('cancelled');
-                loadReservations('cancelled'); // API 호출
+                setCurrentPage(0); // 탭 변경 시 첫 페이지로 리셋
+                loadReservations('cancelled', 0, pageSize); // API 호출
               }}
               className={`px-6 py-3 font-medium transition-all border-b-2 ${
                 reservationTab === 'cancelled'
@@ -713,7 +788,7 @@ function MyPageContent() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              취소/환불 ({reservations.cancelled.length})
+              취소/환불 ({reservationCounts.cancelled || reservations.cancelled.length})
             </button>
           </div>
 
@@ -854,6 +929,17 @@ function MyPageContent() {
               );
             })}
           </div>
+
+          {/* Pagination 컴포넌트 추가 */}
+          {!reservationsLoading && totalPages > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalElements={totalElements}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+            />
+          )}
         </section>
 
         {/* 내 후기 관리 - 접기/펼치기 */}
