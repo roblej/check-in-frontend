@@ -8,6 +8,9 @@ import ReadToken from "@/components/token/readToken";
 import OAuthCallbackHandler from "@/components/OAuthCallbackHandler";
 import ScrollManager from "@/components/ScrollManager";
 
+// 동적 렌더링 강제 설정 (useSearchParams 사용 시 필요)
+export const dynamic = 'force-dynamic';
+
 
 /**
  * 체크인 호텔 메인 페이지 (SSR)
