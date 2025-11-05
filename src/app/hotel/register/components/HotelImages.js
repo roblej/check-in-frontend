@@ -3,12 +3,17 @@
 import { useState } from "react";
 import axiosInstance from "@/lib/axios";
 
-const HotelImages = ({ images, events, updateFormData, errors, readOnly = false }) => {
+const HotelImages = ({ images, events, updateFormData, errors, readOnly = false, formData }) => {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+  const [dragOverThumbnail, setDragOverThumbnail] = useState(false);
 
   // images가 배열이 아닐 경우 빈 배열로 변환
   const safeImages = Array.isArray(images) ? images : [];
+  
+  // 대표 이미지 URL
+  const thumbnailImageUrl = formData?.hotelInfo?.imageUrl || "";
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -44,6 +49,74 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false 
     e.target.value = '';
   };
 
+  // 대표 이미지 업로드 핸들러 (1장만)
+  const handleThumbnailFile = async (file) => {
+    if (readOnly) return;
+    
+    try {
+      setUploadingThumbnail(true);
+      
+      // FormData 생성
+      const uploadFormData = new FormData();
+      uploadFormData.append('images', file);
+
+      // S3에 이미지 업로드
+      const response = await axiosInstance.post('/imageUpload/hotel/images', uploadFormData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success && response.data.images && response.data.images.length > 0) {
+        // 첫 번째 이미지만 대표 이미지로 설정
+        const uploadedImage = response.data.images[0];
+        updateFormData('hotelInfo', { imageUrl: uploadedImage.originUrl });
+      } else {
+        alert('대표 이미지 업로드에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('대표 이미지 업로드 실패:', error);
+      alert('대표 이미지 업로드 중 오류가 발생했습니다.');
+    } finally {
+      setUploadingThumbnail(false);
+    }
+  };
+
+  // 대표 이미지 드래그 앤 드롭 핸들러
+  const handleThumbnailDrop = async (e) => {
+    e.preventDefault();
+    setDragOverThumbnail(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0) {
+      // 첫 번째 파일만 사용
+      await handleThumbnailFile(imageFiles[0]);
+    }
+  };
+
+  // 대표 이미지 파일 선택 핸들러
+  const handleThumbnailSelect = async (e) => {
+    const files = Array.from(e.target.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0) {
+      // 첫 번째 파일만 사용
+      await handleThumbnailFile(imageFiles[0]);
+    }
+    
+    // 같은 파일을 다시 선택할 수 있도록 input 값 초기화
+    e.target.value = '';
+  };
+
+  // 대표 이미지 삭제 핸들러
+  const removeThumbnail = () => {
+    if (readOnly) return;
+    updateFormData('hotelInfo', { imageUrl: '' });
+  };
+
+  // 호텔 이미지 업로드 핸들러 (다중 이미지, HotelImage 테이블용)
   const handleImageFiles = async (files) => {
     if (readOnly) return;
     
@@ -51,20 +124,20 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false 
       setUploading(true);
       
       // FormData 생성
-      const formData = new FormData();
+      const uploadFormData = new FormData();
       files.forEach((file) => {
-        formData.append('images', file);
+        uploadFormData.append('images', file);
       });
 
       // S3에 이미지 업로드
-      const response = await axiosInstance.post('/imageUpload/hotel/images', formData, {
+      const response = await axiosInstance.post('/imageUpload/hotel/images', uploadFormData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
       if (response.data.success && response.data.images) {
-        // 업로드된 이미지 정보를 formData.images에 추가
+        // 업로드된 이미지 정보를 formData.images에 추가 (HotelImage 테이블용)
         const uploadedImages = response.data.images.map((img) => ({
           id: img.id,
           originUrl: img.originUrl,
@@ -72,7 +145,8 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false 
         }));
 
         const currentImages = Array.isArray(images) ? images : [];
-        updateFormData('images', [...currentImages, ...uploadedImages]);
+        const updatedImages = [...currentImages, ...uploadedImages];
+        updateFormData('images', updatedImages);
       } else {
         alert('이미지 업로드에 실패했습니다.');
       }
@@ -89,8 +163,15 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false 
     
     const currentImages = Array.isArray(images) ? images : [];
     const updatedImages = currentImages.filter((img) => img.id !== imageId);
-    // updateFormData는 객체 병합 방식이므로 배열을 직접 전달해야 함
     updateFormData('images', updatedImages);
+    
+    // 첫 번째 이미지가 삭제되면 대표 이미지도 업데이트
+    if (updatedImages.length > 0 && updatedImages[0].originUrl) {
+      updateFormData('hotelInfo', { imageUrl: updatedImages[0].originUrl });
+    } else {
+      // 이미지가 없으면 대표 이미지도 제거
+      updateFormData('hotelInfo', { imageUrl: "" });
+    }
   };
 
   const addEvent = () => {
@@ -119,6 +200,103 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false 
 
   return (
     <div className="space-y-8">
+      {/* 대표 이미지 */}
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">대표 이미지</h3>
+            <p className="text-sm text-gray-500 mt-1">호텔을 대표하는 이미지를 등록하세요 (1장 필수)</p>
+          </div>
+          {!readOnly && (
+            <>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleThumbnailSelect}
+                className="hidden"
+                id="thumbnail-upload"
+              />
+              <label
+                htmlFor="thumbnail-upload"
+                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 cursor-pointer text-sm"
+              >
+                {thumbnailImageUrl ? "대표 이미지 변경" : "대표 이미지 선택"}
+              </label>
+            </>
+          )}
+        </div>
+        
+        {/* 대표 이미지 업로드 영역 */}
+        <div
+          className={`border-2 border-dashed rounded-lg p-8 transition-colors ${
+            dragOverThumbnail 
+              ? "border-purple-500 bg-purple-50" 
+              : "border-gray-300 hover:border-gray-400"
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOverThumbnail(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setDragOverThumbnail(false);
+          }}
+          onDrop={handleThumbnailDrop}
+        >
+          {thumbnailImageUrl ? (
+            <div className="flex justify-center">
+              <div className="relative group">
+                <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden max-w-2xl w-full">
+                  <img 
+                    src={thumbnailImageUrl} 
+                    alt="대표 이미지" 
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+                {!readOnly && (
+                  <button 
+                    onClick={removeThumbnail}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  >
+                    ×
+                  </button>
+                )}
+                <div className="absolute bottom-2 left-2 bg-purple-600 text-white text-xs px-3 py-1 rounded">
+                  대표 이미지
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center">
+              <div className="text-gray-400 text-6xl mb-4">🖼️</div>
+              <h4 className="text-lg font-medium text-gray-900 mb-2">
+                대표 이미지를 드래그하여 업로드하세요
+              </h4>
+              <p className="text-gray-500 mb-4">
+                또는 위의 버튼을 클릭하여 파일을 선택하세요
+              </p>
+              <p className="text-xs text-gray-400">
+                JPG, PNG, GIF 파일만 업로드 가능 (최대 10MB, 1장만 업로드 가능)
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* 업로드 중 표시 */}
+        {uploadingThumbnail && (
+          <div className="mt-4 text-center">
+            <div className="inline-flex items-center space-x-2 text-purple-600">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+              <span className="text-sm">대표 이미지 업로드 중...</span>
+            </div>
+          </div>
+        )}
+
+        {errors.imageUrl && (
+          <p className="mt-2 text-sm text-red-500">{errors.imageUrl}</p>
+        )}
+      </div>
+
       {/* 호텔 이미지 */}
       <div>
         <div className="flex justify-between items-center mb-4">
@@ -143,7 +321,7 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false 
           )}
         </div>
         <p className="text-sm text-gray-500 mb-4">
-          호텔의 외관, 로비, 객실 등 다양한 이미지를 업로드하세요. (선택사항)
+          호텔의 외관, 로비, 객실 등 다양한 이미지를 업로드하세요. (선택사항, 대표 이미지와 별도로 관리)
         </p>
         
         {/* 이미지 업로드 영역 */}
@@ -195,11 +373,6 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false 
                       >
                         ×
                       </button>
-                    )}
-                    {index === 0 && (
-                      <div className="absolute bottom-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                        대표 이미지
-                      </div>
                     )}
                   </div>
                 ))}
