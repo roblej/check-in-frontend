@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -8,11 +9,24 @@ import {
   Users, 
   TrendingUp, 
   Settings,
-  Gift
+  Gift,
+  ChevronDown,
+  ChevronRight,
+  History,
+  MessageSquare,
+  FileText,
+  HelpCircle,
+  BarChart,
+  FileDown,
+  Ticket,
+  Server,
+  UserCog,
+  Globe
 } from 'lucide-react';
 
 const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
   const pathname = usePathname();
+  const [openMenus, setOpenMenus] = useState({});
   const menuItems = [
     {
       id: 'dashboard',
@@ -24,64 +38,57 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
       id: 'hotels',
       name: '호텔 관리',
       icon: <Building2 size={20} />,
-      path: '/master/hotels',
       submenu: [
-        { id: 'hotel-list', name: '호텔 목록', path: '/master/hotels' },
-        { id: 'hotel-approval', name: '호텔 승인', path: '/master/hotel-approval' },
-        { id: 'hotel-settings', name: '호텔 설정', path: '/master/hotel-settings' }
+        { id: 'hotel-list', name: '호텔 목록', path: '/master/hotels', icon: <Building2 size={16} /> },
+        { id: 'hotel-approval', name: '호텔 승인', path: '/master/hotel-approval', icon: <FileText size={16} /> }
       ]
     },
     {
       id: 'members',
       name: '회원 관리',
       icon: <Users size={20} />,
-      path: '/master/members',
       submenu: [
-        { id: 'member-list', name: '회원 목록', path: '/master/members' },
-        { id: 'member-history', name: '회원 이력', path: '/master/member-history' },
-        { id: 'member-feedback', name: '회원 피드백', path: '/master/member-feedback' }
+        { id: 'member-list', name: '회원 목록', path: '/master/members', icon: <Users size={16} /> },
+        { id: 'member-history', name: '회원 이력', path: '/master/member-history', icon: <History size={16} /> },
+        { id: 'member-feedback', name: '회원 피드백', path: '/master/member-feedback', icon: <MessageSquare size={16} /> }
       ]
     },
     {
       id: 'center',
       name: '고객센터',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636A9 9 0 105.636 18.364 9 9 0 0018.364 5.636z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 15s1.5 2 4 2 4-2 4-2" /></svg>,
-      path: '/master/center',
+      icon: <HelpCircle size={20} />,
       submenu: [
-        { id: 'faq-list', name: '자주 묻는 질문', path: '/master/center/faq' },
-        { id: 'inquiry-list', name: '1:1 문의 목록', path: '/master/center/inquiries' }
+        { id: 'faq-list', name: '자주 묻는 질문', path: '/master/center/faq', icon: <HelpCircle size={16} /> },
+        { id: 'inquiry-list', name: '1:1 문의 목록', path: '/master/center/inquiries', icon: <MessageSquare size={16} /> }
       ]
     },
     {
       id: 'statistics',
       name: '통계 분석',
       icon: <TrendingUp size={20} />,
-      path: '/master/statistics',
       submenu: [
-        { id: 'statistics-dashboard', name: '통계 현황', path: '/master/statistics' },
-        { id: 'statistics-analysis', name: '분석 리포트', path: '/master/statistics-analysis' },
-        { id: 'statistics-export', name: '데이터 내보내기', path: '/master/statistics-export' }
+        { id: 'statistics-dashboard', name: '통계 현황', path: '/master/statistics', icon: <BarChart size={16} /> },
+        { id: 'statistics-analysis', name: '분석 리포트', path: '/master/statistics-analysis', icon: <TrendingUp size={16} /> },
+        { id: 'statistics-export', name: '데이터 내보내기', path: '/master/statistics-export', icon: <FileDown size={16} /> }
       ]
     },
     {
       id: 'coupon',
       name: '쿠폰 관리',
       icon: <Gift size={20} />,
-      path: '/master/coupon-templates',
       submenu: [
-        { id: 'coupon-templates', name: '쿠폰 템플릿', path: '/master/coupon-templates' },
-        { id: 'coupon-batch', name: '쿠폰 일괄 처리', path: '/master/coupon-batch' }
+        { id: 'coupon-templates', name: '쿠폰 템플릿', path: '/master/coupon-templates', icon: <Ticket size={16} /> },
+        { id: 'coupon-batch', name: '쿠폰 일괄 처리', path: '/master/coupon-batch', icon: <Server size={16} /> }
       ]
     },
     {
       id: 'settings',
       name: '설정',
       icon: <Settings size={20} />,
-      path: '/master/settings',
       submenu: [
-        { id: 'site-settings', name: '사이트 설정', path: '/master/site-settings' },
-        { id: 'system-settings', name: '시스템 설정', path: '/master/system-settings' },
-        { id: 'user-management', name: '사용자 관리', path: '/master/user-management' }
+        { id: 'site-settings', name: '사이트 설정', path: '/master/site-settings', icon: <Globe size={16} /> },
+        { id: 'system-settings', name: '시스템 설정', path: '/master/system-settings', icon: <Settings size={16} /> },
+        { id: 'user-management', name: '사용자 관리', path: '/master/user-management', icon: <UserCog size={16} /> }
       ]
     }
   ];
@@ -91,7 +98,26 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
   };
 
   const isSubmenuActive = (submenu) => {
-    return submenu.some(item => pathname === item.path);
+    return submenu && submenu.some(item => pathname === item.path);
+  };
+
+  // 서브메뉴가 활성화된 경우 자동으로 열림
+  useEffect(() => {
+    const newOpenMenus = {};
+    menuItems.forEach((item) => {
+      if (item.submenu && isSubmenuActive(item.submenu)) {
+        newOpenMenus[item.id] = true;
+      }
+    });
+    setOpenMenus(newOpenMenus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  const toggleMenu = (itemId) => {
+    setOpenMenus(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
   };
 
   return (
@@ -109,43 +135,73 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
           {/* 메뉴 아이템들 */}
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-1">
-              {menuItems.map((item) => (
-                <li key={item.id}>
-                  <div>
-                    <Link
-                      href={item.path}
-                      className={`group flex items-center gap-x-3 rounded-md p-3 text-sm leading-6 font-semibold w-full text-left transition-colors ${
-                        isActive(item.path) || isSubmenuActive(item.submenu || [])
-                          ? 'bg-[#7C3AED] text-white'
-                          : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span className="flex-shrink-0">{item.icon}</span>
-                      <span className="truncate">{item.name}</span>
-                    </Link>
-                    
-                    {/* 서브메뉴 */}
-                    {item.submenu && (
-                      <ul className="ml-8 mt-1 space-y-1">
-                        {item.submenu.map((subItem) => (
-                          <li key={subItem.id}>
-                            <Link
-                              href={subItem.path}
-                              className={`block px-3 py-2 text-sm rounded-md transition-colors w-full text-left ${
-                                isActive(subItem.path)
-                                  ? 'bg-purple-50 text-[#7C3AED] font-medium'
-                                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                              }`}
-                            >
-                              {subItem.name}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </li>
-              ))}
+              {menuItems.map((item) => {
+                const hasSubmenu = item.submenu && item.submenu.length > 0;
+                const isMenuOpen = openMenus[item.id];
+                const isMenuActive = isActive(item.path) || isSubmenuActive(item.submenu || []);
+
+                return (
+                  <li key={item.id}>
+                    <div>
+                      {hasSubmenu ? (
+                        <button
+                          onClick={() => toggleMenu(item.id)}
+                          className={`group flex items-center gap-x-3 rounded-md p-3 text-sm leading-6 font-semibold w-full text-left transition-colors ${
+                            isMenuActive
+                              ? 'bg-[#7C3AED] text-white'
+                              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="flex-shrink-0">{item.icon}</span>
+                          <span className="truncate flex-1">{item.name}</span>
+                          <span className="flex-shrink-0">
+                            {isMenuOpen ? (
+                              <ChevronDown size={16} />
+                            ) : (
+                              <ChevronRight size={16} />
+                            )}
+                          </span>
+                        </button>
+                      ) : (
+                        <Link
+                          href={item.path}
+                          className={`group flex items-center gap-x-3 rounded-md p-3 text-sm leading-6 font-semibold w-full text-left transition-colors ${
+                            isActive(item.path)
+                              ? 'bg-[#7C3AED] text-white'
+                              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="flex-shrink-0">{item.icon}</span>
+                          <span className="truncate">{item.name}</span>
+                        </Link>
+                      )}
+                      
+                      {/* 서브메뉴 */}
+                      {hasSubmenu && (
+                        <ul className={`ml-8 mt-1 space-y-1 transition-all duration-200 overflow-hidden ${
+                          isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                        }`}>
+                          {item.submenu.map((subItem) => (
+                            <li key={subItem.id}>
+                              <Link
+                                href={subItem.path}
+                                className={`flex items-center gap-x-2 px-3 py-2 text-sm rounded-md transition-colors w-full text-left ${
+                                  isActive(subItem.path)
+                                    ? 'bg-purple-50 text-[#7C3AED] font-medium'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                }`}
+                              >
+                                {subItem.icon && <span className="flex-shrink-0">{subItem.icon}</span>}
+                                <span>{subItem.name}</span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
         </div>
@@ -170,47 +226,85 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
           {/* 모바일 메뉴 */}
           <nav className="flex-1">
             <ul role="list" className="space-y-1">
-              {menuItems.map((item) => (
-                <li key={item.id}>
-                  <div>
-                    <Link
-                      href={item.path}
-                      className={`group flex gap-x-2 rounded-md p-2 text-xs leading-4 font-medium w-full text-left transition-colors ${
-                        isActive(item.path) || isSubmenuActive(item.submenu || [])
-                          ? 'bg-[#7C3AED] text-white'
-                          : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span className="flex-shrink-0 scale-75">{item.icon}</span>
-                      <span className="truncate text-xs">{item.name}</span>
-                    </Link>
-                    
-                    {/* 서브메뉴 */}
-                    {item.submenu && (
-                      <ul className="ml-4 mt-1 space-y-1">
-                        {item.submenu.map((subItem) => (
-                          <li key={subItem.id}>
-                            <Link
-                              href={subItem.path}
-                              className={`block px-2 py-1 text-xs rounded-md transition-colors w-full text-left ${
-                                isActive(subItem.path)
-                                  ? 'bg-purple-50 text-[#7C3AED] font-medium'
-                                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                              }`}
-                            >
-                              {subItem.name}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </li>
-              ))}
+              {menuItems.map((item) => {
+                const hasSubmenu = item.submenu && item.submenu.length > 0;
+                const isMenuOpen = openMenus[item.id];
+                const isMenuActive = isActive(item.path) || isSubmenuActive(item.submenu || []);
+
+                return (
+                  <li key={item.id}>
+                    <div>
+                      {hasSubmenu ? (
+                        <button
+                          onClick={() => toggleMenu(item.id)}
+                          className={`group flex gap-x-2 rounded-md p-2 text-xs leading-4 font-medium w-full text-left transition-colors ${
+                            isMenuActive
+                              ? 'bg-[#7C3AED] text-white'
+                              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="flex-shrink-0 scale-75">{item.icon}</span>
+                          <span className="truncate text-xs flex-1">{item.name}</span>
+                          <span className="flex-shrink-0 scale-75">
+                            {isMenuOpen ? (
+                              <ChevronDown size={12} />
+                            ) : (
+                              <ChevronRight size={12} />
+                            )}
+                          </span>
+                        </button>
+                      ) : (
+                        <Link
+                          href={item.path}
+                          className={`group flex gap-x-2 rounded-md p-2 text-xs leading-4 font-medium w-full text-left transition-colors ${
+                            isActive(item.path)
+                              ? 'bg-[#7C3AED] text-white'
+                              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="flex-shrink-0 scale-75">{item.icon}</span>
+                          <span className="truncate text-xs">{item.name}</span>
+                        </Link>
+                      )}
+                      
+                      {/* 서브메뉴 */}
+                      {hasSubmenu && (
+                        <ul className={`ml-4 mt-1 space-y-1 transition-all duration-200 overflow-hidden ${
+                          isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                        }`}>
+                          {item.submenu.map((subItem) => (
+                            <li key={subItem.id}>
+                              <Link
+                                href={subItem.path}
+                                className={`flex items-center gap-x-2 px-2 py-1 text-xs rounded-md transition-colors w-full text-left ${
+                                  isActive(subItem.path)
+                                    ? 'bg-purple-50 text-[#7C3AED] font-medium'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                }`}
+                              >
+                                {subItem.icon && <span className="flex-shrink-0 scale-75">{subItem.icon}</span>}
+                                <span>{subItem.name}</span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
         </div>
       </div>
+
+      {/* 모바일/태블릿 오버레이 */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-opacity-75 z-40 xl:hidden"
+          onClick={onClose}
+        ></div>
+      )}
     </>
   );
 };
