@@ -500,7 +500,7 @@ const UsedPaymentForm = ({ initialData }) => {
         // 검증 실패해도 세션 스토리지는 이미 저장되어 있음
         alert("결제 검증에 실패했습니다. 고객센터에 문의해주세요.");
         // 성공 페이지로 이동 (정보는 이미 세션 스토리지에 있음)
-        router.push('/used-payment/success2');
+        router.push('/used-payment/success');
         return;
       }
 
@@ -750,7 +750,7 @@ const UsedPaymentForm = ({ initialData }) => {
                   customerEmail={paymentInfo.customerEmail}
                   customerMobilePhone={paymentInfo.customerPhone}
                   paymentType="used_hotel"
-                  successUrl="/used-payment/success2"
+                  successUrl="/used-payment/success"
                   failUrl="/used-payment/fail"
                   hotelInfo={{
                     usedItemIdx: paymentInfo.usedItemIdx,
