@@ -124,12 +124,36 @@ export default function MyReviewsPage() {
     router.push(`/mypage/review/write?reservationId=${reservation.id || reservation.reservationIdx}`);
   };
 
-  // 이용완료 예약 불러오기
+  // 이용완료 예약 불러오기 (전체 데이터 가져오기)
   const loadCompletedReservations = async () => {
     setCompletedLoading(true);
     try {
-      const response = await mypageAPI.getReservations('completed');
-      setCompletedReservations(response?.reservations || []);
+      // 모든 페이지를 가져오기 위해 큰 size 값 사용
+      // 또는 페이지네이션을 통해 모든 페이지를 순회
+      let allReservations = [];
+      let currentPage = 0;
+      let hasMore = true;
+      const pageSize = 50; // 한 번에 많이 가져오기
+      
+      while (hasMore) {
+        const response = await mypageAPI.getReservations('completed', currentPage, pageSize);
+        const reservations = response?.reservations || response?.content || [];
+        allReservations = [...allReservations, ...reservations];
+        
+        // 페이지네이션 정보 확인
+        if (response?.totalPages !== undefined) {
+          // 백엔드가 Page 객체를 반환하는 경우
+          hasMore = currentPage < response.totalPages - 1;
+          currentPage++;
+        } else {
+          // 백엔드가 전체 리스트를 반환하는 경우
+          hasMore = reservations.length === pageSize;
+          currentPage++;
+        }
+      }
+      
+      setCompletedReservations(allReservations);
+      console.log(`✅ 이용완료 예약 전체 로드: ${allReservations.length}개`);
     } catch (e) {
       console.error('이용완료 예약 로드 실패:', e);
     } finally {
@@ -229,7 +253,15 @@ export default function MyReviewsPage() {
                 reviewTab === 'writable' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'
               }`}
             >
-              작성 가능한 리뷰 ({writableReviews.length})
+              작성 가능한 리뷰 ({(() => {
+                // completedReservations에서 이미 작성한 예약을 제외한 개수
+                const writableCount = completedReservations.filter(r => {
+                  const id = r.reservIdx || r.id || r.reservationNumber;
+                  return !writtenReservationIdSet.has(id);
+                }).length;
+                // writableReviews와 completedReservations 중 더 정확한 값 사용
+                return writableCount > 0 ? writableCount : writableReviews.length;
+              })()})
             </button>
             <button
               onClick={() => setReviewTab('written')}

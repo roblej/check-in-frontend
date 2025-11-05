@@ -415,19 +415,19 @@ const DartGameModal = ({ isOpen, onClose }) => {
     // 지역코드 가져오기
     getAreaCodeFromCoords(randomLocation.lat, randomLocation.lng).then((locationInfo) => {
       // 다트가 찍힌 위치 정보를 그대로 사용
-      setTargetLocation({
-        ...randomLocation,
-        ...locationInfo,
-      });
+        setTargetLocation({
+          ...randomLocation,
+          ...locationInfo,
+        });
     }).catch((error) => {
       // 지역코드를 찾지 못하거나 에러가 발생한 경우에도 위치는 설정
       console.error('지역코드 가져오기 실패:', error);
-      setTargetLocation({
+        setTargetLocation({
         ...randomLocation,
         regionName: '정보 없음',
         areaCode: null,
         fallbackMessage: '다트가 찍힌 위치의 정보를 찾지 못했습니다.'
-      });
+        });
       // 로딩 완료 (호텔 검색은 useEffect에서 처리되지만, 실패 시에도 로딩 완료 필요)
       setIsLoading(false);
     });
