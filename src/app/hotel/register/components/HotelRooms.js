@@ -1,12 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import axiosInstance from "@/lib/axios";
 
 const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialData, readOnly = false }) => {
   const [expandedRoom, setExpandedRoom] = useState(null);
   const [uploadingRooms, setUploadingRooms] = useState({}); // roomId별 업로드 상태
   const [uploadingThumbnails, setUploadingThumbnails] = useState({}); // roomId별 대표 이미지 업로드 상태
+  const capacitySelectRefs = useRef({}); // 수용 인원 선택 필드 ref
+
+  // 외부에서 오류가 발생했을 때 포커스 이동 (useEffect로 처리)
+  useEffect(() => {
+    if (errors.capacity) {
+      const roomId = errors.capacity.roomId;
+      if (roomId && capacitySelectRefs.current[roomId]) {
+        // 해당 객실이 접혀있으면 펼치기
+        setExpandedRoom(roomId);
+        // 포커스 이동
+        setTimeout(() => {
+          capacitySelectRefs.current[roomId]?.focus();
+        }, 100);
+      }
+    }
+  }, [errors.capacity]);
 
   const toggleRoomExpansion = (roomId) => {
     setExpandedRoom(expandedRoom === roomId ? null : roomId);
@@ -15,12 +31,32 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
   const handleRoomImageFiles = async (roomId, files) => {
     if (readOnly) return;
     
+    // 현재 객실의 이미지 개수 확인
+    const room = rooms.find(r => r.id === roomId);
+    const currentImages = Array.isArray(room?.images) ? room.images : [];
+    const currentCount = currentImages.length;
+    const maxCount = 10;
+    
+    // 최대 개수 초과 체크
+    if (currentCount >= maxCount) {
+      alert(`객실 이미지는 최대 ${maxCount}개까지 업로드할 수 있습니다.`);
+      return;
+    }
+    
+    // 추가 가능한 개수 계산
+    const remainingSlots = maxCount - currentCount;
+    const filesToUpload = files.slice(0, remainingSlots);
+    
+    if (files.length > remainingSlots) {
+      alert(`이미지가 너무 많습니다. ${remainingSlots}개만 업로드됩니다. (최대 ${maxCount}개)`);
+    }
+    
     try {
       setUploadingRooms(prev => ({ ...prev, [roomId]: true }));
       
       // FormData 생성
       const formData = new FormData();
-      files.forEach((file) => {
+      filesToUpload.forEach((file) => {
         formData.append('images', file);
       });
 
@@ -42,8 +78,6 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
         }));
 
         // 해당 객실의 기존 이미지에 추가
-        const room = rooms.find(r => r.id === roomId);
-        const currentImages = Array.isArray(room?.images) ? room.images : [];
         const updatedImages = [...currentImages, ...uploadedImages];
         
         updateRoom(roomId, { images: updatedImages });
@@ -60,6 +94,19 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
 
   const handleRoomImageDrop = async (roomId, e) => {
     e.preventDefault();
+    
+    // 현재 객실의 이미지 개수 확인
+    const room = rooms.find(r => r.id === roomId);
+    const currentImages = Array.isArray(room?.images) ? room.images : [];
+    const currentCount = currentImages.length;
+    const maxCount = 10;
+    
+    // 최대 개수 초과 시 드롭 차단
+    if (currentCount >= maxCount) {
+      alert(`객실 이미지는 최대 ${maxCount}개까지 업로드할 수 있습니다.`);
+      return;
+    }
+    
     const files = Array.from(e.dataTransfer.files);
     const imageFiles = files.filter(file => file.type.startsWith('image/'));
     
@@ -69,6 +116,19 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
   };
 
   const handleRoomImageSelect = async (roomId, e) => {
+    // 현재 객실의 이미지 개수 확인
+    const room = rooms.find(r => r.id === roomId);
+    const currentImages = Array.isArray(room?.images) ? room.images : [];
+    const currentCount = currentImages.length;
+    const maxCount = 10;
+    
+    // 최대 개수 초과 시 선택 차단
+    if (currentCount >= maxCount) {
+      alert(`객실 이미지는 최대 ${maxCount}개까지 업로드할 수 있습니다.`);
+      e.target.value = '';
+      return;
+    }
+    
     const files = Array.from(e.target.files);
     const imageFiles = files.filter(file => file.type.startsWith('image/'));
     
@@ -239,7 +299,7 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                         className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
                       >
                         <option value="">객실 타입을 선택하세요</option>
-                        {initialData.roomTypes.map((type) => (
+                        {(initialData?.roomTypes || []).map((type) => (
                           <option key={type.id} value={type.name}>
                             {type.name}
                           </option>
@@ -253,7 +313,7 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                       </label>
                       <input
                         type="number"
-                        value={room.price}
+                        value={room.price || ''}
                         onChange={(e) => updateRoom(room.id, { price: e.target.value })}
                         readOnly={readOnly}
                         disabled={readOnly}
@@ -266,16 +326,31 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         수용 인원
                       </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={room.capacity}
-                        onChange={(e) => updateRoom(room.id, { capacity: parseInt(e.target.value) })}
-                        readOnly={readOnly}
+                      <select
+                        value={room.capacity || 2}
+                        onChange={(e) => updateRoom(room.id, { capacity: parseInt(e.target.value, 10) })}
+                        ref={(el) => {
+                          if (el) {
+                            capacitySelectRefs.current[room.id] = el;
+                          }
+                        }}
                         disabled={readOnly}
-                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
-                      />
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          errors.capacity?.roomId === room.id
+                            ? "border-red-500 focus:ring-red-500"
+                            : "border-gray-300"
+                        } ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                      >
+                        <option value={2}>2명</option>
+                        <option value={4}>4명</option>
+                        <option value={6}>6명</option>
+                        <option value={8}>8명</option>
+                      </select>
+                      {errors.capacity?.roomId === room.id && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {errors.capacity?.message || '수용 인원을 선택해주세요'}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -445,9 +520,18 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                          객실 상세 이미지 (최대 10개)
-                        </label>
+                        <div className="flex items-center space-x-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            객실 상세 이미지 (최대 10개)
+                          </label>
+                          <span className={`text-sm font-medium ${
+                            (Array.isArray(room.images) ? room.images.length : 0) >= 10
+                              ? 'text-red-500'
+                              : 'text-gray-500'
+                          }`}>
+                            ({Array.isArray(room.images) ? room.images.length : 0}/10)
+                          </span>
+                        </div>
                         <p className="text-xs text-gray-500 mt-1">객실의 다양한 이미지를 업로드하세요</p>
                       </div>
                       {!readOnly && (
@@ -459,10 +543,15 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                             onChange={(e) => handleRoomImageSelect(room.id, e)}
                             className="hidden"
                             id={`room-image-upload-${room.id}`}
+                            disabled={(Array.isArray(room.images) ? room.images.length : 0) >= 10}
                           />
                           <label
                             htmlFor={`room-image-upload-${room.id}`}
-                            className="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer text-sm"
+                            className={`inline-flex items-center px-3 py-1 rounded-md text-sm ${
+                              (Array.isArray(room.images) ? room.images.length : 0) >= 10
+                                ? 'bg-gray-400 text-white cursor-not-allowed'
+                                : 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+                            }`}
                           >
                             이미지 선택
                           </label>
@@ -471,12 +560,18 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                     </div>
                     <div
                       className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
-                        "border-gray-300 hover:border-gray-400"
+                        (Array.isArray(room.images) ? room.images.length : 0) >= 10
+                          ? "border-gray-300 cursor-not-allowed"
+                          : "border-gray-300 hover:border-gray-400"
                       }`}
                       onDragOver={(e) => {
                         e.preventDefault();
                       }}
-                      onDrop={(e) => handleRoomImageDrop(room.id, e)}
+                      onDrop={(e) => {
+                        if ((Array.isArray(room.images) ? room.images.length : 0) < 10) {
+                          handleRoomImageDrop(room.id, e);
+                        }
+                      }}
                     >
                       {(!room.images || !Array.isArray(room.images) || room.images.length === 0) ? (
                         <div className="text-center">
