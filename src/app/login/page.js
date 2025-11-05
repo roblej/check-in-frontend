@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import Header from "@/components/Header";
 import styles from "./login.module.css";
 import axios from "axios";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useAdminStore } from "@/stores/adminStore";
 import { setAdminIdxCookie } from "@/utils/cookieUtils";
+import naverLoginBtn from "@/images/login/btnG_완성형.png";
+import kakaoLoginBtn from "@/images/login/kakao_login_medium_narrow.png";
 export default function LoginPage() {
   const router = useRouter();
   const { setAccessToken, setInlogged ,isInlogged} = useCustomerStore();
@@ -26,6 +29,7 @@ export default function LoginPage() {
 
   const login_url = "/api/login";
   const naverLogin_url = "http://localhost:8888/oauth2/authorization/naver";
+  const kakaoLogin_url = "http://localhost:8888/oauth2/authorization/kakao";
   // 네이버 로그인을 위한 함수
 
   // 입력 필드 변경 핸들러
@@ -286,26 +290,39 @@ export default function LoginPage() {
             <div className={styles.dividerLine}>
               <span>또는</span>
             </div>
-            <button
-              type="button"
-              className={styles.socialButton}
-              onClick={() => {
-                // OAuth 로그인 시도 플래그 설정
-                sessionStorage.setItem('oauth_attempted', 'true');
-                window.location.href = naverLogin_url;
-              }}
-            >
-              <span className={styles.naverIcon}>N</span>
-              네이버로 로그인
-            </button>
-            <button
-              type="button"
-              className={styles.socialButton}
-              onClick={() => alert("카카오 로그인 기능 준비 중입니다.")}
-            >
-              <span className={styles.kakaoIcon}>K</span>
-              카카오로 로그인
-            </button>
+            <div className={styles.socialButtonContainer}>
+              <button
+                type="button"
+                className={styles.naverLoginButton}
+                onClick={() => {
+                  // OAuth 로그인 시도 플래그 설정
+                  sessionStorage.setItem('oauth_attempted', 'true');
+                  window.location.href = naverLogin_url;
+                }}
+              >
+                <Image
+                  src={naverLoginBtn}
+                  alt="네이버로 로그인"
+                  width={183}
+                  height={45}
+                />
+              </button>
+              <button
+                type="button"
+                className={styles.kakaoLoginButton}
+                onClick={() => {
+                  sessionStorage.setItem('oauth_attempted', 'true');
+                  window.location.href = kakaoLogin_url;
+                }}
+              >
+                <Image
+                  src={kakaoLoginBtn}
+                  alt="카카오로 로그인"
+                  width={183}
+                  height={45}
+                />
+              </button>
+            </div>
           </div>
         </div>
       </div>
