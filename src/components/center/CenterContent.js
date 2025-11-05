@@ -21,6 +21,8 @@ const CenterContent = ({ initialFaqs, initialInquiries, initialSearchParams }) =
   const [categoryFilter, setCategoryFilter] = useState('전체');
   const [loading, setLoading] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState(null);
+  const [expandedAnswer, setExpandedAnswer] = useState(null);
+  const [answers, setAnswers] = useState({});
   
   // 페이징 상태
   const [currentPage, setCurrentPage] = useState(0);
@@ -100,6 +102,35 @@ const CenterContent = ({ initialFaqs, initialInquiries, initialSearchParams }) =
   // FAQ 토글
   const toggleFaq = (faqId) => {
     setExpandedFaq(expandedFaq === faqId ? null : faqId);
+  };
+
+  // 답변 토글
+  const toggleAnswer = async (inquiryId) => {
+    if (expandedAnswer === inquiryId) {
+      // 답변 닫기
+      setExpandedAnswer(null);
+    } else {
+      // 답변 열기
+      setExpandedAnswer(inquiryId);
+      
+      // 답변이 아직 로드되지 않았다면 로드
+      if (!answers[inquiryId]) {
+        try {
+          const answerData = await centerAPI.getAnswer(inquiryId);
+          setAnswers(prev => ({
+            ...prev,
+            [inquiryId]: answerData
+          }));
+        } catch (error) {
+          console.error('답변 조회 실패:', error);
+          // 답변을 찾을 수 없는 경우 빈 객체로 설정
+          setAnswers(prev => ({
+            ...prev,
+            [inquiryId]: null
+          }));
+        }
+      }
+    }
   };
 
   // 검색 핸들러
@@ -328,8 +359,52 @@ const CenterContent = ({ initialFaqs, initialInquiries, initialSearchParams }) =
                         <p className="text-gray-600 line-clamp-2">
                           {inquiry.content}
                         </p>
+                        {inquiry.status === '완료' && (
+                          <button
+                            onClick={() => toggleAnswer(inquiry.id)}
+                            className="mt-3 flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                          >
+                            <ChevronDown 
+                              className={`w-4 h-4 transition-transform ${
+                                expandedAnswer === inquiry.id ? 'rotate-180' : ''
+                              }`} 
+                            />
+                            {expandedAnswer === inquiry.id ? '답변 숨기기' : '답변 보기'}
+                          </button>
+                        )}
                       </div>
                     </div>
+                    {/* 답변 영역 */}
+                    {expandedAnswer === inquiry.id && (
+                      <div 
+                        className="overflow-hidden transition-all duration-500 ease-in-out mt-4"
+                        style={{
+                          maxHeight: expandedAnswer === inquiry.id ? '500px' : '0px',
+                          opacity: expandedAnswer === inquiry.id ? 1 : 0,
+                          transform: expandedAnswer === inquiry.id ? 'translateY(0)' : 'translateY(-10px)'
+                        }}
+                      >
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                          {answers[inquiry.id] ? (
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-sm font-semibold text-blue-900">관리자 답변</span>
+                              </div>
+                              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                {answers[inquiry.id].content}
+                              </p>
+                            </div>
+                          ) : answers[inquiry.id] === null ? (
+                            <p className="text-gray-500">답변을 찾을 수 없습니다.</p>
+                          ) : (
+                            <div className="flex items-center justify-center py-4">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                              <span className="ml-2 text-gray-600">답변을 불러오는 중...</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

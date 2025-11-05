@@ -82,6 +82,7 @@ const HotelRegistrationForm = ({
             updateFormData={updateFormData}
             errors={errors}
             readOnly={isReadOnly}
+            formData={formData}
           />
         );
       case "dining":
