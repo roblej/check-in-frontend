@@ -4,6 +4,7 @@ import HeroSection from "@/components/HeroSection";
 import PopularHotels from "@/components/PopularHotels";
 import DartGameSection from "@/components/DartGameSection";
 import ReadToken from "@/components/token/readToken";
+import OAuthCallbackHandler from "@/components/OAuthCallbackHandler";
 
 /**
  * 체크인 호텔 메인 페이지 (SSR)
@@ -41,6 +42,9 @@ const CheckinHotel = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* OAuth 콜백 핸들러 */}
+      <OAuthCallbackHandler />
+      
       {/* 헤더 */}
       <Header />
     

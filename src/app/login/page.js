@@ -289,7 +289,11 @@ export default function LoginPage() {
             <button
               type="button"
               className={styles.socialButton}
-              onClick={() => window.location.href = naverLogin_url}
+              onClick={() => {
+                // OAuth 로그인 시도 플래그 설정
+                sessionStorage.setItem('oauth_attempted', 'true');
+                window.location.href = naverLogin_url;
+              }}
             >
               <span className={styles.naverIcon}>N</span>
               네이버로 로그인
