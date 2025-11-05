@@ -1,19 +1,44 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { diningAPI } from "@/lib/api/dining";
+import Pagination from "@/components/Pagination";
 
 const DiningSearchClient = ({ destination, diningDate, mealType, adults }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  // 페이지네이션 상태
+  const urlPage = searchParams.get("page");
+  const [currentPage, setCurrentPage] = useState(() => {
+    const page = urlPage ? parseInt(urlPage, 10) : 0;
+    return isNaN(page) || page < 0 ? 0 : page;
+  });
+  const pageSize = 10;
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  
+  // URL에서 페이지 정보 동기화
+  useEffect(() => {
+    const urlPage = searchParams.get("page");
+    const page = urlPage ? parseInt(urlPage, 10) : 0;
+    const validPage = isNaN(page) || page < 0 ? 0 : page;
+    setCurrentPage((prevPage) => {
+      if (prevPage !== validPage) {
+        return validPage;
+      }
+      return prevPage;
+    });
+  }, [searchParams]);
+  
   console.log('다이닝 검색 파라미터:', { destination, diningDate, mealType, adults });
   
   // 검색 함수
-  const searchDinings = useCallback(async () => {
+  const searchDinings = useCallback(async (page = currentPage) => {
     if (!destination) {
       console.log('destination이 없어서 검색하지 않음');
       return;
@@ -23,17 +48,19 @@ const DiningSearchClient = ({ destination, diningDate, mealType, adults }) => {
     setError(null);
     
     try {
-      console.log('다이닝 검색 시작:', destination);
+      console.log('다이닝 검색 시작:', destination, '페이지:', page);
       
       // 다이닝 검색 (호텔 주소, 호텔 이름, 다이닝 이름으로 검색)
       const response = await diningAPI.searchDinings(destination, {
-        page: 0,
-        size: 20,
+        page: page,
+        size: pageSize,
         sort: 'updatedAt,desc'
       });
       
       console.log('다이닝 검색 결과:', response);
       setSearchResults(response.content || []);
+      setTotalPages(response.totalPages || 0);
+      setTotalElements(response.totalElements || 0);
       
     } catch (err) {
       console.error('다이닝 검색 실패:', err);
@@ -41,14 +68,30 @@ const DiningSearchClient = ({ destination, diningDate, mealType, adults }) => {
     } finally {
       setLoading(false);
     }
-  }, [destination]);
+  }, [destination, pageSize]);
   
-  // 컴포넌트 마운트 시 검색 실행
+  // 컴포넌트 마운트 시 및 destination 변경 시 검색 실행
   useEffect(() => {
     if (destination) {
-      searchDinings();
+      searchDinings(currentPage);
     }
-  }, [destination, searchDinings]);
+  }, [destination, searchDinings, currentPage]);
+  
+  // 페이지 변경 핸들러
+  const handlePageChange = useCallback((page) => {
+    const urlParams = new URLSearchParams(searchParams.toString());
+    if (page > 0) {
+      urlParams.set("page", page.toString());
+    } else {
+      urlParams.delete("page");
+    }
+    router.replace(`?${urlParams.toString()}`, { scroll: false, shallow: true });
+    
+    // 페이지 변경 시 스크롤을 상단으로 이동
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [searchParams, router]);
   
   // 시간 포맷팅 함수
   const formatTime = (time) => {
@@ -210,10 +253,16 @@ const DiningSearchClient = ({ destination, diningDate, mealType, adults }) => {
         </>
       )}
       
-      {/* 검색 결과 개수 */}
-      {!loading && !error && searchResults.length > 0 && (
-        <div className="mt-8 text-center text-gray-500">
-          총 {searchResults.length}개의 다이닝을 찾았습니다.
+      {/* 페이지네이션 */}
+      {!loading && !error && totalPages > 1 && (
+        <div className="mt-8">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalElements={totalElements}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+          />
         </div>
       )}
     </div>
