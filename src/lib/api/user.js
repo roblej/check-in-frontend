@@ -14,6 +14,12 @@ export const userAPI = {
     return response.data;
   },
 
+  // 비밀번호 변경
+  changePassword: async (data) => {
+    const response = await axiosInstance.put("/customer/changePassword", data);
+    return response.data;
+  },
+
   // 보유 쿠폰 목록 조회 (고객 본인)
   getMyCoupons: async () => {
     const response = await axiosInstance.get("/coupons/my");

@@ -57,8 +57,6 @@ const Pagination = ({
   };
 
   const pageNumbers = getPageNumbers();
-  const startItem = currentPage * pageSize + 1;
-  const endItem = Math.min((currentPage + 1) * pageSize, totalElements);
 
   if (totalPages < 1) {
     return null; // 페이지가 없으면 페이지네이션 숨김
@@ -66,12 +64,6 @@ const Pagination = ({
 
   return (
     <div className="flex flex-col items-center justify-center mt-4 space-y-2">
-      {/* 페이지 정보 */}
-      <div className="text-sm text-gray-600">
-        총 <span className="font-semibold text-orange-600">{totalElements}</span>개 중{' '}
-        <span className="font-semibold">{startItem}-{endItem}</span>개 표시
-      </div>
-
       {/* 페이지네이션 버튼 */}
       <div className="flex items-center space-x-1 flex-nowrap overflow-x-auto w-full justify-center">
         {/* 이전 페이지 */}

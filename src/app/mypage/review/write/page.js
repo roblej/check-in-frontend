@@ -95,13 +95,34 @@ function WriteReviewPageContent() {
     setIsSubmitting(true);
 
     try {
-      // 리뷰 작성 API 호출
+      let imageUrls = [];
+      
+      // 이미지가 있으면 먼저 업로드
+      if (images.length > 0) {
+        try {
+          const imageFiles = images.map(img => img.file);
+          const uploadResult = await mypageAPI.uploadReviewImages(imageFiles);
+          
+          if (uploadResult.success && uploadResult.imageUrls) {
+            imageUrls = uploadResult.imageUrls;
+          } else {
+            throw new Error(uploadResult.message || '이미지 업로드에 실패했습니다.');
+          }
+        } catch (error) {
+          console.error('이미지 업로드 실패:', error);
+          alert(error.response?.data?.message || '이미지 업로드에 실패했습니다. 이미지 없이 리뷰를 작성하시겠습니까?');
+          // 이미지 업로드 실패 시에도 리뷰 작성은 진행 (이미지 없이)
+        }
+      }
+      
+      // 리뷰 작성 API 호출 (이미지 URL 포함)
       const result = await mypageAPI.createReview({
-        reservationIdx: reservation.id,
+        reservationIdx: reservation.id || reservation.reservIdx,
         roomIdx: reservation.roomIdx,
-        contentId: reservation.contentId,
+        contentId: reservation.contentId || reservation.contentid,
         rating: rating,
-        content: content
+        content: content,
+        imageUrls: imageUrls // 이미지 URL 배열 전달
       });
       
       alert(`리뷰가 등록되었습니다! 포인트 ${result.points || 1000}P가 적립되었습니다.`);

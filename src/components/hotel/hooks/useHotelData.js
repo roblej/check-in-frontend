@@ -177,14 +177,57 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
             checkoutDate: hasDateRange ? searchParams.checkOut : undefined,
             signal: abortControllerRef.current.signal,
           }),
-          diningAPI.getDiningsByHotel(contentId).catch(() => []), // 다이닝이 없어도 에러 처리
+          diningAPI.getDiningsByHotel(contentId)
+            .then((result) => {
+              console.log("다이닝 API 호출 성공:", {
+                contentId,
+                result,
+                isArray: Array.isArray(result),
+                length: Array.isArray(result) ? result.length : 'N/A'
+              });
+              return result;
+            })
+            .catch((err) => {
+              // 에러 로깅 추가
+              console.error("다이닝 목록 조회 실패:", err);
+              console.error("호텔 ID:", contentId);
+              console.error("에러 상세:", err.response?.data || err.message);
+              return []; // 다이닝이 없어도 에러 처리
+            }),
         ]);
 
         const hotel = hotelRes?.data ?? hotelRes;
         const roomList = roomsRes?.data ?? roomsRes;
-        const diningsData = Array.isArray(diningsRes) 
-          ? diningsRes 
-          : (diningsRes?.data || []);
+        
+        // 다이닝 데이터 처리 - API 응답 구조에 맞춰 처리
+        let diningsData = [];
+        if (Array.isArray(diningsRes)) {
+          diningsData = diningsRes;
+        } else if (diningsRes?.data) {
+          diningsData = Array.isArray(diningsRes.data) ? diningsRes.data : [];
+        } else if (diningsRes && typeof diningsRes === 'object') {
+          // 단일 객체인 경우 배열로 변환
+          diningsData = [diningsRes];
+        }
+        
+        // 활성화된 다이닝만 필터링
+        const activeDinings = diningsData.filter(d => {
+          const isActive = d.status === 1 || d.status === undefined;
+          if (!isActive) {
+            console.log("비활성 다이닝 제외:", {
+              diningIdx: d.diningIdx,
+              name: d.name,
+              status: d.status
+            });
+          }
+          return isActive;
+        });
+        
+        console.log("다이닝 필터링 결과:", {
+          원본개수: diningsData.length,
+          활성화개수: activeDinings.length,
+          activeDinings: activeDinings
+        });
 
         const mappedHotel = mapHotelData(hotel);
         const mappedRooms = mapRoomDataWithAvailability(
@@ -194,9 +237,6 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
           hasDateRange,
           searchParams?.adults || 0
         );
-
-        // 활성화된 다이닝만 필터링
-        const activeDinings = diningsData.filter(d => d.status === 1 || d.status === undefined);
 
         if (isMounted) {
           setHotelData(mappedHotel);

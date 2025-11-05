@@ -1,11 +1,15 @@
 import axiosInstance from "@/lib/axios";
 
 export const mypageAPI = {
-  // 예약 목록 조회 (상태별)
-  getReservations: async (status) => {
-    // status를 인자로 받아서 백엔드로 전달
+  // 예약 목록 조회 (상태별) - 페이지네이션 지원
+  getReservations: async (status, page = 0, size = 5) => {
+    // status와 페이지네이션 파라미터를 인자로 받아서 백엔드로 전달
     const response = await axiosInstance.get("/mypage/reservations", {
-        params: { status } // status 인자 전달
+        params: { 
+          status,  // status 인자 전달
+          page,    // 페이지 번호 (0부터 시작)
+          size     // 페이지 크기
+        }
     });
     return response.data;
   },
@@ -37,6 +41,21 @@ export const mypageAPI = {
       console.error('리뷰 작성 여부 확인 실패:', error);
       return false;
     }
+  },
+
+  // 리뷰 이미지 업로드
+  uploadReviewImages: async (images) => {
+    const formData = new FormData();
+    images.forEach((image) => {
+      formData.append('images', image);
+    });
+    
+    const response = await axiosInstance.post("/imageUpload/review/images", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
   },
 
   // 리뷰 작성

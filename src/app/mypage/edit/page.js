@@ -9,9 +9,11 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useRouter } from 'next/navigation';
 import { userAPI } from '@/lib/api/user';
+import { useCustomerStore } from '@/stores/customerStore';
 
 export default function EditProfilePage() {
   const router = useRouter();
+  const { resetAccessToken, setInlogged } = useCustomerStore();
   
   // 탭 상태
   const [activeTab, setActiveTab] = useState('basic'); // basic, security, profile
@@ -103,6 +105,53 @@ export default function EditProfilePage() {
       ...prev,
       [field]: value
     }));
+  };
+
+  // 비밀번호 필드 복사 시 마스킹된 값만 복사되도록 처리 (보안)
+  const handlePasswordCopy = (e) => {
+    e.preventDefault();
+    
+    // 선택된 텍스트 길이 확인
+    const input = e.target;
+    const selectionStart = input.selectionStart;
+    const selectionEnd = input.selectionEnd;
+    const selectedLength = selectionEnd - selectionStart;
+    
+    if (selectedLength > 0) {
+      // 마스킹된 값(•)을 클립보드에 복사 (평문 노출 방지)
+      const maskedValue = '•'.repeat(selectedLength);
+      
+      // 클립보드 API 사용
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(maskedValue).catch(() => {
+          // Fallback: ClipboardEvent 사용
+          e.clipboardData.setData('text/plain', maskedValue);
+        });
+      } else {
+        // Fallback: ClipboardEvent 사용
+        e.clipboardData.setData('text/plain', maskedValue);
+      }
+    }
+    
+    return false;
+  };
+
+  // 비밀번호 필드 잘라내기 방지 (보안)
+  const handlePasswordCut = (e) => {
+    e.preventDefault();
+    return false;
+  };
+
+  // 비밀번호 필드 붙여넣기 시 BCrypt 해시 패턴 검증
+  const handlePasswordPaste = (e) => {
+    const pastedText = e.clipboardData.getData('text');
+    
+    // BCrypt 해시 패턴 검증 (암호화된 비밀번호 붙여넣기 방지)
+    if (pastedText.startsWith('$2a$') || pastedText.startsWith('$2b$') || 
+        pastedText.startsWith('$2y$') || pastedText.startsWith('$2x$')) {
+      e.preventDefault();
+      return false;
+    }
   };
 
   // 프로필 이미지 선택 핸들러
@@ -231,31 +280,95 @@ export default function EditProfilePage() {
         setIsSaving(false);
         return;
       }
+      
+      // 현재 비밀번호와 새 비밀번호가 같은지 확인 (프론트엔드에서 미리 검증)
+      if (securityInfo.currentPassword === securityInfo.newPassword) {
+        setSaveMessage({ type: 'error', text: '새로운 비밀번호는 현재 비밀번호와 같을 수 없습니다.' });
+        setIsSaving(false);
+        return;
+      }
+      
+      // 비밀번호 변경 API 호출
+      try {
+        const passwordData = {
+          currentPassword: securityInfo.currentPassword,
+          newPassword: securityInfo.newPassword,
+          confirmPassword: securityInfo.confirmPassword
+        };
+        
+        console.log('📤 비밀번호 변경 요청');
+        console.log('📤 요청 데이터:', {
+          currentPassword: passwordData.currentPassword ? '입력됨 (' + passwordData.currentPassword.length + '자)' : '없음',
+          newPassword: passwordData.newPassword ? '입력됨 (' + passwordData.newPassword.length + '자)' : '없음',
+          confirmPassword: passwordData.confirmPassword ? '입력됨 (' + passwordData.confirmPassword.length + '자)' : '없음'
+        });
+        
+        const response = await userAPI.changePassword(passwordData);
+        
+        console.log('✅ 비밀번호 변경 성공:', response);
+        
+        setSaveMessage({ 
+          type: 'success', 
+          text: response.message || '비밀번호가 성공적으로 변경되었습니다. 다시 로그인해주세요.' 
+        });
+        
+        // 패스워드 필드 초기화
+        setSecurityInfo(prev => ({
+          ...prev,
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        }));
+        
+        // 스토어 초기화 (자동 로그아웃)
+        resetAccessToken();
+        setInlogged(false);
+        
+        // 2초 후 로그인 페이지로 리다이렉트
+        setTimeout(() => {
+          router.push('/login');
+        }, 2000);
+        
+      } catch (error) {
+        console.error('❌ 비밀번호 변경 실패:', error);
+        console.error('❌ 에러 응답 데이터:', error.response?.data);
+        
+        // 에러 메시지 처리
+        let errorMessage = '비밀번호 변경에 실패했습니다. 다시 시도해주세요.';
+        
+        if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response?.data?.error?.message) {
+          errorMessage = error.response.data.error.message;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        console.log('✅ 표시할 에러 메시지:', errorMessage);
+        setSaveMessage({ type: 'error', text: errorMessage });
+        
+        // 인증 오류 시 로그인 페이지로 리다이렉트
+        if (error.response?.status === 401) {
+          alert('로그인이 필요합니다.');
+          setTimeout(() => router.push('/login'), 2000);
+        }
+      } finally {
+        setIsSaving(false);
+      }
+      
+      return; // 비밀번호 변경 처리 후 종료
     }
     
-    // 2단계 인증 검증
+    // 2단계 인증 검증 (아직 구현되지 않은 기능)
     if (securityInfo.twoFactorEnabled && !securityInfo.twoFactorEmail.includes('@')) {
       setSaveMessage({ type: 'error', text: '올바른 인증 이메일 주소를 입력해주세요.' });
       setIsSaving(false);
       return;
     }
     
-    // API 호출 시뮬레이션
-    setTimeout(() => {
-      setSaveMessage({ type: 'success', text: '보안정보가 성공적으로 저장되었습니다.' });
-      setIsSaving(false);
-      
-      // 패스워드 필드 초기화
-      setSecurityInfo(prev => ({
-        ...prev,
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      }));
-      
-      // 3초 후 메시지 제거
-      setTimeout(() => setSaveMessage({ type: '', text: '' }), 3000);
-    }, 1000);
+    // 비밀번호 변경이 없으면 2단계 인증 설정 저장 (향후 구현)
+    setSaveMessage({ type: 'info', text: '2단계 인증 기능은 준비 중입니다.' });
+    setIsSaving(false);
   };
 
   // 프로필 이미지 저장
@@ -455,19 +568,16 @@ export default function EditProfilePage() {
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
-                          type={showPasswords.current ? 'text' : 'password'}
+                          type="password"
                           value={securityInfo.currentPassword}
                           onChange={(e) => handleSecurityInfoChange('currentPassword', e.target.value)}
-                          className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          onCopy={handlePasswordCopy}
+                          onCut={handlePasswordCut}
+                          onPaste={handlePasswordPaste}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                           placeholder="현재 비밀번호를 입력하세요"
+                          autoComplete="current-password"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
-                          {showPasswords.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
                       </div>
                     </div>
 
@@ -478,19 +588,16 @@ export default function EditProfilePage() {
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
-                          type={showPasswords.new ? 'text' : 'password'}
+                          type="password"
                           value={securityInfo.newPassword}
                           onChange={(e) => handleSecurityInfoChange('newPassword', e.target.value)}
-                          className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          onCopy={handlePasswordCopy}
+                          onCut={handlePasswordCut}
+                          onPaste={handlePasswordPaste}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                           placeholder="새 비밀번호를 입력하세요 (8자 이상)"
+                          autoComplete="new-password"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
-                          {showPasswords.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
                       </div>
                     </div>
 
@@ -501,19 +608,16 @@ export default function EditProfilePage() {
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
-                          type={showPasswords.confirm ? 'text' : 'password'}
+                          type="password"
                           value={securityInfo.confirmPassword}
                           onChange={(e) => handleSecurityInfoChange('confirmPassword', e.target.value)}
-                          className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          onCopy={handlePasswordCopy}
+                          onCut={handlePasswordCut}
+                          onPaste={handlePasswordPaste}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                           placeholder="새 비밀번호를 다시 입력하세요"
+                          autoComplete="new-password"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
-                          {showPasswords.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
                       </div>
                     </div>
                   </div>

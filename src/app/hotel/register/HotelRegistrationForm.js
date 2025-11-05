@@ -60,6 +60,7 @@ const HotelRegistrationForm = ({
             events={formData.events}
             updateFormData={updateFormData}
             errors={errors}
+            formData={formData}
           />
         );
       case "dining":

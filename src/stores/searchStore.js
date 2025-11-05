@@ -12,6 +12,7 @@ export const useSearchStore = create(
         nights: 1,
         adults: 2,
         children: 0,
+        diningDate: "",
       },
 
       // 검색 조건 업데이트
@@ -26,6 +27,7 @@ export const useSearchStore = create(
           destination: urlParams.get("destination") || "",
           checkIn: urlParams.get("checkIn") || "",
           checkOut: urlParams.get("checkOut") || "",
+          diningDate: urlParams.get("diningDate") || "",
           adults: parseInt(urlParams.get("adults") || "2"),
           children: parseInt(urlParams.get("children") || "0"),
         };
@@ -53,6 +55,7 @@ export const useSearchStore = create(
             nights: 1,
             adults: 2,
             children: 0,
+            diningDate: "",
           },
         }),
 
