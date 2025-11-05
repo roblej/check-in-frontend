@@ -7,7 +7,9 @@ import { usedAPI } from '@/lib/api/used';
 // 서버에서 초기 데이터를 가져오는 함수
 async function getInitialData(searchParams) {
   try {
-    const { destination, checkIn, checkOut, adults, page = 0, size = 10 } = searchParams;
+    const { destination, checkIn, checkOut, adults } = searchParams;
+    const page = parseInt(searchParams.page) || 0;
+    const size = parseInt(searchParams.size) || 10;
     
     // 검색 조건이 있으면 검색 API, 없으면 전체 목록 API 호출
     const hasSearchConditions = destination || checkIn || checkOut || adults !== 2;

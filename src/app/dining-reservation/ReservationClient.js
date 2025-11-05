@@ -7,12 +7,13 @@ import TossPaymentsWidget from "@/components/payment/TossPaymentsWidget";
 
 const KRW = (v) => new Intl.NumberFormat("ko-KR").format(v || 0);
 
-const ReservationClient = ({ diningInfo }) => {
+const ReservationClient = ({ diningInfo: initialDiningInfo }) => {
   const router = useRouter();
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
+  const [diningInfo, setDiningInfo] = useState(initialDiningInfo);
 
   const [reservationInfo, setReservationInfo] = useState({
     customerName: "",
@@ -37,6 +38,41 @@ const ReservationClient = ({ diningInfo }) => {
   const [selectedTime, setSelectedTime] = useState(toSelectTime(diningInfo.diningTime) || "");
   const [errors, setErrors] = useState({});
 
+  // 세션 스토리지에서 다이닝 예약 정보 읽기
+  useEffect(() => {
+    try {
+      const storedData = sessionStorage.getItem('dining_reservation');
+      
+      if (!storedData) {
+        console.error('다이닝 예약 정보를 찾을 수 없습니다.');
+        alert('다이닝 정보를 찾을 수 없습니다. 메인 페이지로 이동합니다.');
+        router.push('/');
+        return;
+      }
+
+      const parsedData = JSON.parse(storedData);
+      setDiningInfo({
+        diningIdx: parsedData.diningIdx || null,
+        contentId: parsedData.contentId || null,
+        diningName: parsedData.diningName || "",
+        hotelName: parsedData.hotelName || "",
+        hotelAddress: parsedData.hotelAddress || "",
+        diningDate: parsedData.diningDate || "",
+        diningTime: parsedData.diningTime || "",
+        guests: parsedData.guests || 2,
+        basePrice: parsedData.basePrice || 0,
+        imageUrl: parsedData.imageUrl || "",
+        openTime: parsedData.openTime || "11:00:00",
+        closeTime: parsedData.closeTime || "21:00:00",
+        slotDuration: parsedData.slotDuration || 60,
+      });
+    } catch (error) {
+      console.error('세션 스토리지 데이터 읽기 실패:', error);
+      alert('다이닝 정보를 불러오는 중 오류가 발생했습니다.');
+      router.push('/');
+    }
+  }, [router]);
+
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
@@ -57,10 +93,20 @@ const ReservationClient = ({ diningInfo }) => {
         setLoading(false);
       }
     };
+    
+    // 다이닝 정보가 로드된 후에만 사용자 정보 가져오기
+    if (diningInfo.diningIdx) {
     fetchUserInfo();
-  }, []);
+    }
+  }, [diningInfo.diningIdx]);
 
   useEffect(() => {
+    if (!diningInfo.diningIdx || !diningInfo.diningDate) {
+      // 다이닝 정보가 아직 로드 중이면 대기
+      return;
+    }
+    
+    // 다이닝 정보 검증
     if (!diningInfo.diningIdx || !diningInfo.diningDate) {
       alert("다이닝 정보가 올바르지 않습니다.");
       router.push("/");

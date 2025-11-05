@@ -2,17 +2,19 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { hotelAPI } from "@/lib/api/hotel";
+import { diningAPI } from "@/lib/api/dining";
 
 /**
  * 호텔 데이터 fetching 커스텀 훅
  * @param {string|number} contentId - 호텔 ID
  * @param {Object} searchParams - 검색 파라미터
  * @param {Function} [onLoadingChange] - 로딩 상태 변경 콜백
- * @returns {Object} 호텔 데이터, 객실 목록, 로딩 상태 등
+ * @returns {Object} 호텔 데이터, 객실 목록, 다이닝 목록, 로딩 상태 등
  */
 export const useHotelData = (contentId, searchParams, onLoadingChange) => {
   const [hotelData, setHotelData] = useState(null);
   const [rooms, setRooms] = useState([]);
+  const [dinings, setDinings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const abortControllerRef = useRef(null);
@@ -150,6 +152,7 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
     const fetchData = async () => {
       setHotelData(null);
       setRooms([]);
+      setDinings([]);
       setErrorMessage("");
       setIsLoading(true);
       onLoadingChange?.(true);
@@ -163,7 +166,8 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
       try {
         const hasDateRange = searchParams?.checkIn && searchParams?.checkOut;
 
-        const [hotelRes, roomsRes] = await Promise.all([
+        // 호텔 정보, 객실 목록, 다이닝 목록 병렬로 가져오기
+        const [hotelRes, roomsRes, diningsRes] = await Promise.all([
           hotelAPI.getHotelDetail(contentId, {
             signal: abortControllerRef.current.signal,
           }),
@@ -173,10 +177,57 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
             checkoutDate: hasDateRange ? searchParams.checkOut : undefined,
             signal: abortControllerRef.current.signal,
           }),
+          diningAPI.getDiningsByHotel(contentId)
+            .then((result) => {
+              console.log("다이닝 API 호출 성공:", {
+                contentId,
+                result,
+                isArray: Array.isArray(result),
+                length: Array.isArray(result) ? result.length : 'N/A'
+              });
+              return result;
+            })
+            .catch((err) => {
+              // 에러 로깅 추가
+              console.error("다이닝 목록 조회 실패:", err);
+              console.error("호텔 ID:", contentId);
+              console.error("에러 상세:", err.response?.data || err.message);
+              return []; // 다이닝이 없어도 에러 처리
+            }),
         ]);
 
         const hotel = hotelRes?.data ?? hotelRes;
         const roomList = roomsRes?.data ?? roomsRes;
+        
+        // 다이닝 데이터 처리 - API 응답 구조에 맞춰 처리
+        let diningsData = [];
+        if (Array.isArray(diningsRes)) {
+          diningsData = diningsRes;
+        } else if (diningsRes?.data) {
+          diningsData = Array.isArray(diningsRes.data) ? diningsRes.data : [];
+        } else if (diningsRes && typeof diningsRes === 'object') {
+          // 단일 객체인 경우 배열로 변환
+          diningsData = [diningsRes];
+        }
+        
+        // 활성화된 다이닝만 필터링
+        const activeDinings = diningsData.filter(d => {
+          const isActive = d.status === 1 || d.status === undefined;
+          if (!isActive) {
+            console.log("비활성 다이닝 제외:", {
+              diningIdx: d.diningIdx,
+              name: d.name,
+              status: d.status
+            });
+          }
+          return isActive;
+        });
+        
+        console.log("다이닝 필터링 결과:", {
+          원본개수: diningsData.length,
+          활성화개수: activeDinings.length,
+          activeDinings: activeDinings
+        });
 
         const mappedHotel = mapHotelData(hotel);
         const mappedRooms = mapRoomDataWithAvailability(
@@ -190,6 +241,7 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
         if (isMounted) {
           setHotelData(mappedHotel);
           setRooms(mappedRooms);
+          setDinings(activeDinings);
         }
       } catch (err) {
         if (err.name === "AbortError") {
@@ -232,8 +284,10 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
   return {
     hotelData,
     rooms,
+    dinings,
     isLoading,
     errorMessage,
     formatPrice,
   };
 };
+

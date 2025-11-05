@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import axiosInstance from "@/lib/axios";
 
 const HotelImages = ({ images, events, updateFormData, errors, readOnly = false }) => {
   const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // images가 배열이 아닐 경우 빈 배열로 변환
+  const safeImages = Array.isArray(images) ? images : [];
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -15,23 +20,77 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false 
     setDragOver(false);
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     setDragOver(false);
     
     const files = Array.from(e.dataTransfer.files);
     const imageFiles = files.filter(file => file.type.startsWith('image/'));
     
-    // 이미지 파일 처리 로직 (실제 구현 시 파일 업로드 API 호출)
-    console.log('업로드할 이미지:', imageFiles);
+    if (imageFiles.length > 0) {
+      await handleImageFiles(imageFiles);
+    }
   };
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files);
     const imageFiles = files.filter(file => file.type.startsWith('image/'));
     
-    // 이미지 파일 처리 로직
-    console.log('선택된 이미지:', imageFiles);
+    if (imageFiles.length > 0) {
+      await handleImageFiles(imageFiles);
+    }
+    
+    // 같은 파일을 다시 선택할 수 있도록 input 값 초기화
+    e.target.value = '';
+  };
+
+  const handleImageFiles = async (files) => {
+    if (readOnly) return;
+    
+    try {
+      setUploading(true);
+      
+      // FormData 생성
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append('images', file);
+      });
+
+      // S3에 이미지 업로드
+      const response = await axiosInstance.post('/imageUpload/hotel/images', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success && response.data.images) {
+        // 업로드된 이미지 정보를 formData.images에 추가
+        const uploadedImages = response.data.images.map((img) => ({
+          id: img.id,
+          originUrl: img.originUrl,
+          smallUrl: img.smallUrl || img.originUrl,
+        }));
+
+        const currentImages = Array.isArray(images) ? images : [];
+        updateFormData('images', [...currentImages, ...uploadedImages]);
+      } else {
+        alert('이미지 업로드에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      alert('이미지 업로드 중 오류가 발생했습니다.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (imageId) => {
+    if (readOnly) return;
+    
+    const currentImages = Array.isArray(images) ? images : [];
+    const updatedImages = currentImages.filter((img) => img.id !== imageId);
+    // updateFormData는 객체 병합 방식이므로 배열을 직접 전달해야 함
+    updateFormData('images', updatedImages);
   };
 
   const addEvent = () => {
@@ -62,14 +121,34 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false 
     <div className="space-y-8">
       {/* 호텔 이미지 */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">호텔 이미지</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">호텔 이미지</h3>
+          {!readOnly && (
+            <>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="image-upload"
+              />
+              <label
+                htmlFor="image-upload"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer text-sm"
+              >
+                이미지 선택
+              </label>
+            </>
+          )}
+        </div>
         <p className="text-sm text-gray-500 mb-4">
           호텔의 외관, 로비, 객실 등 다양한 이미지를 업로드하세요. (선택사항)
         </p>
         
         {/* 이미지 업로드 영역 */}
         <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+          className={`border-2 border-dashed rounded-lg p-8 transition-colors ${
             dragOver 
               ? "border-blue-500 bg-blue-50" 
               : "border-gray-300 hover:border-gray-400"
@@ -78,52 +157,68 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false 
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="text-gray-400 text-6xl mb-4">📸</div>
-          <h4 className="text-lg font-medium text-gray-900 mb-2">
-            이미지를 드래그하여 업로드하세요
-          </h4>
-          <p className="text-gray-500 mb-4">
-            또는 아래 버튼을 클릭하여 파일을 선택하세요
-          </p>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFileSelect}
-            className="hidden"
-            id="image-upload"
-          />
-          <label
-            htmlFor="image-upload"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer"
-          >
-            이미지 선택
-          </label>
-          <p className="text-xs text-gray-400 mt-2">
-            JPG, PNG, GIF 파일만 업로드 가능 (최대 10MB)
-          </p>
+          {safeImages.length === 0 ? (
+            // 이미지가 없을 때 안내 메시지
+            <div className="text-center">
+              <div className="text-gray-400 text-6xl mb-4">📸</div>
+              <h4 className="text-lg font-medium text-gray-900 mb-2">
+                이미지를 드래그하여 업로드하세요
+              </h4>
+              <p className="text-gray-500 mb-4">
+                또는 위의 이미지 선택 버튼을 클릭하여 파일을 선택하세요
+              </p>
+              <p className="text-xs text-gray-400">
+                JPG, PNG, GIF 파일만 업로드 가능 (최대 10MB)
+              </p>
+            </div>
+          ) : (
+            // 이미지가 있을 때 그리드로 표시
+            <div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {safeImages.map((image, index) => (
+                  <div key={image.id || index} className="relative group">
+                    <div className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                      {image.originUrl || image.smallUrl ? (
+                        <img 
+                          src={image.originUrl || image.smallUrl} 
+                          alt="호텔 이미지" 
+                          className="w-full h-full object-cover" 
+                        />
+                      ) : (
+                        <span className="text-gray-400 text-2xl">🖼️</span>
+                      )}
+                    </div>
+                    {!readOnly && (
+                      <button 
+                        onClick={() => removeImage(image.id)}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    )}
+                    {index === 0 && (
+                      <div className="absolute bottom-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                        대표 이미지
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 text-center">
+                <p className="text-xs text-gray-400">
+                  더 많은 이미지를 추가하려면 드래그하거나 이미지 선택 버튼을 사용하세요
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* 업로드된 이미지 미리보기 */}
-        {images.length > 0 && (
-          <div className="mt-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">업로드된 이미지</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {images.map((image, index) => (
-                <div key={index} className="relative group">
-                  <div className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center">
-                    <span className="text-gray-400 text-2xl">🖼️</span>
-                  </div>
-                  <button className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    ×
-                  </button>
-                  {index === 0 && (
-                    <div className="absolute bottom-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                      대표 이미지
-                    </div>
-                  )}
-                </div>
-              ))}
+        {/* 업로드 중 표시 */}
+        {uploading && (
+          <div className="mt-4 text-center">
+            <div className="inline-flex items-center space-x-2 text-blue-600">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              <span className="text-sm">이미지 업로드 중...</span>
             </div>
           </div>
         )}

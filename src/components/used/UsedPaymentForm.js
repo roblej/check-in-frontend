@@ -35,6 +35,44 @@ const UsedPaymentForm = ({ initialData }) => {
     fetchUserInfo();
   }, [router]);
 
+  // 세션 스토리지에서 결제 정보 가져오기 (URL 파라미터 완전히 숨김)
+  useEffect(() => {
+    try {
+      // 현재 결제 중인 거래 ID 가져오기
+      const currentTradeIdx = sessionStorage.getItem('used_payment_current');
+      
+      if (!currentTradeIdx) {
+        console.error('결제 정보를 찾을 수 없습니다. 거래를 다시 시작해주세요.');
+        alert('결제 정보를 찾을 수 없습니다. 다시 시도해주세요.');
+        router.push('/used');
+        return;
+      }
+
+      const usedTradeIdx = parseInt(currentTradeIdx);
+      const storedData = sessionStorage.getItem(`used_payment_${usedTradeIdx}`);
+      
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        setPaymentInfo(prev => ({
+          ...prev,
+          ...parsedData,
+          usedTradeIdx: parsedData.usedTradeIdx || usedTradeIdx,
+          nights: Math.ceil((new Date(parsedData.checkOut) - new Date(parsedData.checkIn)) / (1000 * 60 * 60 * 24)),
+          discountAmount: (parsedData.originalPrice || 0) - (parsedData.salePrice || 0)
+        }));
+      } else {
+        // 세션 스토리지에 데이터가 없으면 에러 처리
+        console.error('결제 정보를 찾을 수 없습니다. 거래를 다시 시작해주세요.');
+        alert('결제 정보를 찾을 수 없습니다. 다시 시도해주세요.');
+        router.push('/used');
+      }
+    } catch (error) {
+      console.error('세션 스토리지 데이터 읽기 실패:', error);
+      alert('결제 정보를 불러오는 중 오류가 발생했습니다.');
+      router.push('/used');
+    }
+  }, [router]);
+
   // 결제 정보 상태
   const [paymentInfo, setPaymentInfo] = useState({
     ...initialData,
@@ -144,6 +182,11 @@ const UsedPaymentForm = ({ initialData }) => {
           new Date().toISOString()
         ).then(() => {
           console.log('거래 삭제 완료:', paymentInfo.usedTradeIdx);
+          // 세션 스토리지도 정리
+          if (paymentInfo.usedTradeIdx) {
+            sessionStorage.removeItem(`used_payment_${paymentInfo.usedTradeIdx}`);
+            sessionStorage.removeItem('used_payment_current');
+          }
         }).catch(error => {
           console.error('거래 삭제 실패:', error);
           isDeleting = false; // 실패 시 플래그 리셋
@@ -166,12 +209,15 @@ const UsedPaymentForm = ({ initialData }) => {
         console.log('페이지 이탈 감지 - 거래 삭제 시작:', paymentInfo.usedTradeIdx);
         
         // navigator.sendBeacon으로 안전한 비동기 요청
+        // sendBeacon은 Content-Type을 자동으로 설정하므로 JSON.stringify만 사용
         const deleteData = JSON.stringify({ 
           reason: '사용자 페이지 이탈',
           timestamp: new Date().toISOString()
         });
         
-        navigator.sendBeacon(`/api/used/trade/${paymentInfo.usedTradeIdx}/delete`, deleteData);
+        // sendBeacon은 POST만 지원하며, Content-Type을 application/json으로 설정
+        const blob = new Blob([deleteData], { type: 'application/json' });
+        navigator.sendBeacon(`/api/used/trade/${paymentInfo.usedTradeIdx}/delete`, blob);
       }
     };
 
@@ -320,18 +366,9 @@ const UsedPaymentForm = ({ initialData }) => {
   // 토스페이먼츠 결제 성공 처리
   const handlePaymentSuccess = async (paymentResult) => {
     try {
-        // 1. 거래 확정 (중요: 결제 완료 후 거래 확정)
-        if (paymentInfo.usedTradeIdx) {
-          try {
-            await usedAPI.confirmTrade(paymentInfo.usedTradeIdx);
-          } catch (error) {
-            console.error("거래 확정 실패:", error.response?.data?.message || error.message);
-            alert("거래 확정에 실패했습니다. 고객센터에 문의해주세요.");
-            return;
-          }
-        }
-
-      // 2. 백엔드에 결제 내역 저장
+      // 백엔드에 결제 내역 저장 (거래 확정 포함)
+      // 주의: 백엔드 createPayment에서 이미 거래 확정까지 처리하므로
+      // 별도로 confirmTrade를 호출하지 않음
       const paymentData = {
         usedTradeIdx: paymentInfo.usedTradeIdx,
         paymentKey: paymentResult.paymentKey,
@@ -351,10 +388,13 @@ const UsedPaymentForm = ({ initialData }) => {
         const savedPayment = await usedAPI.createPayment(paymentData);
         console.log("결제 내역 저장 성공:", savedPayment);
 
-        // 3. 성공 페이지로 리다이렉트
+        // 성공 페이지로 리다이렉트
         clearPaymentDraft();
-        const successParams = new URLSearchParams({
+        
+        // 결제 성공 정보를 세션 스토리지에 저장 (URL 파라미터 숨기기)
+        const successData = {
           orderId: paymentResult.orderId,
+          paymentKey: paymentResult.paymentKey,
           amount: paymentAmounts.totalAmount,
           type: "used_hotel",
           cash: paymentAmounts.useCash,
@@ -365,9 +405,19 @@ const UsedPaymentForm = ({ initialData }) => {
           roomType: paymentInfo.roomType,
           checkIn: paymentInfo.checkIn,
           checkOut: paymentInfo.checkOut,
-        });
+        };
+        
+        // 세션 스토리지에 저장
+        sessionStorage.setItem('used_payment_success', JSON.stringify(successData));
+        
+        // 기존 결제 페이지 데이터 정리
+        if (paymentInfo.usedTradeIdx) {
+          sessionStorage.removeItem(`used_payment_${paymentInfo.usedTradeIdx}`);
+          sessionStorage.removeItem('used_payment_current');
+        }
 
-        router.push(`/used-payment/success?${successParams.toString()}`);
+        // URL 파라미터 없이 이동
+        router.push('/used-payment/success');
       } catch (error) {
         console.error("결제 내역 저장 실패:", error.response?.data?.message || error.message);
         alert("결제 내역 저장에 실패했습니다. 고객센터에 문의해주세요.");

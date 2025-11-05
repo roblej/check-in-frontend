@@ -412,25 +412,24 @@ const DartGameModal = ({ isOpen, onClose }) => {
     // 랜덤 위치 생성 (파워와 무관하게)
     const randomLocation = generateRandomLocation();
     
-    // 지역코드 가져오기 (실패 시 대체 로직 포함)
-    getAreaCodeFromCoords(randomLocation.lat, randomLocation.lng).then(async (locationInfo) => {
-      if (locationInfo && locationInfo.areaCode) {
+    // 지역코드 가져오기
+    getAreaCodeFromCoords(randomLocation.lat, randomLocation.lng).then((locationInfo) => {
+      // 다트가 찍힌 위치 정보를 그대로 사용
         setTargetLocation({
           ...randomLocation,
           ...locationInfo,
         });
-      } else {
-        // 지역코드를 찾지 못한 경우 (바다 등), 가장 가까운 육지 좌표로 재검색
-        console.log('지역코드를 찾지 못했습니다. 가장 가까운 육지를 검색합니다.');
-        const nearestPoint = findNearestPointOnPolygon(randomLocation, koreaPolygon);
-        const nearestLocationInfo = await getAreaCodeFromCoords(nearestPoint.lat, nearestPoint.lng);
-
+    }).catch((error) => {
+      // 지역코드를 찾지 못하거나 에러가 발생한 경우에도 위치는 설정
+      console.error('지역코드 가져오기 실패:', error);
         setTargetLocation({
-          ...randomLocation, // 다트는 원래 위치에 찍힘
-          ...nearestLocationInfo, // 정보는 가장 가까운 육지 정보 사용
-          fallbackMessage: `가장 가까운 육지인 '${nearestLocationInfo.regionName}' 지역의 정보를 표시합니다.`
+        ...randomLocation,
+        regionName: '정보 없음',
+        areaCode: null,
+        fallbackMessage: '다트가 찍힌 위치의 정보를 찾지 못했습니다.'
         });
-      }
+      // 로딩 완료 (호텔 검색은 useEffect에서 처리되지만, 실패 시에도 로딩 완료 필요)
+      setIsLoading(false);
     });
 
     // 지도에 마커를 먼저 생성 (보이지 않게)
@@ -960,7 +959,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
       {/* 모달 컨텐츠 */}
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-y-auto">
         {/* 모달 헤더 */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl z-[60]">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900">
               🎯 어디갈지 모르겠다면?
@@ -984,13 +983,13 @@ const DartGameModal = ({ isOpen, onClose }) => {
         <div className="p-6">
           {/* 게임 영역 */}
           <div className="relative bg-gradient-to-br from-blue-100 to-green-100 rounded-2xl p-6 mb-6">
-            <div className="flex gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
               {/* 카카오맵 */}
-              <div className="relative flex-1 h-[55vh] bg-gray-200 rounded-xl overflow-hidden">
+              <div className="relative flex-1 h-[55vh] bg-gray-200 rounded-xl overflow-hidden z-0">
                 <div 
                   ref={mapRef}
                   className="w-full h-full"
-                  style={{ minHeight: '384px' }}
+                  style={{ minHeight: '384px', zIndex: 0 }}
                 />
                 
                 {/* 로딩 상태 */}
@@ -1068,8 +1067,9 @@ const DartGameModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* 파워 게이지 바 (세로) */}
-              <div className="flex flex-col items-center justify-between h-[55vh] py-4">
+              {/* 파워 게이지 바 - 데스크톱: 세로, 모바일: 가로 */}
+              {/* 데스크톱: 세로 게이지 */}
+              <div className="hidden md:flex flex-col items-center justify-between h-[55vh] py-4">
                 {/* 상단: 숫자 라벨 */}
                 <div className="text-center mb-2">
                   <span className="text-xs font-bold text-gray-700">10</span>
@@ -1133,6 +1133,64 @@ const DartGameModal = ({ isOpen, onClose }) => {
                   </span>
                 </div>
               </div>
+
+              {/* 모바일: 가로 게이지 */}
+              <div className="md:hidden flex flex-col items-center gap-2">
+                {/* 파워 상태 텍스트 */}
+                <div className="text-center">
+                  <span className={`text-sm font-bold ${
+                    powerGauge < 3 ? 'text-green-600' :
+                    powerGauge < 7 ? 'text-yellow-600' :
+                                    'text-red-600'
+                  }`}>
+                    {powerGauge < 3 ? '약함' :
+                     powerGauge < 7 ? '중간' :
+                                     '강함'} - {powerGauge.toFixed(1)}
+                  </span>
+                </div>
+
+                {/* 가로 게이지 바 */}
+                <div className="relative w-full h-16 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                  {/* 배경 눈금 */}
+                  <div className="absolute inset-0 flex">
+                    {[...Array(10)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="flex-1 border-r border-gray-200"
+                        style={{ 
+                          backgroundColor: i < 3 ? 'rgba(34, 197, 94, 0.2)' : 
+                                         i < 7 ? 'rgba(251, 191, 36, 0.2)' : 
+                                                 'rgba(239, 68, 68, 0.2)'
+                        }}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* 파워 바 (왼쪽에서 오른쪽으로) */}
+                  <div
+                    className="absolute left-0 top-0 h-full transition-all duration-100 flex items-center justify-center"
+                    style={{ 
+                      width: `${(powerGauge / 10) * 100}%`,
+                      background: powerGauge < 3 ? 'linear-gradient(to right, #22c55e, #16a34a)' :
+                                 powerGauge < 7 ? 'linear-gradient(to right, #fbbf24, #f59e0b)' :
+                                                 'linear-gradient(to right, #ef4444, #dc2626)'
+                    }}
+                  >
+                    {powerGauge > 0 && (
+                      <span className="text-white font-bold text-sm">
+                        {powerGauge.toFixed(1)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 숫자 라벨 */}
+                <div className="flex justify-between w-full text-xs font-bold text-gray-700 px-2">
+                  <span>0</span>
+                  <span>5</span>
+                  <span>10</span>
+                </div>
+              </div>
             </div>
 
             {/* 컨트롤 버튼 및 안내 */}
@@ -1148,7 +1206,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
               ) : (
                 <button
                   onClick={startCharging}
-                  disabled={isThrowing || isLoading || !mapLoaded}
+                  disabled={isThrowing || !mapLoaded}
                   className="px-8 py-3 bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white font-bold rounded-full transition-colors shadow-lg"
                 >
                   {isThrowing ? '다트 던지는 중...' : '🎯 게이지 시작 (Space)'}
@@ -1256,7 +1314,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
               </div>
               {/* 우측 사이드 모달: 선택된 관광지 상세 + 인근 호텔 */}
               {selectedTour && (
-                <div className="fixed right-4 top-20 bottom-6 z-50 w-full max-w-5xl bg-white shadow-2xl border border-gray-200 rounded-2xl overflow-hidden flex flex-col">
+                <div className="fixed right-4 top-20 bottom-6 z-[70] w-full max-w-5xl bg-white shadow-2xl border border-gray-200 rounded-2xl overflow-hidden flex flex-col">
                   <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                     <div className="font-bold text-gray-900 line-clamp-1">
                       {selectedTour.title || '선택한 관광지'}

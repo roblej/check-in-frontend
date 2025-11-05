@@ -5,6 +5,8 @@ import PopularHotels from "@/components/PopularHotels";
 import DartGameSection from "@/components/DartGameSection";
 import ReadToken from "@/components/token/readToken";
 import OAuthCallbackHandler from "@/components/OAuthCallbackHandler";
+import ScrollManager from "@/components/ScrollManager";
+
 
 /**
  * 체크인 호텔 메인 페이지 (SSR)
@@ -14,6 +16,7 @@ import OAuthCallbackHandler from "@/components/OAuthCallbackHandler";
  * - 클라이언트 컴포넌트들을 조합하여 구성
  */
 const CheckinHotel = () => {
+  
   console.log("home page");
   // 여행 전 체크 아이템 데이터 (서버 컴포넌트에서 관리)
   const travelCheckItems = [
@@ -42,9 +45,13 @@ const CheckinHotel = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+
       {/* OAuth 콜백 핸들러 */}
       <OAuthCallbackHandler />
       
+
+
+      <ScrollManager />{/* 스크롤 초기화 컴포넌트 */}
       {/* 헤더 */}
       <Header />
     

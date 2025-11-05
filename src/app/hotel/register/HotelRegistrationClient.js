@@ -15,24 +15,18 @@ const HotelRegistrationClient = ({ initialData }) => {
     hotelInfo: {
       title: "",
       adress: "",
-      phone: "",
-      email: "",
-      checkInTime: "15:00",
-      checkOutTime: "11:00",
-      cancellationPolicy: "무료 취소 (체크인 24시간 전까지)"
+      phone: ""
     },
     // 호텔 상세 정보
     hotelDetail: {
       description: "",
-      features: "",
+      foodplace: "", // features -> foodplace로 변경
       scale: "",
-      history: ""
+      parkinglodging: "" // history -> parkinglodging로 변경
     },
     // 지역 정보
     area: {
       region: "",
-      district: "",
-      nearbyAttractions: "",
       transportation: ""
     },
     // 객실 정보 (동적 배열)
@@ -57,7 +51,7 @@ const HotelRegistrationClient = ({ initialData }) => {
     let totalFields = 0;
 
     // 기본 정보 체크
-    const basicFields = ['title', 'adress', 'phone', 'email'];
+    const basicFields = ['title', 'adress', 'phone'];
     basicFields.forEach(field => {
       totalFields++;
       if (formData.hotelInfo[field]) completedFields++;
@@ -163,10 +157,20 @@ const HotelRegistrationClient = ({ initialData }) => {
 
   // 폼 데이터 업데이트
   const updateFormData = (section, data) => {
-    setFormData(prev => ({
-      ...prev,
-      [section]: { ...prev[section], ...data }
-    }));
+    setFormData(prev => {
+      // 배열인 경우 직접 할당, 객체인 경우 병합
+      if (Array.isArray(data)) {
+        return {
+          ...prev,
+          [section]: data
+        };
+      } else {
+        return {
+          ...prev,
+          [section]: { ...prev[section], ...data }
+        };
+      }
+    });
   };
 
   // 객실 추가
@@ -256,9 +260,6 @@ const HotelRegistrationClient = ({ initialData }) => {
     }
     if (!formData.hotelInfo.phone) {
       newErrors.phone = "연락처를 입력해주세요";
-    }
-    if (!formData.hotelInfo.email) {
-      newErrors.email = "이메일을 입력해주세요";
     }
 
     // 객실 정보 검증

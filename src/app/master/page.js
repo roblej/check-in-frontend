@@ -19,7 +19,6 @@ const MasterDashboard = () => {
   const [hotelRequestList, setHotelRequestList] = useState([]);
   const [hotelRequestCount, setHotelRequestCount] = useState("불러오는중...");
   const [newCustomers, setNewCustomers] = useState([]);
-  const [newCustomersCount, setNewCustomersCount] = useState("불러오는중...");
 
   function getData(){
     axiosInstance.get(api_url).then(res => {
@@ -199,16 +198,16 @@ const MasterDashboard = () => {
                 {hotelRequestList.map((request) => (
                   <tr key={request.registrationIdx} className="hover:bg-gray-50">
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
-                      {request.hotelInfo.title}
+                      {request.hotelInfo?.title || '-'}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                      {request.admin.adminName}
+                      {request.admin?.adminName || '-'}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                      {request.hotelInfo.adress}
+                      {request.hotelInfo?.adress || '-'}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                      {request.hotelInfo.rooms}개
+                      {request.hotelInfo?.rooms || 0}개
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                       {request.regiDate ? new Date(request.regiDate).toLocaleDateString('ko-KR') : '정보 없음'}
@@ -221,79 +220,9 @@ const MasterDashboard = () => {
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium space-x-1 sm:space-x-2">
                       <button 
                         className="text-[#7C3AED] hover:text-purple-800"
-                        onClick={() => router.push('/master/hotel-approval')}
+                        onClick={() => router.push(`/master/hotel-approval-detail/${request.registrationIdx}`)}
                       >
                         검토
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 최근 회원 가입 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">최근 회원 가입</h3>
-                <p className="text-sm text-gray-600">새로 가입한 회원 목록 {newCustomersCount}명</p>
-              </div>
-              <button className="text-[#7C3AED] hover:text-purple-800 text-sm font-medium">
-                전체 보기
-              </button>
-            </div>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    회원명
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    이메일
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    가입일
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    누적금액
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    상태
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    액션
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {newCustomers.map((member) => (
-                  <tr key={member.customerIdx} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {member.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {member.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {member.joinDate ? new Date(member.joinDate).toLocaleDateString('ko-KR') : '정보 없음'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ₩{member.totalPrice ? member.totalPrice.toLocaleString() : '0'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(member.status === '1' ? 'active' : 'inactive')}`}>
-                        {getStatusText(member.status === '1' ? 'active' : 'inactive')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button className="text-[#7C3AED] hover:text-purple-800">
-                        상세보기
                       </button>
                     </td>
                   </tr>

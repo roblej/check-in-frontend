@@ -74,19 +74,12 @@ const PaymentSummary = ({
         </div>
         <hr className="my-3" />
         <div className="flex justify-between text-lg font-semibold">
-          <span>총 결제 금액</span>
+          <span>총 객실 가격</span>
           <span className="text-blue-600">
             ₩{paymentDraft.finalAmount.toLocaleString()}
           </span>
         </div>
 
-        {/* 쿠폰 할인 표시 */}
-        {paymentAmounts.couponDiscount > 0 && (
-          <div className="flex justify-between text-sm text-green-600 font-medium">
-            <span>쿠폰 할인</span>
-            <span>-₩{paymentAmounts.couponDiscount.toLocaleString()}</span>
-          </div>
-        )}
       </div>
 
       {/* 쿠폰 섹션 */}
@@ -108,7 +101,8 @@ const PaymentSummary = ({
         onPointChange={onPointChange}
         onUseAllCash={onUseAllCash}
         onUseAllPoint={onUseAllPoint}
-        totalAmount={paymentDraft.finalAmount}
+        totalAmount={paymentAmounts.afterCoupon || paymentDraft.finalAmount}
+        couponDiscount={paymentAmounts.couponDiscount || 0}
       />
 
       {/* 결제 유효시간 */}
