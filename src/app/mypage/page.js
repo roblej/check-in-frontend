@@ -800,8 +800,8 @@ function MyPageContent() {
                   <>
                     <option value="checkinAsc">체크인 날짜 가까운 순</option>
                     <option value="checkinDesc">체크인 날짜 먼 순</option>
-                    <option value="priceDesc">가격 높은 순</option>
-                    <option value="priceAsc">가격 낮은 순</option>
+                    <option value="priceDesc">높은 가격순</option>
+                    <option value="priceAsc">낮은 가격순</option>
                   </>
                 )}
                 {reservationTab === 'completed' && (
@@ -809,8 +809,8 @@ function MyPageContent() {
                     <option value="checkoutDesc">최근 방문 순</option>
                     <option value="checkinDesc">체크인 날짜 최신순</option>
                     <option value="checkinAsc">체크인 날짜 오래된순</option>
-                    <option value="priceDesc">가격 높은 순</option>
-                    <option value="priceAsc">가격 낮은 순</option>
+                    <option value="priceDesc">높은 가격순</option>
+                    <option value="priceAsc">낮은 가격순</option>
                     <option value="reviewFirst">리뷰 작성 안한 내역순</option>
                   </>
                 )}
@@ -818,8 +818,8 @@ function MyPageContent() {
                   <>
                     <option value="checkinDesc">취소 날짜 최신순</option>
                     <option value="checkinAsc">취소 날짜 오래된순</option>
-                    <option value="priceDesc">가격 높은 순</option>
-                    <option value="priceAsc">가격 낮은 순</option>
+                    <option value="priceDesc">높은 가격순</option>
+                    <option value="priceAsc">낮은 가격순</option>
                   </>
                 )}
               </select>
