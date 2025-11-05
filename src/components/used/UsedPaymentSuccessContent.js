@@ -1,18 +1,69 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { usedAPI } from '@/lib/api/used';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import axios from '@/lib/axios';
 
-const UsedPaymentSuccessContent = ({ initialData }) => {
+/**
+ * 간단한 중고 호텔 결제 성공 페이지 (페이지 이탈 감지 로직 제거)
+ */
+const UsedPaymentSuccessContent = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [successData, setSuccessData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const processedRef = useRef(false);
-  const [successData, setSuccessData] = useState(initialData);
 
-  // 세션 스토리지에서 결제 성공 정보 가져오기 (URL 파라미터 완전히 숨김)
+  // 세션 스토리지 또는 URL 파라미터에서 결제 성공 정보 가져오기
   useEffect(() => {
     try {
-      const storedSuccessData = sessionStorage.getItem('used_payment_success');
+      // 1. URL 파라미터를 먼저 확인 (모바일 리다이렉트 플로우 또는 최신 값)
+      const urlOrderId = searchParams.get('orderId');
+      const urlPaymentKey = searchParams.get('paymentKey');
+      const urlAmount = searchParams.get('amount');
+      const urlUsedTradeIdx = searchParams.get('usedTradeIdx');
+      
+      let storedSuccessData = null;
+      
+      // URL 파라미터에 필수 정보가 있으면 우선 사용 (최신 값 보장)
+      if (urlOrderId && urlPaymentKey && urlAmount) {
+        console.log('🔍 URL 파라미터에서 결제 정보 읽기:', {
+          orderId: urlOrderId,
+          paymentKey: urlPaymentKey,
+          amount: urlAmount,
+          usedTradeIdx: urlUsedTradeIdx
+        });
+        
+        // URL 파라미터로부터 데이터 구성
+        const urlData = {
+          orderId: urlOrderId,
+          paymentKey: urlPaymentKey,
+          amount: parseInt(urlAmount, 10),
+          type: 'used_hotel',
+          cash: 0,
+          point: 0,
+          card: parseInt(urlAmount, 10),
+          tradeIdx: urlUsedTradeIdx || '',
+          usedItemIdx: searchParams.get('usedItemIdx') || '',
+          hotelName: searchParams.get('hotelName') || '호텔명',
+          roomType: searchParams.get('roomType') || '객실 정보',
+          checkIn: searchParams.get('checkIn') || '',
+          checkOut: searchParams.get('checkOut') || ''
+        };
+        
+        // 세션 스토리지에 저장하여 다음 로드 시에도 사용 가능하게 함
+        sessionStorage.setItem('used_payment_success_data', JSON.stringify(urlData));
+        storedSuccessData = JSON.stringify(urlData);
+        console.log('✅ URL 파라미터 데이터를 세션 스토리지에 저장:', urlData);
+      } else {
+        // 2. URL 파라미터가 없으면 세션 스토리지에서 확인 (데스크톱 플로우)
+        storedSuccessData = sessionStorage.getItem('used_payment_success_data');
+        if (storedSuccessData) {
+          console.log('🔍 세션 스토리지에서 결제 정보 읽기:', {
+            data: JSON.parse(storedSuccessData)
+          });
+        }
+      }
       
       if (!storedSuccessData) {
         console.error('결제 성공 정보를 찾을 수 없습니다.');
@@ -30,87 +81,189 @@ const UsedPaymentSuccessContent = ({ initialData }) => {
         point: parsedData.point || 0,
         card: parsedData.card || 0,
         tradeIdx: parsedData.tradeIdx || '',
+        usedItemIdx: parsedData.usedItemIdx || '',
         hotelName: parsedData.hotelName || '호텔명',
+        hotelImage: parsedData.hotelImage || null,
+        hotelAddress: parsedData.hotelAddress || '',
         roomType: parsedData.roomType || '객실 정보',
         checkIn: parsedData.checkIn || '',
-        checkOut: parsedData.checkOut || ''
+        checkOut: parsedData.checkOut || '',
+        guests: parsedData.guests || 0,
+        nights: parsedData.nights || 0,
+        seller: parsedData.seller || '',
+        originalPrice: parsedData.originalPrice || 0,
+        salePrice: parsedData.salePrice || 0,
+        discountAmount: parsedData.discountAmount || 0,
       });
+      setLoading(false);
     } catch (error) {
-      console.error('세션 스토리지 데이터 읽기 실패:', error);
+      console.error('결제 정보 읽기 실패:', error);
       alert('결제 정보를 불러오는 중 오류가 발생했습니다.');
       router.push('/used');
     }
-  }, [router]);
+  }, [router, searchParams]);
 
-  // 모바일 리다이렉트 플로우에서 결제 저장/거래 확정을 수행 (세션 스토리지에서 읽기)
+  // 모바일 리다이렉트 플로우 또는 데스크톱에서 백엔드 검증이 실패한 경우 백엔드 검증 수행
   useEffect(() => {
     const run = async () => {
       if (processedRef.current) return;
       
       try {
-        const storedSuccessData = sessionStorage.getItem('used_payment_success');
-        if (!storedSuccessData) return;
+        // URL 파라미터를 우선적으로 확인 (최신 값 보장)
+        const urlOrderId = searchParams.get('orderId');
+        const urlPaymentKey = searchParams.get('paymentKey');
+        const urlAmount = searchParams.get('amount');
+        const urlUsedTradeIdx = searchParams.get('usedTradeIdx');
+        const urlUsedItemIdx = searchParams.get('usedItemIdx');
+        
+        // URL 파라미터가 있으면 우선 사용
+        let orderId, paymentKey, usedTradeIdx, usedItemIdx, amount;
+        
+        if (urlOrderId && urlPaymentKey && urlAmount) {
+          orderId = urlOrderId;
+          paymentKey = urlPaymentKey;
+          amount = parseInt(urlAmount, 10);
+          usedTradeIdx = urlUsedTradeIdx;
+          usedItemIdx = urlUsedItemIdx;
+          
+          console.log('🔵 URL 파라미터에서 백엔드 검증 데이터 읽기:', {
+            orderId,
+            paymentKey,
+            amount,
+            usedTradeIdx,
+            usedItemIdx
+          });
+        } else {
+          // URL 파라미터가 없으면 세션 스토리지에서 읽기
+          const storedSuccessData = sessionStorage.getItem('used_payment_success_data');
+          if (!storedSuccessData) {
+            console.warn('백엔드 검증을 위한 정보가 없습니다.');
+            return;
+          }
 
-        const parsedData = JSON.parse(storedSuccessData);
-        const orderId = parsedData.orderId;
-        const paymentKey = parsedData.paymentKey;
-        const usedTradeIdx = parsedData.tradeIdx;
-
-        if (!orderId || !paymentKey || !usedTradeIdx) return; // 부족하면 skip
-
-        const processedKey = `used_payment_processed_${orderId}`;
-        if (sessionStorage.getItem(processedKey) === '1') return;
-
-        // 결제 내역 저장 (거래 확정 포함)
-        // 주의: 백엔드 createPayment에서 이미 거래 확정까지 처리하므로
-        // 별도로 confirmTrade를 호출하지 않음
-        // 모바일은 분할 정보 없음 -> 전액 카드 처리
-        const amount = parsedData.amount || 0;
-        const paymentData = {
-          usedTradeIdx: parseInt(usedTradeIdx, 10),
-          paymentKey,
-          orderId,
-          totalAmount: amount,
-          cashAmount: parsedData.cash || 0,
-          pointAmount: parsedData.point || 0,
-          cardAmount: parsedData.card || amount,
-          paymentMethod: (parsedData.card > 0) ? 'card' : 'cash_point_only',
-          status: 1,
-          receiptUrl: `https://toss.im/payments/receipt/${orderId}`,
-          qrUrl: `https://chart.googleapis.com/chart?chs=240x240&cht=qr&chl=${encodeURIComponent(JSON.stringify({ orderId, paymentKey, amount, usedTradeIdx }))}`,
-          approvedAt: new Date().toISOString(),
-        };
-
-        try {
-          await usedAPI.createPayment(paymentData);
-        } catch (error) {
-          console.error('모바일 결제 내역 저장 실패:', error.response?.data?.message || error.message);
+          const parsedData = JSON.parse(storedSuccessData);
+          orderId = parsedData.orderId;
+          paymentKey = parsedData.paymentKey;
+          usedTradeIdx = parsedData.tradeIdx;
+          usedItemIdx = parsedData.usedItemIdx;
+          amount = parsedData.card || parsedData.amount;
+          
+          console.log('🔵 세션 스토리지에서 백엔드 검증 데이터 읽기:', {
+            orderId,
+            paymentKey,
+            amount,
+            usedTradeIdx,
+            usedItemIdx
+          });
+        }
+        
+        // 필요한 정보가 없으면 스킵
+        if (!orderId || !paymentKey || !usedTradeIdx) {
+          console.warn('백엔드 검증을 위한 필수 정보가 없습니다:', { orderId, paymentKey, usedTradeIdx });
+          return;
         }
 
-        sessionStorage.setItem(processedKey, '1');
-        processedRef.current = true;
-      } catch (e) {
-        console.error('모바일 결제 처리 오류:', e);
+        // 이미 처리된 결제인지 확인
+        const processedKey = `used_payment_processed_${orderId}`;
+        if (sessionStorage.getItem(processedKey) === '1') {
+          console.log('이미 처리된 결제입니다:', orderId);
+          return;
+        }
+
+        console.log('🔵 백엔드 검증 API 호출 시작:', { 
+          orderId, 
+          paymentKey, 
+          usedTradeIdx,
+          source: urlOrderId ? 'URL 파라미터' : '세션 스토리지'
+        });
+
+        // 세션 스토리지에서 추가 정보 읽기 (없으면 URL 파라미터에서)
+        const storedSuccessData = sessionStorage.getItem('used_payment_success_data');
+        const parsedData = storedSuccessData ? JSON.parse(storedSuccessData) : {};
+        
+        // 백엔드 검증 API 호출 (/api/payments)
+        const requestData = {
+          paymentKey: paymentKey,
+          orderId: orderId,
+          amount: amount || parsedData.card || parsedData.amount, // 카드 결제 금액
+          totalPrice: amount || parsedData.amount, // 총 결제 금액
+          type: "used_hotel",
+          customerIdx: parsedData.customerIdx || null,
+          usedTradeIdx: parseInt(usedTradeIdx, 10), // URL 파라미터 또는 세션 스토리지에서 읽은 값
+          usedItemIdx: usedItemIdx ? parseInt(usedItemIdx, 10) : (parsedData.usedItemIdx ? parseInt(parsedData.usedItemIdx, 10) : null),
+          hotelName: parsedData.hotelName || searchParams.get('hotelName') || '',
+          roomType: parsedData.roomType || searchParams.get('roomType') || '',
+          salePrice: parsedData.salePrice || amount || parsedData.amount,
+          customerName: parsedData.customerName || '',
+          customerEmail: parsedData.customerEmail || '',
+          customerPhone: parsedData.customerPhone || '',
+          method: (amount || parsedData.card || parsedData.amount) > 0 ? "mixed" : "cash_point_only",
+          pointsUsed: parsedData.point || 0,
+          cashUsed: parsedData.cash || 0,
+        };
+
+        console.log('📤 백엔드 검증 요청 데이터:', {
+          orderId: requestData.orderId,
+          paymentKey: requestData.paymentKey ? '***' : undefined,
+          amount: requestData.amount,
+          usedTradeIdx: requestData.usedTradeIdx,
+          usedItemIdx: requestData.usedItemIdx,
+          source: urlOrderId ? 'URL 파라미터' : '세션 스토리지'
+        });
+
+        const response = await axios.post('/payments', requestData);
+        
+        if (response.data.success) {
+          console.log('✅ 백엔드 검증 및 DB 업데이트 완료:', response.data);
+          console.log('✅ DB 업데이트 완료:');
+          console.log('  - UsedPay 저장 완료');
+          console.log('  - UsedTrade 상태 업데이트 완료 (ststus=1)');
+          console.log('  - UsedItem 상태 업데이트 완료 (status=2)');
+          sessionStorage.setItem(processedKey, '1');
+          processedRef.current = true;
+        } else {
+          console.error('백엔드 검증 실패:', response.data.message);
+        }
+      } catch (error) {
+        console.error('백엔드 검증 오류:', error);
+        console.error('에러 상세:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
       }
     };
-    run();
-  }, []);
+    
+    // 데이터가 로드된 후에 실행
+    if (!loading && successData) {
+      run();
+    }
+  }, [loading, successData]);
 
   const handleNavigateToUsed = () => {
-    // 세션 스토리지 정리
-    sessionStorage.removeItem('used_payment_success');
+    sessionStorage.removeItem('used_payment_success_data');
     router.push('/used');
   };
 
   const handleNavigateToMypage = () => {
-    // 세션 스토리지 정리
-    sessionStorage.removeItem('used_payment_success');
+    sessionStorage.removeItem('used_payment_success_data');
     router.push('/mypage');
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">결제 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!successData) {
+    return null;
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
@@ -223,15 +376,10 @@ const UsedPaymentSuccessContent = ({ initialData }) => {
         >
           마이페이지
         </button>
-        <button
-          onClick={handlePrint}
-          className="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
-        >
-          영수증 인쇄
-        </button>
       </div>
     </div>
   );
 };
 
 export default UsedPaymentSuccessContent;
+
