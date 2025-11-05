@@ -335,104 +335,75 @@ export default function CancelReservationPage() {
 
         {breakdown && (
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              환불 계산식
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="text-left text-gray-600 border-b">
-                    <th className="py-2 pr-4">단계</th>
-                    <th className="py-2 pr-4">항목</th>
-                    <th className="py-2 pr-4">계산식</th>
-                    <th className="py-2">결과</th>
-                  </tr>
-                </thead>
-                <tbody className="text-gray-900">
-                  <tr className="border-b">
-                    <td className="py-2 pr-4">①</td>
-                    <td className="py-2 pr-4">결제 총액</td>
-                    <td className="py-2 pr-4">—</td>
-                    <td className="py-2">
-                      {breakdown.totalPrice.toLocaleString()}원
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-2 pr-4">②</td>
-                    <td className="py-2 pr-4">쿠폰 제외</td>
-                    <td className="py-2 pr-4">
-                      {breakdown.totalPrice.toLocaleString()} -{" "}
-                      {breakdown.couponDiscount.toLocaleString()}
-                    </td>
-                    <td className="py-2">
-                      {breakdown.afterCoupon.toLocaleString()}원
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-2 pr-4">③</td>
-                    <td className="py-2 pr-4">포인트·캐시 사용 금액</td>
-                    <td className="py-2 pr-4">
-                      {breakdown.originalPointUsed.toLocaleString()}P +{" "}
-                      {breakdown.originalCashUsed.toLocaleString()}C
-                    </td>
-                    <td className="py-2">
-                      {breakdown.originalPcUsed.toLocaleString()}
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-2 pr-4">④</td>
-                    <td className="py-2 pr-4">Toss 결제 금액 (실 결제)</td>
-                    <td className="py-2 pr-4">
-                      {breakdown.afterCoupon.toLocaleString()} -{" "}
-                      {breakdown.originalPcUsed.toLocaleString()}
-                    </td>
-                    <td className="py-2">
-                      {breakdown.originalCardPaid.toLocaleString()}원
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-2 pr-4">⑤</td>
-                    <td className="py-2 pr-4">
-                      환불 금액 ({Math.round(breakdown.refundRate * 100)}%)
-                    </td>
-                    <td className="py-2 pr-4">
-                      {breakdown.originalCardPaid.toLocaleString()} ×{" "}
-                      {breakdown.refundRate}
-                    </td>
-                    <td className="py-2">
-                      {breakdown.refundCardAmount.toLocaleString()}원
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-2 pr-4">⑥</td>
-                    <td className="py-2 pr-4">포인트 복원</td>
-                    <td className="py-2 pr-4">—</td>
-                    <td className="py-2">
-                      {breakdown.refundPoint.toLocaleString()}P
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-2 pr-4">⑦</td>
-                    <td className="py-2 pr-4">캐시 복원</td>
-                    <td className="py-2 pr-4">—</td>
-                    <td className="py-2">
-                      {breakdown.refundCash.toLocaleString()}C
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 pr-4">⑧</td>
-                    <td className="py-2 pr-4">총 고객 회수액</td>
-                    <td className="py-2 pr-4">
-                      현금 {breakdown.refundCardAmount.toLocaleString()} +
-                      포인트 {breakdown.refundPoint.toLocaleString()} + 캐시{" "}
-                      {breakdown.refundCash.toLocaleString()}
-                    </td>
-                    <td className="py-2 font-semibold">
-                      {breakdown.totalBackToCustomer.toLocaleString()}원
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-bold text-gray-900">환불 내역</h2>
+              <span
+                className={
+                  breakdown.mode === "final"
+                    ? "px-2 py-1 text-xs rounded bg-green-100 text-green-700"
+                    : "px-2 py-1 text-xs rounded bg-blue-100 text-blue-700"
+                }
+              >
+                {breakdown.mode === "final" ? "최종" : "예상"}
+              </span>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">결제 금액</span>
+                <span className="text-gray-900">
+                  {breakdown.totalPrice.toLocaleString()}원
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="text-gray-600">쿠폰 할인</span>
+                <span className="text-red-600">
+                  - {breakdown.couponDiscount.toLocaleString()}원
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="text-gray-600">포인트 사용</span>
+                <span className="text-red-600">
+                  - {breakdown.originalPointUsed.toLocaleString()}P
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="text-gray-600">캐시 사용</span>
+                <span className="text-red-600">
+                  - {breakdown.originalCashUsed.toLocaleString()}C
+                </span>
+              </div>
+
+              <div className="flex justify-between pt-2">
+                <span className="text-gray-900 font-medium">
+                  실제 결제 금액
+                </span>
+                <span className="text-gray-900 font-semibold">
+                  {breakdown.originalCardPaid.toLocaleString()}원
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="text-gray-600">취소 정책</span>
+                <span className="text-gray-900">
+                  환불율 {Math.round(breakdown.refundRate * 100)}%
+                </span>
+              </div>
+
+              <div className="flex justify-between pt-2">
+                <span className="text-gray-900 font-semibold">환불 금액</span>
+                <span className="text-blue-600 font-bold">
+                  {breakdown.refundCardAmount.toLocaleString()}원
+                </span>
+              </div>
+
+              <div className="text-right text-sm text-gray-600">
+                (포인트 복원 {breakdown.refundPoint.toLocaleString()}P / 캐시
+                복원 {breakdown.refundCash.toLocaleString()}C)
+              </div>
             </div>
           </div>
         )}
