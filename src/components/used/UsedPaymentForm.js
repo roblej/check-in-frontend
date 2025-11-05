@@ -1,19 +1,22 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import TossPaymentsWidget from '@/components/payment/TossPaymentsWidget';
 import { usedAPI } from '@/lib/api/used';
 import axios from '@/lib/axios';
 
 /**
- * 간단한 중고 호텔 결제 폼 (페이지 이탈 감지 로직 제거)
+ * 중고 호텔 결제 폼 (페이지 이탈 시 거래 취소)
  */
 const UsedPaymentForm = ({ initialData }) => {
   const router = useRouter();
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState({});
+  const [isPaymentCompleted, setIsPaymentCompleted] = useState(false); // 결제 완료 여부 추적
+  const isUnloadingRef = useRef(false); // 새로고침 여부 추적
+  const hasCancelledRef = useRef(false); // 이미 취소 요청을 보냈는지 추적
 
   // 사용자 정보 로드
   useEffect(() => {
@@ -111,6 +114,20 @@ const UsedPaymentForm = ({ initialData }) => {
     }
   }, []);
 
+  // 결제 정보 상태
+  const [paymentInfo, setPaymentInfo] = useState({
+    ...initialData,
+    usedTradeIdx: initialData.usedTradeIdx,
+    customerIdx: null,
+    customerName: '',
+    customerEmail: '',
+    customerPhone: '',
+    customerCash: 0,
+    customerPoint: 0,
+    useCash: 0,
+    usePoint: 0,
+  });
+
   // 초기 로드 및 세션 스토리지 변경 감지
   useEffect(() => {
     // 초기 로드
@@ -174,19 +191,88 @@ const UsedPaymentForm = ({ initialData }) => {
     };
   }, [router, loadPaymentInfo]);
 
-  // 결제 정보 상태
-  const [paymentInfo, setPaymentInfo] = useState({
-    ...initialData,
-    usedTradeIdx: initialData.usedTradeIdx,
-    customerIdx: null,
-    customerName: '',
-    customerEmail: '',
-    customerPhone: '',
-    customerCash: 0,
-    customerPoint: 0,
-    useCash: 0,
-    usePoint: 0,
-  });
+  // 거래 취소 함수 (페이지 이탈 시 호출)
+  const cancelTradeOnExit = useCallback(async (usedTradeIdx) => {
+    // 이미 취소 요청을 보냈거나 결제 완료된 경우 무시
+    if (hasCancelledRef.current || isPaymentCompleted) {
+      return;
+    }
+
+    // usedTradeIdx가 없으면 무시
+    if (!usedTradeIdx) {
+      return;
+    }
+
+    try {
+      hasCancelledRef.current = true;
+      console.log('🔙 페이지 이탈: 거래 취소 요청', { usedTradeIdx });
+      
+      const reason = '사용자 페이지 이탈';
+      const timestamp = new Date().toISOString();
+      
+      // Beacon API 사용 (비동기 요청이 완료되지 않아도 전송 보장)
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/trade/${usedTradeIdx}/delete`;
+      const data = JSON.stringify({ reason, timestamp });
+      
+      if (navigator.sendBeacon) {
+        const blob = new Blob([data], { type: 'application/json' });
+        navigator.sendBeacon(apiUrl, blob);
+        console.log('✅ Beacon으로 거래 취소 요청 전송');
+      } else {
+        // Beacon 미지원 브라우저는 동기 XHR
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', apiUrl, false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(data);
+        console.log('✅ XHR로 거래 취소 요청 전송');
+      }
+    } catch (error) {
+      console.warn('거래 취소 요청 실패 (무시):', error);
+    }
+  }, [isPaymentCompleted]);
+
+  // 페이지 이탈 시 거래 취소 로직
+  useEffect(() => {
+    // paymentInfo가 없거나 결제 완료된 경우 무시
+    if (!paymentInfo.usedTradeIdx || isPaymentCompleted) {
+      return;
+    }
+
+    const usedTradeIdx = paymentInfo.usedTradeIdx;
+
+    // beforeunload 이벤트 핸들러 (브라우저 탭/창 닫기)
+    const handleBeforeUnload = (e) => {
+      // 새로고침으로 인한 이탈인지 확인
+      isUnloadingRef.current = true;
+      
+      // 결제 완료되지 않은 경우에만 취소 요청
+      if (!isPaymentCompleted && !hasCancelledRef.current) {
+        cancelTradeOnExit(usedTradeIdx);
+      }
+    };
+
+    // visibilitychange 이벤트 핸들러 (탭 전환 등)
+    const handleVisibilityChange = () => {
+      // 페이지가 숨겨질 때 (다른 탭으로 전환)
+      if (document.hidden && !isPaymentCompleted && !hasCancelledRef.current) {
+        cancelTradeOnExit(usedTradeIdx);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 컴포넌트 언마운트 시 (뒤로가기 등)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      
+      // 새로고침이 아닌 경우에만 취소 요청
+      if (!isUnloadingRef.current && !isPaymentCompleted && !hasCancelledRef.current) {
+        cancelTradeOnExit(usedTradeIdx);
+      }
+    };
+  }, [paymentInfo.usedTradeIdx, isPaymentCompleted, cancelTradeOnExit]);
 
   // 사용자 정보가 로드되면 paymentInfo 업데이트
   useEffect(() => {
@@ -282,6 +368,11 @@ const UsedPaymentForm = ({ initialData }) => {
   // 결제 성공 처리
   const handlePaymentSuccess = async (paymentResult) => {
     console.log("🟢 handlePaymentSuccess 호출됨:", paymentResult);
+    
+    // 결제 완료 플래그 설정 (페이지 이탈 시 취소하지 않도록)
+    setIsPaymentCompleted(true);
+    hasCancelledRef.current = true; // 취소 요청 방지
+    
     let requestData = null;
     let usedTradeIdx = null;
     
@@ -452,6 +543,11 @@ const UsedPaymentForm = ({ initialData }) => {
   const handlePaymentFail = (error) => {
     console.error('결제 실패:', error);
     alert('결제가 취소되었습니다.');
+    
+    // 결제 실패 시 거래 취소 (페이지 이탈과 동일하게 처리)
+    if (paymentInfo.usedTradeIdx && !hasCancelledRef.current) {
+      cancelTradeOnExit(paymentInfo.usedTradeIdx);
+    }
     
     // 결제 실패 시 세션 스토리지 정리
     if (paymentInfo.usedTradeIdx) {
