@@ -6,6 +6,7 @@ import axiosInstance from "@/lib/axios";
 const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialData, readOnly = false }) => {
   const [expandedRoom, setExpandedRoom] = useState(null);
   const [uploadingRooms, setUploadingRooms] = useState({}); // roomId별 업로드 상태
+  const [uploadingThumbnails, setUploadingThumbnails] = useState({}); // roomId별 대표 이미지 업로드 상태
 
   const toggleRoomExpansion = (roomId) => {
     setExpandedRoom(expandedRoom === roomId ? null : roomId);
@@ -87,6 +88,70 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
     const currentImages = Array.isArray(room.images) ? room.images : [];
     const updatedImages = currentImages.filter((img) => img.id !== imageId);
     updateRoom(roomId, { images: updatedImages });
+  };
+
+  // 객실 대표 이미지 업로드 핸들러 (1장만, Room.imageUrl용)
+  const handleRoomThumbnailFile = async (roomId, file) => {
+    if (readOnly) return;
+    
+    try {
+      setUploadingThumbnails(prev => ({ ...prev, [roomId]: true }));
+      
+      // FormData 생성
+      const formData = new FormData();
+      formData.append('images', file);
+
+      // S3에 객실 대표 이미지 업로드
+      const response = await axiosInstance.post('/imageUpload/hotel/room/images', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success && response.data.images && response.data.images.length > 0) {
+        // 첫 번째 이미지만 대표 이미지로 설정
+        const uploadedImage = response.data.images[0];
+        updateRoom(roomId, { imageUrl: uploadedImage.imageUrl });
+      } else {
+        alert('객실 대표 이미지 업로드에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('객실 대표 이미지 업로드 실패:', error);
+      alert('객실 대표 이미지 업로드 중 오류가 발생했습니다.');
+    } finally {
+      setUploadingThumbnails(prev => ({ ...prev, [roomId]: false }));
+    }
+  };
+
+  // 객실 대표 이미지 드래그 앤 드롭 핸들러
+  const handleRoomThumbnailDrop = async (roomId, e) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0) {
+      // 첫 번째 파일만 사용
+      await handleRoomThumbnailFile(roomId, imageFiles[0]);
+    }
+  };
+
+  // 객실 대표 이미지 파일 선택 핸들러
+  const handleRoomThumbnailSelect = async (roomId, e) => {
+    const files = Array.from(e.target.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0) {
+      // 첫 번째 파일만 사용
+      await handleRoomThumbnailFile(roomId, imageFiles[0]);
+    }
+    
+    e.target.value = '';
+  };
+
+  // 객실 대표 이미지 삭제 핸들러
+  const removeRoomThumbnail = (roomId) => {
+    if (readOnly) return;
+    updateRoom(roomId, { imageUrl: "" });
   };
 
   return (
@@ -249,55 +314,142 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                     </div>
                   </div>
 
-                  {/* 편의시설 */}
+                  {/* 옵션 (체크박스) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      편의시설
+                      객실 옵션
                     </label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                      {initialData.amenities.map((amenity) => (
-                        <label key={amenity.id} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={room.amenities?.includes(amenity.name) || false}
-                            onChange={(e) => {
-                              const currentAmenities = room.amenities || [];
-                              const newAmenities = e.target.checked
-                                ? [...currentAmenities, amenity.name]
-                                : currentAmenities.filter(a => a !== amenity.name);
-                              updateRoom(room.id, { amenities: newAmenities });
-                            }}
-                            disabled={readOnly}
-                            className={`rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${readOnly ? "cursor-not-allowed" : ""}`}
-                          />
-                          <span className="text-sm text-gray-700">{amenity.name}</span>
-                        </label>
-                      ))}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={room.refundable || false}
+                          onChange={(e) => updateRoom(room.id, { refundable: e.target.checked })}
+                          disabled={readOnly}
+                          className={`rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${readOnly ? "cursor-not-allowed" : ""}`}
+                        />
+                        <span className="text-sm text-gray-700">환불 가능</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={room.breakfastIncluded || false}
+                          onChange={(e) => updateRoom(room.id, { breakfastIncluded: e.target.checked })}
+                          disabled={readOnly}
+                          className={`rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${readOnly ? "cursor-not-allowed" : ""}`}
+                        />
+                        <span className="text-sm text-gray-700">조식 포함</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={room.smoking || false}
+                          onChange={(e) => updateRoom(room.id, { smoking: e.target.checked })}
+                          disabled={readOnly}
+                          className={`rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${readOnly ? "cursor-not-allowed" : ""}`}
+                        />
+                        <span className="text-sm text-gray-700">흡연 가능</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={room.status === 1 || room.status === undefined}
+                          onChange={(e) => updateRoom(room.id, { status: e.target.checked ? 1 : 0 })}
+                          disabled={readOnly}
+                          className={`rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${readOnly ? "cursor-not-allowed" : ""}`}
+                        />
+                        <span className="text-sm text-gray-700">사용 가능</span>
+                      </label>
                     </div>
                   </div>
 
-                  {/* 객실 설명 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      객실 설명
-                    </label>
-                    <textarea
-                      value={room.description}
-                      onChange={(e) => updateRoom(room.id, { description: e.target.value })}
-                      readOnly={readOnly}
-                      disabled={readOnly}
-                      rows={3}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
-                      placeholder="객실의 특징과 편의시설을 자세히 설명해주세요"
-                    />
-                  </div>
-
-                  {/* 객실 이미지 */}
+                  {/* 객실 대표 이미지 (Room.imageUrl) */}
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        객실 이미지 (최대 10개)
-                      </label>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          객실 대표 이미지
+                        </label>
+                        <p className="text-xs text-gray-500 mt-1">객실을 대표하는 이미지를 등록하세요 (1장)</p>
+                      </div>
+                      {!readOnly && (
+                        <>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleRoomThumbnailSelect(room.id, e)}
+                            className="hidden"
+                            id={`room-thumbnail-upload-${room.id}`}
+                          />
+                          <label
+                            htmlFor={`room-thumbnail-upload-${room.id}`}
+                            className="inline-flex items-center px-3 py-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 cursor-pointer text-sm"
+                          >
+                            {room.imageUrl ? "대표 이미지 변경" : "대표 이미지 선택"}
+                          </label>
+                        </>
+                      )}
+                    </div>
+                    <div
+                      className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
+                        "border-gray-300 hover:border-gray-400"
+                      }`}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                      }}
+                      onDrop={(e) => handleRoomThumbnailDrop(room.id, e)}
+                    >
+                      {room.imageUrl ? (
+                        <div className="flex justify-center">
+                          <div className="relative group">
+                            <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden max-w-xl w-full">
+                              <img 
+                                src={`https://sist-checkin.s3.ap-northeast-2.amazonaws.com/hotelroom/${room.imageUrl}`}
+                                alt="객실 대표 이미지" 
+                                className="w-full h-full object-cover" 
+                              />
+                            </div>
+                            {!readOnly && (
+                              <button 
+                                onClick={() => removeRoomThumbnail(room.id)}
+                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                              >
+                                ×
+                              </button>
+                            )}
+                            <div className="absolute bottom-2 left-2 bg-purple-600 text-white text-xs px-3 py-1 rounded">
+                              대표 이미지
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <div className="text-gray-400 text-4xl mb-2">🖼️</div>
+                          <p className="text-gray-500 text-sm">객실 대표 이미지를 드래그하여 업로드하세요</p>
+                          <p className="text-xs text-gray-400 mt-1">또는 위의 버튼을 클릭하여 파일을 선택하세요</p>
+                          <p className="text-xs text-gray-400 mt-1">JPG, PNG, GIF 파일만 업로드 가능 (최대 10MB, 1장만 업로드 가능)</p>
+                        </div>
+                      )}
+                    </div>
+                    {uploadingThumbnails[room.id] && (
+                      <div className="mt-2 text-center">
+                        <div className="inline-flex items-center space-x-2 text-purple-600 text-sm">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                          <span>대표 이미지 업로드 중...</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 객실 상세 이미지 (RoomImage 테이블용) */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          객실 상세 이미지 (최대 10개)
+                        </label>
+                        <p className="text-xs text-gray-500 mt-1">객실의 다양한 이미지를 업로드하세요</p>
+                      </div>
                       {!readOnly && (
                         <>
                           <input
@@ -330,7 +482,7 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                         <div className="text-center">
                           <div className="text-gray-400 text-4xl mb-2">📷</div>
                           <p className="text-gray-500 text-sm">객실 이미지를 업로드하세요</p>
-                          <p className="text-xs text-gray-400 mt-1">드래그 앤 드롭 또는 &quot;이미지 선택&quot; 버튼 사용</p>
+                          <p className="text-xs text-gray-400 mt-1">드래그 앤 드롭 또는 이미지 선택 버튼 사용</p>
                         </div>
                       ) : (
                         <div>

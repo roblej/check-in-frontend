@@ -15,19 +15,15 @@ const HotelRegistrationClient = ({ initialData }) => {
     hotelInfo: {
       title: "",
       adress: "",
-      phone: ""
+      phone: "",
+      imageUrl: "" // 대표 이미지 URL
     },
     // 호텔 상세 정보
     hotelDetail: {
-      description: "",
-      foodplace: "", // features -> foodplace로 변경
-      scale: "",
-      parkinglodging: "" // history -> parkinglodging로 변경
-    },
-    // 지역 정보
-    area: {
-      region: "",
-      transportation: ""
+      reservationlodging: "", // 호텔 소개 (description → reservationlodging)
+      foodplace: "",
+      scalelodging: "", // 호텔 규모 (scale → scalelodging)
+      parkinglodging: ""
     },
     // 객실 정보 (동적 배열)
     rooms: [],
@@ -74,7 +70,7 @@ const HotelRegistrationClient = ({ initialData }) => {
       const draftData = {
         formData: JSON.stringify(formData), // JSON 문자열로 변환
         lastTab: currentTab,
-        progress: progress,
+        progress: Math.round(progress), // 소수점 제거하여 정수로 전송
       };
       
       const response = await axiosInstance.post("/hotel/draft", draftData);
@@ -179,13 +175,19 @@ const HotelRegistrationClient = ({ initialData }) => {
       id: Date.now(),
       name: "",
       type: "",
-      price: "",
+      price: "", // basePrice로 매핑됨
       capacity: 2,
       size: "",
       bedType: "",
       amenities: [],
       description: "",
-      images: []
+      images: [],
+      imageUrl: "", // Room.imageUrl (객실 대표 이미지)
+      refundable: true, // 기본값 true (환불 가능 = 1)
+      breakfastIncluded: false,
+      smoking: false,
+      status: 1, // 기본값 1 (사용가능)
+      roomCount: 1 // 기본값 1
     };
     
     setFormData(prev => ({

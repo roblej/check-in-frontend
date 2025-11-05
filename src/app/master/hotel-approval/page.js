@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MasterLayout from '@/components/master/MasterLayout';
 import Pagination from '@/components/Pagination';
-import { CheckCircle, Eye, X, Clock, Building2 } from 'lucide-react';
+import { CheckCircle, X, Clock } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
 const HotelApproval = () => {
@@ -133,8 +133,6 @@ const HotelApproval = () => {
     switch (status) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'review':
-        return 'bg-blue-100 text-blue-800';
       case 'approved':
         return 'bg-green-100 text-green-800';
       case 'rejected':
@@ -148,8 +146,6 @@ const HotelApproval = () => {
     switch (status) {
       case 'pending':
         return '승인 대기';
-      case 'review':
-        return '검토중';
       case 'approved':
         return '승인됨';
       case 'rejected':
@@ -184,7 +180,7 @@ const HotelApproval = () => {
         </div>
 
         {/* 통계 카드 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
           <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-4 lg:p-6 rounded-lg shadow-sm border border-yellow-200">
             <div className="flex items-center justify-between">
               <div>
@@ -195,19 +191,6 @@ const HotelApproval = () => {
               </div>
               <div className="w-8 h-8 lg:w-12 lg:h-12 bg-yellow-500 rounded-full flex items-center justify-center">
                 <Clock className="text-white w-4 h-4 lg:w-6 lg:h-6" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 lg:p-6 rounded-lg shadow-sm border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xl lg:text-2xl font-bold text-blue-900">
-                  {hotelRequestList.filter(r => r.status === 1).length}
-                </div>
-                <div className="text-sm text-blue-700">검토중</div>
-              </div>
-              <div className="w-8 h-8 lg:w-12 lg:h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                <Eye className="text-white w-4 h-4 lg:w-6 lg:h-6" />
               </div>
             </div>
           </div>
@@ -327,8 +310,8 @@ const HotelApproval = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 w-40">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status === 0 ? 'pending' : request.status === 1 ? 'review' : request.status === 2 ? 'approved' : 'rejected')}`}>
-                        {getStatusText(request.status === 0 ? 'pending' : request.status === 1 ? 'review' : request.status === 2 ? 'approved' : 'rejected')}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status === 0 ? 'pending' : request.status === 1 ? 'approved' : request.status === 2 ? 'approved' : 'rejected')}`}>
+                        {getStatusText(request.status === 0 ? 'pending' : request.status === 1 ? 'approved' : request.status === 2 ? 'approved' : 'rejected')}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium w-64">
@@ -377,8 +360,8 @@ const HotelApproval = () => {
                     <div className="text-xs text-gray-500">{request.admin?.adminName || '정보 없음'}</div>
                   </div>
                 </div>
-                <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(request.status === 0 ? 'pending' : request.status === 1 ? 'review' : request.status === 2 ? 'approved' : 'rejected')}`}>
-                  {getStatusText(request.status === 0 ? 'pending' : request.status === 1 ? 'review' : request.status === 2 ? 'approved' : 'rejected')}
+                <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(request.status === 0 ? 'pending' : request.status === 1 ? 'approved' : request.status === 2 ? 'approved' : 'rejected')}`}>
+                  {getStatusText(request.status === 0 ? 'pending' : request.status === 1 ? 'approved' : request.status === 2 ? 'approved' : 'rejected')}
                 </span>
               </div>
               
