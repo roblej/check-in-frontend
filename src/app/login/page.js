@@ -25,6 +25,9 @@ export default function LoginPage() {
   let accessToken = "";
 
   const login_url = "/api/login";
+  const naverLogin_url = "http://localhost:8888/oauth2/authorization/naver";
+  // 네이버 로그인을 위한 함수
+
   // 입력 필드 변경 핸들러
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -286,7 +289,11 @@ export default function LoginPage() {
             <button
               type="button"
               className={styles.socialButton}
-              onClick={() => alert("네이버 로그인 기능 준비 중입니다.")}
+              onClick={() => {
+                // OAuth 로그인 시도 플래그 설정
+                sessionStorage.setItem('oauth_attempted', 'true');
+                window.location.href = naverLogin_url;
+              }}
             >
               <span className={styles.naverIcon}>N</span>
               네이버로 로그인
