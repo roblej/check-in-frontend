@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
 import { MessageSquare, Clock, CheckCircle, AlertCircle, User, Mail, Calendar, X } from 'lucide-react';
+import axiosInstance from '@/lib/axios';
 
 const mockInquiryList = [
   {
@@ -271,23 +272,43 @@ export default function InquiryListPage() {
   };
 
   // 답변 전송
-  const handleSendReply = () => {
+  const handleSendReply = async () => {
     if (!replyText.trim()) {
       alert('답변 내용을 입력해주세요.');
       return;
     }
     
-    // 여기서 실제 API 호출
-    alert(`답변이 전송되었습니다.\n\n답변 내용: ${replyText}`);
+    if (!selectedInquiry) {
+      alert('문의 정보를 찾을 수 없습니다.');
+      return;
+    }
     
-    // 문의 상태를 완료로 변경
-    setInquiries(prev => prev.map(inquiry => 
-      inquiry.id === selectedInquiry.id 
-        ? { ...inquiry, status: 'completed', answeredAt: new Date().toLocaleString('ko-KR') }
-        : inquiry
-    ));
-    
-    handleCloseModal();
+    try {
+      const response = await axiosInstance.post(`/master/inquiry/${selectedInquiry.id}/answer`, {
+        content: replyText.trim()
+      });
+      
+      if (response.data.success) {
+        alert('답변이 성공적으로 전송되었습니다.');
+        
+        // 문의 상태를 완료로 변경
+        setInquiries(prev => prev.map(inquiry => 
+          inquiry.id === selectedInquiry.id 
+            ? { ...inquiry, status: 'completed', answeredAt: new Date().toLocaleString('ko-KR') }
+            : inquiry
+        ));
+        
+        // 목록 새로고침
+        await fetchInquiries();
+        
+        handleCloseModal();
+      } else {
+        alert(response.data.message || '답변 전송에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('답변 전송 오류:', error);
+      alert(error.response?.data?.message || '답변 전송 중 오류가 발생했습니다.');
+    }
   };
 
   // 통계 계산

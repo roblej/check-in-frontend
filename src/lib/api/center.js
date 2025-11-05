@@ -36,5 +36,11 @@ export const centerAPI = {
     const response = await axiosInstance.post("/center/posts/search", searchParams);
     return response.data;
   },
+
+  // 답변 조회
+  getAnswer: async (centerIdx) => {
+    const response = await axiosInstance.get(`/center/posts/${centerIdx}/answer`);
+    return response.data;
+  },
 };
 
