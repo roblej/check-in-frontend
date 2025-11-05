@@ -1,14 +1,6 @@
 "use client";
 
-import { useState } from "react";
-
 const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnly = false }) => {
-  const [selectedRegion, setSelectedRegion] = useState("");
-
-  const handleRegionChange = (regionId) => {
-    setSelectedRegion(regionId);
-    updateFormData("area", { region: regionId });
-  };
 
   return (
     <div className="space-y-8">
@@ -72,46 +64,6 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
         </div>
       </div>
 
-      {/* 지역 정보 */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">지역 정보</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              시/도
-            </label>
-            <select
-              value={selectedRegion}
-              onChange={(e) => handleRegionChange(parseInt(e.target.value))}
-              disabled={readOnly || !initialData.regions.length}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
-            >
-              <option value="">시/도를 선택하세요</option>
-              {initialData.regions.map((region) => (
-                <option key={region.id} value={region.id}>
-                  {region.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              교통편 안내
-            </label>
-            <textarea
-              value={formData.area.transportation}
-              onChange={(e) => updateFormData("area", { transportation: e.target.value })}
-              readOnly={readOnly}
-              disabled={readOnly}
-              rows={3}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
-              placeholder="대중교통 이용 방법을 입력하세요"
-            />
-          </div>
-        </div>
-      </div>
-
       {/* 호텔 상세 정보 */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">호텔 상세 정보</h3>
@@ -121,8 +73,8 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
               호텔 소개
             </label>
             <textarea
-              value={formData.hotelDetail.description}
-              onChange={(e) => updateFormData("hotelDetail", { description: e.target.value })}
+              value={formData.hotelDetail.reservationlodging || formData.hotelDetail.description || ""}
+              onChange={(e) => updateFormData("hotelDetail", { reservationlodging: e.target.value })}
               readOnly={readOnly}
               disabled={readOnly}
               rows={4}
@@ -153,8 +105,8 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
               </label>
               <input
                 type="text"
-                value={formData.hotelDetail.scale}
-                onChange={(e) => updateFormData("hotelDetail", { scale: e.target.value })}
+                value={formData.hotelDetail.scalelodging || formData.hotelDetail.scale || ""}
+                onChange={(e) => updateFormData("hotelDetail", { scalelodging: e.target.value })}
                 readOnly={readOnly}
                 disabled={readOnly}
                 className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
