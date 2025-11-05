@@ -330,7 +330,7 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                         <div className="text-center">
                           <div className="text-gray-400 text-4xl mb-2">📷</div>
                           <p className="text-gray-500 text-sm">객실 이미지를 업로드하세요</p>
-                          <p className="text-xs text-gray-400 mt-1">드래그 앤 드롭 또는 "이미지 선택" 버튼 사용</p>
+                          <p className="text-xs text-gray-400 mt-1">드래그 앤 드롭 또는 &quot;이미지 선택&quot; 버튼 사용</p>
                         </div>
                       ) : (
                         <div>
