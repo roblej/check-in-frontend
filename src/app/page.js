@@ -4,12 +4,13 @@ import Footer from "@/components/Footer";
 import HeroSection from "@/components/HeroSection";
 import PopularHotels from "@/components/PopularHotels";
 import DartGameSection from "@/components/DartGameSection";
-import SetAccessToken from "@/components/login/SetAccessToken";
 import ReadToken from "@/components/token/readToken";
+import OAuthCallbackHandler from "@/components/OAuthCallbackHandler";
 import ScrollManager from "@/components/ScrollManager";
 
 // 동적 렌더링 강제 설정 (useSearchParams 사용 시 필요)
 export const dynamic = 'force-dynamic';
+
 
 /**
  * 체크인 호텔 메인 페이지 (SSR)
@@ -49,7 +50,12 @@ const CheckinHotel = () => {
   return (
     <div className="min-h-screen bg-gray-50">
 
-<ScrollManager />{/* 스크롤 초기화 컴포넌트 */}
+      {/* OAuth 콜백 핸들러 */}
+      <OAuthCallbackHandler />
+      
+
+
+      <ScrollManager />{/* 스크롤 초기화 컴포넌트 */}
       {/* 헤더 */}
       <Header />
     

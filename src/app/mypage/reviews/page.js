@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { mypageAPI } from '@/lib/api/mypage';
 import { 
-  ChevronLeft, ChevronRight, Star, Pencil, Trash2
+  ChevronLeft, ChevronRight, Star, Pencil, Trash2, MapPin
 } from 'lucide-react';
 
 export default function MyReviewsPage() {
@@ -309,7 +309,11 @@ export default function MyReviewsPage() {
                             <ChevronRight className="w-4 h-4 text-gray-400" />
                           </button>
                         </div>
-                    <p className="text-xs text-gray-500 mb-0.5">{getRegion(r.adress, r.location)}</p>
+                    <div className="flex items-center gap-1 text-xs text-gray-500 mb-0.5">
+                      <MapPin className="w-3 h-3" />
+                      <span>{getRegion(r.adress, r.location)}</span>
+                    </div>
+
                     <p className="text-xs text-gray-600">{r.checkIn} - {r.checkOut} {getNightsText(r.checkIn, r.checkOut)}</p>
                       </div>
                     </div>
@@ -411,7 +415,10 @@ export default function MyReviewsPage() {
                       </div>
                       {/* 지역 */}
                       {(review.region || review.hotelInfo?.adress || review.location) && (
-                        <p className="text-xs text-gray-500 mb-0.5">{review.region || getRegion(review.hotelInfo?.adress, review.location)}</p>
+                        <div className="flex items-center gap-1 text-xs text-gray-500 mb-0.5">
+                          <MapPin className="w-3 h-3" />
+                          <span>{review.region || getRegion(review.hotelInfo?.adress, review.location)}</span>
+                        </div>
                       )}
                       {/* 체크인 - 체크아웃 + (박수) */}
                       {(review.checkInDate && review.checkOutDate) && (
