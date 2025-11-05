@@ -16,7 +16,9 @@ const HotelRegistrationClient = ({ initialData }) => {
       title: "",
       adress: "",
       phone: "",
-      imageUrl: "" // 대표 이미지 URL
+      imageUrl: "", // 대표 이미지 URL
+      latitude: "", // 위도 (mapY)
+      longitude: "" // 경도 (mapX)
     },
     // 호텔 상세 정보
     hotelDetail: {
@@ -179,8 +181,6 @@ const HotelRegistrationClient = ({ initialData }) => {
       capacity: 2,
       size: "",
       bedType: "",
-      amenities: [],
-      description: "",
       images: [],
       imageUrl: "", // Room.imageUrl (객실 대표 이미지)
       refundable: true, // 기본값 true (환불 가능 = 1)
@@ -267,18 +267,45 @@ const HotelRegistrationClient = ({ initialData }) => {
     // 객실 정보 검증
     if (formData.rooms.length === 0) {
       newErrors.rooms = "최소 1개 이상의 객실을 등록해주세요";
+    } else {
+      // 각 객실의 수용 인원 검증 (2, 4, 6, 8만 허용)
+      for (let i = 0; i < formData.rooms.length; i++) {
+        const room = formData.rooms[i];
+        const capacity = room.capacity;
+        const validCapacities = [2, 4, 6, 8];
+        
+        // 수용 인원이 없거나 유효하지 않은 경우
+        if (!capacity || !validCapacities.includes(capacity)) {
+          newErrors.capacity = {
+            roomId: room.id,
+            message: "수용 인원을 선택해주세요"
+          };
+          break; // 첫 번째 오류만 표시
+        }
+      }
     }
 
     // 이미지는 선택사항이므로 검증하지 않음
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return {
+      isValid: Object.keys(newErrors).length === 0,
+      errors: newErrors
+    };
   };
 
   // 등록 요청 제출
   const handleSubmit = async () => {
     // 1. 폼 유효성 검사
-    if (!validateForm()) {
+    const validationResult = validateForm();
+    if (!validationResult.isValid) {
+      // 오류가 있는 필드에 따라 해당 탭으로 이동
+      if (validationResult.errors.capacity || validationResult.errors.rooms) {
+        setCurrentTab("rooms");
+      } else if (validationResult.errors.title || validationResult.errors.adress || validationResult.errors.phone) {
+        setCurrentTab("basic");
+      }
+      
       alert("필수 정보를 모두 입력해주세요.");
       return;
     }
