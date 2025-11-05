@@ -43,6 +43,21 @@ export const mypageAPI = {
     }
   },
 
+  // 리뷰 이미지 업로드
+  uploadReviewImages: async (images) => {
+    const formData = new FormData();
+    images.forEach((image) => {
+      formData.append('images', image);
+    });
+    
+    const response = await axiosInstance.post("/imageUpload/review/images", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
   // 리뷰 작성
   createReview: async (reviewData) => {
     const response = await axiosInstance.post("/reviews", reviewData);
