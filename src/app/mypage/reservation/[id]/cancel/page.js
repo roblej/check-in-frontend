@@ -19,85 +19,6 @@ export default function CancelReservationPage() {
   const [error, setError] = useState("");
   const [reservation, setReservation] = useState(null);
   const [refundInfo, setRefundInfo] = useState(null);
-  const computeRefundRate = (checkinStr) => {
-    if (!checkinStr) return 0;
-    try {
-      const today = new Date();
-      const checkin = new Date(checkinStr);
-      const ms = checkin.setHours(0, 0, 0, 0) - today.setHours(0, 0, 0, 0);
-      const days = Math.ceil(ms / (1000 * 60 * 60 * 24));
-      if (days >= 7) return 1.0;
-      if (days >= 3) return 0.5;
-      if (days >= 1) return 0.3;
-      return 0.0;
-    } catch {
-      return 0;
-    }
-  };
-  const breakdown = useMemo(() => {
-    const totalPrice = Number(reservation?.totalPrice || 0);
-    const couponDiscount = Number(reservation?.couponDiscount || 0);
-    const afterCoupon = Math.max(0, totalPrice - couponDiscount);
-
-    if (refundInfo) {
-      const refundRate = Number(refundInfo.refundRate || 0);
-      const refundTotal = Number(refundInfo.refundTotalAmount || 0);
-      const refundPoint = Number(refundInfo.refundPoint || 0);
-      const refundCash = Number(refundInfo.refundCash || 0);
-      const originalPointUsed =
-        refundRate > 0 ? Math.round(refundPoint / refundRate) : 0;
-      const originalCashUsed =
-        refundRate > 0 ? Math.round(refundCash / refundRate) : 0;
-      const originalPcUsed = originalPointUsed + originalCashUsed;
-      const refundCardAmount = Math.max(
-        0,
-        refundTotal - refundPoint - refundCash
-      );
-      const originalCardPaid =
-        refundRate > 0 ? Math.round(refundCardAmount / refundRate) : 0;
-      const totalBackToCustomer = refundCardAmount + refundPoint + refundCash;
-      return {
-        mode: "final",
-        totalPrice,
-        couponDiscount,
-        afterCoupon,
-        originalPointUsed,
-        originalCashUsed,
-        originalPcUsed,
-        originalCardPaid,
-        refundRate,
-        refundCardAmount,
-        refundPoint,
-        refundCash,
-        totalBackToCustomer,
-      };
-    }
-
-    const pointsUsed = Number(reservation?.pointsUsed || 0);
-    const cashUsed = Number(reservation?.cashUsed || 0);
-    const originalPcUsed = pointsUsed + cashUsed;
-    const originalCardPaid = Math.max(0, afterCoupon - originalPcUsed);
-    const policyRate = computeRefundRate(
-      reservation?.checkIn || reservation?.checkinDate
-    );
-    const refundCardAmount = Math.round(originalCardPaid * policyRate);
-    const totalBackToCustomer = refundCardAmount + pointsUsed + cashUsed;
-    return {
-      mode: "predicted",
-      totalPrice,
-      couponDiscount,
-      afterCoupon,
-      originalPointUsed: pointsUsed,
-      originalCashUsed: cashUsed,
-      originalPcUsed,
-      originalCardPaid,
-      refundRate: policyRate,
-      refundCardAmount,
-      refundPoint: pointsUsed,
-      refundCash: cashUsed,
-      totalBackToCustomer,
-    };
-  }, [refundInfo, reservation]);
 
   // 예약 상세 불러오기 (백엔드 연동)
   useEffect(() => {
@@ -109,6 +30,15 @@ export default function CancelReservationPage() {
         const res = await axios.get(`/reservations/${reservationId}/detail`);
         // 백엔드 DTO에 맞춰 필드 매핑 (orderNum 사용)
         const data = res?.data || {};
+        console.log("예약 상세 정보:", data);
+        console.log("환불 예상 정보:", {
+          expectedRefundRate: data.expectedRefundRate,
+          expectedRefundMessage: data.expectedRefundMessage,
+          expectedPaymentRefund: data.expectedPaymentRefund,
+          expectedCashRestore: data.expectedCashRestore,
+          expectedPointRestore: data.expectedPointRestore,
+          expectedTotalRefund: data.expectedTotalRefund,
+        });
         if (mounted) setReservation(data);
       } catch (e) {
         if (mounted) setError("예약 정보를 불러오지 못했습니다.");
@@ -155,10 +85,15 @@ export default function CancelReservationPage() {
       });
       const data = res?.data || {};
       const payload = data.data || data;
+      // 백엔드에서 받은 모든 환불 정보를 그대로 저장
       setRefundInfo({
         refundStatus: payload.refundStatus,
         refundRate: payload.refundRate,
+        refundMessage: payload.refundMessage,
         refundTotalAmount: payload.refundTotalAmount,
+        paymentRefund: payload.paymentRefund,
+        refundCash: payload.refundCash,
+        refundPoint: payload.refundPoint,
         cancelReason: payload.cancelReason,
       });
       // 예약 상태도 로컬에서 취소로 간주
@@ -314,6 +249,14 @@ export default function CancelReservationPage() {
                     : "환불 진행중"}
                 </span>
               </div>
+              {refundInfo.refundMessage && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">환불 정책</span>
+                  <span className="text-gray-900">
+                    {refundInfo.refundMessage}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-600">환불 비율</span>
                 <span className="text-gray-900">
@@ -321,8 +264,32 @@ export default function CancelReservationPage() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">환불 금액</span>
-                <span className="text-gray-900">
+                <span className="text-gray-600">결제 환불</span>
+                <span className="text-gray-900 font-semibold">
+                  {Number(refundInfo.paymentRefund || 0).toLocaleString()}원
+                </span>
+              </div>
+              {refundInfo.refundCash > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">캐시 복원</span>
+                  <span className="text-gray-900">
+                    {Number(refundInfo.refundCash || 0).toLocaleString()}원
+                  </span>
+                </div>
+              )}
+              {refundInfo.refundPoint > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">포인트 복원</span>
+                  <span className="text-gray-900">
+                    {Number(refundInfo.refundPoint || 0).toLocaleString()}P
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between pt-2 border-t border-gray-200">
+                <span className="text-gray-900 font-semibold">
+                  총 환불 금액
+                </span>
+                <span className="text-blue-600 font-bold">
                   {Number(refundInfo.refundTotalAmount || 0).toLocaleString()}원
                 </span>
               </div>
@@ -333,76 +300,61 @@ export default function CancelReservationPage() {
           </div>
         )}
 
-        {breakdown && (
+        {/* 환불 예상 정보 (취소 전 표시) */}
+        {reservation && !refundInfo && (
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xl font-bold text-gray-900">환불 내역</h2>
-              <span
-                className={
-                  breakdown.mode === "final"
-                    ? "px-2 py-1 text-xs rounded bg-green-100 text-green-700"
-                    : "px-2 py-1 text-xs rounded bg-blue-100 text-blue-700"
-                }
-              >
-                {breakdown.mode === "final" ? "최종" : "예상"}
+              <h2 className="text-xl font-bold text-gray-900">
+                환불 예상 정보
+              </h2>
+              <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-700">
+                예상
               </span>
             </div>
-
-            <div className="space-y-2 text-sm">
+            <div className="space-y-3">
+              {reservation.expectedRefundMessage && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">환불 정책</span>
+                  <span className="text-gray-900">
+                    {reservation.expectedRefundMessage}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span className="text-gray-600">결제 금액</span>
-                <span className="text-gray-900">
-                  {breakdown.totalPrice.toLocaleString()}원
-                </span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-gray-600">쿠폰 할인</span>
-                <span className="text-red-600">
-                  - {breakdown.couponDiscount.toLocaleString()}원
-                </span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-gray-600">포인트 사용</span>
-                <span className="text-red-600">
-                  - {breakdown.originalPointUsed.toLocaleString()}P
-                </span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-gray-600">캐시 사용</span>
-                <span className="text-red-600">
-                  - {breakdown.originalCashUsed.toLocaleString()}C
-                </span>
-              </div>
-
-              <div className="flex justify-between pt-2">
-                <span className="text-gray-900 font-medium">
-                  실제 결제 금액
-                </span>
+                <span className="text-gray-600">결제금액 복구</span>
                 <span className="text-gray-900 font-semibold">
-                  {breakdown.originalCardPaid.toLocaleString()}원
+                  {Number(
+                    reservation.expectedPaymentRefund || 0
+                  ).toLocaleString()}
+                  원
                 </span>
               </div>
-
               <div className="flex justify-between">
-                <span className="text-gray-600">취소 정책</span>
+                <span className="text-gray-600">캐시 복구</span>
                 <span className="text-gray-900">
-                  환불율 {Math.round(breakdown.refundRate * 100)}%
+                  {Number(
+                    reservation.expectedCashRestore || 0
+                  ).toLocaleString()}
+                  원
                 </span>
               </div>
-
-              <div className="flex justify-between pt-2">
-                <span className="text-gray-900 font-semibold">환불 금액</span>
+              <div className="flex justify-between">
+                <span className="text-gray-600">포인트 복구</span>
+                <span className="text-gray-900">
+                  {Number(
+                    reservation.expectedPointRestore || 0
+                  ).toLocaleString()}
+                  P
+                </span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-gray-200">
+                <span className="text-gray-900 font-semibold">총 복구</span>
                 <span className="text-blue-600 font-bold">
-                  {breakdown.refundCardAmount.toLocaleString()}원
+                  {Number(
+                    reservation.expectedTotalRefund || 0
+                  ).toLocaleString()}
+                  원
                 </span>
-              </div>
-
-              <div className="text-right text-sm text-gray-600">
-                (포인트 복원 {breakdown.refundPoint.toLocaleString()}P / 캐시
-                복원 {breakdown.refundCash.toLocaleString()}C)
               </div>
             </div>
           </div>
