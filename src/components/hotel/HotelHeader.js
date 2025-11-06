@@ -1,6 +1,7 @@
 "use client";
 
 import LiveViewerCount from "./LiveViewerCount";
+import BookmarkButton from "./BookmarkButton";
 
 /**
  * 호텔 헤더 컴포넌트 - 호텔명, 평점, 가격 등 표시
@@ -38,13 +39,20 @@ const HotelHeader = ({
         <div className="flex items-center justify-between">
           {/* 호텔 기본 정보 */}
           <div className="flex-1 min-w-0">
-            <h1
-              className={`font-bold text-gray-900 truncate ${
-                isModal ? "text-lg" : "text-2xl"
-              }`}
-            >
-              {hotelData?.name}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1
+                className={`font-bold text-gray-900 truncate ${
+                  isModal ? "text-lg" : "text-2xl"
+                }`}
+              >
+                {hotelData?.name}
+              </h1>
+              <BookmarkButton 
+                contentId={contentId} 
+                size={isModal ? "small" : "medium"}
+                className="flex-shrink-0"
+              />
+            </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               {hotelData?.rating > 0 && (
                 <div className="flex items-center">
