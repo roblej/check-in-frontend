@@ -1,15 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import Header from "@/components/Header";
 import styles from "./login.module.css";
 import axios from "axios";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useAdminStore } from "@/stores/adminStore";
 import { setAdminIdxCookie } from "@/utils/cookieUtils";
-export default function LoginPage() {
+import naverLoginBtn from "@/images/login/btnG_완성형.png";
+import kakaoLoginBtn from "@/images/login/kakao_login_medium_narrow.png";
+
+// 소셜 로그인 에러 처리 컴포넌트
+function OAuthErrorHandler() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    const message = searchParams.get("message");
+
+    if (error === "oauth2_failed" && message) {
+      // URL 디코딩
+      const decodedMessage = decodeURIComponent(message);
+      alert(decodedMessage);
+
+      // URL에서 에러 파라미터 제거
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.delete("error");
+      newSearchParams.delete("message");
+      const newUrl = newSearchParams.toString()
+        ? `${window.location.pathname}?${newSearchParams.toString()}`
+        : window.location.pathname;
+      router.replace(newUrl);
+    }
+  }, [searchParams, router]);
+
+  return null;
+}
+
+function LoginForm() {
   const router = useRouter();
   const { setAccessToken, setInlogged ,isInlogged} = useCustomerStore();
   const { setAdminIdx, setContentId, setHotelInfo, setAdminLoggedIn, fetchContentIdByAdminIdx } = useAdminStore();
@@ -26,6 +58,7 @@ export default function LoginPage() {
 
   const login_url = "/api/login";
   const naverLogin_url = "http://localhost:8888/oauth2/authorization/naver";
+  const kakaoLogin_url = "http://localhost:8888/oauth2/authorization/kakao";
   // 네이버 로그인을 위한 함수
 
   // 입력 필드 변경 핸들러
@@ -286,29 +319,62 @@ export default function LoginPage() {
             <div className={styles.dividerLine}>
               <span>또는</span>
             </div>
-            <button
-              type="button"
-              className={styles.socialButton}
-              onClick={() => {
-                // OAuth 로그인 시도 플래그 설정
-                sessionStorage.setItem('oauth_attempted', 'true');
-                window.location.href = naverLogin_url;
-              }}
-            >
-              <span className={styles.naverIcon}>N</span>
-              네이버로 로그인
-            </button>
-            <button
-              type="button"
-              className={styles.socialButton}
-              onClick={() => alert("카카오 로그인 기능 준비 중입니다.")}
-            >
-              <span className={styles.kakaoIcon}>K</span>
-              카카오로 로그인
-            </button>
+            <div className={styles.socialButtonContainer}>
+              <button
+                type="button"
+                className={styles.naverLoginButton}
+                onClick={() => {
+                  // OAuth 로그인 시도 플래그 설정
+                  sessionStorage.setItem('oauth_attempted', 'true');
+                  window.location.href = naverLogin_url;
+                }}
+              >
+                <Image
+                  src={naverLoginBtn}
+                  alt="네이버로 로그인"
+                  width={183}
+                  height={45}
+                />
+              </button>
+              <button
+                type="button"
+                className={styles.kakaoLoginButton}
+                onClick={() => {
+                  sessionStorage.setItem('oauth_attempted', 'true');
+                  window.location.href = kakaoLogin_url;
+                }}
+              >
+                <Image
+                  src={kakaoLoginBtn}
+                  alt="카카오로 로그인"
+                  width={183}
+                  height={45}
+                />
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className={styles.container}>
+          <div className={styles.loginBox}>
+            <h1 className={styles.title}>로그인</h1>
+            <p className={styles.subtitle}>CheckIn에 오신 것을 환영합니다</p>
+            <div>로딩 중...</div>
+          </div>
+        </div>
+      </div>
+    }>
+      <OAuthErrorHandler />
+      <LoginForm />
+    </Suspense>
   );
 }
