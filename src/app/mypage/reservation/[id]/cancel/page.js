@@ -143,7 +143,7 @@ export default function CancelReservationPage() {
             </h3>
             <ul className="text-sm text-red-800 space-y-1">
               <li>• 취소 수수료가 부과될 수 있습니다.</li>
-              <li>• 체크인 3일 전까지는 무료 취소 가능합니다.</li>
+              <li>• 체크인 7일 전까지는 무료 취소 가능합니다.</li>
               <li>• 취소 후에는 재예약이 필요합니다.</li>
             </ul>
           </div>
