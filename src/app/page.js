@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HeroSection from "@/components/HeroSection";
@@ -6,6 +7,9 @@ import DartGameSection from "@/components/DartGameSection";
 import ReadToken from "@/components/token/readToken";
 import OAuthCallbackHandler from "@/components/OAuthCallbackHandler";
 import ScrollManager from "@/components/ScrollManager";
+
+// 동적 렌더링 강제 설정 (useSearchParams 사용 시 필요)
+export const dynamic = 'force-dynamic';
 
 
 /**
@@ -56,7 +60,18 @@ const CheckinHotel = () => {
       <Header />
     
       {/* 히어로 섹션 */}
-      <HeroSection />
+      <Suspense fallback={
+        <div className="bg-blue-50 py-12 md:py-16">
+          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">로딩 중...</p>
+            </div>
+          </div>
+        </div>
+      }>
+        <HeroSection />
+      </Suspense>
 
       {/* 메인 컨텐츠 */}
       <main className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-12">

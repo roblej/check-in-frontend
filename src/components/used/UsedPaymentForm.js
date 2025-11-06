@@ -1,18 +1,24 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import TossPaymentsWidget from '@/components/payment/TossPaymentsWidget';
-import { usePaymentStore } from '@/stores/paymentStore';
 import { usedAPI } from '@/lib/api/used';
+import axios from '@/lib/axios';
 
+/**
+ * 중고 호텔 결제 폼 (페이지 이탈 시 거래 취소)
+ */
 const UsedPaymentForm = ({ initialData }) => {
   const router = useRouter();
-  const { loadFromStorage, clearPaymentDraft } = usePaymentStore();
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
-  
-  // httpOnly 쿠키에서 사용자 정보 가져오기
+  const [errors, setErrors] = useState({});
+  const [isPaymentCompleted, setIsPaymentCompleted] = useState(false); // 결제 완료 여부 추적
+  const isUnloadingRef = useRef(false); // 새로고침 여부 추적
+  const hasCancelledRef = useRef(false); // 이미 취소 요청을 보냈는지 추적
+
+  // 사용자 정보 로드
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
@@ -21,12 +27,10 @@ const UsedPaymentForm = ({ initialData }) => {
       } catch (error) {
         console.error('사용자 정보 가져오기 실패:', error);
         if (error.response?.status === 401) {
-          console.log('인증이 필요합니다');
           router.push('/login');
           return;
         }
         router.push('/login');
-        return;
       } finally {
         setLoading(false);
       }
@@ -35,62 +39,240 @@ const UsedPaymentForm = ({ initialData }) => {
     fetchUserInfo();
   }, [router]);
 
-  // 세션 스토리지에서 결제 정보 가져오기 (URL 파라미터 완전히 숨김)
-  useEffect(() => {
+  // 세션 스토리지에서 결제 정보 가져오기 및 업데이트 감지
+  const loadPaymentInfo = useCallback(() => {
     try {
-      // 현재 결제 중인 거래 ID 가져오기
-      const currentTradeIdx = sessionStorage.getItem('used_payment_current');
+      const storageKeyCurrent = 'used_payment_current';
+      const currentTradeIdx = sessionStorage.getItem(storageKeyCurrent);
+      
+      console.log('🔍 loadPaymentInfo 호출:', {
+        storageKey: storageKeyCurrent,
+        value: currentTradeIdx,
+        allKeys: Object.keys(sessionStorage).filter(k => k.startsWith('used_payment_'))
+      });
       
       if (!currentTradeIdx) {
-        console.error('결제 정보를 찾을 수 없습니다. 거래를 다시 시작해주세요.');
-        alert('결제 정보를 찾을 수 없습니다. 다시 시도해주세요.');
-        router.push('/used');
+        console.warn('결제 정보를 찾을 수 없습니다. used_payment_current가 없습니다.');
         return;
       }
 
-      const usedTradeIdx = parseInt(currentTradeIdx);
-      const storedData = sessionStorage.getItem(`used_payment_${usedTradeIdx}`);
+      const usedTradeIdx = parseInt(currentTradeIdx, 10);
+      const storageKeyTrade = `used_payment_${usedTradeIdx}`;
+      const storedData = sessionStorage.getItem(storageKeyTrade);
+      
+      console.log('🔍 loadPaymentInfo - 거래 정보 읽기:', {
+        storageKey: storageKeyTrade,
+        usedTradeIdx,
+        hasData: !!storedData,
+      });
       
       if (storedData) {
         const parsedData = JSON.parse(storedData);
-        setPaymentInfo(prev => ({
-          ...prev,
-          ...parsedData,
-          usedTradeIdx: parsedData.usedTradeIdx || usedTradeIdx,
-          nights: Math.ceil((new Date(parsedData.checkOut) - new Date(parsedData.checkIn)) / (1000 * 60 * 60 * 24)),
-          discountAmount: (parsedData.originalPrice || 0) - (parsedData.salePrice || 0)
-        }));
+        const finalTradeIdx = parsedData.usedTradeIdx || usedTradeIdx;
+        
+        setPaymentInfo(prev => {
+          // 이미 같은 거래 ID면 업데이트하지 않음 (무한 루프 방지)
+          if (prev.usedTradeIdx === finalTradeIdx) {
+            console.log('⏭️ loadPaymentInfo - 같은 거래 ID이므로 업데이트 스킵:', {
+              storageKeyCurrent,
+              storageKeyTrade,
+              usedTradeIdx: finalTradeIdx,
+              currentTradeIdx,
+              prevUsedTradeIdx: prev.usedTradeIdx,
+              willUpdate: false
+            });
+            return prev;
+          }
+          
+          console.log('✅ loadPaymentInfo - 결제 정보 로드 및 업데이트:', {
+            storageKeyCurrent,
+            storageKeyTrade,
+            usedTradeIdx: finalTradeIdx,
+            currentTradeIdx,
+            prevUsedTradeIdx: prev.usedTradeIdx,
+            willUpdate: true
+          });
+          
+          console.log('🔄 loadPaymentInfo - 결제 정보 업데이트:', {
+            from: prev.usedTradeIdx,
+            to: finalTradeIdx
+          });
+          
+          return {
+            ...prev,
+            ...parsedData,
+            usedTradeIdx: finalTradeIdx,
+            nights: Math.ceil((new Date(parsedData.checkOut) - new Date(parsedData.checkIn)) / (1000 * 60 * 60 * 24)),
+            discountAmount: (parsedData.originalPrice || 0) - (parsedData.salePrice || 0)
+          };
+        });
       } else {
-        // 세션 스토리지에 데이터가 없으면 에러 처리
-        console.error('결제 정보를 찾을 수 없습니다. 거래를 다시 시작해주세요.');
-        alert('결제 정보를 찾을 수 없습니다. 다시 시도해주세요.');
-        router.push('/used');
+        console.warn(`결제 정보를 찾을 수 없습니다. ${storageKeyTrade}가 없습니다.`);
       }
     } catch (error) {
       console.error('세션 스토리지 데이터 읽기 실패:', error);
-      alert('결제 정보를 불러오는 중 오류가 발생했습니다.');
-      router.push('/used');
     }
-  }, [router]);
+  }, []);
 
   // 결제 정보 상태
   const [paymentInfo, setPaymentInfo] = useState({
     ...initialData,
-    usedTradeIdx: initialData.usedTradeIdx, // 거래 ID 추가
+    usedTradeIdx: initialData.usedTradeIdx,
     customerIdx: null,
     customerName: '',
     customerEmail: '',
     customerPhone: '',
     customerCash: 0,
     customerPoint: 0,
-    // 결제 방식 관련 필드 추가
-    useCash: 0, // 사용할 캐시 금액
-    usePoint: 0, // 사용할 포인트 금액
-    paymentMethod: "card", // 결제 방식: 'card', 'cash', 'point', 'mixed'
+    useCash: 0,
+    usePoint: 0,
   });
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  // 초기 로드 및 세션 스토리지 변경 감지
+  useEffect(() => {
+    // 초기 로드
+    const currentTradeIdx = sessionStorage.getItem('used_payment_current');
+    if (!currentTradeIdx) {
+      alert('결제 정보를 찾을 수 없습니다. 다시 시도해주세요.');
+      router.push('/used');
+      return;
+    }
+    
+    loadPaymentInfo();
+
+    // storage 이벤트 리스너 등록 (다른 탭/창에서 변경 감지)
+    const handleStorageChange = (e) => {
+      if (e.key === 'used_payment_current' || e.key?.startsWith('used_payment_')) {
+        console.log('🔔 storage 이벤트로 세션 스토리지 변경 감지:', e.key);
+        loadPaymentInfo();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // 페이지 포커스 시 세션 스토리지 확인 (같은 탭에서의 변경 감지)
+    const handleFocus = () => {
+      console.log('🔔 focus 이벤트로 세션 스토리지 확인');
+      loadPaymentInfo();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    
+    // 페이지 가시성 변경 감지 (탭 전환 등)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('🔔 visibilitychange 이벤트로 세션 스토리지 확인');
+        loadPaymentInfo();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 같은 탭에서의 sessionStorage 변경 감지를 위한 주기적 체크
+    // (storage 이벤트는 같은 탭에서는 발생하지 않음)
+    let lastCheckedValue = sessionStorage.getItem('used_payment_current');
+    const intervalId = setInterval(() => {
+      const currentValue = sessionStorage.getItem('used_payment_current');
+      if (currentValue !== lastCheckedValue) {
+        console.log('🔔 주기적 체크로 세션 스토리지 변경 감지:', {
+          from: lastCheckedValue,
+          to: currentValue
+        });
+        lastCheckedValue = currentValue;
+        loadPaymentInfo();
+      }
+    }, 500); // 500ms마다 체크
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, [router, loadPaymentInfo]);
+
+  // 거래 취소 함수 (페이지 이탈 시 호출)
+  const cancelTradeOnExit = useCallback(async (usedTradeIdx) => {
+    // 이미 취소 요청을 보냈거나 결제 완료된 경우 무시
+    if (hasCancelledRef.current || isPaymentCompleted) {
+      return;
+    }
+
+    // usedTradeIdx가 없으면 무시
+    if (!usedTradeIdx) {
+      return;
+    }
+
+    try {
+      hasCancelledRef.current = true;
+      console.log('🔙 페이지 이탈: 거래 취소 요청', { usedTradeIdx });
+      
+      const reason = '사용자 페이지 이탈';
+      const timestamp = new Date().toISOString();
+      
+      // Beacon API 사용 (비동기 요청이 완료되지 않아도 전송 보장)
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api/used/trade/${usedTradeIdx}/delete`;
+      const data = JSON.stringify({ reason, timestamp });
+      
+      if (navigator.sendBeacon) {
+        const blob = new Blob([data], { type: 'application/json' });
+        navigator.sendBeacon(apiUrl, blob);
+        console.log('✅ Beacon으로 거래 취소 요청 전송');
+      } else {
+        // Beacon 미지원 브라우저는 동기 XHR
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', apiUrl, false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(data);
+        console.log('✅ XHR로 거래 취소 요청 전송');
+      }
+    } catch (error) {
+      console.warn('거래 취소 요청 실패 (무시):', error);
+    }
+  }, [isPaymentCompleted]);
+
+  // 페이지 이탈 시 거래 취소 로직
+  useEffect(() => {
+    // paymentInfo가 없거나 결제 완료된 경우 무시
+    if (!paymentInfo.usedTradeIdx || isPaymentCompleted) {
+      return;
+    }
+
+    const usedTradeIdx = paymentInfo.usedTradeIdx;
+
+    // beforeunload 이벤트 핸들러 (브라우저 탭/창 닫기)
+    const handleBeforeUnload = (e) => {
+      // 새로고침으로 인한 이탈인지 확인
+      isUnloadingRef.current = true;
+      
+      // 결제 완료되지 않은 경우에만 취소 요청
+      if (!isPaymentCompleted && !hasCancelledRef.current) {
+        cancelTradeOnExit(usedTradeIdx);
+      }
+    };
+
+    // visibilitychange 이벤트 핸들러 (탭 전환 등)
+    const handleVisibilityChange = () => {
+      // 페이지가 숨겨질 때 (다른 탭으로 전환)
+      if (document.hidden && !isPaymentCompleted && !hasCancelledRef.current) {
+        cancelTradeOnExit(usedTradeIdx);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 컴포넌트 언마운트 시 (뒤로가기 등)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      
+      // 새로고침이 아닌 경우에만 취소 요청
+      if (!isUnloadingRef.current && !isPaymentCompleted && !hasCancelledRef.current) {
+        cancelTradeOnExit(usedTradeIdx);
+      }
+    };
+  }, [paymentInfo.usedTradeIdx, isPaymentCompleted, cancelTradeOnExit]);
 
   // 사용자 정보가 로드되면 paymentInfo 업데이트
   useEffect(() => {
@@ -98,7 +280,7 @@ const UsedPaymentForm = ({ initialData }) => {
       setPaymentInfo(prev => ({
         ...prev,
         customerIdx: customer.customerIdx,
-        customerName: customer.name || "", // 구매 시에는 실명 사용
+        customerName: customer.name || "",
         customerEmail: customer.email,
         customerPhone: customer.phone,
         customerCash: parseInt(customer.cash) || 0,
@@ -107,28 +289,12 @@ const UsedPaymentForm = ({ initialData }) => {
     }
   }, [customer]);
 
-  // 고정된 키들 생성 (useMemo로 최적화)
-  const paymentKeys = useMemo(
-    () => ({
-      customerKey: `customer_${paymentInfo.usedItemIdx || "default"}`,
-      orderId: `used_hotel_${
-        paymentInfo.usedItemIdx || Date.now()
-      }_${Math.random().toString(36).substr(2, 9)}`,
-    }),
-    [paymentInfo.usedItemIdx]
-  );
-
-  // 결제 금액 계산 (useMemo로 최적화)
+  // 결제 금액 계산
   const paymentAmounts = useMemo(() => {
-    const totalAmount =
-      paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1); // 세금 포함
+    const totalAmount = paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1);
     const maxCash = Math.min(paymentInfo.useCash, paymentInfo.customerCash);
     const maxPoint = Math.min(paymentInfo.usePoint, paymentInfo.customerPoint);
-
-    // 사용 가능한 캐시와 포인트 합계
     const availableCashPoint = maxCash + maxPoint;
-
-    // 실제 결제 금액 (총 금액 - 캐시 - 포인트)
     const actualPaymentAmount = Math.max(0, totalAmount - availableCashPoint);
 
     return {
@@ -146,124 +312,7 @@ const UsedPaymentForm = ({ initialData }) => {
     paymentInfo.customerPoint,
   ]);
 
-  useEffect(() => {
-    loadFromStorage();
-  }, [loadFromStorage]); // loadFromStorage 의존성 추가
-
-  // customer 정보가 변경될 때 paymentInfo 업데이트
-  useEffect(() => {
-    if (customer) {
-      setPaymentInfo(prev => ({
-        ...prev,
-        customerIdx: customer.customerIdx,
-        customerName: customer.nickname,
-        customerEmail: customer.email,
-        customerPhone: customer.phone,
-        customerCash: parseInt(customer.cash) || 0,
-        customerPoint: parseInt(customer.point) || 0,
-      }));
-    }
-  }, [customer]);
-
-  // 페이지 이탈 시 거래 삭제 (최적화된 버전)
-  useEffect(() => {
-    let isDeleting = false; // 삭제 중 플래그
-    let deleteTimeout = null; // 디바운싱 타이머
-
-    const deleteTradeOnExit = (reason) => {
-      if (paymentInfo.usedTradeIdx && !isDeleting) {
-        isDeleting = true; // 삭제 시작 플래그 설정
-        
-        console.log(`${reason} 감지 - 거래 삭제 시작:`, paymentInfo.usedTradeIdx);
-        
-        usedAPI.deleteTrade(
-          paymentInfo.usedTradeIdx,
-          reason,
-          new Date().toISOString()
-        ).then(() => {
-          console.log('거래 삭제 완료:', paymentInfo.usedTradeIdx);
-          // 세션 스토리지도 정리
-          if (paymentInfo.usedTradeIdx) {
-            sessionStorage.removeItem(`used_payment_${paymentInfo.usedTradeIdx}`);
-            sessionStorage.removeItem('used_payment_current');
-          }
-        }).catch(error => {
-          console.error('거래 삭제 실패:', error);
-          isDeleting = false; // 실패 시 플래그 리셋
-        });
-      }
-    };
-
-    const debouncedDeleteTrade = (reason) => {
-      if (deleteTimeout) {
-        clearTimeout(deleteTimeout);
-      }
-      
-      deleteTimeout = setTimeout(() => {
-        deleteTradeOnExit(reason);
-      }, 100); // 100ms 디바운싱
-    };
-
-    const handleBeforeUnload = (event) => {
-      if (paymentInfo.usedTradeIdx && !isDeleting) {
-        console.log('페이지 이탈 감지 - 거래 삭제 시작:', paymentInfo.usedTradeIdx);
-        
-        // navigator.sendBeacon으로 안전한 비동기 요청
-        // sendBeacon은 Content-Type을 자동으로 설정하므로 JSON.stringify만 사용
-        const deleteData = JSON.stringify({ 
-          reason: '사용자 페이지 이탈',
-          timestamp: new Date().toISOString()
-        });
-        
-        // sendBeacon은 POST만 지원하며, Content-Type을 application/json으로 설정
-        const blob = new Blob([deleteData], { type: 'application/json' });
-        navigator.sendBeacon(`/api/used/trade/${paymentInfo.usedTradeIdx}/delete`, blob);
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.hidden && paymentInfo.usedTradeIdx) {
-        debouncedDeleteTrade('사용자 페이지 숨김');
-      }
-    };
-
-    // 뒤로가기 버튼 감지
-    const handlePopState = () => {
-      debouncedDeleteTrade('사용자 뒤로가기');
-    };
-
-    // 링크 클릭 감지 (App Router용)
-    const handleLinkClick = (event) => {
-      const target = event.target.closest('a');
-      if (target && target.href && !target.href.startsWith('javascript:')) {
-        // 외부 링크가 아닌 경우에만 거래 삭제
-        if (target.href.startsWith(window.location.origin)) {
-          debouncedDeleteTrade('사용자 링크 클릭');
-        }
-      }
-    };
-
-    // 브라우저 이벤트 리스너
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('popstate', handlePopState);
-    document.addEventListener('click', handleLinkClick);
-
-    return () => {
-      // 타이머 정리
-      if (deleteTimeout) {
-        clearTimeout(deleteTimeout);
-      }
-      
-      // 브라우저 이벤트 리스너 제거
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('popstate', handlePopState);
-      document.removeEventListener('click', handleLinkClick);
-    };
-  }, [paymentInfo.usedTradeIdx]);
-
-  // 폼 유효성 검사 (useMemo로 최적화)
+  // 폼 유효성 검사
   const isFormValid = useMemo(() => {
     if (!paymentInfo.customerName) return false;
     if (!paymentInfo.customerEmail) return false;
@@ -277,30 +326,6 @@ const UsedPaymentForm = ({ initialData }) => {
     paymentInfo.customerPhone,
   ]);
 
-  // 폼 유효성 검사 (에러 메시지 포함)
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!paymentInfo.customerName) {
-      newErrors.customerName = '구매자 이름을 입력해주세요.';
-    }
-
-    if (!paymentInfo.customerEmail) {
-      newErrors.customerEmail = '이메일을 입력해주세요.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentInfo.customerEmail)) {
-      newErrors.customerEmail = "올바른 이메일 형식을 입력해주세요.";
-    }
-
-    if (!paymentInfo.customerPhone) {
-      newErrors.customerPhone = '전화번호를 입력해주세요.';
-    } else if (!/^[0-9-+\s]+$/.test(paymentInfo.customerPhone)) {
-      newErrors.customerPhone = "올바른 전화번호 형식을 입력해주세요.";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   // 입력 필드 변경 핸들러
   const handleInputChange = (field, value) => {
     setPaymentInfo((prev) => ({
@@ -308,7 +333,6 @@ const UsedPaymentForm = ({ initialData }) => {
       [field]: value,
     }));
 
-    // 에러 메시지 제거
     if (errors[field]) {
       setErrors((prev) => ({
         ...prev,
@@ -317,7 +341,7 @@ const UsedPaymentForm = ({ initialData }) => {
     }
   };
 
-  // 캐시 사용량 변경 핸들러
+  // 캐시 사용량 변경
   const handleCashChange = (value) => {
     const cashAmount = Math.max(
       0,
@@ -329,7 +353,7 @@ const UsedPaymentForm = ({ initialData }) => {
     }));
   };
 
-  // 포인트 사용량 변경 핸들러
+  // 포인트 사용량 변경
   const handlePointChange = (value) => {
     const pointAmount = Math.max(
       0,
@@ -341,115 +365,200 @@ const UsedPaymentForm = ({ initialData }) => {
     }));
   };
 
-  // 전체 캐시 사용
-  const useAllCash = () => {
-    const totalAmount =
-      paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1);
-    const maxCash = Math.min(paymentInfo.customerCash, totalAmount);
-    setPaymentInfo((prev) => ({
-      ...prev,
-      useCash: maxCash,
-    }));
-  };
-
-  // 전체 포인트 사용
-  const useAllPoint = () => {
-    const totalAmount =
-      paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1);
-    const maxPoint = Math.min(paymentInfo.customerPoint, totalAmount);
-    setPaymentInfo((prev) => ({
-      ...prev,
-      usePoint: maxPoint,
-    }));
-  };
-
-  // 토스페이먼츠 결제 성공 처리
+  // 결제 성공 처리
   const handlePaymentSuccess = async (paymentResult) => {
+    console.log("🟢 handlePaymentSuccess 호출됨:", paymentResult);
+    
+    // 결제 완료 플래그 설정 (페이지 이탈 시 취소하지 않도록)
+    setIsPaymentCompleted(true);
+    hasCancelledRef.current = true; // 취소 요청 방지
+    
+    let requestData = null;
+    let usedTradeIdx = null;
+    
     try {
-      // 백엔드에 결제 내역 저장 (거래 확정 포함)
-      // 주의: 백엔드 createPayment에서 이미 거래 확정까지 처리하므로
-      // 별도로 confirmTrade를 호출하지 않음
-      const paymentData = {
-        usedTradeIdx: paymentInfo.usedTradeIdx,
+      // 최신 세션 스토리지에서 결제 정보 다시 읽기 (클로저 이슈 방지)
+      const storageKeyCurrent = 'used_payment_current';
+      const currentTradeIdx = sessionStorage.getItem(storageKeyCurrent);
+      
+      console.log('🔍 세션 스토리지 확인:', {
+        storageKey: storageKeyCurrent,
+        value: currentTradeIdx,
+        allKeys: Object.keys(sessionStorage).filter(k => k.startsWith('used_payment_'))
+      });
+      
+      if (!currentTradeIdx) {
+        console.error('결제 정보를 찾을 수 없습니다. used_payment_current가 없습니다.');
+        alert('결제 정보를 찾을 수 없습니다. 고객센터에 문의해주세요.');
+        router.push('/used');
+        return;
+      }
+
+      usedTradeIdx = parseInt(currentTradeIdx, 10);
+      const storageKeyTrade = `used_payment_${usedTradeIdx}`;
+      const storedData = sessionStorage.getItem(storageKeyTrade);
+      
+      console.log('🔍 세션 스토리지에서 거래 정보 읽기:', {
+        storageKey: storageKeyTrade,
+        usedTradeIdx,
+        hasData: !!storedData,
+        allKeys: Object.keys(sessionStorage).filter(k => k.startsWith('used_payment_'))
+      });
+      
+      if (!storedData) {
+        console.error(`결제 정보를 찾을 수 없습니다. ${storageKeyTrade}가 없습니다.`);
+        alert('결제 정보를 찾을 수 없습니다. 고객센터에 문의해주세요.');
+        router.push('/used');
+        return;
+      }
+
+      const latestPaymentInfo = JSON.parse(storedData);
+      console.log('✅ 최신 세션 스토리지에서 읽은 결제 정보:', {
+        storageKeyCurrent,
+        storageKeyTrade,
+        usedTradeIdx,
+        latestPaymentInfo
+      });
+
+      // 최신 정보로 결제 금액 재계산
+      const latestTotalAmount = latestPaymentInfo.salePrice + Math.round((latestPaymentInfo.salePrice || 0) * 0.1);
+      const latestMaxCash = Math.min(paymentInfo.useCash || 0, paymentInfo.customerCash || 0);
+      const latestMaxPoint = Math.min(paymentInfo.usePoint || 0, paymentInfo.customerPoint || 0);
+      const latestActualPaymentAmount = Math.max(0, latestTotalAmount - latestMaxCash - latestMaxPoint);
+
+      // 결제 성공 정보를 먼저 세션 스토리지에 저장 (백엔드 검증 전에 저장)
+      const successData = {
+        orderId: paymentResult.orderId,
+        paymentKey: paymentResult.paymentKey,
+        amount: latestTotalAmount,
+        type: "used_hotel",
+        cash: latestMaxCash,
+        point: latestMaxPoint,
+        card: latestActualPaymentAmount,
+        tradeIdx: usedTradeIdx,
+        usedItemIdx: latestPaymentInfo.usedItemIdx,
+        customerIdx: paymentInfo.customerIdx,
+        customerName: paymentInfo.customerName,
+        customerEmail: paymentInfo.customerEmail,
+        customerPhone: paymentInfo.customerPhone,
+        hotelName: latestPaymentInfo.hotelName,
+        hotelImage: latestPaymentInfo.hotelImage,
+        hotelAddress: latestPaymentInfo.hotelAddress,
+        roomType: latestPaymentInfo.roomType,
+        checkIn: latestPaymentInfo.checkIn,
+        checkOut: latestPaymentInfo.checkOut,
+        guests: latestPaymentInfo.guests,
+        nights: Math.ceil((new Date(latestPaymentInfo.checkOut) - new Date(latestPaymentInfo.checkIn)) / (1000 * 60 * 60 * 24)),
+        seller: latestPaymentInfo.seller,
+        originalPrice: latestPaymentInfo.originalPrice,
+        salePrice: latestPaymentInfo.salePrice,
+        discountAmount: (latestPaymentInfo.originalPrice || 0) - (latestPaymentInfo.salePrice || 0),
+      };
+      
+      // 백엔드 검증 전에 먼저 저장 (검증 실패해도 성공 페이지에서 정보 확인 가능)
+      sessionStorage.setItem('used_payment_success_data', JSON.stringify(successData));
+      console.log("세션 스토리지에 결제 정보 저장 완료:", successData);
+
+      // 백엔드 검증 API 호출 (/api/payments)
+      requestData = {
         paymentKey: paymentResult.paymentKey,
         orderId: paymentResult.orderId,
-        totalAmount: paymentAmounts.totalAmount,
-        cashAmount: paymentAmounts.useCash,
-        pointAmount: paymentAmounts.usePoint,
-        cardAmount: paymentAmounts.actualPaymentAmount,
-        paymentMethod: paymentAmounts.actualPaymentAmount > 0 ? "mixed" : "cash_point_only",
-        status: 1, // 결제 완료
-        receiptUrl: `https://toss.im/payments/receipt/${paymentResult.orderId}`,
-        qrUrl: `https://chart.googleapis.com/chart?chs=240x240&cht=qr&chl=${encodeURIComponent(JSON.stringify({ orderId: paymentResult.orderId, paymentKey: paymentResult.paymentKey, amount: paymentAmounts.totalAmount, usedTradeIdx: paymentInfo.usedTradeIdx }))}`,
-        approvedAt: new Date().toISOString(),
+        amount: latestActualPaymentAmount, // 카드 결제 금액
+        totalPrice: latestTotalAmount, // 총 결제 금액 (캐시+포인트+카드)
+        type: "used_hotel",
+        customerIdx: paymentInfo.customerIdx,
+        usedTradeIdx: usedTradeIdx, // 최신 세션 스토리지에서 읽은 값 사용
+        usedItemIdx: latestPaymentInfo.usedItemIdx,
+        hotelName: latestPaymentInfo.hotelName,
+        roomType: latestPaymentInfo.roomType,
+        salePrice: latestPaymentInfo.salePrice,
+        customerName: paymentInfo.customerName,
+        customerEmail: paymentInfo.customerEmail,
+        customerPhone: paymentInfo.customerPhone,
+        method: latestActualPaymentAmount > 0 ? "mixed" : "cash_point_only",
+        pointsUsed: latestMaxPoint,
+        cashUsed: latestMaxCash,
       };
 
-      try {
-        const savedPayment = await usedAPI.createPayment(paymentData);
-        console.log("결제 내역 저장 성공:", savedPayment);
+      console.log("📤 결제 검증 요청 (백엔드 전송):", {
+        orderId: requestData.orderId,
+        amount: requestData.amount,
+        type: requestData.type,
+        usedTradeIdx: requestData.usedTradeIdx,
+        usedItemIdx: requestData.usedItemIdx,
+        storageKeyCurrent: 'used_payment_current',
+        storageKeyTrade: `used_payment_${requestData.usedTradeIdx}`,
+        sessionStorageCurrentValue: sessionStorage.getItem('used_payment_current'),
+        sessionStorageTradeValue: sessionStorage.getItem(`used_payment_${requestData.usedTradeIdx}`) ? 'exists' : 'not found',
+      });
 
-        // 성공 페이지로 리다이렉트
-        clearPaymentDraft();
-        
-        // 결제 성공 정보를 세션 스토리지에 저장 (URL 파라미터 숨기기)
-        const successData = {
-          orderId: paymentResult.orderId,
-          paymentKey: paymentResult.paymentKey,
-          amount: paymentAmounts.totalAmount,
-          type: "used_hotel",
-          cash: paymentAmounts.useCash,
-          point: paymentAmounts.usePoint,
-          card: paymentAmounts.actualPaymentAmount,
-          tradeIdx: paymentInfo.usedTradeIdx,
-          hotelName: paymentInfo.hotelName,
-          roomType: paymentInfo.roomType,
-          checkIn: paymentInfo.checkIn,
-          checkOut: paymentInfo.checkOut,
-        };
-        
-        // 세션 스토리지에 저장
-        sessionStorage.setItem('used_payment_success', JSON.stringify(successData));
-        
-        // 기존 결제 페이지 데이터 정리
-        if (paymentInfo.usedTradeIdx) {
-          sessionStorage.removeItem(`used_payment_${paymentInfo.usedTradeIdx}`);
-          sessionStorage.removeItem('used_payment_current');
-        }
-
-        // URL 파라미터 없이 이동
+      // 백엔드 검증 API 호출 (Next.js API 라우트를 통해 백엔드로 전달)
+      const response = await axios.post('/payments', requestData);
+      
+      if (!response.data.success) {
+        console.error("백엔드 검증 실패:", response.data.message);
+        // 검증 실패해도 세션 스토리지는 이미 저장되어 있음
+        alert("결제 검증에 실패했습니다. 고객센터에 문의해주세요.");
+        // 성공 페이지로 이동 (정보는 이미 세션 스토리지에 있음)
         router.push('/used-payment/success');
-      } catch (error) {
-        console.error("결제 내역 저장 실패:", error.response?.data?.message || error.message);
-        alert("결제 내역 저장에 실패했습니다. 고객센터에 문의해주세요.");
-        throw error; // 상위 catch로 전달
+        return;
       }
+
+      console.log("결제 검증 및 저장 성공:", response.data);
+      console.log("✅ DB 업데이트 완료:");
+      console.log("  - UsedPay 저장 완료");
+      console.log("  - UsedTrade 상태 업데이트 완료 (ststus=1)");
+      console.log("  - UsedItem 상태 업데이트 완료 (status=2)");
+      
+      // 기존 결제 페이지 데이터 정리 (최신 usedTradeIdx 사용)
+      if (usedTradeIdx) {
+        sessionStorage.removeItem(`used_payment_${usedTradeIdx}`);
+        sessionStorage.removeItem('used_payment_current');
+      }
+
+      // 성공 페이지로 이동
+      router.push('/used-payment/success2');
     } catch (error) {
       console.error("결제 완료 처리 오류:", error);
+      console.error("에러 상세:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        requestData: requestData,
+        usedTradeIdx: usedTradeIdx,
+      });
+      
+      // 에러가 발생해도 세션 스토리지는 이미 저장되어 있음
       alert(
-        "결제는 완료되었지만 처리 중 오류가 발생했습니다. 고객센터에 문의해주세요."
+        error.response?.data?.message || 
+        error.message || 
+        "결제 처리 중 오류가 발생했습니다. 고객센터에 문의해주세요."
       );
+      // 성공 페이지로 이동 (정보는 이미 세션 스토리지에 있음)
+      router.push('/used-payment/success2');
     }
   };
 
-  // 토스페이먼츠 결제 실패 처리
+  // 결제 실패 처리
   const handlePaymentFail = (error) => {
     console.error('결제 실패:', error);
+    alert('결제가 취소되었습니다.');
     
-    // 결제 실패 정보를 localStorage에 저장 (재시도를 위해)
-    localStorage.setItem('failedPaymentInfo', JSON.stringify({
-      usedTradeIdx: paymentInfo.usedTradeIdx,
-      usedItemIdx: paymentInfo.usedItemIdx,
-      usedPaymentData: paymentInfo,
-      timestamp: Date.now()
-    }));
+    // 결제 실패 시 거래 취소 (페이지 이탈과 동일하게 처리)
+    if (paymentInfo.usedTradeIdx && !hasCancelledRef.current) {
+      cancelTradeOnExit(paymentInfo.usedTradeIdx);
+    }
     
-    // 결제 실패 시 거래 삭제하지 않고 유지 (다시 시도를 위해)
-    // 거래는 결제 페이지를 완전히 벗어날 때만 삭제됨
+    // 결제 실패 시 세션 스토리지 정리
+    if (paymentInfo.usedTradeIdx) {
+      sessionStorage.removeItem(`used_payment_${paymentInfo.usedTradeIdx}`);
+      sessionStorage.removeItem('used_payment_current');
+    }
     
-    router.push(`/checkout/fail?error=${encodeURIComponent(error.message || '결제가 취소되었습니다.')}&usedTradeIdx=${paymentInfo.usedTradeIdx}`);
+    router.push('/used');
   };
 
-  // 로딩 중이면 로딩 화면 표시
+  // 로딩 중
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -461,7 +570,7 @@ const UsedPaymentForm = ({ initialData }) => {
     );
   }
 
-  // 사용자 정보가 없으면 로그인 페이지로 리다이렉트
+  // 사용자 정보가 없으면 로그인 페이지로
   if (!customer) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -633,9 +742,9 @@ const UsedPaymentForm = ({ initialData }) => {
                 </h2>
                 <TossPaymentsWidget
                   clientKey={process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY}
-                  customerKey={paymentKeys.customerKey}
+                  customerKey={`customer_${paymentInfo.usedItemIdx || "default"}`}
                   amount={paymentAmounts.actualPaymentAmount}
-                  orderId={paymentKeys.orderId}
+                  orderId={`used_hotel_${paymentInfo.usedTradeIdx || paymentInfo.usedItemIdx || Date.now()}_${Math.random().toString(36).substr(2, 9)}`}
                   orderName={`${paymentInfo.hotelName} - ${paymentInfo.roomType}`}
                   customerName={paymentInfo.customerName}
                   customerEmail={paymentInfo.customerEmail}
@@ -655,10 +764,10 @@ const UsedPaymentForm = ({ initialData }) => {
                     totalPrice: paymentAmounts.totalAmount,
                   }}
                   customerInfo={{
+                    customerIdx: paymentInfo.customerIdx,
                     name: paymentInfo.customerName,
                     email: paymentInfo.customerEmail,
                     phone: paymentInfo.customerPhone,
-                    specialRequests: paymentInfo.specialRequests,
                     useCash: paymentInfo.useCash,
                     usePoint: paymentInfo.usePoint,
                     actualPaymentAmount: paymentAmounts.actualPaymentAmount,
@@ -681,13 +790,13 @@ const UsedPaymentForm = ({ initialData }) => {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">원가</span>
                   <span className="line-through text-gray-400">
-                    {paymentInfo.originalPrice.toLocaleString()}원
+                    {paymentInfo.originalPrice?.toLocaleString()}원
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">할인 금액</span>
                   <span className="text-red-500">
-                    -{paymentInfo.discountAmount.toLocaleString()}원
+                    -{paymentInfo.discountAmount?.toLocaleString()}원
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -713,59 +822,34 @@ const UsedPaymentForm = ({ initialData }) => {
 
                 {/* 캐시 사용 */}
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="text-sm font-medium text-gray-700">
-                      캐시 사용 (보유: {paymentInfo.customerCash.toString()}원)
-                    </label>
-                    <button
-                      onClick={useAllCash}
-                      className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200"
-                    >
-                      전체 사용
-                    </button>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={paymentInfo.useCash}
-                      onChange={(e) => handleCashChange(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="사용할 캐시 금액"
-                      min="0"
-                      max={paymentInfo.customerCash}
-                    />
-                    <span className="text-sm text-gray-500 self-center">
-                      원
-                    </span>
-                  </div>
+                  <label className="text-sm font-medium text-gray-700">
+                    캐시 사용 (보유: {paymentInfo.customerCash.toLocaleString()}원)
+                  </label>
+                  <input
+                    type="number"
+                    value={paymentInfo.useCash}
+                    onChange={(e) => handleCashChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="사용할 캐시 금액"
+                    min="0"
+                    max={paymentInfo.customerCash}
+                  />
                 </div>
 
                 {/* 포인트 사용 */}
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="text-sm font-medium text-gray-700">
-                      포인트 사용 (보유:{" "}
-                      {paymentInfo.customerPoint.toLocaleString()}P)
-                    </label>
-                    <button
-                      onClick={useAllPoint}
-                      className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200"
-                    >
-                      전체 사용
-                    </button>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={paymentInfo.usePoint}
-                      onChange={(e) => handlePointChange(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="사용할 포인트"
-                      min="0"
-                      max={paymentInfo.customerPoint}
-                    />
-                    <span className="text-sm text-gray-500 self-center">P</span>
-                  </div>
+                  <label className="text-sm font-medium text-gray-700">
+                    포인트 사용 (보유: {paymentInfo.customerPoint.toLocaleString()}P)
+                  </label>
+                  <input
+                    type="number"
+                    value={paymentInfo.usePoint}
+                    onChange={(e) => handlePointChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="사용할 포인트"
+                    min="0"
+                    max={paymentInfo.customerPoint}
+                  />
                 </div>
 
                 {/* 결제 내역 요약 */}
@@ -816,8 +900,6 @@ const UsedPaymentForm = ({ initialData }) => {
                       );
                     }
                   } else {
-                    // 폼 유효성 검사 실행
-                    validateForm();
                     alert("구매자 정보를 모두 입력해주세요.");
                   }
                 }}
@@ -826,6 +908,7 @@ const UsedPaymentForm = ({ initialData }) => {
                     ? "bg-blue-500 hover:bg-blue-600 text-white"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
+                disabled={!isFormValid}
               >
                 {isFormValid
                   ? `${paymentAmounts.actualPaymentAmount.toLocaleString()}원 카드 결제하기`
@@ -844,3 +927,4 @@ const UsedPaymentForm = ({ initialData }) => {
 };
 
 export default UsedPaymentForm;
+

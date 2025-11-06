@@ -74,10 +74,35 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail, customer, cu
         seller: item.seller || '판매자'
       };
 
+      // 이전 거래의 세션 스토리지 정리 (있는 경우)
+      const previousTradeIdx = sessionStorage.getItem('used_payment_current');
+      if (previousTradeIdx && previousTradeIdx !== String(tradeData.usedTradeIdx)) {
+        const previousStorageKey = `used_payment_${previousTradeIdx}`;
+        sessionStorage.removeItem(previousStorageKey);
+        console.log('🧹 이전 거래 세션 스토리지 정리:', {
+          storageKey: previousStorageKey,
+          previousTradeIdx,
+          newTradeIdx: tradeData.usedTradeIdx
+        });
+      }
+
       // 세션 스토리지에 저장 (거래 ID별 키와 현재 거래 키 모두 저장)
-      sessionStorage.setItem(`used_payment_${tradeData.usedTradeIdx}`, JSON.stringify(paymentData));
+      const newStorageKeyTrade = `used_payment_${tradeData.usedTradeIdx}`;
+      const storageKeyCurrent = 'used_payment_current';
+      
+      sessionStorage.setItem(newStorageKeyTrade, JSON.stringify(paymentData));
       // 현재 결제 중인 거래 키 저장 (URL 파라미터 없이 접근하기 위함)
-      sessionStorage.setItem('used_payment_current', String(tradeData.usedTradeIdx));
+      sessionStorage.setItem(storageKeyCurrent, String(tradeData.usedTradeIdx));
+      
+      // 세션 스토리지 저장 확인
+      console.log('✅ 거래 생성 및 세션 스토리지 저장 완료:', {
+        usedTradeIdx: tradeData.usedTradeIdx,
+        storageKeyTrade: newStorageKeyTrade,
+        storageKeyCurrent,
+        paymentData,
+        verified: sessionStorage.getItem(storageKeyCurrent) === String(tradeData.usedTradeIdx),
+        allKeys: Object.keys(sessionStorage).filter(k => k.startsWith('used_payment_'))
+      });
 
       // URL 파라미터 없이 이동 (완전히 숨김)
       router.push('/used-payment');

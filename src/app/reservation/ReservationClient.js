@@ -845,7 +845,7 @@ const ReservationClient = () => {
                   )}
                 </div>
                 <p className="mt-4 text-xs text-gray-600">
-                  포인트 악용 시 계정 정지 및 환불 불가합니다. 쿠폰과 포인트는
+                  포인트 악용 시 계정 정지 및 환불 불가합니다. 쿠폰은
                   환불 시 복구되지 않습니다.
                 </p>
               </div>

@@ -304,6 +304,11 @@ const TossPaymentsWidget = ({
         successPath = buildUrl(successPath, {
           type: resolvedType,
           usedTradeIdx: hotelInfo?.usedTradeIdx,
+          usedItemIdx: hotelInfo?.usedItemIdx,
+          hotelName: hotelInfo?.hotelName,
+          roomType: hotelInfo?.roomType,
+          checkIn: hotelInfo?.checkIn,
+          checkOut: hotelInfo?.checkOut,
         });
         failPath = buildUrl(failPath, { type: resolvedType });
       }
@@ -417,18 +422,10 @@ const TossPaymentsWidget = ({
     customerEmail,
     customerMobilePhone,
     customerName,
+    customerInfo,
     failUrl,
     diningInfo,
-    hotelInfo?.checkIn,
-    hotelInfo?.checkOut,
-    hotelInfo?.contentId,
-    hotelInfo?.guests,
-    hotelInfo?.hotelId,
-    hotelInfo?.nights,
-    hotelInfo?.roomId,
-    hotelInfo?.roomIdx,
-    hotelInfo?.totalPrice,
-    hotelInfo?.usedTradeIdx,
+    hotelInfo,
     paymentType,
     verifyPaymentWithBackend,
     onFail,
