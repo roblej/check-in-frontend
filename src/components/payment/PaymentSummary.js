@@ -181,8 +181,8 @@ const PaymentSummary = ({
         결제 완료 후 호텔 예약이 자동으로 확정됩니다.
       </div>
       <div className="text-xs text-gray-600 text-center mb-4">
-        포인트 악용 시 계정 정지 및 환불 불가합니다. 쿠폰과 포인트는 환불 시
-        복구되지 않습니다.
+        체크인 7일 전까지는 전액 환불가능합니다.<p/>
+        그 외 사항은 약관내용 확인
       </div>
 
       {/* 취소 버튼 */}
