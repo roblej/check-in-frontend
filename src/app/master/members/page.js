@@ -14,6 +14,12 @@ const MemberManagement = () => {
 
   const [customers, setCustomers] = useState([]);
   const [customerCount, setCustomerCount] = useState("0");
+  
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [suspendReason, setSuspendReason] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function getData(){
     axiosInstance.get(api_url).then(res => {
@@ -66,6 +72,78 @@ const MemberManagement = () => {
     }
   };
 
+  const getGenderText = (gender) => {
+    switch (gender) {
+      case 'male':
+        return '남자';
+      case 'female':
+        return '여자';
+      default:
+        return '기타';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleSuspendClick = (member) => {
+    setSelectedMember(member);
+    setSuspendReason('');
+    setShowSuspendModal(true);
+  };
+
+  const handleSuspendCancel = () => {
+    setShowSuspendModal(false);
+    setShowConfirmModal(false);
+    setSelectedMember(null);
+    setSuspendReason('');
+  };
+
+  const handleSuspendConfirm = () => {
+    if (!suspendReason.trim()) {
+      alert("정지 사유를 입력해주세요.");
+      return;
+    }
+    setShowConfirmModal(true);
+  };
+
+  const handleFinalSuspend = async () => {
+    if (!selectedMember) {
+      alert("선택된 회원 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await axiosInstance.post(`/master/suspendCustomer`, {
+        customerIdx: selectedMember.customerIdx,
+        reason: suspendReason.trim()
+      });
+
+      if (response.data.success) {
+        alert("회원이 정지되었습니다.");
+        getData();
+      } else {
+        alert("정지 처리 중 오류가 발생했습니다.");
+      }
+    } catch (error) {
+      console.error("정지 실패:", error);
+      alert("서버 오류가 발생했습니다.");
+    } finally {
+      setIsSubmitting(false);
+      setShowSuspendModal(false);
+      setShowConfirmModal(false);
+      setSelectedMember(null);
+      setSuspendReason('');
+    }
+  };
+
 
   return (
     <MasterLayout>
@@ -74,30 +152,6 @@ const MemberManagement = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">회원 관리</h2>
           <p className="text-gray-600">사이트 회원을 관리하고 모니터링하세요</p>
-        </div>
-
-        {/* 통계 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-gray-900"></div>
-            <div className="text-sm text-gray-600">활성 회원</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-gray-900"></div>
-            <div className="text-sm text-gray-600">VIP 회원</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-gray-900"></div>
-            <div className="text-sm text-gray-600">총 예약</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-gray-900">₩95억</div>
-            <div className="text-sm text-gray-600">총 결제액</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-gray-900"></div>
-            <div className="text-sm text-gray-600">정지 회원</div>
-          </div>
         </div>
 
         {/* 검색 및 필터 */}
@@ -181,7 +235,7 @@ const MemberManagement = () => {
                     연락처
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    가입/활동
+                    가입
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     이용 현황
@@ -209,23 +263,17 @@ const MemberManagement = () => {
                       <div>
                         <div className="text-sm font-medium text-gray-900">{member.name}</div>
                         <div className="text-sm text-gray-500">{member.email}</div>
-                        <div className="text-sm text-gray-500">{member.gender} • {member.birthday}</div>
+                        <div className="text-sm text-gray-500">{getGenderText(member.gender)} • {member.birthday}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900">{member.phone}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm text-gray-900">가입: {member.joinDate}</div>
-                        <div className="text-sm text-gray-500">최근: {member.lastLogin}</div>
-                      </div>
+                      <div className="text-sm text-gray-900">가입: {formatDate(member.joinDate)}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm text-gray-900">예약 {member.totalReservations}회</div>
-                        <div className="text-sm text-gray-500">{member.totalSpent}</div>
-                      </div>
+                      <div className="text-sm text-gray-900">예약 {member.reservationCount || 0}회</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
@@ -239,23 +287,12 @@ const MemberManagement = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium">
-                      <div className="flex flex-col gap-1">
-                        <button className="text-[#7C3AED] hover:text-purple-800 text-left">
-                          상세보기
-                        </button>
-                        <button 
-                          onClick={() => handleMemberAction(member.id, 'suspend')}
-                          className="text-red-600 hover:text-red-800 text-left"
-                        >
-                          정지
-                        </button>
-                        <button 
-                          onClick={() => handleMemberAction(member.id, 'withdraw')}
-                          className="text-orange-600 hover:text-orange-800 text-left"
-                        >
-                          탈퇴 처리
-                        </button>
-                      </div>
+                      <button 
+                        onClick={() => handleSuspendClick(member)}
+                        className="text-red-600 hover:text-red-800 text-left"
+                      >
+                        정지
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -263,6 +300,120 @@ const MemberManagement = () => {
             </table>
           </div>
         </div>
+
+        {/* 정지 사유 입력 모달 */}
+        {showSuspendModal && !showConfirmModal && (
+          <div className="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+              {/* 모달 헤더 */}
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">회원 정지</h3>
+                <button
+                  onClick={handleSuspendCancel}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* 모달 내용 */}
+              <div className="p-6">
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 mb-2">
+                    정지할 회원: <span className="font-semibold text-gray-900">{selectedMember?.name}</span>
+                  </p>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    정지 사유 <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={suspendReason}
+                    onChange={(e) => setSuspendReason(e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                    placeholder="정지 사유를 입력해주세요..."
+                  />
+                </div>
+              </div>
+
+              {/* 모달 푸터 */}
+              <div className="flex justify-end gap-2 p-6 border-t">
+                <button
+                  onClick={handleSuspendCancel}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSuspendConfirm}
+                  disabled={isSubmitting || !suspendReason.trim()}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  정지
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 정지 확인 모달 */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+              {/* 모달 헤더 */}
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">정지 확인</h3>
+                <button
+                  onClick={handleSuspendCancel}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  disabled={isSubmitting}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* 모달 내용 */}
+              <div className="p-6">
+                <p className="text-base text-gray-900 mb-4">
+                  정말로 정지 하겠습니까?
+                </p>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">
+                    <span className="font-semibold">회원:</span> {selectedMember?.name}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-semibold">정지 사유:</span> {suspendReason}
+                  </p>
+                </div>
+              </div>
+
+              {/* 모달 푸터 */}
+              <div className="flex justify-end gap-2 p-6 border-t">
+                <button
+                  onClick={handleSuspendCancel}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleFinalSuspend}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? '처리 중...' : '정지'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </MasterLayout>
   );
