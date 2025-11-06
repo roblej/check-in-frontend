@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import axios from "@/lib/axios";
+import { mypageAPI } from "@/lib/api/mypage";
 
 export default function CancelDiningReservationPage() {
   const router = useRouter();
@@ -27,8 +27,7 @@ export default function CancelDiningReservationPage() {
       try {
         setLoading(true);
         setError("");
-        const res = await axios.get(`/reservations/dining/${reservationId}/detail`);
-        const data = res?.data || {};
+        const data = await mypageAPI.getDiningReservationDetailForCancel(reservationId);
         console.log("다이닝 예약 상세 정보:", data);
         console.log("환불 예상 정보:", {
           expectedRefundRate: data.expectedRefundRate,
@@ -79,10 +78,7 @@ export default function CancelDiningReservationPage() {
     try {
       const reason =
         cancelReason === "기타" ? customReason.trim() : cancelReason;
-      const res = await axios.post(`/reservations/dining/${reservationId}/cancel`, {
-        cancelReason: reason,
-      });
-      const data = res?.data || {};
+      const data = await mypageAPI.cancelDiningReservation(reservationId, reason);
       const payload = data.data || data;
       // 백엔드에서 받은 모든 환불 정보를 그대로 저장
       setRefundInfo({
