@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import axiosInstance from "@/lib/axios";
 import { useState, useEffect, useRef } from "react";
+import { useCustomerStore } from "@/stores/customerStore";
 /**
  * 인기 호텔 섹션 컴포넌트
  *
@@ -15,9 +16,14 @@ import { useState, useEffect, useRef } from "react";
 // 인기 호텔 컴포넌트
 const PopularHotels = () => {
   const router = useRouter();
+  const inlogged = useCustomerStore((state) => state.inlogged);
   const [popularHotels, setPopularHotels] = useState([]);
+  const [bookmarkedHotels, setBookmarkedHotels] = useState(new Set());
   const didFetch = useRef(false);
-
+  const hotelsave_url = "/bookmark/hotelbookmark/save";
+  const hotelbookmarklist_url = "/bookmark/hotelbookmark/list";
+  const hotelbookmarkdelete_url = "/bookmark/hotelbookmark/delete";
+  
   // 인기 호텔 데이터 가져오기
   useEffect(() => {
     if (didFetch.current) return;
@@ -30,6 +36,25 @@ const PopularHotels = () => {
       console.error('PopularHotels API 에러:', err.response?.data?.message || err.message);
     });
   }, []);
+
+  // 로그인 상태일 때 북마크 목록 가져오기
+  useEffect(() => {
+    if (inlogged) {
+      axiosInstance.get(hotelbookmarklist_url).then(res => {
+        console.log('북마크 목록 API 응답:', res.data);
+        // 북마크 목록에서 contentId 추출하여 Set에 추가
+        if (res.data && Array.isArray(res.data)) {
+          const bookmarkContentIds = res.data.map(bookmark => bookmark.contentId || bookmark);
+          setBookmarkedHotels(new Set(bookmarkContentIds));
+        }
+      }).catch(err => {
+        console.error('북마크 목록 API 에러:', err.response?.data?.message || err.message);
+      });
+    } else {
+      // 로그아웃 상태일 때: 북마크 목록 초기화
+      setBookmarkedHotels(new Set());
+    }
+  }, [inlogged]);
 
   /**
    * 호텔 카드 클릭 핸들러
@@ -67,6 +92,77 @@ const PopularHotels = () => {
                 priority={index === 0}
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
+              {/* 하트 버튼 */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const isBookmarked = bookmarkedHotels.has(hotel.contentId);
+                  
+                  if (isBookmarked) {
+                    // 꽉 찬 하트일 때: 북마크 삭제
+                    axiosInstance.get(hotelbookmarkdelete_url, {params: {contentId: hotel.contentId}}).then(res => {
+                      console.log('북마크 삭제:', res.data);
+                      // 삭제 성공 시 상태 업데이트
+                      if (res.data && res.data.includes('success')) {
+                        setBookmarkedHotels(prev => {
+                          const newSet = new Set(prev);
+                          newSet.delete(hotel.contentId);
+                          return newSet;
+                        });
+                      }
+                    }).catch(err => {
+                      console.error('북마크 삭제 에러:', err.response?.data?.message || err.message);
+                    });
+                  } else {
+                    // 빈 하트일 때: 북마크 추가
+                    axiosInstance.get(hotelsave_url, {params: {contentId: hotel.contentId}}).then(res => {
+                      console.log('찜하기 클릭:', res.data);
+                      // res.data에 success가 포함되어 있으면 찜하기 상태 업데이트
+                      if (res.data && res.data.includes('success')) {
+                        setBookmarkedHotels(prev => {
+                          const newSet = new Set(prev);
+                          newSet.add(hotel.contentId);
+                          return newSet;
+                        });
+                      }
+                    }).catch(err => {
+                      console.error('찜하기 기능 에러:', err.response?.data?.message || err.message);
+                    });
+                  }
+                }}
+                className="absolute top-2 right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition-all duration-200 hover:scale-110 z-10"
+                aria-label="찜하기"
+              >
+                {bookmarkedHotels.has(hotel.contentId) ? (
+                  // 꽉 찬 하트
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="#FF0000"
+                    stroke="#FF0000"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                  </svg>
+                ) : (
+                  // 빈 하트
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#FF0000"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                  </svg>
+                )}
+              </button>
             </div>
 
             {/* 내용 */}
