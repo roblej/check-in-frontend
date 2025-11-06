@@ -18,7 +18,8 @@ const HotelDetailPanel = ({
 
   /** 닫기 */
   const handleClose = useCallback(() => {
-    // 즉시 로딩 상태 초기화하여 API 요청 중단
+    // 즉시 상태 초기화하여 불필요한 렌더링 방지
+    setCurrentContentId(null);
     setIsLoading(false);
     setIsFading(false);
 
@@ -35,7 +36,16 @@ const HotelDetailPanel = ({
 
   /** contentId 변경 감지 → fade-out + 로딩 표시 → 내부 교체 */
   useEffect(() => {
-    if (contentId && contentId !== currentContentId) {
+    // contentId가 null이 되면 즉시 초기화 (닫기 시)
+    if (!contentId) {
+      setCurrentContentId(null);
+      setIsLoading(false);
+      setIsFading(false);
+      return;
+    }
+
+    // contentId가 있고, 현재 contentId와 다를 때만 교체 (다른 호텔 선택 시)
+    if (contentId !== currentContentId) {
       // fade-out & 로딩 시작
       setIsFading(true);
       setIsLoading(true);
@@ -57,8 +67,13 @@ const HotelDetailPanel = ({
     }
   }, []);
 
-  // contentId가 없으면 패널 숨김
+  // contentId가 없으면 패널 즉시 숨김 (애니메이션 없이)
   if (!contentId) {
+    return null;
+  }
+
+  // currentContentId도 null이면 즉시 숨김 (닫기 중)
+  if (!currentContentId) {
     return null;
   }
 
