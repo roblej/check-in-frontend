@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Header from "@/components/Header";
@@ -12,7 +12,36 @@ import { useAdminStore } from "@/stores/adminStore";
 import { setAdminIdxCookie } from "@/utils/cookieUtils";
 import naverLoginBtn from "@/images/login/btnG_완성형.png";
 import kakaoLoginBtn from "@/images/login/kakao_login_medium_narrow.png";
-export default function LoginPage() {
+
+// 소셜 로그인 에러 처리 컴포넌트
+function OAuthErrorHandler() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    const message = searchParams.get("message");
+
+    if (error === "oauth2_failed" && message) {
+      // URL 디코딩
+      const decodedMessage = decodeURIComponent(message);
+      alert(decodedMessage);
+
+      // URL에서 에러 파라미터 제거
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.delete("error");
+      newSearchParams.delete("message");
+      const newUrl = newSearchParams.toString()
+        ? `${window.location.pathname}?${newSearchParams.toString()}`
+        : window.location.pathname;
+      router.replace(newUrl);
+    }
+  }, [searchParams, router]);
+
+  return null;
+}
+
+function LoginForm() {
   const router = useRouter();
   const { setAccessToken, setInlogged ,isInlogged} = useCustomerStore();
   const { setAdminIdx, setContentId, setHotelInfo, setAdminLoggedIn, fetchContentIdByAdminIdx } = useAdminStore();
@@ -327,5 +356,25 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className={styles.container}>
+          <div className={styles.loginBox}>
+            <h1 className={styles.title}>로그인</h1>
+            <p className={styles.subtitle}>CheckIn에 오신 것을 환영합니다</p>
+            <div>로딩 중...</div>
+          </div>
+        </div>
+      </div>
+    }>
+      <OAuthErrorHandler />
+      <LoginForm />
+    </Suspense>
   );
 }
