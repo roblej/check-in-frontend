@@ -21,7 +21,8 @@ import {
   Ticket,
   Server,
   UserCog,
-  Globe
+  Globe,
+  CreditCard
 } from 'lucide-react';
 
 const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
@@ -40,7 +41,8 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
       icon: <Building2 size={20} />,
       submenu: [
         { id: 'hotel-list', name: '호텔 목록', path: '/master/hotels', icon: <Building2 size={16} /> },
-        { id: 'hotel-approval', name: '호텔 승인', path: '/master/hotel-approval', icon: <FileText size={16} /> }
+        { id: 'hotel-approval', name: '호텔 승인', path: '/master/hotel-approval', icon: <FileText size={16} /> },
+        { id: 'settlement', name: '정산 관리', path: '/master/settlements', icon: <CreditCard size={16} /> }
       ]
     },
     {
