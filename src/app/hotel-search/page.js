@@ -847,8 +847,14 @@ const HotelSearchPageContent = () => {
                     <SearchCondition
                       isOpen={isDatePickerOpen}
                       onClose={() => setIsDatePickerOpen(false)}
-                      checkIn={isDiningMode ? (localSearchParams.diningDate || urlDiningDate || "") : (localSearchParams.checkIn || "")}
-                      checkOut={isDiningMode ? "" : (localSearchParams.checkOut || "")}
+                      checkIn={
+                        isDiningMode
+                          ? localSearchParams.diningDate || urlDiningDate || ""
+                          : localSearchParams.checkIn || ""
+                      }
+                      checkOut={
+                        isDiningMode ? "" : localSearchParams.checkOut || ""
+                      }
                       onDateChange={handleDateChange}
                       selectedType={isDiningMode ? "dining" : "hotel"}
                       className="max-w-md"
@@ -993,13 +999,13 @@ const HotelSearchPageContent = () => {
         contentId={selectedcontentId}
         searchParams={currentHotelSearchParams}
         onClose={() => {
-          // URL 먼저 변경 (히스토리에 push)
+          // 상태를 먼저 변경 (즉시 패널 닫기)
+          setSelectedcontentId(null);
+
+          // 그 다음 URL 변경 (히스토리에 push)
           const urlParams = new URLSearchParams(searchParams.toString());
           urlParams.delete("selectedHotel");
           router.push(`?${urlParams.toString()}`, { scroll: false });
-
-          // 그 다음 상태 변경
-          setSelectedcontentId(null);
         }}
         onSearchParamsChange={(newParams) => {
           updateHotelSearchParams(selectedcontentId, newParams);

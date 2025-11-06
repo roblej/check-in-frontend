@@ -23,11 +23,18 @@ const HotelHeader = ({
   isModal,
   onClose,
 }) => {
-  const averagePrice =
-    Array.isArray(rooms) && rooms.length > 0
-      ? (rooms[0]?.basePrice || rooms[0]?.price || 0) *
-        (searchParams?.nights || 1)
-      : 0;
+  // 평균가 계산
+  // const averagePrice =
+  //   Array.isArray(rooms) && rooms.length > 0
+  //     ? (rooms[0]?.basePrice || rooms[0]?.price || 0) *
+  //       (searchParams?.nights || 1)
+  //     : 0;
+  /** 최저가 계산 */
+  const lowestPrice =
+      Array.isArray(rooms) && rooms.length > 0
+          ? Math.min(...rooms.map(r => r.basePrice || r.price || 0)) *
+          (searchParams?.nights || 1)
+          : 0;
 
   return (
     <div className={`bg-white border-b border-gray-200 z-40 shadow-sm flex-shrink-0`}>
@@ -78,9 +85,9 @@ const HotelHeader = ({
             <div className="flex items-start gap-4 ml-4">
               <div className="flex flex-col items-end gap-1">
                 <LiveViewerCount contentId={contentId} />
-                <p className="text-sm text-gray-500 mt-1">평균가</p>
+                <p className="text-sm text-gray-500 mt-1">최저가</p>
                 <p className="text-xl font-bold text-blue-600">
-                  ₩{formatPrice(averagePrice)}
+                  ₩{formatPrice(lowestPrice)}~
                 </p>
               </div>
               {onClose && (
@@ -109,9 +116,9 @@ const HotelHeader = ({
             <div className="flex items-center gap-6 ml-4">
               <LiveViewerCount contentId={contentId} />
               <div className="text-right">
-                <p className="text-sm text-gray-500">평균가</p>
+                <p className="text-sm text-gray-500">최저가</p>
                 <p className="text-xl font-bold text-blue-600">
-                  ₩{formatPrice(averagePrice)}
+                  ₩{formatPrice(lowestPrice)}~
                 </p>
               </div>
             </div>
