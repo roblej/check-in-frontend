@@ -84,6 +84,7 @@ const HotelRegistrationForm = ({
             errors={errors}
             readOnly={isReadOnly}
             formData={formData}
+            isEditMode={isEditMode}
           />
         );
       case "dining":

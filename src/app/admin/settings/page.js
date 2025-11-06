@@ -90,11 +90,17 @@ const SettingsPage = () => {
               region: data.area?.areaCode || '',
               transportation: data.area?.transportation || ''
             },
-            images: (data.images || []).map(img => ({
-              id: img.id,
-              originUrl: img.originUrl,
-              smallUrl: img.smallUrl || img.originUrl
-            })),
+            images: (data.images || []).map(img => {
+              // 디버깅: id가 없는 경우 로그 출력
+              if (!img.id) {
+                console.warn('호텔 이미지에 id가 없습니다:', img);
+              }
+              return {
+                id: img.id, // id는 항상 존재해야 함 (AUTO_INCREMENT PRIMARY KEY)
+                originUrl: img.originUrl,
+                smallUrl: img.smallUrl || img.originUrl
+              };
+            }),
             events: [],
             dining: (data.dining || []).map(dining => ({
               id: dining.diningIdx || Date.now(),
@@ -117,6 +123,8 @@ const SettingsPage = () => {
               size: '', // Room 엔티티에 없음
               bedType: '', // Room 엔티티에 없음
               images: (room.images || []).map(img => ({
+                id: img.roomImageIdx || Date.now() + Math.random(), // HotelRooms 컴포넌트에서 사용하는 id
+                roomImageIdx: img.roomImageIdx || null,
                 imageUrl: img.imageUrl || '',
                 imageOrder: img.imageOrder || 1
               })),
@@ -269,7 +277,7 @@ const SettingsPage = () => {
           transportation: formData.area.transportation
         },
         images: formData.images.map(img => ({
-          id: img.id,
+          id: img.id || null,
           originUrl: img.originUrl,
           smallUrl: img.smallUrl
         })),
@@ -280,6 +288,7 @@ const SettingsPage = () => {
           capacity: room.capacity || 2,
           imageUrl: room.imageUrl || '',
           images: (room.images || []).map((img, idx) => ({
+            roomImageIdx: img.roomImageIdx || null,
             imageUrl: img.imageUrl || img.originUrl || img.smallUrl || '',
             imageOrder: img.imageOrder !== undefined ? img.imageOrder : (idx + 1)
           })).filter(img => img.imageUrl),
