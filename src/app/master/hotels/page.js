@@ -484,25 +484,6 @@ const HotelManagement = () => {
               </div>
             </div>
           </div>
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 lg:p-6 rounded-lg shadow-sm border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xl lg:text-2xl font-bold text-blue-900">
-                  {hotels && hotels.length > 0 
-                    ? hotels.reduce((sum, h) => {
-                        const rooms = h && h.rooms ? parseInt(h.rooms) : 0;
-                        return sum + (isNaN(rooms) ? 0 : rooms);
-                      }, 0)
-                    : 0
-                  }
-                </div>
-                <div className="text-sm text-blue-700">총 객실 수</div>
-              </div>
-              <div className="w-8 h-8 lg:w-12 lg:h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                <Bed className="text-white w-4 h-4 lg:w-6 lg:h-6" />
-              </div>
-            </div>
-          </div>
           <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 lg:p-6 rounded-lg shadow-sm border border-green-200">
             <div className="flex items-center justify-between">
               <div>
