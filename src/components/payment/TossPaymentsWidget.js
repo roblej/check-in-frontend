@@ -212,9 +212,25 @@ const TossPaymentsWidget = ({
 
         if (result?.success) {
           if (onSuccess) onSuccess(result);
-          router.push(
-            `/checkout/success?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}&type=${resolvedType}`
-          );
+          
+          // 양도거래(used_hotel)의 경우 sessionStorage에 저장하고 URL 파라미터 없이 리다이렉트
+          if (resolvedType === "used_hotel") {
+            const paymentData = {
+              orderId: result.orderId,
+              paymentKey: result.paymentKey,
+              amount: result.amount,
+              type: resolvedType,
+              usedTradeIdx: hotelInfo?.usedTradeIdx,
+              usedItemIdx: hotelInfo?.usedItemIdx,
+            };
+            sessionStorage.setItem("used_payment_success_data", JSON.stringify(paymentData));
+            router.push("/checkout/success");
+          } else {
+            // 호텔/다이닝 예약은 기존대로 URL 파라미터 사용
+            router.push(
+              `/checkout/success?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}&type=${resolvedType}`
+            );
+          }
         } else {
           if (onFail) onFail(new Error(result?.message || "결제 검증 실패"));
           router.push(
@@ -301,15 +317,9 @@ const TossPaymentsWidget = ({
         });
         failPath = buildUrl(failPath, { type: resolvedType });
       } else if (resolvedType === "used_hotel") {
-        successPath = buildUrl(successPath, {
-          type: resolvedType,
-          usedTradeIdx: hotelInfo?.usedTradeIdx,
-          usedItemIdx: hotelInfo?.usedItemIdx,
-          hotelName: hotelInfo?.hotelName,
-          roomType: hotelInfo?.roomType,
-          checkIn: hotelInfo?.checkIn,
-          checkOut: hotelInfo?.checkOut,
-        });
+        // 양도거래(used_hotel)는 URL 파라미터 없이 sessionStorage만 사용
+        // successPath는 파라미터 없이 사용
+        successPath = "/used-payment/success";
         failPath = buildUrl(failPath, { type: resolvedType });
       }
 
@@ -325,45 +335,84 @@ const TossPaymentsWidget = ({
       };
 
       // 성공 페이지 병합용 lastPaymentPayload 저장 (모바일 리다이렉트 대비)
+      // 양도거래(used_hotel)는 별도로 sessionStorage에 저장
       try {
-        const lastPayload = {
-          type: resolvedType,
-          customerIdx: customerInfo?.customerIdx,
-          customerEmail: customerInfo?.email || customerEmail,
-          customerName: customerInfo?.name || customerName,
-          customerPhone: customerInfo?.phone || customerMobilePhone,
-          // 호텔/다이닝 메타(있을 경우)
-          contentId: hotelInfo?.contentId || hotelInfo?.hotelId,
-          roomId: hotelInfo?.roomIdx || hotelInfo?.roomId,
-          checkIn: hotelInfo?.checkIn,
-          checkOut: hotelInfo?.checkOut,
-          guests: hotelInfo?.guests,
-          nights: hotelInfo?.nights,
-          roomPrice: hotelInfo?.roomPrice,
-          // 금액 정보
-          totalPrice: customerInfo?.actualPaymentAmount || amount,
-          // 고객 입력값
-          specialRequests: customerInfo?.specialRequests || "",
-          pointsUsed: Number(customerInfo?.usePoint || 0),
-          cashUsed: Number(customerInfo?.useCash || 0),
-          // 쿠폰 정보
-          couponIdx: customerInfo?.couponIdx || null,
-          couponDiscount: Number(customerInfo?.couponDiscount || 0),
-        };
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem(
-            "lastPaymentPayload",
-            JSON.stringify(lastPayload)
-          );
+        if (resolvedType === "used_hotel") {
+          // 양도거래는 모든 정보를 sessionStorage에 저장 (URL 파라미터 없이 사용)
+          const usedPaymentData = {
+            orderId,
+            orderName,
+            amount,
+            type: resolvedType,
+            customerIdx: customerInfo?.customerIdx,
+            customerEmail: customerInfo?.email || customerEmail,
+            customerName: customerInfo?.name || customerName,
+            customerPhone: customerInfo?.phone || customerMobilePhone,
+            // 양도거래 메타
+            usedTradeIdx: hotelInfo?.usedTradeIdx,
+            usedItemIdx: hotelInfo?.usedItemIdx,
+            hotelName: hotelInfo?.hotelName,
+            roomType: hotelInfo?.roomType,
+            checkIn: hotelInfo?.checkIn,
+            checkOut: hotelInfo?.checkOut,
+            guests: hotelInfo?.guests,
+            salePrice: hotelInfo?.salePrice,
+            totalPrice: hotelInfo?.totalPrice || amount,
+            pointsUsed: Number(customerInfo?.usePoint || 0),
+            cashUsed: Number(customerInfo?.useCash || 0),
+          };
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(
+              "used_payment_success_data",
+              JSON.stringify(usedPaymentData)
+            );
+          }
+          console.log("[PAY][Widget] used_payment_success_data 저장:", {
+            orderId: usedPaymentData.orderId,
+            usedTradeIdx: usedPaymentData.usedTradeIdx,
+            amount: usedPaymentData.amount,
+          });
+        } else {
+          // 호텔/다이닝 예약은 기존 로직 유지
+          const lastPayload = {
+            type: resolvedType,
+            customerIdx: customerInfo?.customerIdx,
+            customerEmail: customerInfo?.email || customerEmail,
+            customerName: customerInfo?.name || customerName,
+            customerPhone: customerInfo?.phone || customerMobilePhone,
+            // 호텔/다이닝 메타(있을 경우)
+            contentId: hotelInfo?.contentId || hotelInfo?.hotelId,
+            roomId: hotelInfo?.roomIdx || hotelInfo?.roomId,
+            checkIn: hotelInfo?.checkIn,
+            checkOut: hotelInfo?.checkOut,
+            guests: hotelInfo?.guests,
+            nights: hotelInfo?.nights,
+            roomPrice: hotelInfo?.roomPrice,
+            // 금액 정보
+            totalPrice: customerInfo?.actualPaymentAmount || amount,
+            // 고객 입력값
+            specialRequests: customerInfo?.specialRequests || "",
+            pointsUsed: Number(customerInfo?.usePoint || 0),
+            cashUsed: Number(customerInfo?.useCash || 0),
+            // 쿠폰 정보
+            couponIdx: customerInfo?.couponIdx || null,
+            couponDiscount: Number(customerInfo?.couponDiscount || 0),
+          };
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(
+              "lastPaymentPayload",
+              JSON.stringify(lastPayload)
+            );
+          }
+          console.log("[PAY][Widget] lastPaymentPayload 저장:", {
+            type: lastPayload.type,
+            pointsUsed: lastPayload.pointsUsed,
+            cashUsed: lastPayload.cashUsed,
+            specialRequestsLen: lastPayload.specialRequests?.length || 0,
+          });
         }
-        console.log("[PAY][Widget] lastPaymentPayload 저장:", {
-          type: lastPayload.type,
-          pointsUsed: lastPayload.pointsUsed,
-          cashUsed: lastPayload.cashUsed,
-          specialRequestsLen: lastPayload.specialRequests?.length || 0,
-        });
       } catch (e) {
-        console.warn("[PAY][Widget] lastPaymentPayload 저장 실패(무시):", e);
+        console.warn("[PAY][Widget] sessionStorage 저장 실패(무시):", e);
       }
 
       const isMobile =
