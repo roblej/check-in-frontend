@@ -68,7 +68,7 @@ const DiningSearchClient = ({ destination, diningDate, mealType, adults }) => {
     } finally {
       setLoading(false);
     }
-  }, [destination, pageSize]);
+  }, [currentPage, destination, pageSize]);
   
   // 컴포넌트 마운트 시 및 destination 변경 시 검색 실행
   useEffect(() => {

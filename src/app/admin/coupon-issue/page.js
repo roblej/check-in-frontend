@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Gift, User, Calendar, DollarSign, CheckCircle, XCircle } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import Pagination from '@/components/Pagination';
@@ -33,7 +33,7 @@ const CouponIssueManagement = () => {
   const didFetch = useRef(false);
   const didFetchCustomers = useRef(false);
 
-  function getTemplates(page = currentPage, size = pageSize){
+  const getTemplates = useCallback((page = currentPage, size = pageSize) => {
     axiosInstance.get(couponIssue_url, {
       params: {
         page: page,
@@ -55,16 +55,36 @@ const CouponIssueManagement = () => {
         setCurrentPage(0);
       }
     });
-  }
+  }, [couponIssue_url, currentPage, pageSize]);
 
   // 페이지 변경 핸들러
-  const handlePageChange = (newPage) => {
+  const handlePageChange = useCallback((newPage) => {
     setCurrentPage(newPage);
     getTemplates(newPage, pageSize);
-  };
+  }, [getTemplates, pageSize]);
 
   // 해당 호텔을 사용한 고객만 조회
-  function getCustomers(searchTerm) {
+  const getRecentCustomers = useCallback(() => {
+    axiosInstance.get(recentCustomers_url)
+      .then(res => {
+        if (res.data.success && res.data.customers) {
+          const recentCustomers = res.data.customers.map(reservation => ({
+            customerIdx: reservation.customer?.customerIdx,
+            name: reservation.customer?.name,
+            email: reservation.customer?.email,
+            nickname: reservation.customer?.nickname || '닉네임 미설정',
+            rank: reservation.customer?.rank || '일반',
+            recentRoomName: reservation.room?.name || '정보 없음'
+          }));
+          setCustomers(recentCustomers);
+        }
+      })
+      .catch(error => {
+        console.error('최근 이용 고객 로드 오류:', error);
+      });
+  }, [recentCustomers_url]);
+
+  const getCustomers = useCallback((searchTerm) => {
     if (searchTerm.trim() === '') {
       // 검색어가 없으면 최근 고객 5명 로드
       getRecentCustomers();
@@ -95,28 +115,7 @@ const CouponIssueManagement = () => {
         console.error('고객 검색 오류:', error);
         setCustomers([]);
       });
-  }
-
-  function getRecentCustomers(){
-    axiosInstance.get(recentCustomers_url)
-      .then(res => {
-        if (res.data.success && res.data.customers) {
-          // customer 필드를 추출해서 표시
-          const recentCustomers = res.data.customers.map(reservation => ({
-            customerIdx: reservation.customer?.customerIdx,
-            name: reservation.customer?.name,
-            email: reservation.customer?.email,
-            nickname: reservation.customer?.nickname || '닉네임 미설정',
-            rank: reservation.customer?.rank || '일반',
-            recentRoomName: reservation.room?.name || '정보 없음'
-          }));
-          setCustomers(recentCustomers);
-        }
-      })
-      .catch(error => {
-        console.error('최근 이용 고객 로드 오류:', error);
-      });
-  }
+  }, [getRecentCustomers, hotelCustomers_url]);
 
   function createCoupon(templateIdx, customerIdx){
     axiosInstance.post(couponCreate_url, {
@@ -145,9 +144,9 @@ const CouponIssueManagement = () => {
   useEffect(() => {
     if (didFetch.current) return;
     didFetch.current = true;
-    
+
     getTemplates();
-  }, []);
+  }, [getTemplates]);
 
   // 고객 검색이 변경될 때마다 API 호출 (디바운스 적용)
   useEffect(() => {
@@ -156,7 +155,7 @@ const CouponIssueManagement = () => {
     }, 300); // 300ms 디바운스
 
     return () => clearTimeout(timeoutId);
-  }, [customerSearch]);
+  }, [customerSearch, getCustomers]);
 
   const filteredTemplates = templates.filter(template =>
     template.templateName.toLowerCase().includes(searchTerm.toLowerCase())

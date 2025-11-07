@@ -290,4 +290,3 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
     formatPrice,
   };
 };
-
