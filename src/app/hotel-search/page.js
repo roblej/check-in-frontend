@@ -353,7 +353,7 @@ const HotelSearchPageContent = () => {
   const lastFetchedKeyRef = useRef(null);
 
   const getHotels = useCallback(
-    async (destinationParam, page = 0) => {
+    async (destinationParam, page = currentPage) => {
       const currentDestination =
         destinationParam || localSearchParams.destination;
 
@@ -439,9 +439,9 @@ const HotelSearchPageContent = () => {
         isFetchingRef.current = false;
         setIsSearching(false); // 로딩 상태 종료
       }
-  },
-    [isDiningMode, localSearchParams, pageSize, urlDestination]
-  );
+    },
+    [localSearchParams, urlDestination, isDiningMode, pageSize]
+  ); // currentPage는 dependency에서 제거 (무한 루프 방지)
 
   // destination 변경 시에만 호텔 데이터 가져오기
   // URL 파라미터와 스토어 모두 확인하여 검색 실행
@@ -495,7 +495,7 @@ const HotelSearchPageContent = () => {
         getHotels(localSearchParams.destination, currentPage);
       }
     }
-  }, [currentPage, getHotels, localSearchParams.destination]);
+  }, [currentPage, localSearchParams.destination]); // currentPage 변경 시에만 실행
 
   // 다이닝 모드 변경 시 검색 다시 실행
   const prevDiningModeRef = useRef(isDiningMode);
@@ -512,7 +512,7 @@ const HotelSearchPageContent = () => {
       }
     }
     prevDiningModeRef.current = isDiningMode;
-  }, [currentPage, getHotels, isDiningMode, localSearchParams.destination]);
+  }, [isDiningMode, localSearchParams.destination, getHotels]);
   // 이전 필터/정렬 값 추적 (실제 변경 감지용)
   const prevFiltersRef = useRef(null);
 
