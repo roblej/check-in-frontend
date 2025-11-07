@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 const Footer = () => {
   return (
     <footer className="bg-white border-t border-gray-200 mt-16">
@@ -49,7 +51,12 @@ const Footer = () => {
 
         {/* 체크인 로고 */}
         <div className="mt-8 text-center">
-          <div className="text-2xl font-bold text-gray-300">체크인</div>
+          <Link
+            href="/admin-login"
+            className="text-2xl font-bold text-gray-300 hover:text-gray-500 transition-colors cursor-pointer inline-block"
+          >
+            체크인
+          </Link>
         </div>
       </div>
     </footer>

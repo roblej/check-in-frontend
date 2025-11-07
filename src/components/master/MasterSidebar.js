@@ -16,7 +16,6 @@ import {
   FileText,
   HelpCircle,
   BarChart,
-  FileDown,
   Ticket,
   Server,
   UserCog,
@@ -68,9 +67,7 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
       name: '통계 분석',
       icon: <TrendingUp size={20} />,
       submenu: [
-        { id: 'statistics-dashboard', name: '통계 현황', path: '/master/statistics', icon: <BarChart size={16} /> },
-        { id: 'statistics-analysis', name: '분석 리포트', path: '/master/statistics-analysis', icon: <TrendingUp size={16} /> },
-        { id: 'statistics-export', name: '데이터 내보내기', path: '/master/statistics-export', icon: <FileDown size={16} /> }
+        { id: 'statistics-dashboard', name: '통계 현황', path: '/master/statistics', icon: <BarChart size={16} /> }
       ]
     },
     {
