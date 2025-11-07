@@ -27,28 +27,7 @@ const AdminDashboard = () => {
   const [selectedReservation, setSelectedReservation] = useState(null); // 선택된 예약
   const [showDetailModal, setShowDetailModal] = useState(false); // 상세보기 모달 상태
 
-  // 대시보드 데이터 로드
-  const checkHotelAndLoadData = useCallback(async () => {
-    try {
-      // 로그인 상태 확인
-      if (!isInlogged()) {
-        router.push('/login');
-        return;
-      }
-
-      // 대시보드 데이터 로드 (JWT 쿠키 자동 전송)
-      await loadDashboardData();
-
-    } catch (error) {
-      console.error('초기화 실패:', error);
-      router.push('/login');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isInlogged, router]);
-
-  // 대시보드 데이터 로드
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       // 쿠키가 자동으로 전송됨 (withCredentials: true)
       const response = await axiosInstance.get(api_url);
@@ -77,7 +56,27 @@ const AdminDashboard = () => {
         return;
       }
     }
-  };
+  }, [api_url, router]);
+
+  // 대시보드 데이터 로드
+  const checkHotelAndLoadData = useCallback(async () => {
+    try {
+      // 로그인 상태 확인
+      if (!isInlogged()) {
+        router.push('/login');
+        return;
+      }
+
+      // 대시보드 데이터 로드 (JWT 쿠키 자동 전송)
+      await loadDashboardData();
+
+    } catch (error) {
+      console.error('초기화 실패:', error);
+      router.push('/login');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isInlogged, loadDashboardData, router]);
 
   const didFetch = useRef(false);
   useEffect(() => {
