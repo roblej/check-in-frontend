@@ -9,7 +9,8 @@ const CouponTemplateManagement = () => {
 
   const api_url = "/master/couponTemplates";
   const createTemplate_url = "/master/createTemplate";
-  const updateTemplate_url = "/master/updateTemplate";
+  const editTemplate_url = "/master/editTemplate";
+  const deleteTemplate_url = "/master/delTemplate";
 
   const [templates, setTemplates] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,9 +53,9 @@ const CouponTemplateManagement = () => {
     });
   }
 
-  function updateTemplate(templateIdx, templateName){
+  function deleteTemplate(templateIdx, templateName){
     if (window.confirm(`"${templateName}" 템플릿을 삭제하시겠습니까?\n\n⚠️ 주의: 이 작업은 되돌릴 수 없습니다.`)) {
-      axiosInstance.post(updateTemplate_url, {
+      axiosInstance.post(deleteTemplate_url, {
         templateIdx: templateIdx
       }).then(res => {
         getDate(); // 목록 새로고침
@@ -69,31 +70,42 @@ const CouponTemplateManagement = () => {
     }
   }
 
+  function editTemplate(templateIdx, templateName, discount, validDays, status) {
+    axiosInstance.post(editTemplate_url, {
+      templateIdx: templateIdx,
+      templateName: templateName,
+      discount: discount,
+      validDays: validDays,
+      status: status
+    }).then(res => {
+      console.log(res.data);
+      getDate(); // 목록 새로고침
+      setIsModalOpen(false);
+      setEditingTemplate(null);
+      setFormData({ templateName: '', discount: '', validDays: 30, status: 1 });
+      alert('템플릿이 성공적으로 수정되었습니다.');
+    }).catch(error => {
+      console.error('템플릿 수정 오류:', error);
+      alert('템플릿 수정 중 오류가 발생했습니다.');
+    });
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (editingTemplate) {
-      // 수정
-      setTemplates(templates.map(template => 
-        template.templateIdx === editingTemplate.templateIdx 
-          ? { ...template, ...formData, updatedAt: new Date().toISOString() }
-          : template
-      ));
+      // 수정 - 백엔드 API 호출
+      editTemplate(
+        editingTemplate.templateIdx,
+        formData.templateName,
+        formData.discount,
+        formData.validDays,
+        formData.status
+      );
     } else {
       // 추가
-      const newTemplate = {
-        templateIdx: templates.length + 1,
-        ...formData,
-        adminIdx: 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      setTemplates([...templates, newTemplate]);
+      createTemplate(formData.templateName, formData.discount, formData.validDays, formData.status);
     }
-    
-    setIsModalOpen(false);
-    setEditingTemplate(null);
-    setFormData({ templateName: '', discount: '', validDays: 30, status: 1 });
   };
 
   const handleEdit = (template) => {
@@ -108,7 +120,7 @@ const CouponTemplateManagement = () => {
   };
 
   const handleDelete = (templateIdx, templateName) => {
-    updateTemplate(templateIdx, templateName);
+    deleteTemplate(templateIdx, templateName);
   };
 
   const toggleStatus = (templateIdx) => {
@@ -178,9 +190,8 @@ const CouponTemplateManagement = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <button
-                      onClick={() => toggleStatus(template.templateIdx)}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium cursor-default ${
                         template.status === 1
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
@@ -188,7 +199,7 @@ const CouponTemplateManagement = () => {
                     >
                       {template.status === 1 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                       {template.status === 1 ? '활성' : '비활성'}
-                    </button>
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(template.createdAt).toLocaleDateString()}
@@ -198,12 +209,14 @@ const CouponTemplateManagement = () => {
                       <button
                         onClick={() => handleEdit(template)}
                         className="text-indigo-600 hover:text-indigo-900"
+                        title="수정"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(template.templateIdx, template.templateName)}
                         className="text-red-600 hover:text-red-900"
+                        title="삭제"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -273,12 +286,8 @@ const CouponTemplateManagement = () => {
               </div>
               <div className="flex gap-2">
                 <button 
-                  type="button"
+                  type="submit"
                   className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-                  onClick={() => {
-                    createTemplate(formData.templateName, formData.discount, formData.validDays, formData.status)
-                  }
-                }
                 >
                   {editingTemplate ? '수정' : '추가'}
                 </button>
