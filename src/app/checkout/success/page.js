@@ -22,13 +22,77 @@ const SuccessPageContent = () => {
   const [hasRouletteSpun, setHasRouletteSpun] = useState(false); // 룰렛을 이미 돌렸는지 여부
 
   const isProcessingRef = useRef(false);
+  const urlCleanedRef = useRef(false); // URL 정리 여부 추적
+  const initialParamsRef = useRef(null); // 초기 URL 파라미터 저장 (URL 변경에 영향받지 않음)
+
+  // 초기 URL 파라미터 저장 (search가 준비되면 한 번만)
+  useEffect(() => {
+    if (initialParamsRef.current === null && typeof window !== "undefined") {
+      initialParamsRef.current = {
+        paymentKey: search.get("paymentKey"),
+        orderId: search.get("orderId"),
+        amount: search.get("amount"),
+        confirmed: search.get("confirmed"),
+        type: search.get("type"),
+      };
+    }
+  }, [search]); // search가 준비되면 실행, 이미 저장했으면 다시 저장하지 않음
+
+  // 결제 확인 완료 후 성공 화면이 표시된 뒤 URL에서 paymentKey, orderId 제거
+  useEffect(() => {
+    // 조건: result가 있고, loading이 완료되었고, 에러가 없고, 아직 URL을 정리하지 않았을 때
+    if (!result || loading || error || urlCleanedRef.current) return;
+
+    // 초기 URL에서 paymentKey나 orderId가 있었는지 확인
+    const hadPaymentKey = initialParamsRef.current?.paymentKey;
+    const hadOrderId = initialParamsRef.current?.orderId;
+
+    // 현재 URL에서도 확인 (혹시 모를 경우 대비)
+    const currentPaymentKey = search.get("paymentKey");
+    const currentOrderId = search.get("orderId");
+
+    // 둘 다 없으면 정리할 필요 없음
+    if (
+      !hadPaymentKey &&
+      !hadOrderId &&
+      !currentPaymentKey &&
+      !currentOrderId
+    ) {
+      urlCleanedRef.current = true;
+      return;
+    }
+
+    // 현재 URL 파라미터를 새 URLSearchParams로 복사
+    const params = new URLSearchParams();
+
+    // 모든 파라미터를 순회하며 paymentKey와 orderId 제외하고 추가
+    search.forEach((value, key) => {
+      if (key !== "paymentKey" && key !== "orderId") {
+        params.append(key, value);
+      }
+    });
+
+    // 새로운 URL 생성
+    const newSearch = params.toString();
+    const newUrl = newSearch
+      ? `/checkout/success?${newSearch}`
+      : "/checkout/success";
+
+    // router.replace로 URL 업데이트 (히스토리에 추가하지 않음)
+    router.replace(newUrl);
+    urlCleanedRef.current = true;
+  }, [result, error, loading, search, router]);
 
   useEffect(() => {
     const doConfirm = async () => {
-      const paymentKey = search.get("paymentKey");
-      const orderId = search.get("orderId");
-      const amount = search.get("amount");
-      const confirmed = search.get("confirmed");
+      // 초기 URL 파라미터 사용 (URL 정리 후에도 원본 파라미터 사용 가능)
+      const paymentKey =
+        initialParamsRef.current?.paymentKey || search.get("paymentKey");
+      const orderId =
+        initialParamsRef.current?.orderId || search.get("orderId");
+      const amount = initialParamsRef.current?.amount || search.get("amount");
+      const confirmed =
+        initialParamsRef.current?.confirmed || search.get("confirmed");
 
       // localStorage에서 paymentDraft 복원 시도
       usePaymentStore.getState().loadFromStorage();
@@ -264,18 +328,10 @@ const SuccessPageContent = () => {
               결제를 처리하고 있습니다
             </h2>
             <p className="text-gray-600 mb-6">
-              백엔드에서 결제 정보를 검증 중입니다.
+              결제 정보를 검증 중입니다.
               <br />
               잠시만 기다려주세요...
             </p>
-
-            {/* 프로그레스 바 */}
-            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-orange-600 h-2 rounded-full animate-pulse"
-                style={{ width: "70%" }}
-              ></div>
-            </div>
 
             {/* 안내 메시지 */}
             <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">

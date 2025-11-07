@@ -57,6 +57,31 @@ const HotelDetail = ({
     }
   }, [isModal]);
 
+  // searchParams prop이 변경되면 로컬 상태 업데이트
+  useEffect(() => {
+    if (searchParams && Object.keys(searchParams).length > 0) {
+      // 날짜 파라미터가 있으면 업데이트
+      if (searchParams.checkIn || searchParams.checkOut) {
+        setLocalSearchParams((prev) => {
+          // 값이 변경된 경우에만 업데이트 (무한 루프 방지)
+          if (
+            prev.checkIn !== searchParams.checkIn ||
+            prev.checkOut !== searchParams.checkOut
+          ) {
+            return {
+              destination: searchParams.destination || prev.destination || "",
+              checkIn: searchParams.checkIn || "",
+              checkOut: searchParams.checkOut || "",
+              nights: parseInt(searchParams.nights || prev.nights || "1"),
+              adults: parseInt(searchParams.adults || prev.adults || "2"),
+            };
+          }
+          return prev;
+        });
+      }
+    }
+  }, [searchParams]);
+
   const scrollContainerRef = isModal
     ? externalScrollRef || internalScrollRef
     : windowScrollRef;
@@ -132,15 +157,16 @@ const HotelDetail = ({
       const updatedParams = { ...localSearchParams, ...newParams };
       setLocalSearchParams(updatedParams);
 
+      // 호텔 디테일 페이지에서 onSearchParamsChange가 있으면 호출 (로컬스토리지 저장 포함)
       if (onSearchParamsChange) {
         onSearchParamsChange(updatedParams);
-        return;
       }
 
       if (isModal) {
         return;
       }
 
+      // URL 업데이트
       const urlParams = formatSearchParamsForUrl(updatedParams);
       const newUrl = updateUrlParams(urlParams);
       router.replace(newUrl, { scroll: false });
