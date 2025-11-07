@@ -29,6 +29,7 @@ const Statistics = () => {
   });
   const [monthlyCommissionData, setMonthlyCommissionData] = useState([]);
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+  const [hotelRankings, setHotelRankings] = useState([]);
 
   // 통계 데이터 조회
   useEffect(() => {
@@ -74,6 +75,22 @@ const Statistics = () => {
     fetchMonthlyCommission();
   }, []);
 
+  // 호텔별 매출 순위 데이터 조회
+  useEffect(() => {
+    const fetchHotelRanking = async () => {
+      try {
+        const response = await axiosInstance.get('/master/statistics/hotelRanking');
+        if (response.data) {
+          setHotelRankings(response.data || []);
+        }
+      } catch (error) {
+        console.error('호텔별 매출 순위 조회 오류:', error);
+      }
+    };
+
+    fetchHotelRanking();
+  }, []);
+
   // 차트 데이터 가공
   const chartData = useMemo(() => {
     if (!monthlyCommissionData.length) return [];
@@ -114,6 +131,12 @@ const Statistics = () => {
     } else {
       return `₩${amount.toLocaleString()}`;
     }
+  };
+
+  // 호텔 매출 포맷팅 함수 (큰 금액용)
+  const formatHotelRevenue = (amount) => {
+    if (!amount) return '₩0';
+    return `₩${Number(amount).toLocaleString()}`;
   };
 
   // 날짜 범위 설명
@@ -168,41 +191,6 @@ const Statistics = () => {
     }
   ];
 
-  // 호텔별 매출 순위
-  const hotelRankings = [
-    {
-      rank: 1,
-      name: '부산 오션뷰 리조트',
-      revenue: '₩89,000,000',
-      reservations: 2100,
-      rating: 4.8,
-      growth: '+15%'
-    },
-    {
-      rank: 2,
-      name: '서울 그랜드 호텔',
-      revenue: '₩45,000,000',
-      reservations: 1250,
-      rating: 4.5,
-      growth: '+8%'
-    },
-    {
-      rank: 3,
-      name: '강릉 바다뷰 호텔',
-      revenue: '₩28,000,000',
-      reservations: 890,
-      rating: 4.3,
-      growth: '+12%'
-    },
-    {
-      rank: 4,
-      name: '제주 힐링 펜션',
-      revenue: '₩8,500,000',
-      reservations: 340,
-      rating: 4.2,
-      growth: '-3%'
-    }
-  ];
 
   // 지역별 통계
   const regionStats = [
@@ -394,31 +382,43 @@ const Statistics = () => {
               <p className="text-sm text-gray-600">이번 달 기준</p>
             </div>
             <div className="p-6">
-              <div className="space-y-4">
-                {hotelRankings.map((hotel) => (
-                  <div key={hotel.rank} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                        {hotel.rank}
+              {loading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div key={index} className="animate-pulse">
+                      <div className="h-16 bg-gray-200 rounded-lg"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : hotelRankings.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">데이터가 없습니다.</div>
+              ) : (
+                <div className="space-y-4">
+                  {hotelRankings.map((hotel) => (
+                    <div key={hotel.rank} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                          {hotel.rank}
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{hotel.name}</div>
+                          <div className="text-xs text-gray-500">
+                            예약 {hotel.reservations?.toLocaleString() || 0}건 • <Star className="inline w-3 h-3 text-yellow-400 fill-current" /> {hotel.rating ? hotel.rating.toFixed(1) : '0.0'}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{hotel.name}</div>
-                        <div className="text-xs text-gray-500">
-                          예약 {hotel.reservations}건 • <Star className="inline w-3 h-3 text-yellow-400 fill-current" /> {hotel.rating}
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-gray-900">{formatHotelRevenue(hotel.revenue)}</div>
+                        <div className={`text-xs ${
+                          hotel.growth?.startsWith('+') ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {hotel.growth || '+0%'}
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium text-gray-900">{hotel.revenue}</div>
-                      <div className={`text-xs ${
-                        hotel.growth.startsWith('+') ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {hotel.growth}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
