@@ -49,6 +49,14 @@ export const hotelAPI = {
     return response.data;
   },
 
+  // 호텔 리뷰 요약 조회 (평균 평점, 리뷰 개수)
+  getHotelReviewSummary: async (contentId) => {
+    const response = await axiosInstance.get(
+      `/hotels/${contentId}/reviews/summary`
+    );
+    return response.data;
+  },
+
   // 호텔 검색
   searchHotels: async (searchParams) => {
     const response = await axiosInstance.post("/hotels/search", searchParams);

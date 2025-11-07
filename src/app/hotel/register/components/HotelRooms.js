@@ -71,10 +71,16 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
 
       if (response.data.success && response.data.images) {
         // 업로드된 이미지 정보 (파일명만 저장됨)
-        const uploadedImages = response.data.images.map((img) => ({
+        // 기존 이미지의 최대 imageOrder를 찾아서 그 다음 순서부터 할당
+        const maxOrder = currentImages.length > 0 
+          ? Math.max(...currentImages.map(img => img.imageOrder || 0))
+          : 0;
+        
+        const uploadedImages = response.data.images.map((img, idx) => ({
           id: img.roomImageIdx || Date.now() + Math.random(),
+          roomImageIdx: img.roomImageIdx || null, // roomImageIdx도 포함
           imageUrl: img.imageUrl, // 파일명만 저장됨
-          imageOrder: img.imageOrder || 1
+          imageOrder: maxOrder + idx + 1 // 기존 최대 순서 + 1부터 시작
         }));
 
         // 해당 객실의 기존 이미지에 추가
@@ -147,7 +153,14 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
     
     const currentImages = Array.isArray(room.images) ? room.images : [];
     const updatedImages = currentImages.filter((img) => img.id !== imageId);
-    updateRoom(roomId, { images: updatedImages });
+    
+    // 이미지 삭제 후 순서 재조정 (1부터 시작)
+    const reorderedImages = updatedImages.map((img, idx) => ({
+      ...img,
+      imageOrder: idx + 1
+    }));
+    
+    updateRoom(roomId, { images: reorderedImages });
   };
 
   // 객실 대표 이미지 업로드 핸들러 (1장만, Room.imageUrl용)

@@ -7,8 +7,8 @@ import HotelImages from "@/app/hotel/register/components/HotelImages";
 import HotelDining from "@/app/hotel/register/components/HotelDining";
 
 /**
- * 호텔 등록/승인 공통 폼 컴포넌트
- * @param {string} mode - 'create' | 'approve' (생성 또는 승인)
+ * 호텔 등록/승인/수정 공통 폼 컴포넌트
+ * @param {string} mode - 'create' | 'approve' | 'edit' (생성, 승인, 수정)
  * @param {object} formData - 폼 데이터
  * @param {function} updateFormData - 폼 데이터 업데이트 함수
  * @param {object} errors - 유효성 검사 오류
@@ -21,7 +21,7 @@ import HotelDining from "@/app/hotel/register/components/HotelDining";
  * @param {object} addDining, removeDining, updateDining - 다이닝 관리 함수
  */
 const HotelRegistrationForm = ({
-  mode = 'create', // 'create' | 'approve'
+  mode = 'create', // 'create' | 'approve' | 'edit'
   formData,
   updateFormData,
   addRoom,
@@ -48,6 +48,7 @@ const HotelRegistrationForm = ({
   ];
 
   const isApprovalMode = mode === 'approve';
+  const isEditMode = mode === 'edit';
   const isReadOnly = isApprovalMode;
 
   const renderTabContent = () => {
@@ -83,6 +84,7 @@ const HotelRegistrationForm = ({
             errors={errors}
             readOnly={isReadOnly}
             formData={formData}
+            isEditMode={isEditMode}
           />
         );
       case "dining":
@@ -106,11 +108,13 @@ const HotelRegistrationForm = ({
       {/* 페이지 제목 */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
         <h2 className="text-2xl font-bold text-white">
-          {isApprovalMode ? '📋 호텔 승인' : '🏨 호텔 등록'}
+          {isApprovalMode ? '📋 호텔 승인' : isEditMode ? '⚙️ 호텔 설정' : '🏨 호텔 등록'}
         </h2>
         <p className="text-blue-100 mt-1">
           {isApprovalMode 
             ? '호텔 등록 요청을 검토하고 승인/거부합니다' 
+            : isEditMode
+            ? '호텔 정보와 운영 설정을 관리하세요'
             : '새로운 호텔을 등록하고 운영을 시작하세요'
           }
         </p>
@@ -147,12 +151,14 @@ const HotelRegistrationForm = ({
           <div className="text-sm text-gray-500">
             {isApprovalMode 
               ? '* 모든 정보를 검토한 후 승인/거부 결정을 내려주세요'
+              : isEditMode
+              ? '* 호텔 정보를 수정한 후 저장하세요'
               : '* 필수 정보를 모두 입력한 후 등록 요청을 제출하세요'
             }
           </div>
           <div className="flex space-x-3">
             {/* Create 모드: 임시저장 + 등록요청 버튼 */}
-            {!isApprovalMode && (
+            {mode === 'create' && (
               <>
                 {onSaveDraft && (
                   <button
@@ -172,6 +178,18 @@ const HotelRegistrationForm = ({
                   {isSubmitting ? "등록 중..." : "등록요청하기"}
                 </button>
               </>
+            )}
+            
+            {/* Edit 모드: 저장 버튼 */}
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={onSubmit}
+                disabled={isSubmitting}
+                className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "저장 중..." : "저장하기"}
+              </button>
             )}
             
             {/* Approve 모드: 승인 + 거부 버튼 */}

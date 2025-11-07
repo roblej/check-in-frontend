@@ -1,59 +1,97 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { ArrowLeft, AlertCircle } from "lucide-react";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import axios from "@/lib/axios";
 
 export default function CancelReservationPage() {
   const router = useRouter();
   const params = useParams();
   const reservationId = params.id;
 
-  const [cancelReason, setCancelReason] = useState('');
-  const [customReason, setCustomReason] = useState('');
+  const [cancelReason, setCancelReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reservation, setReservation] = useState(null);
 
-  // 더미 예약 데이터
-  const reservation = {
-    id: reservationId,
-    reservationNumber: 'RES202510001',
-    hotelName: '그랜드 하얏트 서울',
-    checkIn: '2025.10.20',
-    checkOut: '2025.10.22',
-    totalPrice: 400000,
-    cancellationFee: 40000,
-    refundAmount: 360000,
-  };
+  // 예약 상세 불러오기 (백엔드 연동)
+  useEffect(() => {
+    let mounted = true;
+    const fetchDetail = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await axios.get(`/reservations/${reservationId}/detail`);
+        // 백엔드 DTO에 맞춰 필드 매핑 (orderNum 사용)
+        const data = res?.data || {};
+        console.log("예약 상세 정보:", data);
+        console.log("환불 예상 정보:", {
+          expectedRefundRate: data.expectedRefundRate,
+          expectedRefundMessage: data.expectedRefundMessage,
+          expectedPaymentRefund: data.expectedPaymentRefund,
+          expectedCashRestore: data.expectedCashRestore,
+          expectedPointRestore: data.expectedPointRestore,
+          expectedTotalRefund: data.expectedTotalRefund,
+        });
+        if (mounted) setReservation(data);
+      } catch (e) {
+        if (mounted) setError("예약 정보를 불러오지 못했습니다.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchDetail();
+    return () => {
+      mounted = false;
+    };
+  }, [reservationId]);
 
-  const cancelReasons = [
-    '일정 변경',
-    '다른 숙소 예약',
-    '개인 사정',
-    '가격 문제',
-    '호텔 시설 불만족',
-    '기타',
-  ];
+  const cancelReasons = useMemo(
+    () => [
+      "일정 변경",
+      "다른 숙소 예약",
+      "개인 사정",
+      "가격 문제",
+      "호텔 시설 불만족",
+      "기타",
+    ],
+    []
+  );
 
   const handleCancel = async () => {
     if (!cancelReason) {
-      alert('취소 사유를 선택해주세요.');
+      alert("취소 사유를 선택해주세요.");
       return;
     }
 
-    if (cancelReason === '기타' && !customReason.trim()) {
-      alert('취소 사유를 입력해주세요.');
+    if (cancelReason === "기타" && !customReason.trim()) {
+      alert("취소 사유를 입력해주세요.");
       return;
     }
 
     setIsCancelling(true);
 
-    // API 호출 시뮬레이션
-    setTimeout(() => {
-      alert('예약이 취소되었습니다.');
-      router.push('/mypage');
-    }, 1500);
+    try {
+      const reason =
+        cancelReason === "기타" ? customReason.trim() : cancelReason;
+      const res = await axios.post(`/reservations/${reservationId}/cancel`, {
+        cancelReason: reason,
+      });
+      const data = res?.data || {};
+      const payload = data.data || data;
+      alert("예약 취소 완료");
+      // 취소 후 마이페이지로 이동
+      router.push("/mypage");
+    } catch (e) {
+      alert("취소 실패");
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   return (
@@ -72,41 +110,73 @@ export default function CancelReservationPage() {
           <h1 className="text-3xl font-bold text-gray-900">예약 취소</h1>
         </div>
 
+        {loading && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 mb-6">
+            불러오는 중...
+          </div>
+        )}
+        {error && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-red-200 text-red-700 mb-6">
+            {error}
+          </div>
+        )}
+
         {/* 주의 사항 */}
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
           <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-bold text-red-900 mb-1">예약 취소 전 확인하세요</h3>
+            <h3 className="font-bold text-red-900 mb-1">
+              예약 취소 전 확인하세요
+            </h3>
             <ul className="text-sm text-red-800 space-y-1">
               <li>• 취소 수수료가 부과될 수 있습니다.</li>
-              <li>• 체크인 3일 전까지는 무료 취소 가능합니다.</li>
+              <li>• 체크인 7일 전 및 당일예약은 무료 취소 가능합니다.</li>
               <li>• 취소 후에는 재예약이 필요합니다.</li>
             </ul>
           </div>
         </div>
 
         {/* 예약 정보 */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">예약 정보</h2>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">예약번호</span>
-              <span className="font-medium text-gray-900">{reservation.reservationNumber}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">호텔명</span>
-              <span className="font-medium text-gray-900">{reservation.hotelName}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">체크인</span>
-              <span className="font-medium text-gray-900">{reservation.checkIn}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">체크아웃</span>
-              <span className="font-medium text-gray-900">{reservation.checkOut}</span>
+        {reservation && (
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">예약 정보</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-600">예약번호</span>
+                <span className="font-medium text-gray-900">
+                  {reservation.orderNum ||
+                    reservation.reservationNumber ||
+                    `RES-${reservationId}`}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">호텔명</span>
+                <span className="font-medium text-gray-900">
+                  {reservation.hotelName || reservation.hotelTitle || ""}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">체크인</span>
+                <span className="font-medium text-gray-900">
+                  {reservation.checkIn || reservation.checkinDate || ""}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">체크아웃</span>
+                <span className="font-medium text-gray-900">
+                  {reservation.checkOut || reservation.checkoutDate || ""}
+                </span>
+              </div>
+              {reservation.status === 2 && (
+                <div className="flex justify-end">
+                  <span className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700">
+                    취소 완료
+                  </span>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
         {/* 취소 사유 */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
@@ -130,7 +200,7 @@ export default function CancelReservationPage() {
             ))}
           </div>
 
-          {cancelReason === '기타' && (
+          {cancelReason === "기타" && (
             <div className="mt-4">
               <textarea
                 value={customReason}
@@ -143,27 +213,65 @@ export default function CancelReservationPage() {
           )}
         </div>
 
-        {/* 환불 정보 */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">환불 정보</h2>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">결제 금액</span>
-              <span className="text-gray-900">{reservation.totalPrice.toLocaleString()}원</span>
+        {/* 환불 예상 정보 (취소 전 표시) */}
+        {reservation && (
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-bold text-gray-900">
+                환불 예상 정보
+              </h2>
+              <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-700">
+                예상
+              </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">취소 수수료</span>
-              <span className="text-red-600">-{reservation.cancellationFee.toLocaleString()}원</span>
-            </div>
-            <div className="border-t border-gray-200 pt-3 flex justify-between">
-              <span className="text-lg font-bold text-gray-900">환불 예정 금액</span>
-              <span className="text-2xl font-bold text-blue-600">{reservation.refundAmount.toLocaleString()}원</span>
+            <div className="space-y-3">
+              {reservation.expectedRefundMessage && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">환불 정책</span>
+                  <span className="text-gray-900">
+                    {reservation.expectedRefundMessage}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-600">결제금액 복구</span>
+                <span className="text-gray-900 font-semibold">
+                  {Number(
+                    reservation.expectedPaymentRefund || 0
+                  ).toLocaleString()}
+                  원
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">캐시 복구</span>
+                <span className="text-gray-900">
+                  {Number(
+                    reservation.expectedCashRestore || 0
+                  ).toLocaleString()}
+                  원
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">포인트 복구</span>
+                <span className="text-gray-900">
+                  {Number(
+                    reservation.expectedPointRestore || 0
+                  ).toLocaleString()}
+                  P
+                </span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-gray-200">
+                <span className="text-gray-900 font-semibold">총 복구</span>
+                <span className="text-blue-600 font-bold">
+                  {Number(
+                    reservation.expectedTotalRefund || 0
+                  ).toLocaleString()}
+                  원
+                </span>
+              </div>
             </div>
           </div>
-          <p className="text-sm text-gray-500 mt-4">
-            환불은 영업일 기준 3-5일 이내에 결제 수단으로 처리됩니다.
-          </p>
-        </div>
+        )}
 
         {/* 액션 버튼 */}
         <div className="flex gap-3">
@@ -175,10 +283,18 @@ export default function CancelReservationPage() {
           </button>
           <button
             onClick={handleCancel}
-            disabled={isCancelling}
+            disabled={
+              isCancelling ||
+              loading ||
+              !!(reservation && reservation.status === 2)
+            }
             className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isCancelling ? '취소 처리 중...' : '예약 취소하기'}
+            {isCancelling
+              ? "취소 처리 중..."
+              : reservation && reservation.status === 2
+              ? "이미 취소됨"
+              : "예약 취소하기"}
           </button>
         </div>
       </div>
@@ -187,4 +303,3 @@ export default function CancelReservationPage() {
     </div>
   );
 }
-
