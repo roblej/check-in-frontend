@@ -1,32 +1,42 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import HotelRegistrationForm from '@/components/master/approve/HotelRegistrationForm';
 import axiosInstance from '@/lib/axios';
 
 const SettingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState('basic');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+  
+  // 폼 데이터 상태 관리 (호텔 등록 화면과 동일한 구조)
   const [formData, setFormData] = useState({
     hotelInfo: {
       title: '',
       adress: '',
-      phone: '' // tel로 변환되어 전송됨
+      phone: '',
+      imageUrl: '',
+      latitude: '',
+      longitude: ''
     },
     hotelDetail: {
-      description: '', // reservationlodging
-      foodplace: '', // foodplace
-      scale: '', // scalelodging
-      parkinglodging: '' // parkinglodging
+      reservationlodging: '',
+      foodplace: '',
+      scalelodging: '',
+      parkinglodging: ''
     },
     area: {
-      region: '', // areaCode
+      region: '',
+      transportation: ''
     },
+    rooms: [],
     images: [],
     events: [],
     dining: []
   });
-  
+
   const [initialData, setInitialData] = useState({
     regions: [],
     amenities: [],
@@ -34,108 +44,28 @@ const SettingsPage = () => {
   });
 
   const [selectedRegion, setSelectedRegion] = useState('');
-  const [selectedDistrict, setSelectedDistrict] = useState('');
-  const [errors, setErrors] = useState({});
-  const [dragOver, setDragOver] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
   // areaCode를 지역명으로 변환하는 함수
   const getRegionNameByAreaCode = (areaCode) => {
     if (!areaCode) return '';
     
-    switch (String(areaCode)) {
-      case '1':
-        return '서울특별시';
-      case '2':
-        return '인천광역시';
-      case '3':
-        return '대전광역시';
-      case '4':
-        return '대구광역시';
-      case '5':
-        return '광주광역시';
-      case '6':
-        return '부산광역시';
-      case '7':
-        return '울산광역시';
-      case '8':
-        return '세종특별자치시';
-      case '31':
-        return '경기도';
-      case '32':
-        return '강원특별자치도';
-      case '33':
-        return '충청북도';
-      case '34':
-        return '충청남도';
-      case '35':
-        return '경상북도';
-      case '36':
-        return '경상남도';
-      case '37':
-        return '전라북도';
-      case '38':
-        return '전라남도';
-      case '39':
-        return '제주특별자치도';
-      default:
-        return '';
-    }
+    const regionMap = {
+      '1': '서울특별시', '2': '인천광역시', '3': '대전광역시', '4': '대구광역시',
+      '5': '광주광역시', '6': '부산광역시', '7': '울산광역시', '8': '세종특별자치시',
+      '31': '경기도', '32': '강원특별자치도', '33': '충청북도', '34': '충청남도',
+      '35': '경상북도', '36': '경상남도', '37': '전라북도', '38': '전라남도', '39': '제주특별자치도'
+    };
+    
+    return regionMap[String(areaCode)] || '';
   };
 
-  // 지역명을 areaCode로 변환하는 함수
-  const getAreaCodeByRegionName = (regionName) => {
-    switch (regionName) {
-      case '서울특별시':
-        return '1';
-      case '인천광역시':
-        return '2';
-      case '대전광역시':
-        return '3';
-      case '대구광역시':
-        return '4';
-      case '광주광역시':
-        return '5';
-      case '부산광역시':
-        return '6';
-      case '울산광역시':
-        return '7';
-      case '세종특별자치시':
-        return '8';
-      case '경기도':
-        return '31';
-      case '강원특별자치도':
-        return '32';
-      case '충청북도':
-        return '33';
-      case '충청남도':
-        return '34';
-      case '경상북도':
-        return '35';
-      case '경상남도':
-        return '36';
-      case '전라북도':
-        return '37';
-      case '전라남도':
-        return '38';
-      case '제주특별자치도':
-        return '39';
-      default:
-        return '';
-    }
-  };
-
-  // 초기 데이터 로드 (지역, 시설 등)
-  useEffect(() => {
-    setInitialData({ regions: [], amenities: [], roomTypes: [] });
-  }, []);
-
-  // 호텔 정보 로드 (정규화 테이블에서 조회)
+  // 호텔 정보 로드 (정규화 테이블에서 조회 - 병렬 처리로 한 번에 로드)
   useEffect(() => {
     const loadHotelData = async () => {
       try {
         setLoading(true);
         
+        // 호텔 정보 한 번에 로드 (Room 데이터 포함)
         const response = await axiosInstance.get('/admin/hotelInfoForEdit');
         
         if (response.data.success && response.data.data) {
@@ -145,35 +75,69 @@ const SettingsPage = () => {
             hotelInfo: {
               title: data.hotelInfo?.title || '',
               adress: data.hotelInfo?.adress || '',
-              phone: data.hotelInfo?.tel || '' // Entity 필드명 tel 사용
+              phone: data.hotelInfo?.tel || '',
+              imageUrl: data.hotelInfo?.imageUrl || '',
+              latitude: data.hotelInfo?.latitude || '',
+              longitude: data.hotelInfo?.longitude || ''
             },
             hotelDetail: {
-              description: data.hotelDetail?.reservationlodging || '', // Entity 필드명
-              foodplace: data.hotelDetail?.foodplace || '', // Entity 필드명
-              scale: data.hotelDetail?.scalelodging || '', // Entity 필드명
-              parkinglodging: data.hotelDetail?.parkinglodging || '' // Entity 필드명
+              reservationlodging: data.hotelDetail?.reservationlodging || '',
+              foodplace: data.hotelDetail?.foodplace || '',
+              scalelodging: data.hotelDetail?.scalelodging || '',
+              parkinglodging: data.hotelDetail?.parkinglodging || ''
             },
             area: {
-              region: data.area?.areaCode || '', // Entity 필드명 areaCode
+              region: data.area?.areaCode || '',
+              transportation: data.area?.transportation || ''
             },
-            images: (data.images || []).map(img => ({
-              id: img.id,
-              originUrl: img.originUrl,
-              smallUrl: img.smallUrl
-            })),
-            events: [], // 프론트엔드에서 사용하지 않음
+            images: (data.images || []).map(img => {
+              // 디버깅: id가 없는 경우 로그 출력
+              if (!img.id) {
+                console.warn('호텔 이미지에 id가 없습니다:', img);
+              }
+              return {
+                id: img.id, // id는 항상 존재해야 함 (AUTO_INCREMENT PRIMARY KEY)
+                originUrl: img.originUrl,
+                smallUrl: img.smallUrl || img.originUrl
+              };
+            }),
+            events: [],
             dining: (data.dining || []).map(dining => ({
               id: dining.diningIdx || Date.now(),
               diningIdx: dining.diningIdx,
               name: dining.name || '',
+              type: '',
               operatingHours: dining.operatingHours || '',
+              menu: '',
               description: dining.description || '',
               basePrice: dining.basePrice || '',
               totalSeats: dining.totalSeats || ''
+            })),
+            rooms: (data.rooms || []).map((room, index) => ({
+              id: room.roomIdx || Date.now() + index,
+              roomIdx: room.roomIdx,
+              name: room.name || '',
+              type: '', // Room 엔티티에 없음
+              price: room.basePrice || '',
+              capacity: room.capacity || 2,
+              size: '', // Room 엔티티에 없음
+              bedType: '', // Room 엔티티에 없음
+              images: (room.images || []).map(img => ({
+                id: img.roomImageIdx || Date.now() + Math.random(), // HotelRooms 컴포넌트에서 사용하는 id
+                roomImageIdx: img.roomImageIdx || null,
+                imageUrl: img.imageUrl || '',
+                imageOrder: img.imageOrder || 1
+              })),
+              imageUrl: room.imageUrl || '',
+              refundable: room.refundable !== false,
+              breakfastIncluded: room.breakfastIncluded || false,
+              smoking: room.smoking || false,
+              status: room.status !== undefined ? room.status : 1,
+              roomCount: room.roomCount || 1
             }))
           });
 
-          // 지역 정보 설정 (areaCode를 지역명으로 변환)
+          // 지역 정보 설정
           if (data.area?.areaCode) {
             const regionName = getRegionNameByAreaCode(data.area.areaCode);
             setSelectedRegion(regionName);
@@ -190,138 +154,67 @@ const SettingsPage = () => {
     loadHotelData();
   }, []);
 
+  // 폼 데이터 업데이트
   const updateFormData = (section, data) => {
-    setFormData(prev => ({
-      ...prev,
-      [section]: { ...prev[section], ...data }
-    }));
+    setFormData(prev => {
+      if (Array.isArray(data)) {
+        return {
+          ...prev,
+          [section]: data
+        };
+      } else {
+        return {
+          ...prev,
+          [section]: { ...prev[section], ...data }
+        };
+      }
+    });
   };
 
-
-  const addEvent = () => {
-    const newEvent = {
+  // 객실 추가
+  const addRoom = () => {
+    const newRoom = {
       id: Date.now(),
-      eventIdx: null,
-      title: '',
-      description: '',
-      startDate: '',
-      endDate: '',
-      discount: '',
-      isActive: true
+      name: '',
+      type: '',
+      price: '',
+      capacity: 2,
+      size: '',
+      bedType: '',
+      images: [],
+      imageUrl: '',
+      refundable: true,
+      breakfastIncluded: false,
+      smoking: false,
+      status: 1,
+      roomCount: 1
     };
+    
     setFormData(prev => ({
       ...prev,
-      events: [...prev.events, newEvent]
+      rooms: [...prev.rooms, newRoom]
     }));
   };
 
-  const removeEvent = (eventId) => {
+  // 객실 삭제
+  const removeRoom = (roomId) => {
     setFormData(prev => ({
       ...prev,
-      events: prev.events.filter(event => event.id !== eventId)
+      rooms: prev.rooms.filter(room => room.id !== roomId)
     }));
   };
 
-  const updateEvent = (eventId, data) => {
+  // 객실 업데이트
+  const updateRoom = (roomId, data) => {
     setFormData(prev => ({
       ...prev,
-      events: prev.events.map(event => 
-        event.id === eventId ? { ...event, ...data } : event
+      rooms: prev.rooms.map(room => 
+        room.id === roomId ? { ...room, ...data } : room
       )
     }));
   };
 
-  // 이미지 업로드 관련 함수
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setDragOver(true);
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    
-    const files = Array.from(e.dataTransfer.files);
-    const imageFiles = files.filter(file => file.type.startsWith('image/'));
-    
-    if (imageFiles.length > 0) {
-      handleImageFiles(imageFiles);
-    }
-  };
-
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files);
-    const imageFiles = files.filter(file => file.type.startsWith('image/'));
-    
-    if (imageFiles.length > 0) {
-      handleImageFiles(imageFiles);
-    }
-    
-    // 같은 파일을 다시 선택할 수 있도록 input 값 초기화
-    e.target.value = '';
-  };
-
-  const handleImageFiles = async (files) => {
-    try {
-      setUploading(true);
-      
-      // FormData 생성
-      const formData = new FormData();
-      files.forEach((file) => {
-        formData.append('images', file);
-      });
-
-      // S3에 이미지 업로드
-      const response = await axiosInstance.post('/imageUpload/hotel/images', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (response.data.success && response.data.images) {
-        // 업로드된 이미지 정보를 formData.images에 추가
-        const uploadedImages = response.data.images.map((img) => ({
-          id: img.id,
-          originUrl: img.originUrl,
-          smallUrl: img.smallUrl || img.originUrl,
-        }));
-
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, ...uploadedImages]
-        }));
-      } else {
-        alert('이미지 업로드에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('이미지 업로드 실패:', error);
-      alert('이미지 업로드 중 오류가 발생했습니다.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const removeImage = (imageId) => {
-    setFormData(prev => {
-      const imageToRemove = prev.images.find(img => img.id === imageId);
-      
-      // 미리보기 URL이 있다면 메모리 해제 (로컬 파일인 경우)
-      if (imageToRemove?.previewUrl) {
-        URL.revokeObjectURL(imageToRemove.previewUrl);
-      }
-      
-      return {
-        ...prev,
-        images: prev.images.filter(img => img.id !== imageId)
-      };
-    });
-  };
-
+  // 다이닝 추가
   const addDining = () => {
     const newDining = {
       id: Date.now(),
@@ -334,12 +227,14 @@ const SettingsPage = () => {
       basePrice: '',
       totalSeats: ''
     };
+    
     setFormData(prev => ({
       ...prev,
       dining: [...prev.dining, newDining]
     }));
   };
 
+  // 다이닝 삭제
   const removeDining = (diningId) => {
     setFormData(prev => ({
       ...prev,
@@ -347,6 +242,7 @@ const SettingsPage = () => {
     }));
   };
 
+  // 다이닝 업데이트
   const updateDining = (diningId, data) => {
     setFormData(prev => ({
       ...prev,
@@ -356,33 +252,56 @@ const SettingsPage = () => {
     }));
   };
 
+  // 저장 핸들러
   const handleSave = async () => {
     try {
-      setLoading(true);
+      setIsSubmitting(true);
       
       const requestData = {
         hotelInfo: {
-          title: formData.hotelInfo.title, // 변경 불가 (업데이트 안함)
-          adress: formData.hotelInfo.adress, // 변경 불가 (업데이트 안함)
-          tel: formData.hotelInfo.phone // Entity 필드명 tel 사용 (변경 불가이지만 DTO 구조 유지)
+          title: formData.hotelInfo.title,
+          adress: formData.hotelInfo.adress,
+          tel: formData.hotelInfo.phone,
+          imageUrl: formData.hotelInfo.imageUrl,
+          latitude: formData.hotelInfo.latitude,
+          longitude: formData.hotelInfo.longitude
         },
         hotelDetail: {
-          reservationlodging: formData.hotelDetail.description, // Entity 필드명
-          foodplace: formData.hotelDetail.foodplace, // Entity 필드명
-          scalelodging: formData.hotelDetail.scale, // Entity 필드명
-          parkinglodging: formData.hotelDetail.parkinglodging // Entity 필드명
+          reservationlodging: formData.hotelDetail.reservationlodging,
+          foodplace: formData.hotelDetail.foodplace,
+          scalelodging: formData.hotelDetail.scalelodging,
+          parkinglodging: formData.hotelDetail.parkinglodging
         },
         area: {
-          areaCode: formData.area.region, // Entity 필드명 (변경 불가)
+          areaCode: formData.area.region,
+          transportation: formData.area.transportation
         },
         images: formData.images.map(img => ({
-          id: img.id, // Long 타입으로 전송 (타임스탬프 값 포함)
+          id: img.id || null,
           originUrl: img.originUrl,
           smallUrl: img.smallUrl
+        })),
+        rooms: formData.rooms.map(room => ({
+          roomIdx: room.roomIdx || null,
+          name: room.name,
+          basePrice: room.price ? parseInt(room.price) : null,
+          capacity: room.capacity || 2,
+          imageUrl: room.imageUrl || '',
+          images: (room.images || []).map((img, idx) => ({
+            roomImageIdx: img.roomImageIdx || null,
+            imageUrl: img.imageUrl || img.originUrl || img.smallUrl || '',
+            imageOrder: img.imageOrder !== undefined ? img.imageOrder : (idx + 1)
+          })).filter(img => img.imageUrl),
+          refundable: room.refundable !== false ? true : false,
+          breakfastIncluded: room.breakfastIncluded === true || room.breakfastIncluded === 1,
+          smoking: room.smoking === true || room.smoking === 1,
+          status: room.status !== undefined ? room.status : 1,
+          roomCount: room.roomCount || 1
         })),
         dining: formData.dining.map(dining => ({
           diningIdx: dining.diningIdx || null,
           name: dining.name,
+          type: dining.type || '',
           operatingHours: dining.operatingHours || '',
           description: dining.description || '',
           basePrice: dining.basePrice ? parseInt(dining.basePrice) : null,
@@ -402,521 +321,9 @@ const SettingsPage = () => {
       console.error('호텔 정보 수정 실패:', error);
       alert('호텔 정보 수정 중 오류가 발생했습니다: ' + (error.response?.data?.message || error.message));
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
-
-  // 시/도는 변경 불가능하므로 districts는 표시만 (필요 시 별도 처리)
-  const diningTypes = [
-    "레스토랑", "카페", "바", "라운지", "룸서비스",
-    "조식당", "한식당", "중식당", "일식당", "양식당", "뷔페", "기타"
-  ];
-
-  const renderBasicInfo = () => (
-    <div className="space-y-8">
-      {/* 호텔 기본 정보 */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">호텔 기본 정보</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              호텔명 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.hotelInfo.title}
-              disabled
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-              placeholder="호텔명을 입력하세요"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              연락처 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="tel"
-              value={formData.hotelInfo.phone}
-              disabled
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-              placeholder="02-1234-5678"
-            />
-          </div>
-
-        
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              주소 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.hotelInfo.adress}
-              disabled
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-              placeholder="상세 주소를 입력하세요"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 지역 정보 */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">지역 정보</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              시/도
-            </label>
-            <input
-              type="text"
-              value={selectedRegion || ''}
-              disabled
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-              placeholder="시/도"
-            />
-          </div>
-
-          
-
-          
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              교통편 안내
-            </label>
-            <textarea
-              value={formData.area.transportation}
-              onChange={(e) => updateFormData('area', { transportation: e.target.value })}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="대중교통 이용 방법을 입력하세요"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 호텔 상세 정보 */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">호텔 상세 정보</h3>
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              호텔 소개
-            </label>
-            <textarea
-              value={formData.hotelDetail.description}
-              onChange={(e) => updateFormData('hotelDetail', { description: e.target.value })}
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="호텔의 특징과 매력을 소개해주세요"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              식당 정보
-            </label>
-            <textarea
-              value={formData.hotelDetail.foodplace}
-              onChange={(e) => updateFormData('hotelDetail', { foodplace: e.target.value })}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="식당 정보를 입력하세요"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                호텔 규모
-              </label>
-              <input
-                type="text"
-                value={formData.hotelDetail.scale}
-                onChange={(e) => updateFormData('hotelDetail', { scale: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="예: 지하 1층, 지상 10층, 총 120개 객실"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                주차 정보
-              </label>
-              <input
-                type="text"
-                value={formData.hotelDetail.parkinglodging}
-                onChange={(e) => updateFormData('hotelDetail', { parkinglodging: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="예: 주차장 위치, 요금, 운영시간 등을 입력하세요"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-      
-    </div>
-  );
-
-  const renderImagesEvents = () => (
-    <div className="space-y-8">
-      {/* 호텔 이미지 */}
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">호텔 이미지</h3>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFileSelect}
-            className="hidden"
-            id="image-upload"
-          />
-          <label
-            htmlFor="image-upload"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer text-sm"
-          >
-            이미지 선택
-          </label>
-        </div>
-        <p className="text-sm text-gray-500 mb-4">
-          호텔의 외관, 로비, 객실 등 다양한 이미지를 업로드하세요. (선택사항)
-        </p>
-        
-        {/* 이미지 업로드 영역 */}
-        <div
-          className={`border-2 border-dashed rounded-lg p-8 transition-colors ${
-            dragOver 
-              ? "border-blue-500 bg-blue-50" 
-              : "border-gray-300 hover:border-gray-400"
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {formData.images.length === 0 ? (
-            // 이미지가 없을 때 안내 메시지
-            <div className="text-center">
-              <div className="text-gray-400 text-6xl mb-4">📸</div>
-              <h4 className="text-lg font-medium text-gray-900 mb-2">
-                이미지를 드래그하여 업로드하세요
-              </h4>
-              <p className="text-gray-500 mb-4">
-                또는 위의 이미지 선택 버튼을 클릭하여 파일을 선택하세요
-              </p>
-              <p className="text-xs text-gray-400">
-                JPG, PNG, GIF 파일만 업로드 가능 (최대 10MB)
-              </p>
-            </div>
-          ) : (
-            // 이미지가 있을 때 그리드로 표시
-            <div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {formData.images.map((image, index) => (
-                  <div key={image.id} className="relative group">
-                    <div className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                      {image.previewUrl || image.smallUrl || image.originUrl ? (
-                        <img 
-                          src={image.previewUrl || image.smallUrl || image.originUrl} 
-                          alt="호텔 이미지" 
-                          className="w-full h-full object-cover" 
-                        />
-                      ) : (
-                        <span className="text-gray-400 text-2xl">🖼️</span>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => removeImage(image.id)}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-sm hover:bg-red-600"
-                    >
-                      ×
-                    </button>
-                    {index === 0 && (
-                      <div className="absolute bottom-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                        대표 이미지
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 text-center">
-                <p className="text-xs text-gray-400">
-                  더 많은 이미지를 추가하려면 드래그하거나 이미지 선택 버튼을 사용하세요
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 이벤트 관리 */}
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">이벤트 관리</h3>
-          <button
-            onClick={addEvent}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            + 이벤트 추가
-          </button>
-        </div>
-
-        {formData.events.length === 0 ? (
-          <div className="text-center py-8 bg-gray-50 rounded-lg">
-            <div className="text-gray-400 text-4xl mb-2">🎉</div>
-            <p className="text-gray-500">등록된 이벤트가 없습니다</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {formData.events.map((event, index) => (
-              <div key={event.id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex justify-between items-start mb-4">
-                  <h4 className="font-medium text-gray-900">이벤트 {index + 1}</h4>
-                  <button
-                    onClick={() => removeEvent(event.id)}
-                    className="text-red-400 hover:text-red-600"
-                  >
-                    삭제
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      이벤트 제목
-                    </label>
-                    <input
-                      type="text"
-                      value={event.title || ''}
-                      onChange={(e) => updateEvent(event.id, { title: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="예: 신규 오픈 특가"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      할인율 (%)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={event.discount || ''}
-                      onChange={(e) => updateEvent(event.id, { discount: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="20"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      시작일
-                    </label>
-                    <input
-                      type="date"
-                      value={event.startDate || ''}
-                      onChange={(e) => updateEvent(event.id, { startDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      종료일
-                    </label>
-                    <input
-                      type="date"
-                      value={event.endDate || ''}
-                      onChange={(e) => updateEvent(event.id, { endDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      이벤트 설명
-                    </label>
-                    <textarea
-                      value={event.description || ''}
-                      onChange={(e) => updateEvent(event.id, { description: e.target.value })}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="이벤트 상세 내용을 입력하세요"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {/* 업로드 중 표시 */}
-        {uploading && (
-          <div className="mt-4 text-center">
-            <div className="inline-flex items-center space-x-2 text-blue-600">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-              <span className="text-sm">이미지 업로드 중...</span>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderDining = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-medium text-gray-900">다이닝 관리</h3>
-          <p className="text-sm text-gray-500">호텔 내 레스토랑, 카페, 바 등을 관리하세요</p>
-        </div>
-        <button
-          onClick={addDining}
-          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-        >
-          + 다이닝 추가
-        </button>
-      </div>
-
-      {formData.dining.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <div className="text-gray-400 text-6xl mb-4">🍽️</div>
-          <h4 className="text-lg font-medium text-gray-900 mb-2">등록된 다이닝이 없습니다</h4>
-          <p className="text-gray-500 mb-4">호텔 내 레스토랑이나 카페가 있다면 추가해보세요</p>
-          <button
-            onClick={addDining}
-            className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          >
-            다이닝 추가하기
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {formData.dining.map((item, index) => (
-            <div key={item.id} className="border border-gray-200 rounded-lg p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h4 className="text-lg font-medium text-gray-900">
-                  {item.name || `다이닝 ${index + 1}`}
-                </h4>
-                <button
-                  onClick={() => removeDining(item.id)}
-                  className="text-red-400 hover:text-red-600"
-                >
-                  삭제
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    다이닝명
-                  </label>
-                  <input
-                    type="text"
-                    value={item.name || ''}
-                    onChange={(e) => updateDining(item.id, { name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="예: 그랜드 레스토랑"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    다이닝 타입
-                  </label>
-                  <select
-                    value={item.type || ''}
-                    onChange={(e) => updateDining(item.id, { type: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">타입을 선택하세요</option>
-                    {diningTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    운영시간
-                  </label>
-                  <input
-                    type="text"
-                    value={item.operatingHours || ''}
-                    onChange={(e) => updateDining(item.id, { operatingHours: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="예: 06:00 - 22:00"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    기본 가격
-                  </label>
-                  <input
-                    type="number"
-                    value={item.basePrice || ''}
-                    onChange={(e) => updateDining(item.id, { basePrice: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="15000"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    수용 인원
-                  </label>
-                  <input
-                    type="number"
-                    value={item.totalSeats || ''}
-                    onChange={(e) => updateDining(item.id, { totalSeats: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="100"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    대표 메뉴
-                  </label>
-                  <textarea
-                    value={item.menu || ''}
-                    onChange={(e) => updateDining(item.id, { menu: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="대표 메뉴나 특별한 요리를 입력하세요"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    상세 설명
-                  </label>
-                  <textarea
-                    value={item.description || ''}
-                    onChange={(e) => updateDining(item.id, { description: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="다이닝의 특징, 분위기, 서비스 등을 자세히 설명하세요"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const tabs = [
-    { id: 'basic', name: '기본 정보', icon: '📋' },
-    { id: 'images', name: '이미지/이벤트', icon: '📸' },
-    { id: 'dining', name: '다이닝', icon: '🍽️' }
-  ];
 
   if (loading) {
     return (
@@ -933,58 +340,31 @@ const SettingsPage = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 헤더 */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">호텔 설정</h2>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">호텔 설정</h1>
           <p className="text-gray-600">호텔 정보와 운영 설정을 관리하세요</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-            <h2 className="text-2xl font-bold text-white">🏨 호텔 정보</h2>
-            <p className="text-blue-100 mt-1">
-              호텔의 기본 정보, 이미지, 다이닝 정보를 확인하고 수정할 수 있습니다
-            </p>
-          </div>
-
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6" aria-label="Tabs">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setCurrentTab(tab.id)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                    currentTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="mr-2">{tab.icon}</span>
-                  {tab.name}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          <div className="p-6">
-            {currentTab === 'basic' && renderBasicInfo()}
-            {currentTab === 'images' && renderImagesEvents()}
-            {currentTab === 'dining' && renderDining()}
-          </div>
-
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={loading}
-                className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? '저장 중...' : '저장하기'}
-              </button>
-            </div>
-          </div>
-        </div>
+        {/* 폼 컴포넌트 */}
+        <HotelRegistrationForm
+          mode="edit"
+          formData={formData}
+          updateFormData={updateFormData}
+          addRoom={addRoom}
+          removeRoom={removeRoom}
+          updateRoom={updateRoom}
+          addDining={addDining}
+          removeDining={removeDining}
+          updateDining={updateDining}
+          currentTab={currentTab}
+          setCurrentTab={setCurrentTab}
+          errors={errors}
+          initialData={initialData}
+          onSubmit={handleSave}
+          isSubmitting={isSubmitting}
+        />
       </div>
     </AdminLayout>
   );
