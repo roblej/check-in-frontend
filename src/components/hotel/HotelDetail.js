@@ -7,6 +7,7 @@ import HotelGallery from "./HotelGallery";
 import HotelInfo from "./HotelInfo";
 import HotelAmenities from "./HotelAmenities";
 import HotelReviews from "./HotelReviews";
+import HotelInquiries from "./HotelInquiries";
 import HotelLocation from "./HotelLocation";
 import HotelPolicy from "./HotelPolicy";
 import HotelHeader from "./HotelHeader";
@@ -469,6 +470,14 @@ const HotelDetail = ({
             rating={hotelData.rating}
             reviewCount={hotelData.reviewCount}
           />
+        </section>
+
+        {/* 문의 */}
+        <section
+          ref={setSectionRef("inquiries")}
+          aria-labelledby="inquiries-heading"
+        >
+          <HotelInquiries contentId={contentId} />
         </section>
 
         {/* 위치 정보 */}

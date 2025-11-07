@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Button from '@/components/Button';
@@ -9,8 +9,10 @@ import { centerAPI } from '@/lib/api/center';
 
 export default function InquiryWritePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(false);
+  const contentId = searchParams.get('contentId'); // URL에서 contentId 가져오기
 
   // 폼 상태
   const [formData, setFormData] = useState({
@@ -86,6 +88,7 @@ export default function InquiryWritePage() {
         mainCategory: '문의',
         subCategory: formData.category,
         content: formData.content,
+        contentId: contentId || null, // 호텔 문의인 경우 contentId 포함
         priority: formData.priority,
         customerIdx: customer.customerIdx,
         status: 0, // 0: 대기
@@ -93,7 +96,12 @@ export default function InquiryWritePage() {
       });
 
       alert('문의가 성공적으로 등록되었습니다!');
-      router.push('/center');
+      // 호텔 문의인 경우 호텔 상세 페이지로, 아니면 고객센터로
+      if (contentId) {
+        router.push(`/hotel/${contentId}`);
+      } else {
+        router.push('/center');
+      }
     } catch (error) {
       console.error('문의 등록 실패:', error);
       alert(error.response?.data?.message || '문의 등록 중 오류가 발생했습니다.');
@@ -125,10 +133,12 @@ export default function InquiryWritePage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            1:1 문의 작성
+            {contentId ? '호텔 문의 작성' : '1:1 문의 작성'}
           </h1>
           <p className="text-gray-600">
-            문의하실 내용을 작성해주세요. 빠른 시일 내에 답변드리겠습니다.
+            {contentId 
+              ? '호텔에 대한 문의사항을 작성해주세요. 빠른 시일 내에 답변드리겠습니다.'
+              : '문의하실 내용을 작성해주세요. 빠른 시일 내에 답변드리겠습니다.'}
           </p>
         </div>
 

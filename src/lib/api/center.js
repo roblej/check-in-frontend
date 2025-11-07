@@ -9,7 +9,10 @@ export const centerAPI = {
 
   // 문의 목록 조회
   getInquiries: async (searchParams) => {
-    const response = await axiosInstance.post("/center/posts/search", searchParams);
+    const response = await axiosInstance.post("/center/posts/search", {
+      ...searchParams,
+      // contentId가 있으면 포함, 없으면 포함하지 않음 (백엔드에서 null로 처리)
+    });
     return response.data;
   },
 
@@ -40,6 +43,12 @@ export const centerAPI = {
   // 답변 조회
   getAnswer: async (centerIdx) => {
     const response = await axiosInstance.get(`/center/posts/${centerIdx}/answer`);
+    return response.data;
+  },
+
+  // 호텔 신고 중복 확인
+  checkReportExists: async (contentId) => {
+    const response = await axiosInstance.get(`/center/reports/check/${contentId}`);
     return response.data;
   },
 };
