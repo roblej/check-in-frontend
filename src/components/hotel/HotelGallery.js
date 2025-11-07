@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { hotelAPI } from "@/lib/api/hotel";
 
@@ -272,29 +272,79 @@ const HotelGallery = ({ contentId, isModal = false }) => {
           {/* 썸네일 네비게이션 */}
           {images.length > 1 && (
             <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 flex space-x-2 max-w-full overflow-x-auto">
-              {images.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() =>
-                    setGalleryModal((prev) => ({
-                      ...prev,
-                      currentIndex: index,
-                    }))
-                  }
-                  className={`relative w-16 h-12 flex-shrink-0 rounded overflow-hidden ${
-                    index === galleryModal.currentIndex
-                      ? "ring-2 ring-white"
-                      : "opacity-70 hover:opacity-100"
-                  } transition-opacity`}
-                >
-                  <Image
-                    src={image.smallUrl || image.originUrl}
-                    alt={`썸네일 ${index + 1}`}
-                    fill
-                    className="object-cover"
-                  />
-                </button>
-              ))}
+              {images.map((image, index) => {
+                // 썸네일: smallUrl 우선 사용, 없으면 originUrl 사용
+                const primaryUrl = image.smallUrl || image.originUrl;
+                const fallbackUrl = image.smallUrl ? image.originUrl : null;
+                const hasValidUrl = primaryUrl && primaryUrl.trim() !== "";
+
+                return (
+                  <button
+                    key={index}
+                    onClick={() =>
+                      setGalleryModal((prev) => ({
+                        ...prev,
+                        currentIndex: index,
+                      }))
+                    }
+                    className={`relative w-16 h-12 flex-shrink-0 rounded overflow-hidden ${
+                      index === galleryModal.currentIndex
+                        ? "ring-2 ring-white"
+                        : "opacity-70 hover:opacity-100"
+                    } transition-opacity`}
+                    style={{ backgroundColor: "#1f2937" }}
+                  >
+                    {hasValidUrl ? (
+                      <img
+                        src={primaryUrl}
+                        alt={`썸네일 ${index + 1}`}
+                        data-fallback-url={fallbackUrl || ""}
+                        data-original-url={primaryUrl}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        style={{
+                          display: "block",
+                          minWidth: "100%",
+                          minHeight: "100%",
+                          zIndex: 1,
+                        }}
+                        loading="eager"
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          const fallback = img.dataset.fallbackUrl;
+
+                          // smallUrl 로드 실패 시 originUrl로 fallback
+                          if (fallback && !img.dataset.fallbackTried) {
+                            img.dataset.fallbackTried = "true";
+                            img.src = fallback;
+                            return;
+                          }
+                          // fallback도 실패하거나 없으면 기본 아이콘 표시
+                          img.style.display = "none";
+                          const parent = img.parentElement;
+                          if (parent) {
+                            let fallbackEl = parent.querySelector(
+                              ".thumbnail-fallback"
+                            );
+                            if (!fallbackEl) {
+                              fallbackEl = document.createElement("div");
+                              fallbackEl.className =
+                                "thumbnail-fallback absolute inset-0 flex items-center justify-center";
+                              fallbackEl.style.zIndex = "2";
+                              fallbackEl.innerHTML =
+                                '<span class="text-white text-xs">🖼️</span>';
+                              parent.appendChild(fallbackEl);
+                            }
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-white text-xs">🖼️</span>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

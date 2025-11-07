@@ -43,13 +43,23 @@ function OAuthErrorHandler() {
 
 function LoginForm() {
   const router = useRouter();
-  const { setAccessToken, setInlogged ,isInlogged} = useCustomerStore();
-  const { setAdminIdx, setContentId, setHotelInfo, setAdminLoggedIn, fetchContentIdByAdminIdx } = useAdminStore();
+  const searchParams = useSearchParams();
+  const { setAccessToken, setInlogged, isInlogged } = useCustomerStore();
+  const {
+    setAdminIdx,
+    setContentId,
+    setHotelInfo,
+    setAdminLoggedIn,
+    fetchContentIdByAdminIdx,
+  } = useAdminStore();
   const [formData, setFormData] = useState({
     id: "",
     password: "",
     role: "customer", // 기본값: 회원
   });
+
+  // returnUrl 파라미터 읽기 (이전 페이지로 돌아가기 위해)
+  const returnUrl = searchParams.get("returnUrl");
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,7 +67,8 @@ function LoginForm() {
   let accessToken = "";
 
   const login_url = "/api/login";
-  const backendBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888";
+  const backendBaseUrl =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888";
   const naverLogin_url = `${backendBaseUrl}/oauth2/authorization/naver`;
   const kakaoLogin_url = `${backendBaseUrl}/oauth2/authorization/kakao`;
   // 네이버 로그인을 위한 함수
@@ -70,8 +81,6 @@ function LoginForm() {
       [name]: value,
     }));
 
-   
-    
     // 실시간 유효성 검사 (에러 제거)
     if (errors[name]) {
       setErrors((prev) => ({
@@ -81,16 +90,16 @@ function LoginForm() {
     }
   };
 
-  async function login(){
-    await axios.post(login_url, formData).then(function(res){
+  async function login() {
+    await axios.post(login_url, formData).then(function (res) {
       console.log("res.data");
       console.log(res.data);
-      if(res.data){
+      if (res.data) {
         accessToken = res.data;
         setInlogged(true);
       }
-    })
-  };
+    });
+  }
 
   // 유효성 검사 함수
   const validateForm = () => {
@@ -111,14 +120,14 @@ function LoginForm() {
   // 폼 제출 핸들러
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
     await login();
     setIsSubmitting(true);
 
-    if(isInlogged()) {
+    if (isInlogged()) {
       // TODO: API 연동
       // const response = await axios.post('/api/auth/login', {
       //   id: formData.id,
@@ -132,31 +141,38 @@ function LoginForm() {
       //zustand에 사용자 정보 저장
 
       //로그인 버튼 로그아웃으로 변경
-      
+
       // 성공 시 사용자 타입에 따라 리다이렉트
       alert("로그인 성공");
-      
+
       setAccessToken(accessToken);
+
+      // returnUrl이 있으면 해당 페이지로 이동 (관리자는 제외)
+      if (returnUrl && formData.role !== "admin") {
+        // 관리자가 아닌 경우에만 returnUrl 사용
+        router.push(returnUrl);
+        return;
+      }
 
       // 사업자(admin)인 경우 관리자 화면으로 이동
       if (formData.role === "admin") {
         try {
           // 토큰에서 adminIdx 추출
-          const userInfo = JSON.parse(atob(accessToken.split('.')[1]));
+          const userInfo = JSON.parse(atob(accessToken.split(".")[1]));
           const adminIdx = userInfo.adminIdx;
-          
+
           if (adminIdx) {
             // adminIdx를 쿠키에 저장
             setAdminIdxCookie(adminIdx, 7); // 7일
-            
+
             // adminIdx로 contentId 가져오기
             const contentId = await fetchContentIdByAdminIdx(adminIdx);
-            
+
             if (contentId) {
               setAdminLoggedIn(true);
-              console.log('관리자 로그인 성공:', { adminIdx, contentId });
+              console.log("관리자 로그인 성공:", { adminIdx, contentId });
             } else {
-              console.warn('contentId를 가져올 수 없습니다.');
+              console.warn("contentId를 가져올 수 없습니다.");
               // 호텔 등록 페이지로 이동
               alert("호텔 등록 페이지로 이동합니다.");
               router.push("/hotel/register");
@@ -164,9 +180,9 @@ function LoginForm() {
             }
           }
         } catch (error) {
-          console.error('관리자 정보 처리 실패:', error);
+          console.error("관리자 정보 처리 실패:", error);
         }
-        
+
         router.push("/admin");
       } else {
         // 일반 회원인 경우 메인 페이지로 이동
@@ -177,8 +193,7 @@ function LoginForm() {
         general: "아이디 또는 비밀번호가 올바르지 않습니다.",
       });
     }
-      setIsSubmitting(false);
-    
+    setIsSubmitting(false);
   };
 
   // Enter 키 처리
@@ -214,7 +229,9 @@ function LoginForm() {
                 value={formData.id}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                className={`${styles.input} ${errors.id ? styles.inputError : ""}`}
+                className={`${styles.input} ${
+                  errors.id ? styles.inputError : ""
+                }`}
                 placeholder="아이디를 입력해주세요"
                 autoComplete="username"
               />
@@ -235,7 +252,9 @@ function LoginForm() {
                 value={formData.password}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                className={`${styles.input} ${errors.password ? styles.inputError : ""}`}
+                className={`${styles.input} ${
+                  errors.password ? styles.inputError : ""
+                }`}
                 placeholder="비밀번호를 입력해주세요"
                 autoComplete="current-password"
               />
@@ -257,7 +276,7 @@ function LoginForm() {
                   <span>로그인 상태 유지</span>
                 </label>
               </div>
-              
+
               <div className={styles.userTypeGroup}>
                 <label className={styles.radioLabel}>
                   <input
@@ -326,7 +345,7 @@ function LoginForm() {
                 className={styles.naverLoginButton}
                 onClick={() => {
                   // OAuth 로그인 시도 플래그 설정
-                  sessionStorage.setItem('oauth_attempted', 'true');
+                  sessionStorage.setItem("oauth_attempted", "true");
                   window.location.href = naverLogin_url;
                 }}
               >
@@ -341,7 +360,7 @@ function LoginForm() {
                 type="button"
                 className={styles.kakaoLoginButton}
                 onClick={() => {
-                  sessionStorage.setItem('oauth_attempted', 'true');
+                  sessionStorage.setItem("oauth_attempted", "true");
                   window.location.href = kakaoLogin_url;
                 }}
               >
@@ -362,18 +381,20 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className={styles.container}>
-          <div className={styles.loginBox}>
-            <h1 className={styles.title}>로그인</h1>
-            <p className={styles.subtitle}>CheckIn에 오신 것을 환영합니다</p>
-            <div>로딩 중...</div>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50">
+          <Header />
+          <div className={styles.container}>
+            <div className={styles.loginBox}>
+              <h1 className={styles.title}>로그인</h1>
+              <p className={styles.subtitle}>CheckIn에 오신 것을 환영합니다</p>
+              <div>로딩 중...</div>
+            </div>
           </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <OAuthErrorHandler />
       <LoginForm />
     </Suspense>

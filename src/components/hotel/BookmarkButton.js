@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useCustomerStore } from "@/stores/customerStore";
 import axiosInstance from "@/lib/axios";
 
@@ -12,6 +13,7 @@ import axiosInstance from "@/lib/axios";
  * @param {string} [props.className] - 추가 CSS 클래스
  */
 const BookmarkButton = ({ contentId, size = "small", className = "" }) => {
+  const router = useRouter();
   const inlogged = useCustomerStore((state) => state.inlogged);
   const [bookmarkedHotels, setBookmarkedHotels] = useState(new Set());
   const hotelsave_url = "/bookmark/hotelbookmark/save";
@@ -21,16 +23,24 @@ const BookmarkButton = ({ contentId, size = "small", className = "" }) => {
   // 로그인 상태일 때 북마크 목록 가져오기
   useEffect(() => {
     if (inlogged) {
-      axiosInstance.get(hotelbookmarklist_url).then(res => {
-        console.log('북마크 목록 API 응답:', res.data);
-        // 북마크 목록에서 contentId 추출하여 Set에 추가
-        if (res.data && Array.isArray(res.data)) {
-          const bookmarkContentIds = res.data.map(bookmark => bookmark.contentId || bookmark);
-          setBookmarkedHotels(new Set(bookmarkContentIds));
-        }
-      }).catch(err => {
-        console.error('북마크 목록 API 에러:', err.response?.data?.message || err.message);
-      });
+      axiosInstance
+        .get(hotelbookmarklist_url)
+        .then((res) => {
+          console.log("북마크 목록 API 응답:", res.data);
+          // 북마크 목록에서 contentId 추출하여 Set에 추가
+          if (res.data && Array.isArray(res.data)) {
+            const bookmarkContentIds = res.data.map(
+              (bookmark) => bookmark.contentId || bookmark
+            );
+            setBookmarkedHotels(new Set(bookmarkContentIds));
+          }
+        })
+        .catch((err) => {
+          console.error(
+            "북마크 목록 API 에러:",
+            err.response?.data?.message || err.message
+          );
+        });
     } else {
       // 로그아웃 상태일 때: 북마크 목록 초기화
       setBookmarkedHotels(new Set());
@@ -54,43 +64,65 @@ const BookmarkButton = ({ contentId, size = "small", className = "" }) => {
 
   const handleClick = (e) => {
     e.stopPropagation();
-    
-    // 로그인하지 않은 경우 alert 표시
+
+    // 로그인하지 않은 경우 확인 후 로그인 페이지로 이동
     if (!inlogged) {
-      alert("로그인 후 사용해주세요");
+      const shouldLogin = confirm(
+        "로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?"
+      );
+      if (shouldLogin) {
+        // 현재 URL을 returnUrl로 전달
+        const currentUrl =
+          typeof window !== "undefined"
+            ? window.location.pathname + window.location.search
+            : "/";
+        router.push(`/login?returnUrl=${encodeURIComponent(currentUrl)}`);
+      }
       return;
     }
-    
+
     if (isBookmarked) {
       // 꽉 찬 하트일 때: 북마크 삭제
-      axiosInstance.get(hotelbookmarkdelete_url, {params: {contentId: contentId}}).then(res => {
-        console.log('북마크 삭제:', res.data);
-        // 삭제 성공 시 상태 업데이트
-        if (res.data && res.data.includes('success')) {
-          setBookmarkedHotels(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(contentId);
-            return newSet;
-          });
-        }
-      }).catch(err => {
-        console.error('북마크 삭제 에러:', err.response?.data?.message || err.message);
-      });
+      axiosInstance
+        .get(hotelbookmarkdelete_url, { params: { contentId: contentId } })
+        .then((res) => {
+          console.log("북마크 삭제:", res.data);
+          // 삭제 성공 시 상태 업데이트
+          if (res.data && res.data.includes("success")) {
+            setBookmarkedHotels((prev) => {
+              const newSet = new Set(prev);
+              newSet.delete(contentId);
+              return newSet;
+            });
+          }
+        })
+        .catch((err) => {
+          console.error(
+            "북마크 삭제 에러:",
+            err.response?.data?.message || err.message
+          );
+        });
     } else {
       // 빈 하트일 때: 북마크 추가
-      axiosInstance.get(hotelsave_url, {params: {contentId: contentId}}).then(res => {
-        console.log('찜하기 클릭:', res.data);
-        // res.data에 success가 포함되어 있으면 찜하기 상태 업데이트
-        if (res.data && res.data.includes('success')) {
-          setBookmarkedHotels(prev => {
-            const newSet = new Set(prev);
-            newSet.add(contentId);
-            return newSet;
-          });
-        }
-      }).catch(err => {
-        console.error('찜하기 기능 에러:', err.response?.data?.message || err.message);
-      });
+      axiosInstance
+        .get(hotelsave_url, { params: { contentId: contentId } })
+        .then((res) => {
+          console.log("찜하기 클릭:", res.data);
+          // res.data에 success가 포함되어 있으면 찜하기 상태 업데이트
+          if (res.data && res.data.includes("success")) {
+            setBookmarkedHotels((prev) => {
+              const newSet = new Set(prev);
+              newSet.add(contentId);
+              return newSet;
+            });
+          }
+        })
+        .catch((err) => {
+          console.error(
+            "찜하기 기능 에러:",
+            err.response?.data?.message || err.message
+          );
+        });
     }
   };
 
@@ -134,4 +166,3 @@ const BookmarkButton = ({ contentId, size = "small", className = "" }) => {
 };
 
 export default BookmarkButton;
-
