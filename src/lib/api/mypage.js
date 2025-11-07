@@ -84,4 +84,18 @@ export const mypageAPI = {
     const response = await axiosInstance.delete(`/reviews/${reviewId}`);
     return response.data;
   },
+
+  // 다이닝 예약 상세 조회 (취소용)
+  getDiningReservationDetailForCancel: async (reservationId) => {
+    const response = await axiosInstance.get(`/reservations/dining/${reservationId}/detail`);
+    return response.data;
+  },
+
+  // 다이닝 예약 취소
+  cancelDiningReservation: async (reservationId, cancelReason) => {
+    const response = await axiosInstance.post(`/reservations/dining/${reservationId}/cancel`, {
+      cancelReason: cancelReason,
+    });
+    return response.data;
+  },
 };

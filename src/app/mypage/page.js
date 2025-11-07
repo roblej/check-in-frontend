@@ -72,6 +72,9 @@ function MyPageContent() {
   // 양도거래 등록 상태
   const [tradeStatus, setTradeStatus] = useState({});
 
+  // 신고 상태 (contentId별)
+  const [reportStatus, setReportStatus] = useState({});
+
   // 작성 가능한 리뷰 상태
   const [writableReviews, setWritableReviews] = useState([]);
   const [writableReviewsLoading, setWritableReviewsLoading] = useState(false);
@@ -233,9 +236,12 @@ function MyPageContent() {
       });
 
   // 예약별 양도거래 등록 여부 확인
-      await checkTradeStatus(upcomingData?.reservations || []);
+       await checkTradeStatus(upcomingData?.reservations || []);
 
-    } catch (error) {
+       // 이용완료 예약의 신고 상태 확인
+       await checkReportStatus(completedData?.reservations || []);
+
+     } catch (error) {
       console.error('❌ 예약 내역 로드 실패:', error);
       
       if (error.response?.status === 401) {
@@ -513,6 +519,14 @@ function MyPageContent() {
     router.push(`/mypage/review/write?reservationId=${reservation.id}`);
   };
 
+  const handleReport = (reservation) => {
+    if (reservation.contentId) {
+      router.push(`/mypage/report/${reservation.contentId}`);
+    } else {
+      alert('호텔 정보를 찾을 수 없습니다.');
+    }
+  };
+
   const handleRebook = (reservation) => {
     // 호텔 상세 페이지로 이동 (재예약)
     router.push(`/hotel/${reservation.contentId}`);
@@ -593,6 +607,34 @@ function MyPageContent() {
     const reservIdx = reservation.reservIdx || reservation.id;
     const status = tradeStatus[reservIdx];
     return status?.status === 2; // status 2 = 거래완료
+  };
+
+  // 신고 상태 확인
+  const checkReportStatus = async (reservations) => {
+    const { centerAPI } = await import('@/lib/api/center');
+    const statusMap = {};
+
+    for (const reservation of reservations) {
+      const contentId = reservation.contentId;
+      if (contentId) {
+        try {
+          const data = await centerAPI.checkReportExists(contentId);
+          statusMap[contentId] = data.exists;
+        } catch (error) {
+          console.error(`신고 상태 확인 실패 (contentId: ${contentId}):`, error);
+          statusMap[contentId] = false; // 확인 실패 시 신고 안한 것으로 간주
+        }
+      }
+    }
+
+    setReportStatus(statusMap);
+  };
+
+  // 특정 예약의 신고 여부 확인
+  const isReported = (reservation) => {
+    const contentId = reservation.contentId;
+    if (!contentId) return false;
+    return reportStatus[contentId] || false;
   };
 
   // 작성한 리뷰 상태
@@ -1151,6 +1193,19 @@ function MyPageContent() {
                       >
                         {isTradeRegistered(reservation) ? '양도거래 수정' : '양도거래 등록'}
                       </button>
+                    )}
+                    {reservationTab === 'completed' && reservation.status === '이용완료' && reservationType === 'hotel' && reservation.contentId && !isReported(reservation) && (
+                      <button 
+                        onClick={() => handleReport(reservation)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap bg-red-50 hover:bg-red-100 text-red-600"
+                      >
+                        신고
+                      </button>
+                    )}
+                    {reservationTab === 'completed' && reservation.status === '이용완료' && reservationType === 'hotel' && reservation.contentId && isReported(reservation) && (
+                      <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-500 whitespace-nowrap">
+                        신고 완료
+                      </span>
                     )}
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       reservation.status === '예약확정' ? 'bg-blue-100 text-blue-700' :
