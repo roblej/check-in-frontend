@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { centerAPI } from "@/lib/api/center";
-import { MessageCircle, Plus, Lock } from "lucide-react";
+import { MessageCircle, Plus, Lock, ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
 
 /**
  * 호텔 문의 컴포넌트
@@ -16,6 +16,9 @@ const HotelInquiries = ({ contentId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [expandedAnswers, setExpandedAnswers] = useState(new Set());
+  const [answers, setAnswers] = useState({});
+  const [loadingAnswers, setLoadingAnswers] = useState(new Set());
   const loadedContentIdRef = useRef(null);
 
   // 현재 로그인한 사용자 정보 가져오기
@@ -130,6 +133,50 @@ const HotelInquiries = ({ contentId }) => {
     router.push(`/center/inquiry?contentId=${contentId}`);
   };
 
+  // 답변 토글 핸들러
+  const handleToggleAnswer = async (centerIdx) => {
+    const isExpanded = expandedAnswers.has(centerIdx);
+    
+    if (isExpanded) {
+      // 닫기
+      setExpandedAnswers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(centerIdx);
+        return newSet;
+      });
+    } else {
+      // 열기 - 답변 로드
+      setExpandedAnswers(prev => new Set(prev).add(centerIdx));
+      
+      // 이미 답변을 로드했으면 다시 로드하지 않음
+      if (answers[centerIdx]) {
+        return;
+      }
+
+      setLoadingAnswers(prev => new Set(prev).add(centerIdx));
+      try {
+        const answerData = await centerAPI.getAnswer(centerIdx);
+        setAnswers(prev => ({
+          ...prev,
+          [centerIdx]: answerData
+        }));
+      } catch (error) {
+        console.error("답변 로드 실패:", error);
+        // 답변이 없는 경우도 있으므로 에러는 무시
+        setAnswers(prev => ({
+          ...prev,
+          [centerIdx]: null
+        }));
+      } finally {
+        setLoadingAnswers(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(centerIdx);
+          return newSet;
+        });
+      }
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg p-6 mb-6 shadow" id="inquiries">
       {/* 헤더 */}
@@ -213,6 +260,52 @@ const HotelInquiries = ({ contentId }) => {
                       {inquiry.content}
                     </p>
                   </div>
+
+                  {/* 답변 토글 버튼 및 답변 표시 */}
+                  {inquiry.status === 2 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <button
+                        onClick={() => handleToggleAnswer(inquiry.centerIdx)}
+                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                      >
+                        {expandedAnswers.has(inquiry.centerIdx) ? (
+                          <>
+                            <ChevronUp className="w-4 h-4" />
+                            답변 숨기기
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4" />
+                            답변 보기
+                          </>
+                        )}
+                      </button>
+
+                      {expandedAnswers.has(inquiry.centerIdx) && (
+                        <div className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                          {loadingAnswers.has(inquiry.centerIdx) ? (
+                            <div className="text-center py-4 text-gray-500">
+                              답변을 불러오는 중...
+                            </div>
+                          ) : answers[inquiry.centerIdx] ? (
+                            <div>
+                              <div className="flex items-center gap-2 mb-3">
+                                <MessageSquare className="w-5 h-5 text-blue-600" />
+                                <span className="font-semibold text-blue-900">호텔 답변</span>
+                              </div>
+                              <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                                {answers[inquiry.centerIdx].content}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4 text-gray-500">
+                              답변이 없습니다.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                 </div>
               );
