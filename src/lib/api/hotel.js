@@ -126,4 +126,12 @@ export const hotelAPI = {
     const response = await axiosInstance.get(`/hotels/admin/${adminIdx}`);
     return response.data;
   },
+
+  // 객실 이미지 목록 조회
+  getRoomImages: async (contentId, roomIdx) => {
+    const response = await axiosInstance.get(
+      `/hotels/${contentId}/rooms/${roomIdx}/images`
+    );
+    return response.data;
+  },
 };
