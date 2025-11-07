@@ -15,11 +15,6 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
   const [hotelData, setHotelData] = useState(null);
   const [rooms, setRooms] = useState([]);
   const [dinings, setDinings] = useState([]);
-  const [reviews, setReviews] = useState([]);
-  const [reviewSummary, setReviewSummary] = useState({
-    rating: 0,
-    reviewCount: 0,
-  });
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const abortControllerRef = useRef(null);
@@ -150,30 +145,6 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
     [calculateAdditionalFee]
   );
 
-  const mapReviewData = useCallback((reviewList) => {
-    const safeList = Array.isArray(reviewList) ? reviewList : [];
-
-    return safeList.map((review) => ({
-      id: review?.id ?? null,
-      userName: review?.userName ?? "익명",
-      date: review?.date ?? "",
-      roomType: review?.roomType ?? "",
-      rating: Number(review?.rating ?? 0),
-      comment: review?.comment ?? "",
-      imageUrl: review?.imageUrl ?? null,
-      imageUrls: Array.isArray(review?.imageUrls)
-        ? review.imageUrls
-        : review?.imageUrl
-        ? [review.imageUrl]
-        : [],
-    }));
-  }, []);
-
-  const mapReviewSummary = useCallback((summary) => ({
-    rating: Number(summary?.rating ?? 0),
-    reviewCount: Number(summary?.reviewCount ?? 0),
-  }), []);
-
   // 데이터 로드
   useEffect(() => {
     let isMounted = true;
@@ -183,8 +154,6 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
       setRooms([]);
       setDinings([]);
       setErrorMessage("");
-      setReviews([]);
-      setReviewSummary({ rating: 0, reviewCount: 0 });
       setIsLoading(true);
       onLoadingChange?.(true);
 
@@ -192,28 +161,23 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
         abortControllerRef.current.abort();
       }
 
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      const signal = controller.signal;
+      abortControllerRef.current = new AbortController();
 
       try {
         const hasDateRange = searchParams?.checkIn && searchParams?.checkOut;
 
         // 호텔 정보, 객실 목록, 다이닝 목록 병렬로 가져오기
-        const [hotelRes, roomsRes, diningsRes, reviewsRes, reviewSummaryRes] =
-          await Promise.all([
-            hotelAPI.getHotelDetail(contentId, { signal }),
-            hotelAPI.getHotelRooms(contentId, {
-              params: {
-                name: searchParams?.roomName || undefined,
-                checkinDate: hasDateRange ? searchParams.checkIn : undefined,
-                checkoutDate: hasDateRange ? searchParams.checkOut : undefined,
-              },
-              signal,
-            }),
-            diningAPI
-              .getDiningsByHotel(contentId)
+        const [hotelRes, roomsRes, diningsRes] = await Promise.all([
+          hotelAPI.getHotelDetail(contentId, {
+            signal: abortControllerRef.current.signal,
+          }),
+          hotelAPI.getHotelRooms(contentId, {
+            name: searchParams?.roomName || undefined,
+            checkinDate: hasDateRange ? searchParams.checkIn : undefined,
+            checkoutDate: hasDateRange ? searchParams.checkOut : undefined,
+            signal: abortControllerRef.current.signal,
+          }),
+          diningAPI.getDiningsByHotel(contentId)
             .then((result) => {
               console.log("다이닝 API 호출 성공:", {
                 contentId,
@@ -230,25 +194,7 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
               console.error("에러 상세:", err.response?.data || err.message);
               return []; // 다이닝이 없어도 에러 처리
             }),
-            hotelAPI
-              .getHotelReviews(contentId, { signal })
-              .catch((err) => {
-                if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") {
-                  return [];
-                }
-                console.error("호텔 리뷰 조회 실패:", err);
-                return [];
-              }),
-            hotelAPI
-              .getHotelReviewSummary(contentId, { signal })
-              .catch((err) => {
-                if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") {
-                  return { rating: 0, reviewCount: 0 };
-                }
-                console.error("호텔 리뷰 요약 조회 실패:", err);
-                return { rating: 0, reviewCount: 0 };
-              }),
-          ]);
+        ]);
 
         const hotel = hotelRes?.data ?? hotelRes;
         const roomList = roomsRes?.data ?? roomsRes;
@@ -291,15 +237,11 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
           hasDateRange,
           searchParams?.adults || 0
         );
-        const mappedReviews = mapReviewData(reviewsRes);
-        const mappedReviewSummary = mapReviewSummary(reviewSummaryRes);
 
         if (isMounted) {
           setHotelData(mappedHotel);
           setRooms(mappedRooms);
           setDinings(activeDinings);
-          setReviews(mappedReviews);
-          setReviewSummary(mappedReviewSummary);
         }
       } catch (err) {
         if (err.name === "AbortError") {
@@ -329,7 +271,6 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
       isMounted = false;
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
-        abortControllerRef.current = null;
       }
     };
   }, [
@@ -337,8 +278,6 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
     searchParams,
     mapHotelData,
     mapRoomDataWithAvailability,
-    mapReviewData,
-    mapReviewSummary,
     onLoadingChange,
   ]);
 
@@ -346,11 +285,8 @@ export const useHotelData = (contentId, searchParams, onLoadingChange) => {
     hotelData,
     rooms,
     dinings,
-    reviews,
-    reviewSummary,
     isLoading,
     errorMessage,
     formatPrice,
   };
 };
-
