@@ -23,7 +23,7 @@ const AdminHeader = ({ onMenuClick }) => {
     deleteAdminIdxCookie();
     
     console.log("관리자 로그아웃 완료");
-    router.push('/');
+    router.push('/admin-login');
   };
   
   const pageTitles = {
