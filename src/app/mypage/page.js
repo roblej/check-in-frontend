@@ -47,6 +47,7 @@ function MyPageContent() {
   
   // 탭 상태 관리
   const [reservationTab, setReservationTab] = useState('upcoming'); // upcoming, completed, cancelled
+  const [reservationType, setReservationType] = useState('hotel'); // hotel 또는 dining
   const [couponTab, setCouponTab] = useState('available'); // available, used, expired
   const [reviewTab, setReviewTab] = useState('writable'); // writable, written
 
@@ -61,8 +62,18 @@ function MyPageContent() {
     cancelled: []
   });
 
+  // 다이닝 예약 데이터 상태 (별도로 관리)
+  const [diningReservations, setDiningReservations] = useState({
+    upcoming: [],
+    completed: [],
+    cancelled: []
+  });
+
   // 양도거래 등록 상태
   const [tradeStatus, setTradeStatus] = useState({});
+
+  // 신고 상태 (contentId별)
+  const [reportStatus, setReportStatus] = useState({});
 
   // 작성 가능한 리뷰 상태
   const [writableReviews, setWritableReviews] = useState([]);
@@ -118,6 +129,7 @@ function MyPageContent() {
         // 사용자 데이터는 API로 직접 가져오기
         await fetchUserData();
         loadAllReservations();
+        loadAllDiningReservations(); // 다이닝 예약도 로드
         loadWritableReviews();
         loadWrittenReviews();
         // loadAllReservations에서 이미 전체 데이터를 가져왔으므로 추가 API 호출 불필요
@@ -136,6 +148,7 @@ function MyPageContent() {
         
         // 페이지 로드 시 모든 탭의 데이터를 불러와서 카운트를 정확히 표시
         loadAllReservations();
+        loadAllDiningReservations(); // 다이닝 예약도 로드
         loadWritableReviews();
         loadWrittenReviews();
         // loadAllReservations에서 이미 전체 데이터를 가져왔으므로 추가 API 호출 불필요
@@ -222,10 +235,13 @@ function MyPageContent() {
         cancelled: cancelledData?.reservations?.length || 0
       });
 
-      // 예약별 양도거래 등록 여부 확인
-      await checkTradeStatus(upcomingData?.reservations || []);
+  // 예약별 양도거래 등록 여부 확인
+       await checkTradeStatus(upcomingData?.reservations || []);
 
-    } catch (error) {
+       // 이용완료 예약의 신고 상태 확인
+       await checkReportStatus(completedData?.reservations || []);
+
+     } catch (error) {
       console.error('❌ 예약 내역 로드 실패:', error);
       
       if (error.response?.status === 401) {
@@ -239,6 +255,87 @@ function MyPageContent() {
         alert('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
       } else {
         alert('예약 내역을 불러오는데 실패했습니다.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 다이닝 예약 내역 전체 로드 (기존 loadAllReservations와 유사한 구조)
+  const loadAllDiningReservations = async () => {
+    setIsLoading(true);
+    try {
+      console.log('🔄 다이닝 예약 내역 로드 시작...');
+      
+      // 각 상태별로 전체 데이터를 가져오는 헬퍼 함수
+      const loadAllByStatus = async (status) => {
+        let allReservations = [];
+        let currentPage = 0;
+        let hasMore = true;
+        const pageSize = 50;
+        let totalElements = 0;
+        
+        while (hasMore) {
+          const response = await mypageAPI.getReservations(status, currentPage, pageSize, 'dining');
+          const reservations = response?.reservations || response?.content || [];
+          allReservations = [...allReservations, ...reservations];
+          
+          if (response?.totalPages !== undefined) {
+            totalElements = response.totalElements || 0;
+            hasMore = currentPage < response.totalPages - 1;
+            currentPage++;
+          } else {
+            totalElements = allReservations.length;
+            hasMore = reservations.length === pageSize;
+            currentPage++;
+          }
+        }
+        
+        return {
+          reservations: allReservations,
+          totalElements: totalElements || allReservations.length
+        };
+      };
+      
+      // 세 가지 상태를 병렬로 불러오기
+      const [upcomingData, completedData, cancelledData] = await Promise.all([
+        loadAllByStatus('upcoming'),
+        loadAllByStatus('completed'),
+        loadAllByStatus('cancelled')
+      ]);
+
+      console.log('📥 다이닝 예약 API 응답 데이터:', {
+        upcoming: upcomingData,
+        completed: completedData,
+        cancelled: cancelledData
+      });
+
+      setDiningReservations({
+        upcoming: upcomingData?.reservations || [],
+        completed: completedData?.reservations || [],
+        cancelled: cancelledData?.reservations || []
+      });
+
+      console.log('✅ 전체 다이닝 예약 데이터 로드 완료:', {
+        upcoming: upcomingData?.reservations?.length || 0,
+        completed: completedData?.reservations?.length || 0,
+        cancelled: cancelledData?.reservations?.length || 0
+      });
+
+    } catch (error) {
+      console.error('❌ 다이닝 예약 내역 로드 실패:', error);
+      
+      if (error.response?.status === 401) {
+        console.log('🔒 인증 실패 - 로그인 페이지로 이동');
+        router.push('/login');
+        return;
+      }
+      
+      if (error.message === 'Network Error') {
+        console.warn('⚠️ 백엔드 서버에 연결할 수 없습니다.');
+        alert('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        alert('다이닝 예약 내역을 불러오는데 실패했습니다.');
       }
     } finally {
       setIsLoading(false);
@@ -391,8 +488,12 @@ function MyPageContent() {
   };
 
   // 예약 관련 핸들러
-  const handleReservationDetail = (reservationId) => {
-    router.push(`/mypage/reservation/${reservationId}`);
+  const handleReservationDetail = (reservationId, type = 'hotel') => {
+    if (type === 'dining') {
+      router.push(`/mypage/dining-reservation/${reservationId}`);
+    } else {
+      router.push(`/mypage/reservation/${reservationId}`);
+    }
   };
 
   const handleHotelLocation = (reservation) => {
@@ -401,14 +502,29 @@ function MyPageContent() {
   };
 
   const handleCancelReservation = (reservation) => {
-    if (confirm(`${reservation.hotelName} 예약을 취소하시겠습니까?`)) {
-      // 예약 취소 페이지로 이동
-      router.push(`/mypage/reservation/${reservation.id}/cancel`);
+    const name = reservationType === 'dining' 
+      ? (reservation.diningName || reservation.hotelName)
+      : reservation.hotelName;
+    
+    if (confirm(`${name} 예약을 취소하시겠습니까?`)) {
+      if (reservationType === 'dining') {
+        router.push(`/mypage/dining-reservation/${reservation.id}/cancel`);
+      } else {
+        router.push(`/mypage/reservation/${reservation.id}/cancel`);
+      }
     }
   };
 
   const handleWriteReview = (reservation) => {
     router.push(`/mypage/review/write?reservationId=${reservation.id}`);
+  };
+
+  const handleReport = (reservation) => {
+    if (reservation.contentId) {
+      router.push(`/mypage/report/${reservation.contentId}`);
+    } else {
+      alert('호텔 정보를 찾을 수 없습니다.');
+    }
   };
 
   const handleRebook = (reservation) => {
@@ -491,6 +607,34 @@ function MyPageContent() {
     const reservIdx = reservation.reservIdx || reservation.id;
     const status = tradeStatus[reservIdx];
     return status?.status === 2; // status 2 = 거래완료
+  };
+
+  // 신고 상태 확인
+  const checkReportStatus = async (reservations) => {
+    const { centerAPI } = await import('@/lib/api/center');
+    const statusMap = {};
+
+    for (const reservation of reservations) {
+      const contentId = reservation.contentId;
+      if (contentId) {
+        try {
+          const data = await centerAPI.checkReportExists(contentId);
+          statusMap[contentId] = data.exists;
+        } catch (error) {
+          console.error(`신고 상태 확인 실패 (contentId: ${contentId}):`, error);
+          statusMap[contentId] = false; // 확인 실패 시 신고 안한 것으로 간주
+        }
+      }
+    }
+
+    setReportStatus(statusMap);
+  };
+
+  // 특정 예약의 신고 여부 확인
+  const isReported = (reservation) => {
+    const contentId = reservation.contentId;
+    if (!contentId) return false;
+    return reportStatus[contentId] || false;
   };
 
   // 작성한 리뷰 상태
@@ -779,10 +923,41 @@ function MyPageContent() {
         {/* 예약 내역 */}
         <section id="reservation-section" className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Calendar className="w-6 h-6 text-blue-600" />
-              예약 내역
-            </h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Calendar className="w-6 h-6 text-blue-600" />
+                예약 내역
+              </h2>
+              {/* 다이닝/숙소 토글 */}
+              <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => {
+                    setReservationType('hotel');
+                    setCurrentPage(0);
+                  }}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    reservationType === 'hotel'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  숙소
+                </button>
+                <button
+                  onClick={() => {
+                    setReservationType('dining');
+                    setCurrentPage(0);
+                  }}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    reservationType === 'dining'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  다이닝
+                </button>
+              </div>
+            </div>
             {/* 정렬 드롭다운 (모든 탭에서 표시) */}
             <div className="relative">
               <select
@@ -842,7 +1017,9 @@ function MyPageContent() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              이용 예정 ({reservationCounts.upcoming || reservations.upcoming.length})
+              이용 예정 ({reservationType === 'dining' 
+                ? (diningReservations.upcoming.length)
+                : (reservationCounts.upcoming || reservations.upcoming.length)})
             </button>
             <button
               onClick={() => {
@@ -857,7 +1034,9 @@ function MyPageContent() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              이용 완료 ({reservationCounts.completed || reservations.completed.length})
+              이용 완료 ({reservationType === 'dining' 
+                ? (diningReservations.completed.length)
+                : (reservationCounts.completed || reservations.completed.length)})
             </button>
             <button
               onClick={() => {
@@ -872,7 +1051,9 @@ function MyPageContent() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              취소/환불 ({reservationCounts.cancelled || reservations.cancelled.length})
+              취소/환불 ({reservationType === 'dining' 
+                ? (diningReservations.cancelled.length)
+                : (reservationCounts.cancelled || reservations.cancelled.length)})
             </button>
           </div>
 
@@ -887,7 +1068,12 @@ function MyPageContent() {
             )}
             
             {/* 데이터 없음 */}
-            {!reservationsLoading && reservations[reservationTab].length === 0 && (
+            {!reservationsLoading && (() => {
+              const currentReservations = reservationType === 'dining' 
+                ? diningReservations[reservationTab] 
+                : reservations[reservationTab];
+              return currentReservations.length === 0;
+            })() && (
               <div className="text-center py-12">
                 <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                   <Calendar className="w-8 h-8 text-gray-400" />
@@ -898,14 +1084,19 @@ function MyPageContent() {
                   {reservationTab === 'cancelled' && '취소된 예약이 없습니다'}
                 </p>
                 <p className="text-gray-400 text-sm">
-                  새로운 호텔을 예약해보세요!
+                  {reservationType === 'dining' 
+                    ? '새로운 다이닝을 예약해보세요!'
+                    : '새로운 호텔을 예약해보세요!'}
                 </p>
               </div>
             )}
             
             {/* 예약 목록 - 프론트엔드 페이지네이션 적용 */}
             {!reservationsLoading && (() => {
-              let allReservations = [...(reservations[reservationTab] || [])];
+              const currentReservations = reservationType === 'dining' 
+                ? diningReservations[reservationTab] 
+                : reservations[reservationTab];
+              let allReservations = [...(currentReservations || [])];
               
               // 모든 탭에서 정렬 적용
               const currentSortBy = sortBy[reservationTab];
@@ -913,35 +1104,48 @@ function MyPageContent() {
                 switch (currentSortBy) {
                   // 공통 정렬 옵션
                   case 'checkinDesc': // 체크인 날짜 최신순
-                    const checkinA = new Date(a.checkIn?.replace(/\./g, '-') || a.checkIn);
-                    const checkinB = new Date(b.checkIn?.replace(/\./g, '-') || b.checkIn);
+                    const checkinA = new Date((reservationType === 'dining' ? a.reservationDate : a.checkIn)?.replace(/\./g, '-') || (reservationType === 'dining' ? a.reservationDate : a.checkIn));
+                    const checkinB = new Date((reservationType === 'dining' ? b.reservationDate : b.checkIn)?.replace(/\./g, '-') || (reservationType === 'dining' ? b.reservationDate : b.checkIn));
                     return checkinB - checkinA; // 내림차순
                   
                   case 'checkinAsc': // 체크인 날짜 오래된순 / 가까운 순
-                    const checkinAOld = new Date(a.checkIn?.replace(/\./g, '-') || a.checkIn);
-                    const checkinBOld = new Date(b.checkIn?.replace(/\./g, '-') || b.checkIn);
+                    const checkinAOld = new Date((reservationType === 'dining' ? a.reservationDate : a.checkIn)?.replace(/\./g, '-') || (reservationType === 'dining' ? a.reservationDate : a.checkIn));
+                    const checkinBOld = new Date((reservationType === 'dining' ? b.reservationDate : b.checkIn)?.replace(/\./g, '-') || (reservationType === 'dining' ? b.reservationDate : b.checkIn));
                     return checkinAOld - checkinBOld; // 오름차순
                   
                   case 'priceDesc': // 금액 높은 순
-                    return (b.totalprice || 0) - (a.totalprice || 0); // 내림차순
+                    return ((b.totalPrice || b.totalprice || 0) - (a.totalPrice || a.totalprice || 0)); // 내림차순
                   
                   case 'priceAsc': // 금액 낮은 순
-                    return (a.totalprice || 0) - (b.totalprice || 0); // 오름차순
+                    return ((a.totalPrice || a.totalprice || 0) - (b.totalPrice || b.totalprice || 0)); // 오름차순
                   
-                  // 이용 완료 탭 전용
+                  // 이용 완료 탭 전용 (호텔만)
                   case 'checkoutDesc': // 최근 방문 순 (체크아웃 날짜 최신순)
-                    const dateA = new Date(a.checkOut?.replace(/\./g, '-') || a.checkOut);
-                    const dateB = new Date(b.checkOut?.replace(/\./g, '-') || b.checkOut);
-                    return dateB - dateA; // 내림차순
+                    if (reservationType === 'dining') {
+                      // 다이닝은 reservationDate 사용
+                      const dateA = new Date(a.reservationDate?.replace(/\./g, '-') || a.reservationDate);
+                      const dateB = new Date(b.reservationDate?.replace(/\./g, '-') || b.reservationDate);
+                      return dateB - dateA; // 내림차순
+                    } else {
+                      const dateA = new Date(a.checkOut?.replace(/\./g, '-') || a.checkOut);
+                      const dateB = new Date(b.checkOut?.replace(/\./g, '-') || b.checkOut);
+                      return dateB - dateA; // 내림차순
+                    }
                   
                   case 'reviewFirst': // 리뷰 안한 내역 먼저
                     const aHasReview = isReviewWritten(a);
                     const bHasReview = isReviewWritten(b);
                     if (aHasReview === bHasReview) {
                       // 둘 다 리뷰 있거나 둘 다 없으면 최근 방문 순으로 정렬
-                      const dateAReview = new Date(a.checkOut?.replace(/\./g, '-') || a.checkOut);
-                      const dateBReview = new Date(b.checkOut?.replace(/\./g, '-') || b.checkOut);
-                      return dateBReview - dateAReview;
+                      if (reservationType === 'dining') {
+                        const dateAReview = new Date(a.reservationDate?.replace(/\./g, '-') || a.reservationDate);
+                        const dateBReview = new Date(b.reservationDate?.replace(/\./g, '-') || b.reservationDate);
+                        return dateBReview - dateAReview;
+                      } else {
+                        const dateAReview = new Date(a.checkOut?.replace(/\./g, '-') || a.checkOut);
+                        const dateBReview = new Date(b.checkOut?.replace(/\./g, '-') || b.checkOut);
+                        return dateBReview - dateAReview;
+                      }
                     }
                     return aHasReview ? 1 : -1; // 리뷰 없는 것 먼저
                   
@@ -967,14 +1171,18 @@ function MyPageContent() {
               <div key={reservation.id || reservation.reservationNumber} className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">{reservation.hotelName}</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">
+                      {reservationType === 'dining' 
+                        ? (reservation.diningName || reservation.hotelName)
+                        : reservation.hotelName}
+                    </h3>
                     <p className="text-sm text-gray-500 flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
                       {reservation.location}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {reservationTab === 'upcoming' && reservation.status === '예약확정' && !isTradeCompleted(reservation) && (
+                    {reservationTab === 'upcoming' && reservation.status === '예약확정' && !isTradeCompleted(reservation) && reservationType === 'hotel' && (
                       <button 
                         onClick={() => isTradeRegistered(reservation) ? handleEditTrade(reservation) : handleRegisterTrade(reservation)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
@@ -985,6 +1193,19 @@ function MyPageContent() {
                       >
                         {isTradeRegistered(reservation) ? '양도거래 수정' : '양도거래 등록'}
                       </button>
+                    )}
+                    {reservationTab === 'completed' && reservation.status === '이용완료' && reservationType === 'hotel' && reservation.contentId && !isReported(reservation) && (
+                      <button 
+                        onClick={() => handleReport(reservation)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap bg-red-50 hover:bg-red-100 text-red-600"
+                      >
+                        신고
+                      </button>
+                    )}
+                    {reservationTab === 'completed' && reservation.status === '이용완료' && reservationType === 'hotel' && reservation.contentId && isReported(reservation) && (
+                      <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-500 whitespace-nowrap">
+                        신고 완료
+                      </span>
                     )}
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       reservation.status === '예약확정' ? 'bg-blue-100 text-blue-700' :
@@ -997,22 +1218,45 @@ function MyPageContent() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                  <div>
-                    <span className="text-gray-500">체크인</span>
-                    <p className="font-medium text-gray-900">{reservation.checkIn}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">체크아웃</span>
-                    <p className="font-medium text-gray-900">{reservation.checkOut}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">객실타입</span>
-                    <p className="font-medium text-gray-900">{reservation.roomType}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">총 결제금액</span>
-                    <p className="font-bold text-blue-600">{(reservation.totalprice ?? 0).toLocaleString()}원</p>
-                  </div>
+                  {reservationType === 'dining' ? (
+                    <>
+                      <div>
+                        <span className="text-gray-500">예약 날짜</span>
+                        <p className="font-medium text-gray-900">{reservation.reservationDate || reservation.checkIn}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">예약 시간</span>
+                        <p className="font-medium text-gray-900">{reservation.reservationTime || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">인원 수</span>
+                        <p className="font-medium text-gray-900">{reservation.guest || 1}명</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">총 결제금액</span>
+                        <p className="font-bold text-blue-600">{(reservation.totalPrice || reservation.totalprice || 0).toLocaleString()}원</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <span className="text-gray-500">체크인</span>
+                        <p className="font-medium text-gray-900">{reservation.checkIn}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">체크아웃</span>
+                        <p className="font-medium text-gray-900">{reservation.checkOut}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">객실타입</span>
+                        <p className="font-medium text-gray-900">{reservation.roomType}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">총 결제금액</span>
+                        <p className="font-bold text-blue-600">{(reservation.totalprice ?? 0).toLocaleString()}원</p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* 액션 버튼 */}
@@ -1020,17 +1264,19 @@ function MyPageContent() {
                   {reservationTab === 'upcoming' && (
                     <>
                       <button 
-                        onClick={() => handleReservationDetail(reservation.id)}
+                        onClick={() => handleReservationDetail(reservation.id, reservationType)}
                         className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
                       >
                         예약 상세보기
                       </button>
-                      <button 
-                        onClick={() => handleHotelLocation(reservation)}
-                        className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-                      >
-                        호텔 위치보기
-                      </button>
+                      {reservationType === 'hotel' && (
+                        <button 
+                          onClick={() => handleHotelLocation(reservation)}
+                          className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                        >
+                          호텔 위치보기
+                        </button>
+                      )}
                       <button 
                         onClick={() => handleCancelReservation(reservation)}
                         className="flex-1 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors"
@@ -1052,12 +1298,14 @@ function MyPageContent() {
                       >
                         리뷰 작성
                       </button>
-                      <button 
-                        onClick={() => handleRebook(reservation)}
-                        className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-                      >
-                        재예약하기
-                      </button>
+                      {reservationType === 'hotel' && (
+                        <button 
+                          onClick={() => handleRebook(reservation)}
+                          className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                        >
+                          재예약하기
+                        </button>
+                      )}
                     </>
                   )}
                   {reservationTab === 'cancelled' && reservation.refundAmount && (

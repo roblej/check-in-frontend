@@ -31,7 +31,6 @@ const MasterHeader = ({ onMenuClick }) => {
     '/master/hotels': '호텔 관리',
     '/master/hotel-approval': '호텔 승인',
     '/master/members': '회원 관리',
-    '/master/member-history': '회원 이력',
     '/master/statistics': '통계 분석',
     '/master/settings': '설정'
   };

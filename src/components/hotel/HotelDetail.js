@@ -7,6 +7,7 @@ import HotelGallery from "./HotelGallery";
 import HotelInfo from "./HotelInfo";
 import HotelAmenities from "./HotelAmenities";
 import HotelReviews from "./HotelReviews";
+import HotelInquiries from "./HotelInquiries";
 import HotelLocation from "./HotelLocation";
 import HotelPolicy from "./HotelPolicy";
 import HotelHeader from "./HotelHeader";
@@ -57,6 +58,31 @@ const HotelDetail = ({
     }
   }, [isModal]);
 
+  // searchParams prop이 변경되면 로컬 상태 업데이트
+  useEffect(() => {
+    if (searchParams && Object.keys(searchParams).length > 0) {
+      // 날짜 파라미터가 있으면 업데이트
+      if (searchParams.checkIn || searchParams.checkOut) {
+        setLocalSearchParams((prev) => {
+          // 값이 변경된 경우에만 업데이트 (무한 루프 방지)
+          if (
+            prev.checkIn !== searchParams.checkIn ||
+            prev.checkOut !== searchParams.checkOut
+          ) {
+            return {
+              destination: searchParams.destination || prev.destination || "",
+              checkIn: searchParams.checkIn || "",
+              checkOut: searchParams.checkOut || "",
+              nights: parseInt(searchParams.nights || prev.nights || "1"),
+              adults: parseInt(searchParams.adults || prev.adults || "2"),
+            };
+          }
+          return prev;
+        });
+      }
+    }
+  }, [searchParams]);
+
   const scrollContainerRef = isModal
     ? externalScrollRef || internalScrollRef
     : windowScrollRef;
@@ -65,7 +91,7 @@ const HotelDetail = ({
   const displaySearchParams = useMemo(() => {
     const diningDate = urlSearchParams.get("diningDate");
     const isDiningMode = urlSearchParams.get("diningMode") === "true";
-    
+
     if (isDiningMode && diningDate) {
       // 다이닝 모드일 때 diningDate를 checkIn과 checkOut 둘 다에 설정
       return {
@@ -75,21 +101,13 @@ const HotelDetail = ({
         nights: 1,
       };
     }
-    
+
     return localSearchParams;
   }, [localSearchParams, urlSearchParams]);
 
   // 커스텀 훅 사용
-  const {
-    hotelData,
-    rooms,
-    dinings,
-    reviews,
-    reviewSummary,
-    isLoading,
-    errorMessage,
-    formatPrice,
-  } = useHotelData(contentId, localSearchParams, onLoadingChange);
+  const { hotelData, rooms, dinings, isLoading, errorMessage, formatPrice } =
+    useHotelData(contentId, localSearchParams, onLoadingChange);
 
   const {
     activeSection,
@@ -140,15 +158,16 @@ const HotelDetail = ({
       const updatedParams = { ...localSearchParams, ...newParams };
       setLocalSearchParams(updatedParams);
 
+      // 호텔 디테일 페이지에서 onSearchParamsChange가 있으면 호출 (로컬스토리지 저장 포함)
       if (onSearchParamsChange) {
         onSearchParamsChange(updatedParams);
-        return;
       }
 
       if (isModal) {
         return;
       }
 
+      // URL 업데이트
       const urlParams = formatSearchParamsForUrl(updatedParams);
       const newUrl = updateUrlParams(urlParams);
       router.replace(newUrl, { scroll: false });
@@ -220,9 +239,7 @@ const HotelDetail = ({
       >
         <div
           className={
-            isModal
-              ? "px-2.5"
-              : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
+            isModal ? "px-2.5" : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
           }
         >
           <HotelHeader
@@ -247,8 +264,8 @@ const HotelDetail = ({
       <div
         ref={navRef}
         className={`w-full flex-shrink-0 ${
-          isModal 
-            ? "sticky top-0 z-30 shadow-sm bg-white" 
+          isModal
+            ? "sticky top-0 z-30 shadow-sm bg-white"
             : "sticky z-30 bg-gray-50"
         }`}
         style={
@@ -273,9 +290,7 @@ const HotelDetail = ({
       >
         <div
           className={
-            isModal
-              ? "px-2.5"
-              : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
+            isModal ? "px-2.5" : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
           }
         >
           <HotelNavBar
@@ -348,7 +363,8 @@ const HotelDetail = ({
                       <div>
                         {dining.openTime && dining.closeTime && (
                           <p className="text-sm text-gray-500">
-                            운영시간: {String(dining.openTime).substring(0, 5)} - {String(dining.closeTime).substring(0, 5)}
+                            운영시간: {String(dining.openTime).substring(0, 5)}{" "}
+                            - {String(dining.closeTime).substring(0, 5)}
                           </p>
                         )}
                         {dining.basePrice && (
@@ -360,30 +376,40 @@ const HotelDetail = ({
                       <button
                         onClick={() => {
                           // URL에서 다이닝 날짜 직접 읽기
-                          const diningDateFromUrl = urlSearchParams.get("diningDate");
-                          const diningDate = diningDateFromUrl || localSearchParams.diningDate || localSearchParams.checkIn || new Date().toISOString().split('T')[0];
-                          
+                          const diningDateFromUrl =
+                            urlSearchParams.get("diningDate");
+                          const diningDate =
+                            diningDateFromUrl ||
+                            localSearchParams.diningDate ||
+                            localSearchParams.checkIn ||
+                            new Date().toISOString().split("T")[0];
+
                           // 세션 스토리지에 다이닝 예약 정보 저장 (URL 파라미터 숨기기)
                           const reservationData = {
                             diningIdx: dining.diningIdx,
                             contentId: contentId,
-                            diningName: dining.name || '',
-                            hotelName: hotelData?.name || hotelData?.title || '',
-                            hotelAddress: hotelData?.address || hotelData?.adress || '',
+                            diningName: dining.name || "",
+                            hotelName:
+                              hotelData?.name || hotelData?.title || "",
+                            hotelAddress:
+                              hotelData?.address || hotelData?.adress || "",
                             diningDate: diningDate,
-                            diningTime: '',
+                            diningTime: "",
                             guests: localSearchParams.adults || 2,
                             basePrice: dining.basePrice || 0,
-                            imageUrl: dining.imageUrl || '',
-                            openTime: dining.openTime || '11:00:00',
-                            closeTime: dining.closeTime || '21:00:00',
+                            imageUrl: dining.imageUrl || "",
+                            openTime: dining.openTime || "11:00:00",
+                            closeTime: dining.closeTime || "21:00:00",
                             slotDuration: dining.slotDuration || 60,
                           };
-                          
-                          sessionStorage.setItem('dining_reservation', JSON.stringify(reservationData));
-                          
+
+                          sessionStorage.setItem(
+                            "dining_reservation",
+                            JSON.stringify(reservationData)
+                          );
+
                           // URL 파라미터 없이 이동
-                          router.push('/dining-reservation');
+                          router.push("/dining-reservation");
                         }}
                         className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
                       >
@@ -439,14 +465,19 @@ const HotelDetail = ({
           aria-labelledby="reviews-heading"
         >
           <HotelReviews
-              reviews={reviews}
-              rating={
-                reviewSummary?.rating ?? hotelData?.rating ?? 0
-              }
-              reviewCount={
-                reviewSummary?.reviewCount ?? hotelData?.reviewCount ?? 0
-              }
+            contentId={contentId}
+            reviews={hotelData.reviews}
+            rating={hotelData.rating}
+            reviewCount={hotelData.reviewCount}
           />
+        </section>
+
+        {/* 문의 */}
+        <section
+          ref={setSectionRef("inquiries")}
+          aria-labelledby="inquiries-heading"
+        >
+          <HotelInquiries contentId={contentId} />
         </section>
 
         {/* 위치 정보 */}
@@ -458,10 +489,7 @@ const HotelDetail = ({
         </section>
 
         {/* 호텔 정책 */}
-        <section 
-          ref={setSectionRef("policy")} 
-          aria-labelledby="policy-heading"
-        >
+        <section ref={setSectionRef("policy")} aria-labelledby="policy-heading">
           <HotelPolicy
             checkInTime={hotelData.checkInTime}
             checkOutTime={hotelData.checkOutTime}

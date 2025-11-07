@@ -18,7 +18,6 @@ export default function CancelReservationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reservation, setReservation] = useState(null);
-  const [refundInfo, setRefundInfo] = useState(null);
 
   // 예약 상세 불러오기 (백엔드 연동)
   useEffect(() => {
@@ -85,21 +84,9 @@ export default function CancelReservationPage() {
       });
       const data = res?.data || {};
       const payload = data.data || data;
-      // 백엔드에서 받은 모든 환불 정보를 그대로 저장
-      setRefundInfo({
-        refundStatus: payload.refundStatus,
-        refundRate: payload.refundRate,
-        refundMessage: payload.refundMessage,
-        refundTotalAmount: payload.refundTotalAmount,
-        paymentRefund: payload.paymentRefund,
-        refundCash: payload.refundCash,
-        refundPoint: payload.refundPoint,
-        cancelReason: payload.cancelReason,
-      });
-      // 예약 상태도 로컬에서 취소로 간주
-      setReservation((prev) => ({ ...(prev || {}), status: 2 }));
       alert("예약 취소 완료");
-      // 필요 시 마이페이지 목록으로 이동: router.push('/mypage')
+      // 취소 후 마이페이지로 이동
+      router.push("/mypage");
     } catch (e) {
       alert("취소 실패");
     } finally {
@@ -143,7 +130,7 @@ export default function CancelReservationPage() {
             </h3>
             <ul className="text-sm text-red-800 space-y-1">
               <li>• 취소 수수료가 부과될 수 있습니다.</li>
-              <li>• 체크인 3일 전까지는 무료 취소 가능합니다.</li>
+              <li>• 체크인 7일 전 및 당일예약은 무료 취소 가능합니다.</li>
               <li>• 취소 후에는 재예약이 필요합니다.</li>
             </ul>
           </div>
@@ -226,82 +213,8 @@ export default function CancelReservationPage() {
           )}
         </div>
 
-        {/* 환불 정보 (취소 후 표시) */}
-        {refundInfo && (
-          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">환불 정보</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">환불 상태</span>
-                <span
-                  className={
-                    refundInfo.refundStatus === 1
-                      ? "text-green-700"
-                      : refundInfo.refundStatus === 2
-                      ? "text-red-700"
-                      : "text-gray-700"
-                  }
-                >
-                  {refundInfo.refundStatus === 1
-                    ? "환불 완료"
-                    : refundInfo.refundStatus === 2
-                    ? "환불 실패"
-                    : "환불 진행중"}
-                </span>
-              </div>
-              {refundInfo.refundMessage && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">환불 정책</span>
-                  <span className="text-gray-900">
-                    {refundInfo.refundMessage}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-gray-600">환불 비율</span>
-                <span className="text-gray-900">
-                  {Math.round((refundInfo.refundRate || 0) * 100)}%
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">결제 환불</span>
-                <span className="text-gray-900 font-semibold">
-                  {Number(refundInfo.paymentRefund || 0).toLocaleString()}원
-                </span>
-              </div>
-              {refundInfo.refundCash > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">캐시 복원</span>
-                  <span className="text-gray-900">
-                    {Number(refundInfo.refundCash || 0).toLocaleString()}원
-                  </span>
-                </div>
-              )}
-              {refundInfo.refundPoint > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">포인트 복원</span>
-                  <span className="text-gray-900">
-                    {Number(refundInfo.refundPoint || 0).toLocaleString()}P
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between pt-2 border-t border-gray-200">
-                <span className="text-gray-900 font-semibold">
-                  총 환불 금액
-                </span>
-                <span className="text-blue-600 font-bold">
-                  {Number(refundInfo.refundTotalAmount || 0).toLocaleString()}원
-                </span>
-              </div>
-            </div>
-            <p className="text-sm text-gray-500 mt-4">
-              환불은 영업일 기준 3-5일 이내에 결제 수단으로 처리됩니다.
-            </p>
-          </div>
-        )}
-
         {/* 환불 예상 정보 (취소 전 표시) */}
-        {reservation && !refundInfo && (
+        {reservation && (
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-xl font-bold text-gray-900">

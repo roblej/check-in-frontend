@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
 import axiosInstance from "@/lib/axios";
+import RoomBookmarkButton from "./RoomBookmarkButton";
 
 const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
   const router = useRouter();
@@ -106,7 +107,17 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
     } catch (error) {
       console.error("예약 락 생성 실패:", error);
       if (error?.response?.status === 401) {
-        alert("로그인이 필요합니다.");
+        const shouldLogin = confirm(
+          "로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?"
+        );
+        if (shouldLogin) {
+          // 현재 URL을 returnUrl로 전달
+          const currentUrl =
+            typeof window !== "undefined"
+              ? window.location.pathname + window.location.search
+              : "/";
+          router.push(`/login?returnUrl=${encodeURIComponent(currentUrl)}`);
+        }
         setIsLocking(false);
         return;
       }
@@ -147,6 +158,18 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
               {room.discount}% 할인
             </div>
           )}
+          {/* 찜 버튼 */}
+          <div className="absolute top-2 right-2 z-10">
+            <RoomBookmarkButton
+              roomIdx={room.roomIdx || room.id}
+              contentId={
+                searchParams?.contentId ||
+                searchParams?.hotelId ||
+                room?.contentId
+              }
+              size="medium"
+            />
+          </div>
         </div>
 
         {/* 객실 정보 */}

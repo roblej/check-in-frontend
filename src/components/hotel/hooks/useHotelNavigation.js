@@ -21,6 +21,7 @@ export const useHotelNavigation = (scrollContainerRef, isModal, defaultSection =
     { id: "rooms", label: "객실" },
     { id: "amenities", label: "편의시설" },
     { id: "reviews", label: "리뷰" },
+    { id: "inquiries", label: "문의" },
     { id: "location", label: "위치" },
     { id: "policy", label: "정책" },
   ];

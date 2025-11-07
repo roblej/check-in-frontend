@@ -9,21 +9,20 @@ export const hotelAPI = {
   },
 
   // 호텔 상세 정보 조회
-  getHotelDetail: async (contentId, config = {}) => {
-    const response = await axiosInstance.get(`/hotels/${contentId}`, config);
+  getHotelDetail: async (contentId) => {
+    const response = await axiosInstance.get(`/hotels/${contentId}`);
     return response.data;
   },
 
   // 호텔 객실 목록 조회 (날짜 파라미터 포함 지원)
-  getHotelRooms: async (contentId, config = {}) => {
-    const { params = {}, ...restConfig } = config;
+  getHotelRooms: async (contentId, params = {}) => {
     const response = await axiosInstance.get(`/hotels/${contentId}/rooms`, {
       params: {
         ...params,
+        // 날짜가 있으면 예약 가능성 조회 포함
         checkinDate: params.checkinDate,
         checkoutDate: params.checkoutDate,
       },
-      ...restConfig,
     });
     return response.data;
   },
@@ -43,24 +42,17 @@ export const hotelAPI = {
   },
 
   // 호텔 리뷰 조회
-  getHotelReviews: async (contentId, config = {}) => {
-    const { params, ...restConfig } = config;
+  getHotelReviews: async (contentId, params = {}) => {
     const response = await axiosInstance.get(`/hotels/${contentId}/reviews`, {
       params,
-      ...restConfig,
     });
     return response.data;
   },
 
-  // 호텔 리뷰 요약 정보 조회 (평균 평점, 리뷰 수 등)
-  getHotelReviewSummary: async (contentId, config = {}) => {
-    const { params, ...restConfig } = config;
+  // 호텔 리뷰 요약 조회 (평균 평점, 리뷰 개수)
+  getHotelReviewSummary: async (contentId) => {
     const response = await axiosInstance.get(
-      `/hotels/${contentId}/reviews/summary`,
-      {
-        params,
-        ...restConfig,
-      }
+      `/hotels/${contentId}/reviews/summary`
     );
     return response.data;
   },
