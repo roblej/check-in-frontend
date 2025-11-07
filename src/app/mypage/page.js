@@ -769,7 +769,13 @@ function MyPageContent() {
       <Header />
 
       {/* URL 쿼리 파라미터 처리 (Suspense로 감싸짐) */}
-      <Suspense fallback={null}>
+      <Suspense fallback={
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-4">
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        </div>
+      }>
         <TabQueryHandler onTabChange={setReservationTab} />
       </Suspense>
 
