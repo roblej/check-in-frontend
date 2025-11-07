@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import axiosInstance from "@/lib/axios";
 import { useState, useEffect, useRef } from "react";
+import axiosInstance from "@/lib/axios";
+import BookmarkButton from "./hotel/BookmarkButton";
 /**
  * 인기 호텔 섹션 컴포넌트
  *
@@ -17,7 +18,7 @@ const PopularHotels = () => {
   const router = useRouter();
   const [popularHotels, setPopularHotels] = useState([]);
   const didFetch = useRef(false);
-
+  
   // 인기 호텔 데이터 가져오기
   useEffect(() => {
     if (didFetch.current) return;
@@ -67,6 +68,10 @@ const PopularHotels = () => {
                 priority={index === 0}
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
+              {/* 하트 버튼 */}
+              <div className="absolute top-2 right-2 z-10">
+                <BookmarkButton contentId={hotel.contentId} size="medium" />
+              </div>
             </div>
 
             {/* 내용 */}
