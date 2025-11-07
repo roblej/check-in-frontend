@@ -12,7 +12,6 @@ import {
   Gift,
   ChevronDown,
   ChevronRight,
-  History,
   MessageSquare,
   FileText,
   HelpCircle,
@@ -50,9 +49,7 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
       name: '회원 관리',
       icon: <Users size={20} />,
       submenu: [
-        { id: 'member-list', name: '회원 목록', path: '/master/members', icon: <Users size={16} /> },
-        { id: 'member-history', name: '회원 이력', path: '/master/member-history', icon: <History size={16} /> },
-        { id: 'member-feedback', name: '회원 피드백', path: '/master/member-feedback', icon: <MessageSquare size={16} /> }
+        { id: 'member-list', name: '회원 목록', path: '/master/members', icon: <Users size={16} /> }
       ]
     },
     {
