@@ -57,8 +57,9 @@ function LoginForm() {
   let accessToken = "";
 
   const login_url = "/api/login";
-  const naverLogin_url = "http://localhost:8888/oauth2/authorization/naver";
-  const kakaoLogin_url = "http://localhost:8888/oauth2/authorization/kakao";
+  const backendBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888";
+  const naverLogin_url = `${backendBaseUrl}/oauth2/authorization/naver`;
+  const kakaoLogin_url = `${backendBaseUrl}/oauth2/authorization/kakao`;
   // 네이버 로그인을 위한 함수
 
   // 입력 필드 변경 핸들러

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import axiosInstance from "@/lib/axios";
 
-const HotelImages = ({ images, events, updateFormData, errors, readOnly = false, formData }) => {
+const HotelImages = ({ images, events, updateFormData, errors, readOnly = false, formData, isEditMode = false }) => {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
@@ -83,8 +83,12 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
       const uploadFormData = new FormData();
       uploadFormData.append('images', file);
 
+      // 등록 페이지와 수정 페이지 구분하여 다른 엔드포인트 사용
+      // axiosInstance의 baseURL이 /api이므로 /api를 제거
+      const endpoint = isEditMode ? '/admin/image/hotel/images/edit' : '/imageUpload/hotel/images/register';
+      
       // S3에 이미지 업로드
-      const response = await axiosInstance.post('/imageUpload/hotel/images', uploadFormData, {
+      const response = await axiosInstance.post(endpoint, uploadFormData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -171,8 +175,12 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
         uploadFormData.append('images', file);
       });
 
+      // 등록 페이지와 수정 페이지 구분하여 다른 엔드포인트 사용
+      // axiosInstance의 baseURL이 /api이므로 /api를 제거
+      const endpoint = isEditMode ? '/admin/image/hotel/images/edit' : '/imageUpload/hotel/images/register';
+      
       // S3에 이미지 업로드
-      const response = await axiosInstance.post('/imageUpload/hotel/images', uploadFormData, {
+      const response = await axiosInstance.post(endpoint, uploadFormData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -181,7 +189,7 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
       if (response.data.success && response.data.images) {
         // 업로드된 이미지 정보를 formData.images에 추가 (HotelImage 테이블용)
         const uploadedImages = response.data.images.map((img) => ({
-          id: img.id,
+          id: img.id, // 수정 페이지에서는 항상 id 존재 (DB 저장 후 반환), 등록 페이지에서는 임시 ID
           originUrl: img.originUrl,
           smallUrl: img.smallUrl || img.originUrl,
         }));
@@ -202,17 +210,48 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
   const removeImage = (imageId) => {
     if (readOnly) return;
     
+    console.log('🔍 [호텔 이미지 삭제] 시작');
+    console.log('🔍 [호텔 이미지 삭제] 전달받은 imageId:', imageId, '타입:', typeof imageId);
+    
+    if (!imageId) {
+      console.error('❌ [호텔 이미지 삭제] imageId가 없습니다.');
+      alert('이미지 삭제 중 오류가 발생했습니다: 이미지 ID가 없습니다.');
+      return;
+    }
+    
     const currentImages = Array.isArray(images) ? images : [];
-    const updatedImages = currentImages.filter((img) => img.id !== imageId);
+    console.log('🔍 [호텔 이미지 삭제] 현재 이미지 목록:', currentImages.map(img => ({ id: img.id, originUrl: img.originUrl })));
+    
+    // imageId와 일치하는 이미지만 제거
+    const updatedImages = currentImages.filter((img, idx) => {
+      console.log(`🔍 [호텔 이미지 삭제] 필터링 체크 ${idx}:`, {
+        imgId: img.id,
+        imgIdType: typeof img.id,
+        imageId: imageId,
+        imageIdType: typeof imageId,
+        비교결과: String(img.id) !== String(imageId),
+        originUrl: img.originUrl
+      });
+      
+      if (!img.id) {
+        console.warn('⚠️ [호텔 이미지 삭제] 이미지에 id가 없습니다:', img);
+        // id가 없는 경우는 유지 (등록 페이지의 임시 이미지일 수 있음)
+        return true;
+      }
+      const shouldKeep = String(img.id) !== String(imageId);
+      console.log(`  → ${shouldKeep ? '유지' : '삭제'}`);
+      return shouldKeep;
+    });
+    
+    console.log('🔍 [호텔 이미지 삭제] 필터링 후 이미지 목록:', updatedImages.map(img => ({ id: img.id, originUrl: img.originUrl })));
+    console.log('🔍 [호텔 이미지 삭제] 삭제된 이미지 수:', currentImages.length - updatedImages.length);
+    
     updateFormData('images', updatedImages);
     
-    // 첫 번째 이미지가 삭제되면 대표 이미지도 업데이트
-    if (updatedImages.length > 0 && updatedImages[0].originUrl) {
-      updateFormData('hotelInfo', { imageUrl: updatedImages[0].originUrl });
-    } else {
-      // 이미지가 없으면 대표 이미지도 제거
-      updateFormData('hotelInfo', { imageUrl: "" });
-    }
+    // 호텔 메인 이미지와 이미지 목록은 별개의 개념이므로, 이미지 삭제 시 메인 이미지는 변경하지 않음
+    // (사용자가 직접 대표 이미지를 선택/변경할 수 있음)
+    
+    console.log('🔍 [호텔 이미지 삭제] 완료');
   };
 
   const addEvent = () => {
@@ -427,7 +466,19 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
                     </div>
                     {!readOnly && (
                       <button 
-                        onClick={() => removeImage(image.id)}
+                        onClick={() => {
+                          console.log('🔍 [호텔 이미지 삭제 버튼 클릭]');
+                          console.log('  - 클릭한 이미지 정보:', {
+                            id: image.id,
+                            idType: typeof image.id,
+                            originUrl: image.originUrl,
+                            smallUrl: image.smallUrl,
+                            index: index
+                          });
+                          console.log('  - 현재 모든 이미지:', safeImages.map(img => ({ id: img.id, originUrl: img.originUrl })));
+                          console.log('  - 현재 호텔 메인 이미지:', formData?.hotelInfo?.imageUrl);
+                          removeImage(image.id);
+                        }}
                         className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                       >
                         ×
