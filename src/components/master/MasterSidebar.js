@@ -8,7 +8,6 @@ import {
   Building2, 
   Users, 
   TrendingUp, 
-  Settings,
   Gift,
   ChevronDown,
   ChevronRight,
@@ -18,8 +17,6 @@ import {
   BarChart,
   Ticket,
   Server,
-  UserCog,
-  Globe,
   CreditCard,
   AlertTriangle
 } from 'lucide-react';
@@ -77,16 +74,6 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
       submenu: [
         { id: 'coupon-templates', name: '쿠폰 템플릿', path: '/master/coupon-templates', icon: <Ticket size={16} /> },
         { id: 'coupon-batch', name: '쿠폰 일괄 처리', path: '/master/coupon-batch', icon: <Server size={16} /> }
-      ]
-    },
-    {
-      id: 'settings',
-      name: '설정',
-      icon: <Settings size={20} />,
-      submenu: [
-        { id: 'site-settings', name: '사이트 설정', path: '/master/site-settings', icon: <Globe size={16} /> },
-        { id: 'system-settings', name: '시스템 설정', path: '/master/system-settings', icon: <Settings size={16} /> },
-        { id: 'user-management', name: '사용자 관리', path: '/master/user-management', icon: <UserCog size={16} /> }
       ]
     }
   ];
