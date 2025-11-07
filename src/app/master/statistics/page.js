@@ -1,43 +1,167 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  Bar,
+  Line,
+  Brush
+} from 'recharts';
 import MasterLayout from '@/components/master/MasterLayout';
 import { DollarSign, Calendar, Building2, Users, Star } from 'lucide-react';
+import axiosInstance from '@/lib/axios';
 
 const Statistics = () => {
   const [dateRange, setDateRange] = useState('month');
-  const [chartType, setChartType] = useState('revenue');
+  const [loading, setLoading] = useState(true);
+  const [statistics, setStatistics] = useState({
+    totalRevenue: 0,
+    totalReservationCount: 0,
+    activeHotels: 0,
+    newHotelsThisMonth: 0,
+    newCustomersThisMonth: 0
+  });
+  const [monthlyCommissionData, setMonthlyCommissionData] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+
+  // 통계 데이터 조회
+  useEffect(() => {
+    const fetchStatistics = async () => {
+      try {
+        setLoading(true);
+        const response = await axiosInstance.get('/master/statistics', {
+          params: { dateRange }
+        });
+        
+        if (response.data) {
+          setStatistics({
+            totalRevenue: response.data.totalRevenue || 0,
+            totalReservationCount: response.data.totalReservationCount || 0,
+            activeHotels: response.data.activeHotels || 0,
+            newHotelsThisMonth: response.data.newHotelsThisMonth || 0,
+            newCustomersThisMonth: response.data.newCustomersThisMonth || 0
+          });
+        }
+      } catch (error) {
+        console.error('통계 데이터 조회 오류:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStatistics();
+  }, [dateRange]);
+
+  // 월별 수수료 수익 데이터 조회
+  useEffect(() => {
+    const fetchMonthlyCommission = async () => {
+      try {
+        const response = await axiosInstance.get('/master/statistics/monthlyCommission');
+        if (response.data) {
+          setMonthlyCommissionData(response.data || []);
+        }
+      } catch (error) {
+        console.error('월별 수수료 수익 조회 오류:', error);
+      }
+    };
+
+    fetchMonthlyCommission();
+  }, []);
+
+  // 차트 데이터 가공
+  const chartData = useMemo(() => {
+    if (!monthlyCommissionData.length) return [];
+    
+    const enriched = monthlyCommissionData.map((m) => {
+      const date = new Date(m.month);
+      const monthNum = date.getMonth() + 1;
+      const year = date.getFullYear();
+      const label = `${monthNum}월`;
+      return {
+        label,
+        revenue: m.revenue || 0,
+        year,
+        monthNum,
+        monthIndex: year * 12 + (monthNum - 1)
+      };
+    }).sort((a, b) => a.monthIndex - b.monthIndex);
+
+    // 선택된 연도에 해당하는 데이터 필터링 (최근 12개월 중)
+    const yearCandidates = enriched.filter((r) => r.year === selectedYear);
+    const anchor = yearCandidates.length ? yearCandidates[yearCandidates.length - 1] : enriched[enriched.length - 1];
+    const minIndex = anchor.monthIndex - 10;
+    const windowData = enriched.filter((r) => r.monthIndex >= minIndex && r.monthIndex <= anchor.monthIndex);
+    
+    return windowData.map((row, idx) => {
+      const prev = idx > 0 ? windowData[idx - 1] : null;
+      const mom = prev ? ((row.revenue - prev.revenue) / (prev.revenue || 1)) * 100 : 0;
+      return { ...row, mom, label: row.label };
+    });
+  }, [monthlyCommissionData, selectedYear]);
+
+  // 금액 포맷팅 함수
+  const formatCurrency = (amount) => {
+    if (amount >= 100000000) {
+      return `₩${(amount / 100000000).toFixed(1)}억`;
+    } else if (amount >= 10000) {
+      return `₩${(amount / 10000).toFixed(0)}만`;
+    } else {
+      return `₩${amount.toLocaleString()}`;
+    }
+  };
+
+  // 날짜 범위 설명
+  const getDateRangeDescription = () => {
+    switch (dateRange) {
+      case 'week':
+        return '최근 7일';
+      case 'month':
+        return '최근 30일';
+      case 'quarter':
+        return '최근 3개월';
+      case 'year':
+        return '최근 1년';
+      default:
+        return '최근 30일';
+    }
+  };
 
   // 통계 데이터
   const overallStats = [
     {
       title: '총 매출',
-      value: '₩2.4억',
-      change: '+18.2%',
+      value: formatCurrency(statistics.totalRevenue),
+      change: '+0%',
       changeType: 'positive',
       icon: <DollarSign size={40} />,
-      description: '이번 달 총 매출액'
+      description: `${getDateRangeDescription()} 총 매출액`
     },
     {
       title: '총 예약',
-      value: '15,432',
-      change: '+12.5%',
+      value: statistics.totalReservationCount.toLocaleString(),
+      change: '+0%',
       changeType: 'positive',
       icon: <Calendar size={40} />,
-      description: '이번 달 총 예약 건수'
+      description: `${getDateRangeDescription()} 총 예약 건수`
     },
     {
       title: '활성 호텔',
-      value: '127',
-      change: '+8',
+      value: statistics.activeHotels.toLocaleString(),
+      change: `+${statistics.newHotelsThisMonth}`,
       changeType: 'positive',
       icon: <Building2 size={40} />,
-      description: '현재 운영중인 호텔'
+      description: `이번달 신규: ${statistics.newHotelsThisMonth}개`
     },
     {
       title: '신규 회원',
-      value: '2,845',
-      change: '+23.1%',
+      value: statistics.newCustomersThisMonth.toLocaleString(),
+      change: '+0%',
       changeType: 'positive',
       icon: <Users size={40} />,
       description: '이번 달 신규 가입자'
@@ -144,16 +268,6 @@ const Statistics = () => {
     }
   ];
 
-  // 월별 트렌드 데이터 (예시)
-  const monthlyTrends = [
-    { month: '1월', revenue: 180, reservations: 1200, newMembers: 450 },
-    { month: '2월', revenue: 220, reservations: 1450, newMembers: 520 },
-    { month: '3월', revenue: 280, reservations: 1680, newMembers: 680 },
-    { month: '4월', revenue: 240, reservations: 1520, newMembers: 590 },
-    { month: '5월', revenue: 320, reservations: 1890, newMembers: 720 },
-    { month: '6월', revenue: 380, reservations: 2100, newMembers: 850 }
-  ];
-
   return (
     <MasterLayout>
       <div className="space-y-6">
@@ -182,98 +296,93 @@ const Statistics = () => {
 
         {/* 전체 통계 카드 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {overallStats.map((stat, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-3xl">{stat.icon}</div>
-                <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                  stat.changeType === 'positive' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {stat.change}
-                </span>
+          {loading ? (
+            // 로딩 상태
+            Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="animate-pulse">
+                  <div className="h-10 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
+            ))
+          ) : (
+            overallStats.map((stat, index) => (
+              <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-3xl">{stat.icon}</div>
+                  <span className={`text-sm font-medium px-2 py-1 rounded-full ${
+                    stat.changeType === 'positive' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {stat.change}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+                  <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         {/* 차트 영역 */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">월별 트렌드</h3>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setChartType('revenue')}
-                className={`px-3 py-1 text-sm rounded ${
-                  chartType === 'revenue' 
-                    ? 'bg-purple-600 text-white' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                매출
-              </button>
-              <button
-                onClick={() => setChartType('reservations')}
-                className={`px-3 py-1 text-sm rounded ${
-                  chartType === 'reservations' 
-                    ? 'bg-purple-600 text-white' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                예약
-              </button>
-              <button
-                onClick={() => setChartType('members')}
-                className={`px-3 py-1 text-sm rounded ${
-                  chartType === 'members' 
-                    ? 'bg-purple-600 text-white' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                회원
-              </button>
+            <h3 className="text-lg font-semibold text-gray-900">월별 수수료 수익 추이</h3>
+            <div className="flex items-center gap-3">
+              <label htmlFor="yearSelect" className="text-sm text-gray-600">연 선택</label>
+              <input
+                id="yearSelect"
+                type="number"
+                min="2000"
+                max="2100"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value || `${new Date().getFullYear()}`, 10))}
+                className="w-28 border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+              />
             </div>
           </div>
           
-          {/* 간단한 차트 표현 (실제 프로젝트에서는 Chart.js나 다른 라이브러리 사용) */}
-          <div className="h-64 flex items-end justify-between gap-2 bg-gray-50 p-4 rounded">
-            {monthlyTrends.map((data, index) => {
-              let value, maxValue, color;
-              
-              if (chartType === 'revenue') {
-                value = data.revenue;
-                maxValue = 400;
-                color = 'bg-purple-500';
-              } else if (chartType === 'reservations') {
-                value = data.reservations;
-                maxValue = 2500;
-                color = 'bg-blue-500';
-              } else {
-                value = data.newMembers;
-                maxValue = 1000;
-                color = 'bg-green-500';
-              }
-              
-              const height = (value / maxValue) * 100;
-              
-              return (
-                <div key={index} className="flex-1 flex flex-col items-center">
-                  <div className="w-full flex justify-center mb-2">
-                    <div
-                      className={`w-8 ${color} rounded-t`}
-                      style={{ height: `${height}%` }}
-                      title={`${data.month}: ${value}`}
-                    ></div>
-                  </div>
-                  <span className="text-xs text-gray-600">{data.month}</span>
-                </div>
-              );
-            })}
+          <div className="h-96 focus:outline-none outline-none" tabIndex={-1}>
+            {loading ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="animate-pulse text-gray-400">데이터를 불러오는 중...</div>
+              </div>
+            ) : chartData.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-gray-400">데이터가 없습니다.</div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" />
+                  <YAxis yAxisId="left" tickFormatter={(v) => `₩${Number(v).toLocaleString()}`} width={70} />
+                  <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v.toFixed(0)}%`} width={50} />
+                  <Tooltip
+                    cursor={false}
+                    formatter={(value, name) => {
+                      if (name === 'revenue') return [`₩${Number(value).toLocaleString()}`, '수수료 수익'];
+                      if (name === 'mom') return [`${Number(value).toFixed(1)}%`, '전월 대비'];
+                      return [value, name];
+                    }}
+                  />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="revenue" name="수수료 수익" fill="#7C3AED" radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="right" type="monotone" dataKey="mom" name="전월 대비" stroke="#10B981" strokeWidth={2} dot={false} activeDot={false} />
+                  <Brush dataKey="label" height={20} travellerWidth={8} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
           </div>
+          <style jsx global>{`
+            .recharts-wrapper:focus { outline: none; }
+            .recharts-surface:focus { outline: none; }
+            .recharts-brush:focus { outline: none; }
+          `}</style>
         </div>
 
         {/* 호텔 순위와 지역별 통계 */}
