@@ -9,13 +9,25 @@ const SettlementManagement = () => {
 
   const [settlements, setSettlements] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false); // 정산 생성 중 상태
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [pageSize] = useState(10);
 
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  // 초기 월 설정: 현재 달 -1 (1월이면 작년 12월)
+  const getPreviousMonth = () => {
+    const now = new Date();
+    now.setMonth(now.getMonth() - 1);
+    return {
+      year: now.getFullYear(),
+      month: now.getMonth() + 1
+    };
+  };
+
+  const initialDate = getPreviousMonth();
+  const [selectedYear, setSelectedYear] = useState(initialDate.year);
+  const [selectedMonth, setSelectedMonth] = useState(initialDate.month);
 
   function getData(page = 0) {
     setLoading(true);
@@ -54,6 +66,7 @@ const SettlementManagement = () => {
       return;
     }
 
+    setIsCreating(true);
     try {
       const response = await axiosInstance.post('/master/settlements/create', null, {
         params: {
@@ -70,7 +83,9 @@ const SettlementManagement = () => {
       }
     } catch (error) {
       console.error("정산 데이터 생성 실패:", error);
-      alert("서버 오류가 발생했습니다.");
+      alert("서버 오류가 발생했습니다: " + (error.response?.data?.message || error.message));
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -82,6 +97,26 @@ const SettlementManagement = () => {
   return (
     <MasterLayout>
       <div className="space-y-6">
+        {/* 정산 생성 중 오버레이 */}
+        {isCreating && (
+          <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 max-w-md mx-4 shadow-xl">
+              <div className="flex flex-col items-center gap-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">정산 데이터 생성 중</h3>
+                  <p className="text-sm text-gray-600">
+                    {selectedYear}년 {selectedMonth}월 정산 데이터를 생성하고 있습니다.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    모든 호텔의 결제 내역을 확인하는 중입니다. 잠시만 기다려주세요...
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 페이지 헤더 */}
         <div className="flex justify-between items-center">
           <div>
@@ -109,9 +144,17 @@ const SettlementManagement = () => {
             </select>
             <button
               onClick={handleCreateSettlement}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              disabled={isCreating}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              정산 생성
+              {isCreating ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>정산 생성 중...</span>
+                </>
+              ) : (
+                <span>정산 생성</span>
+              )}
             </button>
           </div>
         </div>
