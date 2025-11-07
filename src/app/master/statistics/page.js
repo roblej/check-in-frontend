@@ -29,7 +29,12 @@ const Statistics = () => {
   });
   const [monthlyCommissionData, setMonthlyCommissionData] = useState([]);
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+  const [regionStats, setRegionStats] = useState([]);
+  const [regionStatsLoading, setRegionStatsLoading] = useState(true);
+  const [memberGradeStats, setMemberGradeStats] = useState([]);
+  const [memberGradeStatsLoading, setMemberGradeStatsLoading] = useState(true);
   const [hotelRankings, setHotelRankings] = useState([]);
+  const [hotelRankingsLoading, setHotelRankingsLoading] = useState(true);
 
   // 통계 데이터 조회
   useEffect(() => {
@@ -75,20 +80,105 @@ const Statistics = () => {
     fetchMonthlyCommission();
   }, []);
 
-  // 호텔별 매출 순위 데이터 조회
+  // 지역별 통계 데이터 조회
   useEffect(() => {
-    const fetchHotelRanking = async () => {
+    const fetchRegionStatistics = async () => {
       try {
-        const response = await axiosInstance.get('/master/statistics/hotelRanking');
+        setRegionStatsLoading(true);
+        const response = await axiosInstance.get('/master/statistics/region');
         if (response.data) {
-          setHotelRankings(response.data || []);
+          const MAX_HOTELS = 800; // 최대 호텔 개수 기준
+          const formattedData = response.data.map((region) => {
+            const hotelCount = region.hotels || 0;
+            const hotelSharePercent = MAX_HOTELS > 0 
+              ? Math.min((hotelCount / MAX_HOTELS) * 100, 100) 
+              : 0;
+            return {
+              region: region.region || '미지정',
+              hotels: hotelCount,
+              reservations: region.reservations || 0,
+              revenue: formatCurrency(region.revenue || 0),
+              share: region.share || '0%', // 예약건수 기준 비율 (참고용)
+              hotelShare: `${hotelSharePercent.toFixed(1)}%`, // 호텔 개수 기준 비율
+              hotelSharePercent: hotelSharePercent // 그래프용 숫자 값
+            };
+          });
+          setRegionStats(formattedData);
         }
       } catch (error) {
-        console.error('호텔별 매출 순위 조회 오류:', error);
+        console.error('지역별 통계 조회 오류:', error);
+        setRegionStats([]);
+      } finally {
+        setRegionStatsLoading(false);
+      }
+    };
+    fetchRegionStatistics();
+  }, []);
+
+  // 회원 등급별 통계 데이터 조회
+  useEffect(() => {
+    const fetchMemberGradeStatistics = async () => {
+      try {
+        setMemberGradeStatsLoading(true);
+        const response = await axiosInstance.get('/master/statistics/memberGrade');
+        if (response.data) {
+          // 등급별 색상 매핑
+          const gradeColorMap = {
+            'Explorer': 'bg-blue-100 text-blue-800',
+            'First Class': 'bg-indigo-100 text-indigo-800',
+            'Sky Suite': 'bg-purple-100 text-purple-800',
+            'Traveler': 'bg-gray-100 text-gray-800',
+            'VIP': 'bg-yellow-100 text-yellow-800'
+          };
+          
+          // API 응답 데이터를 포맷팅
+          const formattedData = response.data.map((grade) => ({
+            grade: grade.grade || '미지정',
+            count: grade.count || 0,
+            percentage: grade.percentage || '0%',
+            avgSpending: formatCurrency(grade.avgSpending || 0),
+            color: gradeColorMap[grade.grade] || 'bg-gray-100 text-gray-800'
+          }));
+          setMemberGradeStats(formattedData);
+        }
+      } catch (error) {
+        console.error('회원 등급별 통계 조회 오류:', error);
+        setMemberGradeStats([]);
+      } finally {
+        setMemberGradeStatsLoading(false);
       }
     };
 
-    fetchHotelRanking();
+    fetchMemberGradeStatistics();
+  }, []);
+
+  // 호텔별 매출 순위 데이터 조회
+  useEffect(() => {
+    const fetchHotelRankings = async () => {
+      try {
+        setHotelRankingsLoading(true);
+        const response = await axiosInstance.get('/master/statistics/hotelRankings', {
+          params: { limit: 4 } // 상위 4개 호텔
+        });
+        if (response.data) {
+          // API 응답 데이터를 포맷팅
+          const formattedData = response.data.map((hotel) => ({
+            rank: hotel.rank || 0,
+            name: hotel.name || '미지정',
+            revenue: formatCurrency(hotel.revenue || 0),
+            reservations: hotel.reservations || 0
+          }));
+          setHotelRankings(formattedData);
+        }
+      } catch (error) {
+        console.error('호텔별 매출 순위 조회 오류:', error);
+        setHotelRankings([]);
+      } finally {
+        setHotelRankingsLoading(false);
+      }
+    };
+
+    fetchHotelRankings();
   }, []);
 
   // 차트 데이터 가공
@@ -131,12 +221,6 @@ const Statistics = () => {
     } else {
       return `₩${amount.toLocaleString()}`;
     }
-  };
-
-  // 호텔 매출 포맷팅 함수 (큰 금액용)
-  const formatHotelRevenue = (amount) => {
-    if (!amount) return '₩0';
-    return `₩${Number(amount).toLocaleString()}`;
   };
 
   // 날짜 범위 설명
@@ -191,70 +275,11 @@ const Statistics = () => {
     }
   ];
 
+  // 호텔별 매출 순위 (하드코딩 제거 - API에서 가져옴)
+  // const hotelRankings = [...]; // 제거됨
 
-  // 지역별 통계
-  const regionStats = [
-    {
-      region: '서울',
-      hotels: 45,
-      reservations: 5420,
-      revenue: '₩98,000,000',
-      share: '41%'
-    },
-    {
-      region: '부산',
-      hotels: 28,
-      reservations: 3210,
-      revenue: '₩67,000,000',
-      share: '28%'
-    },
-    {
-      region: '제주',
-      hotels: 32,
-      reservations: 2890,
-      revenue: '₩45,000,000',
-      share: '19%'
-    },
-    {
-      region: '강원',
-      hotels: 22,
-      reservations: 1912,
-      revenue: '₩29,000,000',
-      share: '12%'
-    }
-  ];
-
-  // 회원 등급별 통계
-  const memberGradeStats = [
-    {
-      grade: 'VIP',
-      count: 1250,
-      percentage: '8%',
-      avgSpending: '₩2,450,000',
-      color: 'bg-purple-100 text-purple-800'
-    },
-    {
-      grade: 'GOLD',
-      count: 4580,
-      percentage: '30%',
-      avgSpending: '₩890,000',
-      color: 'bg-yellow-100 text-yellow-800'
-    },
-    {
-      grade: 'SILVER',
-      count: 6890,
-      percentage: '45%',
-      avgSpending: '₩320,000',
-      color: 'bg-gray-100 text-gray-800'
-    },
-    {
-      grade: 'BRONZE',
-      count: 2612,
-      percentage: '17%',
-      avgSpending: '₩150,000',
-      color: 'bg-orange-100 text-orange-800'
-    }
-  ];
+  // 지역별 통계 (하드코딩 제거 - API에서 가져옴)
+  // const regionStats = [...]; // 제거됨
 
   return (
     <MasterLayout>
@@ -379,19 +404,42 @@ const Statistics = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">호텔별 매출 순위</h3>
-              <p className="text-sm text-gray-600">이번 달 기준</p>
+              <p className="text-sm text-gray-600">최근 30일 기준</p>
             </div>
             <div className="p-6">
-              {loading ? (
+              {hotelRankingsLoading ? (
                 <div className="space-y-4">
                   {Array.from({ length: 4 }).map((_, index) => (
-                    <div key={index} className="animate-pulse">
-                      <div className="h-16 bg-gray-200 rounded-lg"></div>
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="animate-pulse flex items-center gap-3 flex-1">
+                        <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                        <div className="flex-1">
+                          <div className="h-4 bg-gray-200 rounded mb-2 w-32"></div>
+                          <div className="h-3 bg-gray-200 rounded w-24"></div>
+                        </div>
+                      </div>
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded mb-2 w-20"></div>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : hotelRankings.length === 0 ? (
-                <div className="text-center text-gray-400 py-8">데이터가 없습니다.</div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <div className="text-center">
+                      <div className="text-gray-400 mb-2">
+                        <Building2 className="w-12 h-12 mx-auto" />
+                      </div>
+                      <div className="text-sm font-medium text-gray-600 mb-1">
+                        최근 30일 매출 데이터가 없습니다
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        호텔별 매출 순위는 최근 30일 기준으로 집계됩니다
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {hotelRankings.map((hotel) => (
@@ -403,17 +451,12 @@ const Statistics = () => {
                         <div>
                           <div className="text-sm font-medium text-gray-900">{hotel.name}</div>
                           <div className="text-xs text-gray-500">
-                            예약 {hotel.reservations?.toLocaleString() || 0}건 • <Star className="inline w-3 h-3 text-yellow-400 fill-current" /> {hotel.rating ? hotel.rating.toFixed(1) : '0.0'}
+                            예약 {hotel.reservations.toLocaleString()}건
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-medium text-gray-900">{formatHotelRevenue(hotel.revenue)}</div>
-                        <div className={`text-xs ${
-                          hotel.growth?.startsWith('+') ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {hotel.growth || '+0%'}
-                        </div>
+                        <div className="text-sm font-medium text-gray-900">{hotel.revenue}</div>
                       </div>
                     </div>
                   ))}
@@ -429,27 +472,43 @@ const Statistics = () => {
               <p className="text-sm text-gray-600">호텔 분포 및 매출 현황</p>
             </div>
             <div className="p-6">
-              <div className="space-y-4">
-                {regionStats.map((region, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-900">{region.region}</span>
-                      <span className="text-sm text-gray-600">{region.share}</span>
+              {regionStatsLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-2 bg-gray-200 rounded-full"></div>
+                        <div className="h-3 bg-gray-200 rounded mt-2"></div>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-purple-600 h-2 rounded-full"
-                        style={{ width: region.share }}
-                      ></div>
+                  ))}
+                </div>
+              ) : regionStats.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">데이터가 없습니다.</div>
+              ) : (
+                <div className="space-y-4">
+                  {regionStats.map((region, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-900">{region.region}</span>
+                        <span className="text-sm text-gray-600">{region.hotelShare}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${region.hotelSharePercent}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>호텔 {region.hotels}개</span>
+                        <span>예약 {region.reservations.toLocaleString()}건</span>
+                        <span>{region.revenue}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>호텔 {region.hotels}개</span>
-                      <span>예약 {region.reservations}건</span>
-                      <span>{region.revenue}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -461,43 +520,39 @@ const Statistics = () => {
             <p className="text-sm text-gray-600">등급별 회원 분포 및 평균 지출액</p>
           </div>
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {memberGradeStats.map((grade, index) => (
-                <div key={index} className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full mb-3 ${grade.color}`}>
-                    {grade.grade}
+            {memberGradeStatsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="animate-pulse">
+                      <div className="h-8 bg-gray-200 rounded-full mb-3 mx-auto w-24"></div>
+                      <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded mb-1"></div>
+                      <div className="h-4 bg-gray-200 rounded mb-1"></div>
+                      <div className="h-4 bg-gray-200 rounded"></div>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <div className="text-2xl font-bold text-gray-900">{grade.count.toLocaleString()}</div>
-                    <div className="text-sm text-gray-600">{grade.percentage}</div>
-                    <div className="text-xs text-gray-500">평균 지출</div>
-                    <div className="text-sm font-medium text-gray-900">{grade.avgSpending}</div>
+                ))}
+              </div>
+            ) : memberGradeStats.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">데이터가 없습니다.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {memberGradeStats.map((grade, index) => (
+                  <div key={index} className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full mb-3 ${grade.color}`}>
+                      {grade.grade}
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-2xl font-bold text-gray-900">{grade.count.toLocaleString()}</div>
+                      <div className="text-sm text-gray-600">{grade.percentage}</div>
+                      <div className="text-xs text-gray-500">평균 지출</div>
+                      <div className="text-sm font-medium text-gray-900">{grade.avgSpending}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 주요 지표 요약 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">주요 지표 요약</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600">94.2%</div>
-              <div className="text-sm text-gray-600">고객 만족도</div>
-              <div className="text-xs text-green-600 mt-1">+2.1% ↗</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">68.5%</div>
-              <div className="text-sm text-gray-600">재방문율</div>
-              <div className="text-xs text-green-600 mt-1">+5.3% ↗</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600">₩1.8M</div>
-              <div className="text-sm text-gray-600">평균 주문액</div>
-              <div className="text-xs text-green-600 mt-1">+12.7% ↗</div>
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
