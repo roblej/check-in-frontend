@@ -127,7 +127,8 @@ export default function MyReviewsPage() {
   };
 
   const handleWriteReview = (reservation) => {
-    router.push(`/mypage/review/write?reservationId=${reservation.id || reservation.reservationIdx}`);
+    const reservationId = reservation.id || reservation.reservIdx || reservation.reservationNumber || reservation.reservationIdx;
+    router.push(`/mypage/review/write?reservationId=${reservationId}`);
   };
 
   // 이용완료 예약 불러오기 (전체 데이터 가져오기)
@@ -365,7 +366,7 @@ export default function MyReviewsPage() {
                         예약 상세 확인
                       </button>
                       <button
-                        onClick={() => router.push('/mypage?tab=completed')}
+                        onClick={() => handleWriteReview(r)}
                         className="flex-1 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm"
                       >
                         리뷰 쓰기
@@ -376,7 +377,7 @@ export default function MyReviewsPage() {
               )}
             </div>
             {/* 작성 가능한 리뷰 페이지네이션 */}
-            {!completedLoading && writableTotalPages > 1 && (
+            {!completedLoading && writableTotalPages > 0 && (
               <Pagination
                 currentPage={writablePage}
                 totalPages={writableTotalPages}

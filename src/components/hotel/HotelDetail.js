@@ -80,8 +80,16 @@ const HotelDetail = ({
   }, [localSearchParams, urlSearchParams]);
 
   // 커스텀 훅 사용
-  const { hotelData, rooms, dinings, isLoading, errorMessage, formatPrice } =
-    useHotelData(contentId, localSearchParams, onLoadingChange);
+  const {
+    hotelData,
+    rooms,
+    dinings,
+    reviews,
+    reviewSummary,
+    isLoading,
+    errorMessage,
+    formatPrice,
+  } = useHotelData(contentId, localSearchParams, onLoadingChange);
 
   const {
     activeSection,
@@ -431,9 +439,13 @@ const HotelDetail = ({
           aria-labelledby="reviews-heading"
         >
           <HotelReviews
-            reviews={hotelData.reviews}
-            rating={hotelData.rating}
-            reviewCount={hotelData.reviewCount}
+              reviews={reviews}
+              rating={
+                reviewSummary?.rating ?? hotelData?.rating ?? 0
+              }
+              reviewCount={
+                reviewSummary?.reviewCount ?? hotelData?.reviewCount ?? 0
+              }
           />
         </section>
 

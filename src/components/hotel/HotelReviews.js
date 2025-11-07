@@ -53,29 +53,53 @@ const HotelReviews = ({ reviews = [], rating = 0, reviewCount = 0 }) => {
 
       <div className="space-y-4">
         {safeReviews.length > 0 ? (
-          safeReviews.map((review) => (
-            <div
-              key={review.id}
-              className="border-b pb-4 last:border-b-0 hover:bg-gray-50 p-3 rounded-lg transition-colors"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <span className="font-medium">{review.userName}</span>
-                  <span className="text-sm text-gray-500">{review.date}</span>
-                  {review.roomType && (
-                    <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                      {review.roomType}
-                    </span>
-                  )}
+          safeReviews.map((review) => {
+            const imageList = Array.isArray(review?.imageUrls)
+              ? review.imageUrls
+              : review?.imageUrl
+              ? [review.imageUrl]
+              : [];
+
+            return (
+              <div
+                key={review.id}
+                className="border-b pb-4 last:border-b-0 hover:bg-gray-50 p-3 rounded-lg transition-colors"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <span className="font-medium">{review.userName}</span>
+                    <span className="text-sm text-gray-500">{review.date}</span>
+                    {review.roomType && (
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        {review.roomType}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-yellow-500">⭐</span>
+                    <span className="font-medium">{review.rating}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-yellow-500">⭐</span>
-                  <span className="font-medium">{review.rating}</span>
-                </div>
+
+                <p className="text-gray-700 whitespace-pre-line">{review.comment}</p>
+
+                {imageList.length > 0 && (
+                  <ul className="mt-3 flex flex-wrap gap-3">
+                    {imageList.map((url, index) => (
+                      <li key={`${review.id}-image-${index}`}>
+                        <img
+                          src={url}
+                          alt={`${review.userName}님 리뷰 이미지 ${index + 1}`}
+                          className="w-24 h-24 md:w-28 md:h-28 object-cover rounded-lg shadow-sm hover:ring-2 hover:ring-blue-400 transition-all"
+                          loading="lazy"
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              <p className="text-gray-700">{review.comment}</p>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="text-center py-8 text-gray-500">
             아직 등록된 리뷰가 없습니다.
