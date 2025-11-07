@@ -21,7 +21,8 @@ import {
   Server,
   UserCog,
   Globe,
-  CreditCard
+  CreditCard,
+  AlertTriangle
 } from 'lucide-react';
 
 const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
@@ -58,7 +59,8 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
       icon: <HelpCircle size={20} />,
       submenu: [
         { id: 'faq-list', name: '자주 묻는 질문', path: '/master/center/faq', icon: <HelpCircle size={16} /> },
-        { id: 'inquiry-list', name: '1:1 문의 목록', path: '/master/center/inquiries', icon: <MessageSquare size={16} /> }
+        { id: 'inquiry-list', name: '1:1 문의 목록', path: '/master/center/inquiries', icon: <MessageSquare size={16} /> },
+        { id: 'report-list', name: '신고 목록', path: '/master/center/reports', icon: <AlertTriangle size={16} /> }
       ]
     },
     {
