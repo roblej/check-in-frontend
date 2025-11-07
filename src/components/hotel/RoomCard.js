@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
 import axiosInstance from "@/lib/axios";
+import RoomBookmarkButton from "./RoomBookmarkButton";
 
 const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
   const router = useRouter();
@@ -147,6 +148,14 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
               {room.discount}% 할인
             </div>
           )}
+          {/* 찜 버튼 */}
+          <div className="absolute top-2 right-2 z-10">
+            <RoomBookmarkButton 
+              roomIdx={room.roomIdx || room.id}
+              contentId={searchParams?.contentId || searchParams?.hotelId || room?.contentId}
+              size="medium" 
+            />
+          </div>
         </div>
 
         {/* 객실 정보 */}
