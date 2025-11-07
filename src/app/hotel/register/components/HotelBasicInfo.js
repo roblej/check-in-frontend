@@ -209,7 +209,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
             </label>
             <input
               type="text"
-              value={formData.hotelInfo.title}
+              value={formData.hotelInfo.title || ""}
               onChange={(e) => updateFormData("hotelInfo", { title: e.target.value })}
               readOnly={readOnly}
               disabled={readOnly}
@@ -227,7 +227,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
             </label>
             <input
               type="tel"
-              value={formData.hotelInfo.phone}
+              value={formData.hotelInfo.phone || ""}
               onChange={(e) => updateFormData("hotelInfo", { phone: e.target.value })}
               readOnly={readOnly}
               disabled={readOnly}
@@ -257,7 +257,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
                 </button>
                 <input
                   type="text"
-                  value={baseAddress}
+                  value={baseAddress || ""}
                   readOnly
                   disabled={readOnly}
                   className={`flex-1 px-3 py-2 border rounded-md bg-gray-50 cursor-not-allowed ${
@@ -268,7 +268,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
               </div>
               <input
                 type="text"
-                value={detailAddress}
+                value={detailAddress || ""}
                 onChange={handleDetailAddressChange}
                 readOnly={readOnly}
                 disabled={readOnly}
@@ -307,7 +307,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
               식당 정보
             </label>
             <textarea
-              value={formData.hotelDetail.foodplace}
+              value={formData.hotelDetail.foodplace || ""}
               onChange={(e) => updateFormData("hotelDetail", { foodplace: e.target.value })}
               readOnly={readOnly}
               disabled={readOnly}
@@ -339,7 +339,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
               </label>
               <input
                 type="text"
-                value={formData.hotelDetail.parkinglodging}
+                value={formData.hotelDetail.parkinglodging || ""}
                 onChange={(e) => updateFormData("hotelDetail", { parkinglodging: e.target.value })}
                 readOnly={readOnly}
                 disabled={readOnly}
