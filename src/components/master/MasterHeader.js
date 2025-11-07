@@ -23,7 +23,7 @@ const MasterHeader = ({ onMenuClick }) => {
     deleteAdminIdxCookie();
     
     console.log("마스터 로그아웃 완료");
-    router.push('/');
+    router.push('/admin-login');
   };
   
   const pageTitles = {

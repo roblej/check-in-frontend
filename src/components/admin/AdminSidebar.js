@@ -18,7 +18,8 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronRight,
-  List
+  List,
+  HelpCircle
 } from 'lucide-react';
 
 const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
@@ -62,6 +63,7 @@ const AdminSidebar = ({ isOpen, onClose, onToggle }) => {
       submenu: [
         { id: 'customer-list', name: '고객 목록', path: '/admin/customers', icon: <Users size={16} /> },
         { id: 'customer-history', name: '이용 이력', path: '/admin/customer-history', icon: <History size={16} /> },
+        { id: 'customer-inquiries', name: '문의사항', path: '/admin/customers/inquiries', icon: <HelpCircle size={16} /> },
         { id: 'customer-feedback', name: '고객 피드백', path: '/admin/feedback', icon: <MessageSquare size={16} /> }
       ]
     },
