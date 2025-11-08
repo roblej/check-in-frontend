@@ -14,20 +14,25 @@ const UsedPaymentSuccessContent = () => {
   const [loading, setLoading] = useState(true);
   const processedRef = useRef(false);
 
-  // 세션 스토리지 또는 URL 파라미터에서 결제 성공 정보 가져오기
+  // 세션 스토리지에서 결제 성공 정보 가져오기 (URL 파라미터는 사용하지 않음)
   useEffect(() => {
     try {
-      // 1. URL 파라미터를 먼저 확인 (모바일 리다이렉트 플로우 또는 최신 값)
+      // URL 파라미터가 있으면 먼저 읽어서 sessionStorage에 저장 후 URL에서 제거
       const urlOrderId = searchParams.get('orderId');
       const urlPaymentKey = searchParams.get('paymentKey');
       const urlAmount = searchParams.get('amount');
       const urlUsedTradeIdx = searchParams.get('usedTradeIdx');
+      const urlUsedItemIdx = searchParams.get('usedItemIdx');
+      const urlHotelName = searchParams.get('hotelName');
+      const urlRoomType = searchParams.get('roomType');
+      const urlCheckIn = searchParams.get('checkIn');
+      const urlCheckOut = searchParams.get('checkOut');
       
       let storedSuccessData = null;
       
-      // URL 파라미터에 필수 정보가 있으면 우선 사용 (최신 값 보장)
+      // URL 파라미터에 필수 정보가 있으면 sessionStorage에 저장하고 URL에서 제거
       if (urlOrderId && urlPaymentKey && urlAmount) {
-        console.log('🔍 URL 파라미터에서 결제 정보 읽기:', {
+        console.log('🔍 URL 파라미터에서 결제 정보 읽기 (URL에서 제거 예정):', {
           orderId: urlOrderId,
           paymentKey: urlPaymentKey,
           amount: urlAmount,
@@ -44,19 +49,24 @@ const UsedPaymentSuccessContent = () => {
           point: 0,
           card: parseInt(urlAmount, 10),
           tradeIdx: urlUsedTradeIdx || '',
-          usedItemIdx: searchParams.get('usedItemIdx') || '',
-          hotelName: searchParams.get('hotelName') || '호텔명',
-          roomType: searchParams.get('roomType') || '객실 정보',
-          checkIn: searchParams.get('checkIn') || '',
-          checkOut: searchParams.get('checkOut') || ''
+          usedItemIdx: urlUsedItemIdx || '',
+          hotelName: urlHotelName || '호텔명',
+          roomType: urlRoomType || '객실 정보',
+          checkIn: urlCheckIn || '',
+          checkOut: urlCheckOut || ''
         };
         
-        // 세션 스토리지에 저장하여 다음 로드 시에도 사용 가능하게 함
+        // 세션 스토리지에 저장
         sessionStorage.setItem('used_payment_success_data', JSON.stringify(urlData));
         storedSuccessData = JSON.stringify(urlData);
         console.log('✅ URL 파라미터 데이터를 세션 스토리지에 저장:', urlData);
+        
+        // URL 파라미터 제거 (히스토리 API 사용)
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, '', '/used-payment/success');
+        }
       } else {
-        // 2. URL 파라미터가 없으면 세션 스토리지에서 확인 (데스크톱 플로우)
+        // URL 파라미터가 없으면 세션 스토리지에서 확인
         storedSuccessData = sessionStorage.getItem('used_payment_success_data');
         if (storedSuccessData) {
           console.log('🔍 세션 스토리지에서 결제 정보 읽기:', {
@@ -109,53 +119,19 @@ const UsedPaymentSuccessContent = () => {
       if (processedRef.current) return;
       
       try {
-        // URL 파라미터를 우선적으로 확인 (최신 값 보장)
-        const urlOrderId = searchParams.get('orderId');
-        const urlPaymentKey = searchParams.get('paymentKey');
-        const urlAmount = searchParams.get('amount');
-        const urlUsedTradeIdx = searchParams.get('usedTradeIdx');
-        const urlUsedItemIdx = searchParams.get('usedItemIdx');
-        
-        // URL 파라미터가 있으면 우선 사용
-        let orderId, paymentKey, usedTradeIdx, usedItemIdx, amount;
-        
-        if (urlOrderId && urlPaymentKey && urlAmount) {
-          orderId = urlOrderId;
-          paymentKey = urlPaymentKey;
-          amount = parseInt(urlAmount, 10);
-          usedTradeIdx = urlUsedTradeIdx;
-          usedItemIdx = urlUsedItemIdx;
-          
-          console.log('🔵 URL 파라미터에서 백엔드 검증 데이터 읽기:', {
-            orderId,
-            paymentKey,
-            amount,
-            usedTradeIdx,
-            usedItemIdx
-          });
-        } else {
-          // URL 파라미터가 없으면 세션 스토리지에서 읽기
-          const storedSuccessData = sessionStorage.getItem('used_payment_success_data');
-          if (!storedSuccessData) {
-            console.warn('백엔드 검증을 위한 정보가 없습니다.');
-            return;
-          }
-
-          const parsedData = JSON.parse(storedSuccessData);
-          orderId = parsedData.orderId;
-          paymentKey = parsedData.paymentKey;
-          usedTradeIdx = parsedData.tradeIdx;
-          usedItemIdx = parsedData.usedItemIdx;
-          amount = parsedData.card || parsedData.amount;
-          
-          console.log('🔵 세션 스토리지에서 백엔드 검증 데이터 읽기:', {
-            orderId,
-            paymentKey,
-            amount,
-            usedTradeIdx,
-            usedItemIdx
-          });
+        // sessionStorage에서 결제 정보 가져오기 (URL 파라미터는 이미 제거됨)
+        const storedSuccessData = sessionStorage.getItem('used_payment_success_data');
+        if (!storedSuccessData) {
+          console.error('결제 성공 정보를 찾을 수 없습니다.');
+          return;
         }
+        
+        const parsedData = JSON.parse(storedSuccessData);
+        const orderId = parsedData.orderId;
+        const paymentKey = parsedData.paymentKey;
+        const amount = parsedData.amount || parsedData.card;
+        const usedTradeIdx = parsedData.usedTradeIdx || parsedData.tradeIdx;
+        const usedItemIdx = parsedData.usedItemIdx;
         
         // 필요한 정보가 없으면 스킵
         if (!orderId || !paymentKey || !usedTradeIdx) {
@@ -174,12 +150,8 @@ const UsedPaymentSuccessContent = () => {
           orderId, 
           paymentKey, 
           usedTradeIdx,
-          source: urlOrderId ? 'URL 파라미터' : '세션 스토리지'
+          source: '세션 스토리지'
         });
-
-        // 세션 스토리지에서 추가 정보 읽기 (없으면 URL 파라미터에서)
-        const storedSuccessData = sessionStorage.getItem('used_payment_success_data');
-        const parsedData = storedSuccessData ? JSON.parse(storedSuccessData) : {};
         
         // 백엔드 검증 API 호출 (/api/payments)
         const requestData = {
@@ -191,8 +163,8 @@ const UsedPaymentSuccessContent = () => {
           customerIdx: parsedData.customerIdx || null,
           usedTradeIdx: parseInt(usedTradeIdx, 10), // URL 파라미터 또는 세션 스토리지에서 읽은 값
           usedItemIdx: usedItemIdx ? parseInt(usedItemIdx, 10) : (parsedData.usedItemIdx ? parseInt(parsedData.usedItemIdx, 10) : null),
-          hotelName: parsedData.hotelName || searchParams.get('hotelName') || '',
-          roomType: parsedData.roomType || searchParams.get('roomType') || '',
+          hotelName: parsedData.hotelName || '',
+          roomType: parsedData.roomType || '',
           salePrice: parsedData.salePrice || amount || parsedData.amount,
           customerName: parsedData.customerName || '',
           customerEmail: parsedData.customerEmail || '',

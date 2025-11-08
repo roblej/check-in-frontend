@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
-import { MessageSquare, Clock, CheckCircle, AlertCircle, User, Mail, Calendar, X } from 'lucide-react';
+import { MessageSquare, Clock, CheckCircle, AlertCircle, X } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
 const mockInquiryList = [
@@ -104,26 +104,29 @@ export default function InquiryListPage() {
         body: JSON.stringify({
           mainCategory: '문의',
           page: 0,
-          size: 100,
+          size: 1000,
         }),
       });
       
       if (response.ok) {
         const data = await response.json();
         // 백엔드 데이터를 프론트엔드 형식으로 변환
-        const convertedInquiries = (data.content || []).map(item => ({
-          id: item.centerIdx,
-          username: item.customerIdx ? `고객${item.customerIdx}` : '관리자',
-          email: item.customerIdx ? `customer${item.customerIdx}@test.com` : 'admin@test.com',
-          title: item.title,
-          content: item.content,
-          status: item.status === 0 ? 'pending' : item.status === 1 ? 'in_progress' : 'completed',
-          category: item.subCategory || '기타',
-          priority: item.priority === 0 ? 'low' : item.priority === 1 ? 'medium' : 'high',
-          createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
-          answeredAt: item.status === 2 ? item.updatedAt : null,
-          assignedTo: item.adminIdx ? `관리자${item.adminIdx}` : '미배정',
-        }));
+        // contentId가 있는 문의는 제외 (호텔 문의 제외)
+        const convertedInquiries = (data.content || [])
+          .filter(item => !item.contentId) // contentId가 없는 것만 (사이트 문의만)
+          .map(item => ({
+            id: item.centerIdx,
+            username: item.customerIdx ? `고객${item.customerIdx}` : '관리자',
+            email: item.customerIdx ? `customer${item.customerIdx}@test.com` : 'admin@test.com',
+            title: item.title,
+            content: item.content,
+            status: item.status === 0 ? 'pending' : item.status === 1 ? 'in_progress' : 'completed',
+            category: item.subCategory || '기타',
+            priority: item.priority === 0 ? 'low' : item.priority === 1 ? 'medium' : 'high',
+            createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
+            answeredAt: item.status === 2 ? item.updatedAt : null,
+            assignedTo: item.adminIdx ? `관리자${item.adminIdx}` : '미배정',
+          }));
         setInquiries(convertedInquiries);
       } else {
         // API 실패시 목 데이터 사용
@@ -229,31 +232,6 @@ export default function InquiryListPage() {
     setActiveStatusFilter('all');
     setActiveCategoryFilter('all');
     setActivePriorityFilter('all');
-  };
-
-
-  const handleBulkAction = (action) => {
-    if (selectedInquiries.length === 0) {
-      alert('문의를 선택해주세요.');
-      return;
-    }
-    
-    switch (action) {
-      case 'assign':
-        alert(`${selectedInquiries.length}건의 문의를 배정합니다.`);
-        break;
-      case 'complete':
-        alert(`${selectedInquiries.length}건의 문의를 완료 처리합니다.`);
-        break;
-      case 'delete':
-        if (confirm(`${selectedInquiries.length}건의 문의를 삭제하시겠습니까?`)) {
-          alert(`${selectedInquiries.length}건의 문의를 삭제했습니다.`);
-        }
-        break;
-      default:
-        break;
-    }
-    setSelectedInquiries([]);
   };
 
   // 모달 열기
@@ -466,7 +444,6 @@ export default function InquiryListPage() {
           </div>
         </div>
 
-
         {/* 문의 목록 테이블 */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
@@ -540,7 +517,7 @@ export default function InquiryListPage() {
                 ))}
                 {filteredInquiries.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-gray-400 text-center">
+                    <td colSpan={5} className="px-6 py-8 text-gray-400 text-center">
                       조건에 맞는 문의가 없습니다.
                     </td>
                   </tr>
@@ -549,7 +526,6 @@ export default function InquiryListPage() {
             </table>
           </div>
         </div>
-
 
         {/* 상세보기 모달 */}
         {isModalOpen && selectedInquiry && (

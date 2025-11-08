@@ -7,6 +7,7 @@ import HotelGallery from "./HotelGallery";
 import HotelInfo from "./HotelInfo";
 import HotelAmenities from "./HotelAmenities";
 import HotelReviews from "./HotelReviews";
+import HotelInquiries from "./HotelInquiries";
 import HotelLocation from "./HotelLocation";
 import HotelPolicy from "./HotelPolicy";
 import HotelHeader from "./HotelHeader";
@@ -56,6 +57,31 @@ const HotelDetail = ({
       setWindowScrollRef({ current: window });
     }
   }, [isModal]);
+
+  // searchParams prop이 변경되면 로컬 상태 업데이트
+  useEffect(() => {
+    if (searchParams && Object.keys(searchParams).length > 0) {
+      // 날짜 파라미터가 있으면 업데이트
+      if (searchParams.checkIn || searchParams.checkOut) {
+        setLocalSearchParams((prev) => {
+          // 값이 변경된 경우에만 업데이트 (무한 루프 방지)
+          if (
+            prev.checkIn !== searchParams.checkIn ||
+            prev.checkOut !== searchParams.checkOut
+          ) {
+            return {
+              destination: searchParams.destination || prev.destination || "",
+              checkIn: searchParams.checkIn || "",
+              checkOut: searchParams.checkOut || "",
+              nights: parseInt(searchParams.nights || prev.nights || "1"),
+              adults: parseInt(searchParams.adults || prev.adults || "2"),
+            };
+          }
+          return prev;
+        });
+      }
+    }
+  }, [searchParams]);
 
   const scrollContainerRef = isModal
     ? externalScrollRef || internalScrollRef
@@ -132,15 +158,16 @@ const HotelDetail = ({
       const updatedParams = { ...localSearchParams, ...newParams };
       setLocalSearchParams(updatedParams);
 
+      // 호텔 디테일 페이지에서 onSearchParamsChange가 있으면 호출 (로컬스토리지 저장 포함)
       if (onSearchParamsChange) {
         onSearchParamsChange(updatedParams);
-        return;
       }
 
       if (isModal) {
         return;
       }
 
+      // URL 업데이트
       const urlParams = formatSearchParamsForUrl(updatedParams);
       const newUrl = updateUrlParams(urlParams);
       router.replace(newUrl, { scroll: false });
@@ -443,6 +470,14 @@ const HotelDetail = ({
             rating={hotelData.rating}
             reviewCount={hotelData.reviewCount}
           />
+        </section>
+
+        {/* 문의 */}
+        <section
+          ref={setSectionRef("inquiries")}
+          aria-labelledby="inquiries-heading"
+        >
+          <HotelInquiries contentId={contentId} />
         </section>
 
         {/* 위치 정보 */}

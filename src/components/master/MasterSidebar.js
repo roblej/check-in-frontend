@@ -12,17 +12,16 @@ import {
   Gift,
   ChevronDown,
   ChevronRight,
-  History,
   MessageSquare,
   FileText,
   HelpCircle,
   BarChart,
-  FileDown,
   Ticket,
   Server,
   UserCog,
   Globe,
-  CreditCard
+  CreditCard,
+  AlertTriangle
 } from 'lucide-react';
 
 const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
@@ -50,9 +49,7 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
       name: '회원 관리',
       icon: <Users size={20} />,
       submenu: [
-        { id: 'member-list', name: '회원 목록', path: '/master/members', icon: <Users size={16} /> },
-        { id: 'member-history', name: '회원 이력', path: '/master/member-history', icon: <History size={16} /> },
-        { id: 'member-feedback', name: '회원 피드백', path: '/master/member-feedback', icon: <MessageSquare size={16} /> }
+        { id: 'member-list', name: '회원 목록', path: '/master/members', icon: <Users size={16} /> }
       ]
     },
     {
@@ -61,7 +58,8 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
       icon: <HelpCircle size={20} />,
       submenu: [
         { id: 'faq-list', name: '자주 묻는 질문', path: '/master/center/faq', icon: <HelpCircle size={16} /> },
-        { id: 'inquiry-list', name: '1:1 문의 목록', path: '/master/center/inquiries', icon: <MessageSquare size={16} /> }
+        { id: 'inquiry-list', name: '1:1 문의 목록', path: '/master/center/inquiries', icon: <MessageSquare size={16} /> },
+        { id: 'report-list', name: '신고 목록', path: '/master/center/reports', icon: <AlertTriangle size={16} /> }
       ]
     },
     {
@@ -69,9 +67,7 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
       name: '통계 분석',
       icon: <TrendingUp size={20} />,
       submenu: [
-        { id: 'statistics-dashboard', name: '통계 현황', path: '/master/statistics', icon: <BarChart size={16} /> },
-        { id: 'statistics-analysis', name: '분석 리포트', path: '/master/statistics-analysis', icon: <TrendingUp size={16} /> },
-        { id: 'statistics-export', name: '데이터 내보내기', path: '/master/statistics-export', icon: <FileDown size={16} /> }
+        { id: 'statistics-dashboard', name: '통계 현황', path: '/master/statistics', icon: <BarChart size={16} /> }
       ]
     },
     {
