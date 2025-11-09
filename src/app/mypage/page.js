@@ -1,18 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { mypageAPI } from '@/lib/api/mypage';
 import { useCustomerStore } from '@/stores/customerStore';
-
-import { 
-  Calendar, Heart, MapPin, Gift, User,
-  MessageSquare, ChevronRight, Star, Clock,
-  Edit, Trash2, Share2, Hotel, X, ChevronDown
-} from 'lucide-react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import Pagination from '@/components/Pagination';
+import ProfileHeader from './components/ProfileHeader';
+import ReservationSection from './components/reservation/ReservationSection';
+import ReviewSection from './components/review/ReviewSection';
+import EditReviewModal from './components/review/EditReviewModal';
+import ConfirmCancelModal from './components/review/ConfirmCancelModal';
+import FavoritesSection from './components/favorites/FavoritesSection';
+import RecentHotelsSection from './components/recent/RecentHotelsSection';
+import CouponSection from './components/coupon/CouponSection';
+import InquirySection from './components/inquiry/InquirySection';
 
 // useSearchParams를 사용하는 컴포넌트 분리
 function TabQueryHandler({ onTabChange }) {
@@ -32,8 +34,7 @@ function TabQueryHandler({ onTabChange }) {
         }
       }, 100);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [onTabChange, searchParams]);
   
   return null;
 }
@@ -673,10 +674,6 @@ function MyPageContent() {
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
   
   // 모달 refs
-  const editContentRef = useRef(null);
-  const editModalRef = useRef(null);
-  const confirmModalRef = useRef(null);
-  const confirmPrimaryRef = useRef(null);
 
 
   const openEditModal = (review) => {
@@ -717,112 +714,6 @@ function MyPageContent() {
     closeEditModal();
   };
 
-  // 모달 열릴 때 textarea 자동 포커스
-  useEffect(() => {
-    if (isEditModalOpen && editContentRef.current) {
-      editContentRef.current.focus();
-    }
-  }, [isEditModalOpen]);
-
-  // Esc 키로 모달 닫기 (확인 모달 우선)
-  useEffect(() => {
-    if (!isEditModalOpen && !isConfirmCancelOpen) return;
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        if (isConfirmCancelOpen) {
-          setIsConfirmCancelOpen(false);
-        } else if (isEditModalOpen) {
-          closeEditModal();
-        }
-      }
-    };
-    window.addEventListener('keydown', onKeyDown, { capture: true });
-    return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
-  }, [isEditModalOpen, isConfirmCancelOpen]);
-
-  // Body 스크롤 락 (스크롤바 보정 포함) - 어느 모달이든 열리면 적용
-  useEffect(() => {
-    if (!isEditModalOpen && !isConfirmCancelOpen) return;
-    const originalOverflow = document.body.style.overflow;
-    const originalPaddingRight = document.body.style.paddingRight;
-    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
-    document.body.style.overflow = 'hidden';
-    if (scrollBarWidth > 0) {
-      document.body.style.paddingRight = `${scrollBarWidth}px`;
-    }
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.paddingRight = originalPaddingRight;
-    };
-  }, [isEditModalOpen, isConfirmCancelOpen]);
-
-  // 포커스 트랩 (수정 모달 내부에서 Tab 순환)
-  useEffect(() => {
-    if (!isEditModalOpen || !editModalRef.current) return;
-    const container = editModalRef.current;
-    const focusableSelectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-    const getFocusables = () => Array.from(container.querySelectorAll(focusableSelectors))
-      .filter(el => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true');
-
-    const onKeyDown = (e) => {
-      if (e.key !== 'Tab') return;
-      const focusables = getFocusables();
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-
-    container.addEventListener('keydown', onKeyDown);
-    return () => container.removeEventListener('keydown', onKeyDown);
-  }, [isEditModalOpen]);
-
-  // 포커스 트랩 (확인 모달 내부에서 Tab 순환) 및 기본 포커스
-  useEffect(() => {
-    if (!isConfirmCancelOpen || !confirmModalRef.current) return;
-    const container = confirmModalRef.current;
-    const focusableSelectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-    const getFocusables = () => Array.from(container.querySelectorAll(focusableSelectors))
-      .filter(el => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true');
-
-    // 기본 포커스: 확인 버튼
-    if (confirmPrimaryRef.current) {
-      confirmPrimaryRef.current.focus();
-    }
-
-    const onKeyDown = (e) => {
-      if (e.key !== 'Tab') return;
-      const focusables = getFocusables();
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-
-    container.addEventListener('keydown', onKeyDown);
-    return () => container.removeEventListener('keydown', onKeyDown);
-  }, [isConfirmCancelOpen]);
 
   // 특정 예약에 대해 리뷰가 작성되었는지 확인
   const isReviewWritten = (reservation) => {
@@ -876,878 +767,108 @@ function MyPageContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       {/* URL 쿼리 파라미터 처리 (Suspense로 감싸짐) */}
-      <Suspense fallback={null}>
-        <TabQueryHandler 
-          onTabChange={setReservationTab}
-        />
+      <Suspense fallback={
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-4">
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        </div>
+      }>
+        <TabQueryHandler onTabChange={setReservationTab} />
       </Suspense>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* 프로필 헤더 */}
-        <section className="bg-white rounded-2xl shadow-lg p-8 mb-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                <User className="w-10 h-10 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                  {userData?.nickname || userData?.id || '사용자'}님
-                </h1>
-                <p className="text-sm text-gray-500">{userData?.email || '이메일 미등록'}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                    {userData?.rank || 'Traveler'} 회원
-                  </span>
-                  <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                    포인트: {(userData?.point || 0).toLocaleString()}P
-                  </span>
-                  <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                    캐시: {(userData?.cash || userData?.balance || 0).toLocaleString()}원
-                  </span>
-                </div>
-              </div>
-            </div>
-            <button 
-              onClick={() => router.push('/mypage/edit')}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors font-medium"
-            >
-              <Edit className="w-4 h-4" />
-              <span>개인정보 수정</span>
-            </button>
-          </div>
-        </section>
+        <ProfileHeader
+          userData={userData}
+          onEditProfile={() => router.push('/mypage/edit')}
+        />
 
-        {/* 예약 내역 */}
-        <section id="reservation-section" className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Calendar className="w-6 h-6 text-blue-600" />
-                예약 내역
-              </h2>
-              {/* 다이닝/숙소 토글 */}
-              <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => {
-                    setReservationType('hotel');
-                    setCurrentPage(0);
-                  }}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    reservationType === 'hotel'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  숙소
-                </button>
-                <button
-                  onClick={() => {
-                    setReservationType('dining');
-                    setCurrentPage(0);
-                  }}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    reservationType === 'dining'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  다이닝
-                </button>
-              </div>
-            </div>
-            {/* 정렬 드롭다운 (모든 탭에서 표시) */}
-            <div className="relative">
-              <select
-                value={sortBy[reservationTab]}
-                onChange={(e) => {
-                  setSortBy(prev => ({
-                    ...prev,
-                    [reservationTab]: e.target.value
-                  }));
-                  setCurrentPage(0); // 정렬 변경 시 첫 페이지로 리셋
-                }}
-                className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
-              >
-                {reservationTab === 'upcoming' && (
-                  <>
-                    <option value="checkinAsc">체크인 날짜 가까운 순</option>
-                    <option value="checkinDesc">체크인 날짜 먼 순</option>
-                    <option value="priceDesc">높은 가격순</option>
-                    <option value="priceAsc">낮은 가격순</option>
-                  </>
-                )}
-                {reservationTab === 'completed' && (
-                  <>
-                    <option value="checkoutDesc">최근 방문 순</option>
-                    <option value="checkinDesc">체크인 날짜 최신순</option>
-                    <option value="checkinAsc">체크인 날짜 오래된순</option>
-                    <option value="priceDesc">높은 가격순</option>
-                    <option value="priceAsc">낮은 가격순</option>
-                    <option value="reviewFirst">리뷰 작성 안한 내역순</option>
-                  </>
-                )}
-                {reservationTab === 'cancelled' && (
-                  <>
-                    <option value="checkinDesc">취소 날짜 최신순</option>
-                    <option value="checkinAsc">취소 날짜 오래된순</option>
-                    <option value="priceDesc">높은 가격순</option>
-                    <option value="priceAsc">낮은 가격순</option>
-                  </>
-                )}
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-            </div>
-          </div>
+        <ReservationSection
+          reservationTab={reservationTab}
+          setReservationTab={setReservationTab}
+          reservationType={reservationType}
+          setReservationType={setReservationType}
+          reservationCounts={reservationCounts}
+          reservations={reservations}
+          diningReservations={diningReservations}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          pageSize={pageSize}
+          totalPages={totalPages}
+          totalElements={totalElements}
+          setTotalPages={setTotalPages}
+          setTotalElements={setTotalElements}
+          reservationsLoading={reservationsLoading}
+          handlePageChange={handlePageChange}
+          isReviewWritten={isReviewWritten}
+          isTradeRegistered={isTradeRegistered}
+          isTradeCompleted={isTradeCompleted}
+          isReported={isReported}
+          handleReservationDetail={handleReservationDetail}
+          handleHotelLocation={handleHotelLocation}
+          handleCancelReservation={handleCancelReservation}
+          handleWriteReview={handleWriteReview}
+          handleRebook={handleRebook}
+          handleReport={handleReport}
+          handleRegisterTrade={handleRegisterTrade}
+          handleEditTrade={handleEditTrade}
+        />
 
-          {/* 탭 */}
-          <div className="flex gap-2 mb-6 border-b border-gray-200">
-            <button
-              onClick={() => {
-                setReservationTab('upcoming');
-                setCurrentPage(0); // 탭 변경 시 첫 페이지로 리셋
-                // 이미 loadAllReservations에서 전체 데이터를 가져왔으므로 API 호출 불필요
-                // 페이지네이션은 프론트엔드에서 처리
-              }}
-              className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                reservationTab === 'upcoming'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              이용 예정 ({reservationType === 'dining' 
-                ? (diningReservations.upcoming.length)
-                : (reservationCounts.upcoming || reservations.upcoming.length)})
-            </button>
-            <button
-              onClick={() => {
-                setReservationTab('completed');
-                setCurrentPage(0); // 탭 변경 시 첫 페이지로 리셋
-                // 이미 loadAllReservations에서 전체 데이터를 가져왔으므로 API 호출 불필요
-                // 페이지네이션은 프론트엔드에서 처리
-              }}
-              className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                reservationTab === 'completed'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              이용 완료 ({reservationType === 'dining' 
-                ? (diningReservations.completed.length)
-                : (reservationCounts.completed || reservations.completed.length)})
-            </button>
-            <button
-              onClick={() => {
-                setReservationTab('cancelled');
-                setCurrentPage(0); // 탭 변경 시 첫 페이지로 리셋
-                // 이미 loadAllReservations에서 전체 데이터를 가져왔으므로 API 호출 불필요
-                // 페이지네이션은 프론트엔드에서 처리
-              }}
-              className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                reservationTab === 'cancelled'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              취소/환불 ({reservationType === 'dining' 
-                ? (diningReservations.cancelled.length)
-                : (reservationCounts.cancelled || reservations.cancelled.length)})
-            </button>
-          </div>
+        <ReviewSection
+          isReviewOpen={isReviewOpen}
+          setIsReviewOpen={setIsReviewOpen}
+          reviewTab={reviewTab}
+          setReviewTab={setReviewTab}
+          writableReviews={writableReviews}
+          writableReviewsLoading={writableReviewsLoading}
+          writtenReviews={writtenReviews}
+          writtenReviewsLoading={writtenReviewsLoading}
+          onWriteReview={handleWriteReview}
+          onOpenEditModal={openEditModal}
+          onNavigateToReviews={() => router.push('/mypage/reviews')}
+        />
 
-          {/* 예약 카드 */}
-          <div className="space-y-4">
-            {/* 로딩 중 */}
-            {reservationsLoading && (
-              <div className="flex justify-center items-center py-12">
-                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <span className="ml-3 text-gray-600">데이터를 불러오는 중...</span>
-              </div>
-            )}
-            
-            {/* 데이터 없음 */}
-            {!reservationsLoading && (() => {
-              const currentReservations = reservationType === 'dining' 
-                ? diningReservations[reservationTab] 
-                : reservations[reservationTab];
-              return currentReservations.length === 0;
-            })() && (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Calendar className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-gray-500 text-lg font-medium mb-2">
-                  {reservationTab === 'upcoming' && '이용 예정인 예약이 없습니다'}
-                  {reservationTab === 'completed' && '이용 완료된 예약이 없습니다'}
-                  {reservationTab === 'cancelled' && '취소된 예약이 없습니다'}
-                </p>
-                <p className="text-gray-400 text-sm">
-                  {reservationType === 'dining' 
-                    ? '새로운 다이닝을 예약해보세요!'
-                    : '새로운 호텔을 예약해보세요!'}
-                </p>
-              </div>
-            )}
-            
-            {/* 예약 목록 - 프론트엔드 페이지네이션 적용 */}
-            {!reservationsLoading && (() => {
-              const currentReservations = reservationType === 'dining' 
-                ? diningReservations[reservationTab] 
-                : reservations[reservationTab];
-              let allReservations = [...(currentReservations || [])];
-              
-              // 모든 탭에서 정렬 적용
-              const currentSortBy = sortBy[reservationTab];
-              allReservations = allReservations.sort((a, b) => {
-                switch (currentSortBy) {
-                  // 공통 정렬 옵션
-                  case 'checkinDesc': // 체크인 날짜 최신순
-                    const checkinA = new Date((reservationType === 'dining' ? a.reservationDate : a.checkIn)?.replace(/\./g, '-') || (reservationType === 'dining' ? a.reservationDate : a.checkIn));
-                    const checkinB = new Date((reservationType === 'dining' ? b.reservationDate : b.checkIn)?.replace(/\./g, '-') || (reservationType === 'dining' ? b.reservationDate : b.checkIn));
-                    return checkinB - checkinA; // 내림차순
-                  
-                  case 'checkinAsc': // 체크인 날짜 오래된순 / 가까운 순
-                    const checkinAOld = new Date((reservationType === 'dining' ? a.reservationDate : a.checkIn)?.replace(/\./g, '-') || (reservationType === 'dining' ? a.reservationDate : a.checkIn));
-                    const checkinBOld = new Date((reservationType === 'dining' ? b.reservationDate : b.checkIn)?.replace(/\./g, '-') || (reservationType === 'dining' ? b.reservationDate : b.checkIn));
-                    return checkinAOld - checkinBOld; // 오름차순
-                  
-                  case 'priceDesc': // 금액 높은 순
-                    return ((b.totalPrice || b.totalprice || 0) - (a.totalPrice || a.totalprice || 0)); // 내림차순
-                  
-                  case 'priceAsc': // 금액 낮은 순
-                    return ((a.totalPrice || a.totalprice || 0) - (b.totalPrice || b.totalprice || 0)); // 오름차순
-                  
-                  // 이용 완료 탭 전용 (호텔만)
-                  case 'checkoutDesc': // 최근 방문 순 (체크아웃 날짜 최신순)
-                    if (reservationType === 'dining') {
-                      // 다이닝은 reservationDate 사용
-                      const dateA = new Date(a.reservationDate?.replace(/\./g, '-') || a.reservationDate);
-                      const dateB = new Date(b.reservationDate?.replace(/\./g, '-') || b.reservationDate);
-                      return dateB - dateA; // 내림차순
-                    } else {
-                      const dateA = new Date(a.checkOut?.replace(/\./g, '-') || a.checkOut);
-                      const dateB = new Date(b.checkOut?.replace(/\./g, '-') || b.checkOut);
-                      return dateB - dateA; // 내림차순
-                    }
-                  
-                  case 'reviewFirst': // 리뷰 안한 내역 먼저
-                    const aHasReview = isReviewWritten(a);
-                    const bHasReview = isReviewWritten(b);
-                    if (aHasReview === bHasReview) {
-                      // 둘 다 리뷰 있거나 둘 다 없으면 최근 방문 순으로 정렬
-                      if (reservationType === 'dining') {
-                        const dateAReview = new Date(a.reservationDate?.replace(/\./g, '-') || a.reservationDate);
-                        const dateBReview = new Date(b.reservationDate?.replace(/\./g, '-') || b.reservationDate);
-                        return dateBReview - dateAReview;
-                      } else {
-                        const dateAReview = new Date(a.checkOut?.replace(/\./g, '-') || a.checkOut);
-                        const dateBReview = new Date(b.checkOut?.replace(/\./g, '-') || b.checkOut);
-                        return dateBReview - dateAReview;
-                      }
-                    }
-                    return aHasReview ? 1 : -1; // 리뷰 없는 것 먼저
-                  
-                  default:
-                    return 0;
-                }
-              });
-              
-              const startIndex = currentPage * pageSize;
-              const endIndex = startIndex + pageSize;
-              const paginatedReservations = allReservations.slice(startIndex, endIndex);
-              
-              // 페이지네이션 정보 업데이트 (전체 데이터 기준)
-              const totalPagesCount = Math.ceil(allReservations.length / pageSize);
-              if (totalPagesCount > 0 && totalPages !== totalPagesCount) {
-                setTotalPages(totalPagesCount);
-                setTotalElements(allReservations.length);
-              }
-              
-              return paginatedReservations.map((reservation) => {
-              console.log('📋 렌더링할 예약 데이터:', reservation);
-              return (
-              <div key={reservation.id || reservation.reservationNumber} className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">
-                      {reservationType === 'dining' 
-                        ? (reservation.diningName || reservation.hotelName)
-                        : reservation.hotelName}
-                    </h3>
-                    <p className="text-sm text-gray-500 flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      {reservation.location}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {reservationTab === 'upcoming' && reservation.status === '예약확정' && !isTradeCompleted(reservation) && reservationType === 'hotel' && (
-                      <button 
-                        onClick={() => isTradeRegistered(reservation) ? handleEditTrade(reservation) : handleRegisterTrade(reservation)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
-                          isTradeRegistered(reservation)
-                            ? 'bg-blue-50 hover:bg-blue-100 text-blue-600'
-                            : 'bg-green-50 hover:bg-green-100 text-green-600'
-                        }`}
-                      >
-                        {isTradeRegistered(reservation) ? '양도거래 수정' : '양도거래 등록'}
-                      </button>
-                    )}
-                    {reservationTab === 'completed' && reservation.status === '이용완료' && reservationType === 'hotel' && reservation.contentId && !isReported(reservation) && (
-                      <button 
-                        onClick={() => handleReport(reservation)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap bg-red-50 hover:bg-red-100 text-red-600"
-                      >
-                        신고
-                      </button>
-                    )}
-                    {reservationTab === 'completed' && reservation.status === '이용완료' && reservationType === 'hotel' && reservation.contentId && isReported(reservation) && (
-                      <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-500 whitespace-nowrap">
-                        신고 완료
-                      </span>
-                    )}
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      reservation.status === '예약확정' ? 'bg-blue-100 text-blue-700' :
-                      reservation.status === '이용완료' ? 'bg-green-100 text-green-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {reservation.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                  {reservationType === 'dining' ? (
-                    <>
-                      <div>
-                        <span className="text-gray-500">예약 날짜</span>
-                        <p className="font-medium text-gray-900">{reservation.reservationDate || reservation.checkIn}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">예약 시간</span>
-                        <p className="font-medium text-gray-900">{reservation.reservationTime || '-'}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">인원 수</span>
-                        <p className="font-medium text-gray-900">{reservation.guest || 1}명</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">총 결제금액</span>
-                        <p className="font-bold text-blue-600">{(reservation.totalPrice || reservation.totalprice || 0).toLocaleString()}원</p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <span className="text-gray-500">체크인</span>
-                        <p className="font-medium text-gray-900">{reservation.checkIn}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">체크아웃</span>
-                        <p className="font-medium text-gray-900">{reservation.checkOut}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">객실타입</span>
-                        <p className="font-medium text-gray-900">{reservation.roomType}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">총 결제금액</span>
-                        <p className="font-bold text-blue-600">{(reservation.totalprice ?? 0).toLocaleString()}원</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* 액션 버튼 */}
-                <div className="flex gap-2">
-                  {reservationTab === 'upcoming' && (
-                    <>
-                      <button 
-                        onClick={() => handleReservationDetail(reservation.id, reservationType)}
-                        className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                      >
-                        예약 상세보기
-                      </button>
-                      {reservationType === 'hotel' && (
-                        <button 
-                          onClick={() => handleHotelLocation(reservation)}
-                          className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-                        >
-                          호텔 위치보기
-                        </button>
-                      )}
-                      <button 
-                        onClick={() => handleCancelReservation(reservation)}
-                        className="flex-1 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors"
-                      >
-                        예약 취소
-                      </button>
-                    </>
-                  )}
-                  {reservationTab === 'completed' && (
-                    <>
-                      <button 
-                        onClick={() => !isReviewWritten(reservation) && handleWriteReview(reservation)}
-                        disabled={isReviewWritten(reservation)}
-                        className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors ${
-                          isReviewWritten(reservation)
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
-                        }`}
-                      >
-                        리뷰 작성
-                      </button>
-                      {reservationType === 'hotel' && (
-                        <button 
-                          onClick={() => handleRebook(reservation)}
-                          className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-                        >
-                          재예약하기
-                        </button>
-                      )}
-                    </>
-                  )}
-                  {reservationTab === 'cancelled' && reservation.refundAmount && (
-                    <div className="flex-1 text-sm">
-                      <p className="text-gray-600">환불 금액: <span className="font-bold text-blue-600">{reservation.refundAmount.toLocaleString()}원</span></p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              );
-              });
-            })()}
-          </div>
-
-          {/* Pagination 컴포넌트 추가 */}
-          {!reservationsLoading && totalPages > 0 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalElements={totalElements}
-              pageSize={pageSize}
-              onPageChange={handlePageChange}
-            />
-          )}
-        </section>
-
-        {/* 내 후기 관리 - 접기/펼치기 */}
-        {!isReviewOpen ? (
-          <button
-            onClick={() => router.push('/mypage/reviews')}
-            aria-label="내 리뷰 페이지로 이동"
-            className="w-full bg-white rounded-2xl shadow-lg p-9 mb-6 border border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          >
-            <span className="text-lg font-semibold text-gray-900">내 리뷰</span>
-            <ChevronRight className="w-6 h-6 text-gray-400" />
-          </button>
-        ) : (
-          <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Star className="w-6 h-6 text-blue-600" />
-                내 리뷰
-              </h2>
-              <button onClick={() => setIsReviewOpen(false)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500">
-                <ChevronRight className="w-5 h-5 rotate-180" />
-              </button>
-            </div>
-
-            {/* 탭 */}
-            <div className="flex gap-2 mb-6 border-b border-gray-200">
-              <button
-                onClick={() => setReviewTab('writable')}
-                className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                  reviewTab === 'writable'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                작성 가능한 리뷰 ({writableReviews.length})
-              </button>
-              <button
-                onClick={() => setReviewTab('written')}
-                className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                  reviewTab === 'written'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                내가 작성한 리뷰 ({writtenReviews.length})
-              </button>
-            </div>
-
-            {/* 리뷰 카드 */}
-            <div className="space-y-5">
-              {reviewTab === 'writable' ? (
-                writableReviewsLoading ? (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="ml-3 text-gray-600">데이터를 불러오는 중...</span>
-                  </div>
-                ) : writableReviews.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500">작성 가능한 리뷰가 없습니다.</p>
-                  </div>
-                ) : (
-                  writableReviews.map((review) => (
-                    <div key={review.reservationIdx} className="border border-blue-200 bg-blue-50 rounded-xl p-7">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900 mb-2">{review.hotelName}</h3>
-                          <p className="text-base text-gray-500">{review.location} · 체크아웃: {review.checkOutDate}</p>
-                        </div>
-                        {review.daysLeft !== undefined && review.daysLeft > 0 && (
-                          <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
-                            {review.daysLeft}일 남음
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handleWriteReview({ id: review.reservationIdx })}
-                        className="flex-1 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-base"
-                      >
-                        리뷰 작성
-                      </button>
-                    </div>
-                  ))
-                )
-              ) : (
-                writtenReviewsLoading ? (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="ml-3 text-gray-600">데이터를 불러오는 중...</span>
-                  </div>
-                ) : writtenReviews.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500">작성한 리뷰가 없습니다.</p>
-                  </div>
-                ) : (
-                  writtenReviews.map((review) => (
-                    <div key={review.reviewIdx} className="border border-gray-200 rounded-xl p-7">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <h3 className="text-xl font-bold text-gray-900 mb-2">
-                            {review.hotelName || review.hotelInfo?.title || '호텔 정보 없음'}
-                          </h3>
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="flex">
-                              {[...Array(5)].map((_, i) => (
-                                <Star key={i} className={`w-5 h-5 ${i < (review.star || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-                              ))}
-                            </div>
-                            <span className="text-base text-gray-500">
-                              {review.createdAt ? new Date(review.createdAt).toLocaleDateString('ko-KR') : ''}
-                            </span>
-                            {review.isEdited && (
-                              <span className="text-xs leading-none px-2 py-1 rounded bg-gray-100 text-gray-600">수정됨</span>
-                            )}
-                          </div>
-                          <p className="text-gray-700 mb-4 text-base leading-relaxed">{review.content}</p>
-                        </div>
-                        <div className="flex gap-2 ml-4">
-                          <button
-                            onClick={() => openEditModal(review)}
-                            className="p-2.5 hover:bg-gray-100 rounded-lg transition-colors"
-                          >
-                            <Edit className="w-5 h-5 text-gray-600" />
-                          </button>
-                          <button className="p-2.5 hover:bg-red-50 rounded-lg transition-colors">
-                            <Trash2 className="w-5 h-5 text-red-600" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* 찜목록 & 최근본호텔 */}
         <div className="grid md:grid-cols-2 gap-6 mb-6">
-          {/* 찜목록 */}
-          <section className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Heart className="w-6 h-6 text-red-500" />
-                찜목록
-              </h2>
-              <button className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
-                전체보기
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              {likedHotels.map((hotel) => (
-                <div key={hotel.id} className="flex gap-3 p-3 border border-gray-200 rounded-lg hover:shadow-md transition-all">
-                  <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg flex-shrink-0" />
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 mb-1">{hotel.name}</h3>
-                    <p className="text-xs text-gray-500 mb-2">{hotel.location}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-blue-600">{hotel.price.toLocaleString()}원</span>
-                      <div className="flex gap-1">
-                        <button className="p-1.5 hover:bg-blue-50 rounded transition-colors">
-                          <Hotel className="w-4 h-4 text-blue-600" />
-                        </button>
-                        <button className="p-1.5 hover:bg-blue-50 rounded transition-colors">
-                          <Share2 className="w-4 h-4 text-gray-600" />
-                        </button>
-                        <button className="p-1.5 hover:bg-red-50 rounded transition-colors">
-                          <Trash2 className="w-4 h-4 text-red-600" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* 최근본호텔 */}
-          <section className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Clock className="w-6 h-6 text-blue-600" />
-                최근본호텔
-              </h2>
-              <button className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
-                전체보기
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              {recentHotels.map((hotel) => (
-                <div key={hotel.id} className="flex gap-3 p-3 border border-gray-200 rounded-lg hover:shadow-md transition-all">
-                  <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg flex-shrink-0" />
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 mb-1">{hotel.name}</h3>
-                    <p className="text-xs text-gray-500 mb-2">{hotel.location} · {hotel.viewDate}</p>
-                    <span className="text-sm font-bold text-gray-700">{hotel.price.toLocaleString()}원~</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+          <FavoritesSection likedHotels={likedHotels} />
+          <RecentHotelsSection recentHotels={recentHotels} />
         </div>
 
-        {/* 쿠폰 관리 */}
-        <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Gift className="w-6 h-6 text-blue-600" />
-              쿠폰 관리
-            </h2>
-          </div>
+        <CouponSection
+          couponTab={couponTab}
+          setCouponTab={setCouponTab}
+          coupons={coupons}
+        />
 
-          {/* 탭 */}
-          <div className="flex gap-2 mb-6 border-b border-gray-200">
-            <button
-              onClick={() => setCouponTab('available')}
-              className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                couponTab === 'available'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              사용가능 ({coupons.available.length})
-            </button>
-            <button
-              onClick={() => setCouponTab('used')}
-              className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                couponTab === 'used'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              사용완료 ({coupons.used.length})
-            </button>
-            <button
-              onClick={() => setCouponTab('expired')}
-              className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                couponTab === 'expired'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              기간만료 ({coupons.expired.length})
-            </button>
-          </div>
-
-          {/* 쿠폰 카드 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {coupons[couponTab].map((coupon) => (
-              <div key={coupon.id} className={`border-2 rounded-xl p-5 transition-all ${
-                couponTab === 'available' 
-                  ? 'border-blue-300 bg-blue-50 hover:shadow-lg' 
-                  : 'border-gray-200 bg-gray-50'
-              }`}>
-                <div className="flex items-start justify-between mb-3">
-                  <Gift className={`w-8 h-8 ${couponTab === 'available' ? 'text-blue-600' : 'text-gray-400'}`} />
-                  <span className={`text-2xl font-bold ${couponTab === 'available' ? 'text-blue-600' : 'text-gray-400'}`}>
-                    {coupon.discount}
-                  </span>
-                </div>
-                <h3 className={`font-bold mb-2 ${couponTab === 'available' ? 'text-gray-900' : 'text-gray-500'}`}>
-                  {coupon.name}
-                </h3>
-                <p className="text-xs text-gray-500 mb-3">{coupon.condition}</p>
-                <div className="text-xs">
-                  <span className={couponTab === 'available' ? 'text-gray-600' : 'text-gray-400'}>
-                    {couponTab === 'used' ? `사용일: ${coupon.usedDate}` : `만료일: ${coupon.expiry}`}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 1:1 문의 내역 */}
-        <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <MessageSquare className="w-6 h-6 text-blue-600" />
-              1:1 문의 내역
-            </h2>
-            <button
-              onClick={() => router.push('/center/inquiry')}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-            >
-              새 문의하기
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {inquiries.map((inquiry) => (
-              <div key={inquiry.id} className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-bold text-gray-900">{inquiry.title}</h3>
-                      <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
-                        {inquiry.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-500 mb-3">{inquiry.date}</p>
-                    {inquiry.answer && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-gray-700"><span className="font-semibold text-blue-600">답변:</span> {inquiry.answer}</p>
-                      </div>
-                    )}
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <InquirySection
+          inquiries={inquiries}
+          onCreateInquiry={() => router.push('/center/inquiry')}
+        />
       </div>
 
       <Footer />
 
-      {/* 리뷰 수정 모달 (UI 전용) */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={closeEditModal} />
-          <div ref={editModalRef} className="relative z-10 w-full max-w-lg mx-4 bg-white rounded-2xl shadow-xl border border-gray-200" role="dialog" aria-modal="true">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">리뷰 수정</h3>
-              <button
-                aria-label="닫기"
-                onClick={closeEditModal}
-                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700"
-              >
-                X
-              </button>
-            </div>
+      <EditReviewModal
+        isOpen={isEditModalOpen}
+        editingReview={editingReview}
+        editContent={editContent}
+        onChangeContent={setEditContent}
+        onClose={closeEditModal}
+        onSave={handleSaveEditedReview}
+        onRequestCancel={() => setIsConfirmCancelOpen(true)}
+      />
 
-            <div className="px-6 py-5">
-              {/* 호텔/메타 */}
-              {editingReview && (
-                <div className="mb-4">
-                  <p className="text-sm text-gray-500">{editingReview.hotelName || editingReview.hotelInfo?.title}</p>
-                  <p className="text-xs text-gray-400">작성일: {editingReview.createdAt ? new Date(editingReview.createdAt).toLocaleDateString('ko-KR') : '-'}</p>
-                </div>
-              )}
-
-              {/* 읽기전용 별점 */}
-              {editingReview && (
-                <div className="mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className={`w-5 h-5 ${i < (Number(editingReview.star) || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-                      ))}
-                    </div>
-                    <span className="text-xs text-gray-500">
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* 내용 */}
-              <div className="mb-6">
-                <p className="text-sm font-medium text-gray-500 mt-1">리뷰 내용</p>
-                &nbsp;
-                <textarea
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  placeholder="호텔 이용 경험을 자세히 작성해주세요. (최소 10자 이상)"
-                  rows={6}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  ref={editContentRef}
-                  maxLength={300}
-                />
-                <p className="text-xs text-gray-500 mt-1 text-right">{editContent.length} / 300자</p>
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-              <button onClick={() => setIsConfirmCancelOpen(true)} className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">취소</button>
-              <button onClick={handleSaveEditedReview} className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">저장</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 취소 확인 모달 */}
-      {isConfirmCancelOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setIsConfirmCancelOpen(false)} />
-          <div
-            ref={confirmModalRef}
-            className="relative z-10 w-full max-w-md mx-4 bg-white rounded-2xl shadow-xl border border-gray-200"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="confirm-cancel-title"
-          >
-            <div className="px-6 py-5 border-b border-gray-100">
-              <h4 id="confirm-cancel-title" className="text-base font-bold text-gray-900">변경 내용 취소</h4>
-            </div>
-            <div className="px-6 py-5 text-center">
-              <p id="confirm-cancel-desc" className="text-sm text-gray-800">수정한 내용이 저장되지 않습니다. 정말 취소하시겠습니까?</p>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-              <button
-                onClick={() => setIsConfirmCancelOpen(false)}
-                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-              >
-                아니오
-              </button>
-              <button
-                ref={confirmPrimaryRef}
-                onClick={() => { setIsConfirmCancelOpen(false); closeEditModal(); }}
-                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-              >
-                예
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmCancelModal
+        isOpen={isConfirmCancelOpen}
+        onClose={() => setIsConfirmCancelOpen(false)}
+        onConfirm={() => {
+          setIsConfirmCancelOpen(false);
+          closeEditModal();
+        }}
+      />
     </div>
   );
 }
