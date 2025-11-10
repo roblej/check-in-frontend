@@ -16,6 +16,19 @@ const MasterDashboard = () => {
   const [customerCount, setCustomerCount] = useState("불러오는중...");
   const [paymentAmount, setPaymentAmount] = useState("불러오는중...");
 
+  // 매출 포맷팅 함수
+  const formatCurrency = (value) => {
+    if (value === "불러오는중..." || value === "오류") {
+      return value;
+    }
+    if (typeof value === 'number' || typeof value === 'string') {
+      const numValue = typeof value === 'string' ? parseFloat(value) : value;
+      if (isNaN(numValue)) return '0';
+      return numValue.toLocaleString('ko-KR');
+    }
+    return '0';
+  };
+
   const [hotelRequestList, setHotelRequestList] = useState([]);
   const [hotelRequestCount, setHotelRequestCount] = useState("불러오는중...");
   const [newCustomers, setNewCustomers] = useState([]);
@@ -80,7 +93,7 @@ const MasterDashboard = () => {
     },
     {
       title: '총 매출',
-      value: '₩'+`${paymentAmount}`,
+      value: `₩${formatCurrency(paymentAmount)}`,
       change: '+18%',
       changeType: 'positive',
       icon: <CircleDollarSign size={40} />
@@ -233,11 +246,14 @@ const MasterDashboard = () => {
         </div>
 
         {/* 빠른 액션 버튼들 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6">
             <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-4">호텔 승인 관리</h3>
             <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4">대기중인 호텔 등록을 승인하세요</p>
-            <button className="w-full bg-[#7C3AED] text-white py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm">
+            <button 
+              onClick={() => router.push('/master/hotel-approval')}
+              className="w-full bg-[#7C3AED] text-white py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm"
+            >
               승인 관리
             </button>
           </div>
@@ -245,7 +261,10 @@ const MasterDashboard = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6">
             <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-4">회원 관리</h3>
             <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4">회원 정보를 관리하세요</p>
-            <button className="w-full bg-green-600 text-white py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm">
+            <button 
+              onClick={() => router.push('/master/members')}
+              className="w-full bg-green-600 text-white py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm"
+            >
               회원 관리
             </button>
           </div>

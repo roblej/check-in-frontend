@@ -274,27 +274,25 @@ const AdminDashboard = () => {
         </div>
 
         {/* 빠른 액션 버튼들 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">빠른 체크인</h3>
             <p className="text-sm text-gray-600 mb-4">예약된 고객의 체크인을 처리하세요</p>
-            <button className="w-full bg-[#3B82F6] text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">
+            <button 
+              onClick={() => router.push('/admin/checkin')}
+              className="w-full bg-[#3B82F6] text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
+            >
               체크인 처리
-            </button>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">새 예약 등록</h3>
-            <p className="text-sm text-gray-600 mb-4">직접 예약을 등록하세요</p>
-            <button className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">
-              예약 등록
             </button>
           </div>
           
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">객실 상태 관리</h3>
             <p className="text-sm text-gray-600 mb-4">객실 상태를 업데이트하세요</p>
-            <button className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors">
+            <button 
+              onClick={() => router.push('/admin/rooms')}
+              className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
+            >
               객실 관리
             </button>
           </div>
