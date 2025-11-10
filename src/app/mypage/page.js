@@ -17,7 +17,6 @@ import RecentHotelsSection from './components/recent/RecentHotelsSection';
 import CouponSection from './components/coupon/CouponSection';
 import InquirySection from './components/inquiry/InquirySection';
 import Pagination from '@/components/Pagination';
-import InquirySection from './components/inquiry/InquirySection';
 
 // useSearchParams를 사용하는 컴포넌트 분리
 function TabQueryHandler({ onTabChange }) {
