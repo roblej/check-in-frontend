@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
 import axiosInstance from "@/lib/axios";
+import { hotelAPI } from "@/lib/api/hotel";
 import RoomBookmarkButton from "./RoomBookmarkButton";
+import RoomGallery from "./RoomGallery";
 
 const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
   const router = useRouter();
   const { setPaymentDraft } = usePaymentStore();
   const isReadOnly = !!searchParams?.roomIdx; // roomIdx가 있으면 읽기 전용
   const [isLocking, setIsLocking] = useState(false); // 락 생성 중 상태
+  const [galleryOpen, setGalleryOpen] = useState(false); // 갤러리 모달 열림 상태
+  const [imageCount, setImageCount] = useState(0); // 이미지 개수
 
   // S3 기본 경로 상수
   const BASE_URL =
@@ -30,6 +34,30 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
   const nights = searchParams?.nights || 1;
   const roomPricePerNight = room.price || room.basePrice || 0;
   const totalPrice = roomPricePerNight * nights;
+
+  // 이미지 개수 조회
+  useEffect(() => {
+    const fetchImageCount = async () => {
+      const contentId =
+        searchParams?.contentId || searchParams?.hotelId || room?.contentId;
+      const roomId = room.roomIdx || room.id;
+
+      if (contentId && roomId) {
+        try {
+          const images = await hotelAPI.getRoomImages(contentId, roomId);
+          // 대표 이미지 포함하여 개수 계산
+          setImageCount((images?.length || 0) + (room.imageUrl ? 1 : 0));
+        } catch (err) {
+          // 에러 시 대표 이미지만 있다고 가정
+          setImageCount(room.imageUrl ? 1 : 0);
+        }
+      } else {
+        setImageCount(room.imageUrl ? 1 : 0);
+      }
+    };
+
+    fetchImageCount();
+  }, [room, searchParams]);
 
   // 예약 버튼 클릭 핸들러 (락 적용)
   const handleReservation = async () => {
@@ -107,7 +135,17 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
     } catch (error) {
       console.error("예약 락 생성 실패:", error);
       if (error?.response?.status === 401) {
-        alert("로그인이 필요합니다.");
+        const shouldLogin = confirm(
+          "로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?"
+        );
+        if (shouldLogin) {
+          // 현재 URL을 returnUrl로 전달
+          const currentUrl =
+            typeof window !== "undefined"
+              ? window.location.pathname + window.location.search
+              : "/";
+          router.push(`/login?returnUrl=${encodeURIComponent(currentUrl)}`);
+        }
         setIsLocking(false);
         return;
       }
@@ -126,17 +164,26 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
         <div
           className={`relative w-full flex-shrink-0 bg-gradient-to-br from-blue-100 to-blue-200 ${
             isModal ? "h-56" : "h-48 md:w-64 md:h-64"
-          }`}
+          } cursor-pointer group`}
+          onClick={() => setGalleryOpen(true)}
         >
           {room.imageUrl ? (
-            <img
-              src={getImageUrl(room.imageUrl)}
-              alt={room.name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.currentTarget.src = `${BASE_URL}default.jpg`;
-              }}
-            />
+            <>
+              <img
+                src={getImageUrl(room.imageUrl)}
+                alt={room.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={(e) => {
+                  e.currentTarget.src = `${BASE_URL}default.jpg`;
+                }}
+              />
+              {/* 이미지 개수 표시 */}
+              {imageCount > 1 && (
+                <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded z-20">
+                  +{imageCount - 1}
+                </div>
+              )}
+            </>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-5xl mb-2">🛏️</span>
@@ -144,16 +191,23 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
             </div>
           )}
           {room.discount > 0 && (
-            <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">
+            <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold z-20">
               {room.discount}% 할인
             </div>
           )}
           {/* 찜 버튼 */}
-          <div className="absolute top-2 right-2 z-10">
-            <RoomBookmarkButton 
+          <div
+            className="absolute top-2 right-2 z-20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <RoomBookmarkButton
               roomIdx={room.roomIdx || room.id}
-              contentId={searchParams?.contentId || searchParams?.hotelId || room?.contentId}
-              size="medium" 
+              contentId={
+                searchParams?.contentId ||
+                searchParams?.hotelId ||
+                room?.contentId
+              }
+              size="medium"
             />
           </div>
         </div>
@@ -367,6 +421,18 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
           </div>
         </div>
       </div>
+
+      {/* 객실 이미지 갤러리 */}
+      <RoomGallery
+        roomIdx={room.roomIdx || room.id}
+        contentId={
+          searchParams?.contentId || searchParams?.hotelId || room?.contentId
+        }
+        mainImageUrl={room.imageUrl}
+        isOpen={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        isModal={isModal}
+      />
     </div>
   );
 };

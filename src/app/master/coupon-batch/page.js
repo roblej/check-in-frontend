@@ -1,30 +1,95 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Gift, Users, UserCheck, Calendar } from 'lucide-react';
 import MasterLayout from '@/components/master/MasterLayout';
+import axiosInstance from '@/lib/axios';
 
 const CouponBatchManagement = () => {
   const [selectedRank, setSelectedRank] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [templatesLoading, setTemplatesLoading] = useState(true);
+  const [rankCounts, setRankCounts] = useState({});
+  const [rankCountsLoading, setRankCountsLoading] = useState(true);
 
-  const ranks = ['VIP', 'Traveler', 'Sky Suite', 'First Class', 'Explorer'];
-  const templates = [
-    { idx: 1, name: '웰컴 쿠폰', discount: 10000, validDays: 30 },
-    { idx: 2, name: '생일 축하 쿠폰', discount: 15000, validDays: 60 },
-    { idx: 3, name: 'VIP 특별 쿠폰', discount: 50000, validDays: 90 },
-  ];
+  const ranks = ['Explorer', 'First Class', 'Sky Suite', 'Traveler', 'VIP'];
 
-  const handleBatchIssue = () => {
+  // 템플릿 목록 조회
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        setTemplatesLoading(true);
+        const response = await axiosInstance.get('/master/couponTemplates');
+        if (response.data) {
+          setTemplates(response.data);
+        }
+      } catch (error) {
+        console.error('템플릿 목록 조회 오류:', error);
+        setTemplates([]);
+      } finally {
+        setTemplatesLoading(false);
+      }
+    };
+
+    fetchTemplates();
+  }, []);
+
+  // 등급별 인원수 조회
+  useEffect(() => {
+    const fetchRankCounts = async () => {
+      try {
+        setRankCountsLoading(true);
+        const response = await axiosInstance.get('/master/coupon-batch/rankCounts');
+        if (response.data) {
+          setRankCounts(response.data);
+        }
+      } catch (error) {
+        console.error('등급별 인원수 조회 오류:', error);
+        setRankCounts({});
+      } finally {
+        setRankCountsLoading(false);
+      }
+    };
+
+    fetchRankCounts();
+  }, []);
+
+  const handleBatchIssue = async () => {
     if (!selectedRank || !selectedTemplate) {
       alert('등급과 템플릿을 모두 선택해주세요.');
       return;
     }
 
-    // TODO: 비즈니스 로직 구현
-    console.log('일괄 발급:', { rank: selectedRank, template: selectedTemplate });
-    alert('쿠폰 일괄 발급 기능은 곧 구현될 예정입니다.');
+    if (!confirm(`등급 '${selectedRank}'에 해당하는 모든 회원에게 쿠폰을 발급하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      const response = await axiosInstance.post('/master/coupon-batch/issue', null, {
+        params: {
+          rank: selectedRank,
+          templateIdx: selectedTemplate.templateIdx
+        }
+      });
+
+      if (response.data && response.data.success) {
+        alert(response.data.message || `쿠폰이 성공적으로 발급되었습니다. (${response.data.issuedCount}개)`);
+        // 선택 초기화
+        setSelectedRank('');
+        setSelectedTemplate(null);
+      } else {
+        alert(response.data?.message || '쿠폰 발급 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('쿠폰 일괄 발급 오류:', error);
+      const errorMessage = error.response?.data?.message || '쿠폰 일괄 발급 중 오류가 발생했습니다.';
+      alert(errorMessage);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -47,22 +112,32 @@ const CouponBatchManagement = () => {
             <Users className="w-5 h-5" />
             등급 선택
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {ranks.map((rank) => (
-              <button
-                key={rank}
-                onClick={() => setSelectedRank(rank)}
-                className={`p-4 border-2 rounded-lg transition-colors ${
-                  selectedRank === rank
-                    ? 'border-purple-500 bg-purple-50 text-purple-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <UserCheck className="w-8 h-8 mx-auto mb-2" />
-                <div className="font-semibold">{rank}</div>
-              </button>
-            ))}
-          </div>
+          {rankCountsLoading ? (
+            <div className="text-center py-8 text-gray-400">등급별 인원수를 불러오는 중...</div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              {ranks.map((rank) => {
+                const count = rankCounts[rank] || 0;
+                return (
+                  <button
+                    key={rank}
+                    onClick={() => setSelectedRank(rank)}
+                    className={`p-4 border-2 rounded-lg transition-colors ${
+                      selectedRank === rank
+                        ? 'border-purple-500 bg-purple-50 text-purple-700'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <UserCheck className="w-8 h-8 mx-auto mb-2" />
+                    <div className="font-semibold">{rank}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {count.toLocaleString()}명
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* 템플릿 선택 */}
@@ -71,25 +146,31 @@ const CouponBatchManagement = () => {
             <Gift className="w-5 h-5" />
             쿠폰 템플릿 선택
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {templates.map((template) => (
-              <div
-                key={template.idx}
-                onClick={() => setSelectedTemplate(template)}
-                className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                  selectedTemplate?.idx === template.idx
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <h3 className="font-semibold text-gray-900">{template.name}</h3>
-                <div className="mt-2 space-y-1 text-sm text-gray-600">
-                  <div>{template.discount.toLocaleString()}원 할인</div>
-                  <div>{template.validDays}일 유효</div>
+          {templatesLoading ? (
+            <div className="text-center py-8 text-gray-400">템플릿 목록을 불러오는 중...</div>
+          ) : templates.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">사용 가능한 템플릿이 없습니다.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {templates.map((template) => (
+                <div
+                  key={template.templateIdx}
+                  onClick={() => setSelectedTemplate(template)}
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                    selectedTemplate?.templateIdx === template.templateIdx
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <h3 className="font-semibold text-gray-900">{template.templateName}</h3>
+                  <div className="mt-2 space-y-1 text-sm text-gray-600">
+                    <div>{template.discount.toLocaleString()}원 할인</div>
+                    <div>{template.validDays}일 유효</div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 발급 정보 요약 */}
@@ -105,8 +186,12 @@ const CouponBatchManagement = () => {
                 <span className="font-semibold">{selectedRank}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-gray-600">해당 등급 인원수:</span>
+                <span className="font-semibold">{(rankCounts[selectedRank] || 0).toLocaleString()}명</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-gray-600">쿠폰 템플릿:</span>
-                <span className="font-semibold">{selectedTemplate.name}</span>
+                <span className="font-semibold">{selectedTemplate.templateName}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">할인 금액:</span>

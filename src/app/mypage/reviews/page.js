@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Pagination from '@/components/Pagination';
 import { mypageAPI } from '@/lib/api/mypage';
 import { 
   ChevronLeft, ChevronRight, Star, Pencil, Trash2, MapPin
@@ -14,6 +15,11 @@ export default function MyReviewsPage() {
 
   // 탭: 작성 가능한 리뷰 / 내가 작성한 리뷰 (초기 포커스: 작성 가능한 리뷰)
   const [reviewTab, setReviewTab] = useState('writable');
+
+  // 페이지네이션 상태
+  const [writablePage, setWritablePage] = useState(0);
+  const [writtenPage, setWrittenPage] = useState(0);
+  const pageSize = 3; // 페이지당 3개 항목
 
   // 데이터 상태
   const [writableReviews, setWritableReviews] = useState([]);
@@ -121,7 +127,8 @@ export default function MyReviewsPage() {
   };
 
   const handleWriteReview = (reservation) => {
-    router.push(`/mypage/review/write?reservationId=${reservation.id || reservation.reservationIdx}`);
+    const reservationId = reservation.id || reservation.reservIdx || reservation.reservationNumber || reservation.reservationIdx;
+    router.push(`/mypage/review/write?reservationId=${reservationId}`);
   };
 
   // 이용완료 예약 불러오기 (전체 데이터 가져오기)
@@ -207,6 +214,38 @@ export default function MyReviewsPage() {
     return `${y}.${m}.${day}`;
   };
 
+  // 탭 변경 핸들러 (페이지 리셋)
+  const handleTabChange = (tab) => {
+    setReviewTab(tab);
+    if (tab === 'writable') {
+      setWritablePage(0);
+    } else {
+      setWrittenPage(0);
+    }
+  };
+
+  // 작성 가능한 리뷰 목록 필터링 및 페이지네이션 계산
+  const getWritableReservations = () => {
+    return completedReservations.filter(r => {
+      const id = r.reservIdx || r.id || r.reservationNumber;
+      return !writtenReservationIdSet.has(id);
+    });
+  };
+
+  const writableReservations = getWritableReservations();
+  const writableTotalPages = Math.ceil(writableReservations.length / pageSize);
+  const paginatedWritableReservations = writableReservations.slice(
+    writablePage * pageSize,
+    (writablePage + 1) * pageSize
+  );
+
+  // 작성한 리뷰 페이지네이션 계산
+  const writtenTotalPages = Math.ceil(writtenReviews.length / pageSize);
+  const paginatedWrittenReviews = writtenReviews.slice(
+    writtenPage * pageSize,
+    (writtenPage + 1) * pageSize
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -248,23 +287,15 @@ export default function MyReviewsPage() {
         <div className="bg-white border border-gray-200 rounded-xl p-0 mb-4">
           <div className="flex gap-6 px-4">
             <button
-              onClick={() => setReviewTab('writable')}
+              onClick={() => handleTabChange('writable')}
               className={`relative -mb-px px-0 py-3 text-sm font-medium border-b-2 ${
                 reviewTab === 'writable' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'
               }`}
             >
-              작성 가능한 리뷰 ({(() => {
-                // completedReservations에서 이미 작성한 예약을 제외한 개수
-                const writableCount = completedReservations.filter(r => {
-                  const id = r.reservIdx || r.id || r.reservationNumber;
-                  return !writtenReservationIdSet.has(id);
-                }).length;
-                // writableReviews와 completedReservations 중 더 정확한 값 사용
-                return writableCount > 0 ? writableCount : writableReviews.length;
-              })()})
+              작성 가능한 리뷰 ({writableReservations.length})
             </button>
             <button
-              onClick={() => setReviewTab('written')}
+              onClick={() => handleTabChange('written')}
               className={`relative -mb-px px-0 py-3 text-sm font-medium border-b-2 ${
                 reviewTab === 'written' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'
               }`}
@@ -277,18 +308,28 @@ export default function MyReviewsPage() {
         {/* 내용 */}
         {/* 이용완료 예약 목록 (리뷰 유도) - 작성 가능한 리뷰 탭에서만 표시, 이미 작성한 예약은 제외 */}
         {reviewTab === 'writable' && (
-          <div className="space-y-3 mb-6">
-            {completedLoading ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : (
-              completedReservations
-                .filter(r => {
-                  const id = r.reservIdx || r.id || r.reservationNumber;
-                  return !writtenReservationIdSet.has(id);
-                })
-                .map((r) => (
+          <>
+            <div className="space-y-3 mb-6">
+              {completedLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : paginatedWritableReservations.length === 0 ? (
+                <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center">
+                  <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+                    <span className="text-gray-400 text-xl">!</span>
+                  </div>
+                  <p className="text-gray-700 font-medium mb-1">작성 가능한 리뷰가 없습니다.</p>
+                  <p className="text-gray-500 text-sm mb-4">이용 완료한 예약에 대해 리뷰를 작성해보세요.</p>
+                  <button
+                    onClick={() => router.push('/mypage?tab=completed')}
+                    className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm"
+                  >
+                    예약 내역 보기
+                  </button>
+                </div>
+              ) : (
+                paginatedWritableReservations.map((r) => (
                   <div key={r.id || r.reservIdx || r.reservationNumber} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
                     <div className="flex items-start gap-3">
                       <img
@@ -325,7 +366,7 @@ export default function MyReviewsPage() {
                         예약 상세 확인
                       </button>
                       <button
-                        onClick={() => router.push('/mypage?tab=completed')}
+                        onClick={() => handleWriteReview(r)}
                         className="flex-1 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm"
                       >
                         리뷰 쓰기
@@ -333,120 +374,125 @@ export default function MyReviewsPage() {
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+            {/* 작성 가능한 리뷰 페이지네이션 */}
+            {!completedLoading && writableTotalPages > 0 && (
+              <Pagination
+                currentPage={writablePage}
+                totalPages={writableTotalPages}
+                totalElements={writableReservations.length}
+                pageSize={pageSize}
+                onPageChange={setWritablePage}
+              />
             )}
-          </div>
+          </>
         )}
 
-        {reviewTab === 'writable' ? (
-          writableReviewsLoading ? (
-            <div className="flex justify-center items-center py-16">
-              <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : writableReviews.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center">
-              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
-                <span className="text-gray-400 text-xl">!</span>
+        {reviewTab === 'written' && (
+          <>
+            {writtenReviewsLoading ? (
+              <div className="flex justify-center items-center py-16">
+                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
               </div>
-              <p className="text-gray-700 font-medium mb-1">작성한 리뷰가 없습니다.</p>
-              <p className="text-gray-500 text-sm mb-4">나의 발자취를 소중한 기록으로 남겨보세요.</p>
-              <button
-                onClick={() => router.push('/mypage?tab=completed')}
-                className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm"
-              >
-                리뷰쓰기
-              </button>
-            </div>
-          ) : null
-        ) : (
-          writtenReviewsLoading ? (
-            <div className="flex justify-center items-center py-16">
-              <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : writtenReviews.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center">
-              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
-                <span className="text-gray-400 text-xl">!</span>
+            ) : paginatedWrittenReviews.length === 0 ? (
+              <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center">
+                <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+                  <span className="text-gray-400 text-xl">!</span>
+                </div>
+                <p className="text-gray-700 font-medium mb-1">작성한 리뷰가 없습니다.</p>
+                <p className="text-gray-500 text-sm mb-4">나의 발자취를 소중한 기록으로 남겨보세요.</p>
+                <button
+                  onClick={() => router.push('/mypage?tab=completed')}
+                  className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm"
+                >
+                  리뷰쓰기
+                </button>
               </div>
-              <p className="text-gray-700 font-medium mb-1">작성한 리뷰가 없습니다.</p>
-              <p className="text-gray-500 text-sm mb-4">나의 발자취를 소중한 기록으로 남겨보세요.</p>
-              <button
-                onClick={() => router.push('/mypage?tab=completed')}
-                className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm"
-              >
-                리뷰쓰기
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {writtenReviews.map((review) => (
-                <div key={review.reviewIdx} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
-                  <div className="flex items-start gap-3">
-                    <img
-                      src={getHotelThumb({
-                        thumbnailUrl: review.thumbnailUrl,
-                        contentId: review.contentId || review.hotelInfo?.contentId
-                      })}
-                      alt={review.hotelName || review.hotelInfo?.title || 'thumbnail'}
-                      className="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-100"
-                      onError={(e) => { e.currentTarget.src = '/next.svg'; }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-semibold text-gray-900 truncate">
-                          {review.hotelName || review.hotelInfo?.title || '호텔 정보 없음'}
-                        </p>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => router.push(`/mypage/review/edit?reviewId=${review.reviewIdx}`)}
-                            className="p-1.5 rounded hover:bg-gray-50"
-                            aria-label="리뷰 수정"
-                          >
-                            <Pencil className="w-4 h-4 text-gray-500" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(review)}
-                            className="p-1.5 rounded hover:bg-gray-50"
-                            aria-label="리뷰 삭제"
-                          >
-                            <Trash2 className="w-4 h-4 text-gray-500" />
-                          </button>
-                          <ChevronRight className="w-4 h-4 text-gray-400" />
-                        </div>
-                      </div>
-                      {/* 지역 */}
-                      {(review.region || review.hotelInfo?.adress || review.location) && (
-                        <div className="flex items-center gap-1 text-xs text-gray-500 mb-0.5">
-                          <MapPin className="w-3 h-3" />
-                          <span>{review.region || getRegion(review.hotelInfo?.adress, review.location)}</span>
-                        </div>
-                      )}
-                      {/* 체크인 - 체크아웃 + (박수) */}
-                      {(review.checkInDate && review.checkOutDate) && (
-                        <p className="text-xs text-gray-600 mb-0.5">
-                          {formatDate(review.checkInDate)} - {formatDate(review.checkOutDate)} {getNightsText(review.checkInDate, review.checkOutDate)}
-                        </p>
-                      )}
-                      {review.createdAt && (
-                        <p className="text-xs text-gray-500 mb-1">작성일: {new Date(review.createdAt).toLocaleDateString('ko-KR')}</p>
-                      )}
-                      {/* 별점 + 리뷰내용 (날짜 아래) */}
-                      <div className="mt-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <Star key={i} className={`w-4 h-4 ${i < (review.star || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-                            ))}
+            ) : (
+              <>
+                <div className="space-y-3 mb-6">
+                  {paginatedWrittenReviews.map((review) => (
+                    <div key={review.reviewIdx} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={getHotelThumb({
+                            thumbnailUrl: review.thumbnailUrl,
+                            contentId: review.contentId || review.hotelInfo?.contentId
+                          })}
+                          alt={review.hotelName || review.hotelInfo?.title || 'thumbnail'}
+                          className="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-100"
+                          onError={(e) => { e.currentTarget.src = '/next.svg'; }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="font-semibold text-gray-900 truncate">
+                              {review.hotelName || review.hotelInfo?.title || '호텔 정보 없음'}
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => router.push(`/mypage/review/edit?reviewId=${review.reviewIdx}`)}
+                                className="p-1.5 rounded hover:bg-gray-50"
+                                aria-label="리뷰 수정"
+                              >
+                                <Pencil className="w-4 h-4 text-gray-500" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteClick(review)}
+                                className="p-1.5 rounded hover:bg-gray-50"
+                                aria-label="리뷰 삭제"
+                              >
+                                <Trash2 className="w-4 h-4 text-gray-500" />
+                              </button>
+                              <ChevronRight className="w-4 h-4 text-gray-400" />
+                            </div>
                           </div>
-                          {/* 작성일은 상단에 별도 표기 */}
+                          {/* 지역 */}
+                          {(review.region || review.hotelInfo?.adress || review.location) && (
+                            <div className="flex items-center gap-1 text-xs text-gray-500 mb-0.5">
+                              <MapPin className="w-3 h-3" />
+                              <span>{review.region || getRegion(review.hotelInfo?.adress, review.location)}</span>
+                            </div>
+                          )}
+                          {/* 체크인 - 체크아웃 + (박수) */}
+                          {(review.checkInDate && review.checkOutDate) && (
+                            <p className="text-xs text-gray-600 mb-0.5">
+                              {formatDate(review.checkInDate)} - {formatDate(review.checkOutDate)} {getNightsText(review.checkInDate, review.checkOutDate)}
+                            </p>
+                          )}
+                          {review.createdAt && (
+                            <p className="text-xs text-gray-500 mb-1">작성일: {new Date(review.createdAt).toLocaleDateString('ko-KR')}</p>
+                          )}
+                          {/* 별점 + 리뷰내용 (날짜 아래) */}
+                          <div className="mt-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="flex">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star key={i} className={`w-4 h-4 ${i < (review.star || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                                ))}
+                              </div>
+                              {/* 작성일은 상단에 별도 표기 */}
+                            </div>
+                            <p className="text-sm text-gray-700 whitespace-pre-line">{review.content}</p>
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-700 whitespace-pre-line">{review.content}</p>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )
+                {/* 작성한 리뷰 페이지네이션 */}
+                {writtenTotalPages > 1 && (
+                  <Pagination
+                    currentPage={writtenPage}
+                    totalPages={writtenTotalPages}
+                    totalElements={writtenReviews.length}
+                    pageSize={pageSize}
+                    onPageChange={setWrittenPage}
+                  />
+                )}
+              </>
+            )}
+          </>
         )}
       </div>
 
