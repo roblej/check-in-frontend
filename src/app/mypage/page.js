@@ -529,64 +529,6 @@ function MyPageContent() {
     // 프론트엔드에서 슬라이싱만 처리
   };
 
-  // 더미 데이터 로드 (백엔드 미연결 시)
-  const loadDummyData = (status) => {
-    const dummyReservations = {
-      upcoming: [
-        {
-          id: 1,
-          hotelName: '그랜드 하얏트 서울',
-          location: '서울 강남구',
-          checkIn: '2025.10.20',
-          checkOut: '2025.10.22',
-          roomType: '디럭스 트윈',
-          price: 450000,
-          status: '예약확정'
-        },
-        {
-          id: 2,
-          hotelName: '신라호텔 제주',
-          location: '제주 제주시',
-          checkIn: '2025.11.05',
-          checkOut: '2025.11.07',
-          roomType: '오션뷰 킹',
-          price: 380000,
-          status: '예약확정'
-        }
-      ],
-      completed: [
-        {
-          id: 3,
-          hotelName: '롯데호텔 부산',
-          location: '부산 해운대구',
-          checkIn: '2025.09.15',
-          checkOut: '2025.09.17',
-          roomType: '스탠다드 더블',
-          price: 280000,
-          status: '이용완료'
-        }
-      ],
-      cancelled: [
-        {
-          id: 4,
-          hotelName: '파크 하얏트 서울',
-          location: '서울 용산구',
-          checkIn: '2025.10.01',
-          checkOut: '2025.10.03',
-          roomType: '디럭스 킹',
-          price: 420000,
-          status: '취소완료',
-          refundAmount: 378000
-        }
-      ]
-    };
-
-    setReservations(prev => ({
-      ...prev,
-      [status]: dummyReservations[status] || []
-    }));
-  };
-
   // 예약 관련 핸들러
   const handleReservationDetail = (reservationId, type = 'hotel') => {
     if (type === 'dining') {
@@ -861,17 +803,6 @@ function MyPageContent() {
     return reviewedReservationIds.has(reservIdx);
   };
 
-  const likedHotels = [
-    { id: 1, name: '스카이 파크 센트럴', location: '명동·남산', price: 140000, rating: 4.8 },
-    { id: 2, name: '제주 호텔 리스텔', location: '제주시', price: 98000, rating: 4.5 },
-    { id: 3, name: '강남 그랜드 호텔', location: '강남·서초', price: 185000, rating: 4.9 }
-  ];
-
-  const recentHotels = [
-    { id: 1, name: '나인브릿지 바이...', location: '제주·서귀포', viewDate: '2025.10.14', price: 420000 },
-    { id: 2, name: '호텔 현대바이...', location: '속초', viewDate: '2025.10.13', price: 180000 }
-  ];
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -941,8 +872,8 @@ function MyPageContent() {
         />
 
         <div className="grid md:grid-cols-2 gap-6 mb-6">
-          <FavoritesSection likedHotels={likedHotels} />
-          <RecentHotelsSection recentHotels={recentHotels} />
+          <FavoritesSection likedHotels={[]} />
+          <RecentHotelsSection recentHotels={[]} />
         </div>
 
         <CouponSection
