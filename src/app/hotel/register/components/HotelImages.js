@@ -515,12 +515,14 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
       <div>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-gray-900">이벤트 관리</h3>
-          <button
-            onClick={addEvent}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            + 이벤트 추가
-          </button>
+          {!readOnly && (
+            <button
+              onClick={addEvent}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              + 이벤트 추가
+            </button>
+          )}
         </div>
         <p className="text-sm text-gray-500 mb-4">
           특가 이벤트나 프로모션을 등록하여 고객에게 제공하세요.
@@ -537,12 +539,14 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
               <div key={event.id} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex justify-between items-start mb-4">
                   <h4 className="font-medium text-gray-900">이벤트 {index + 1}</h4>
-                  <button
-                    onClick={() => removeEvent(event.id)}
-                    className="text-red-400 hover:text-red-600"
-                  >
-                    삭제
-                  </button>
+                  {!readOnly && (
+                    <button
+                      onClick={() => removeEvent(event.id)}
+                      className="text-red-400 hover:text-red-600"
+                    >
+                      삭제
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -552,9 +556,13 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
                     </label>
                     <input
                       type="text"
-                      value={event.title}
+                      value={event.title || ""}
                       onChange={(e) => updateEvent(event.id, { title: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      readOnly={readOnly}
+                      disabled={readOnly}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        readOnly ? "bg-gray-50 cursor-not-allowed" : ""
+                      }`}
                       placeholder="예: 신규 오픈 특가"
                     />
                   </div>
@@ -567,9 +575,13 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
                       type="number"
                       min="0"
                       max="100"
-                      value={event.discount}
+                      value={event.discount || ""}
                       onChange={(e) => updateEvent(event.id, { discount: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      readOnly={readOnly}
+                      disabled={readOnly}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        readOnly ? "bg-gray-50 cursor-not-allowed" : ""
+                      }`}
                       placeholder="20"
                     />
                   </div>
@@ -580,9 +592,13 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
                     </label>
                     <input
                       type="date"
-                      value={event.startDate}
+                      value={event.startDate || ""}
                       onChange={(e) => updateEvent(event.id, { startDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      readOnly={readOnly}
+                      disabled={readOnly}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        readOnly ? "bg-gray-50 cursor-not-allowed" : ""
+                      }`}
                     />
                   </div>
 
@@ -592,9 +608,13 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
                     </label>
                     <input
                       type="date"
-                      value={event.endDate}
+                      value={event.endDate || ""}
                       onChange={(e) => updateEvent(event.id, { endDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      readOnly={readOnly}
+                      disabled={readOnly}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        readOnly ? "bg-gray-50 cursor-not-allowed" : ""
+                      }`}
                     />
                   </div>
 
@@ -603,10 +623,14 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
                       이벤트 설명
                     </label>
                     <textarea
-                      value={event.description}
+                      value={event.description || ""}
                       onChange={(e) => updateEvent(event.id, { description: e.target.value })}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      readOnly={readOnly}
+                      disabled={readOnly}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        readOnly ? "bg-gray-50 cursor-not-allowed" : ""
+                      }`}
                       placeholder="이벤트 상세 내용을 입력하세요"
                     />
                   </div>
@@ -615,9 +639,12 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
-                        checked={event.isActive}
+                        checked={event.isActive || false}
                         onChange={(e) => updateEvent(event.id, { isActive: e.target.checked })}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        disabled={readOnly}
+                        className={`rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${
+                          readOnly ? "cursor-not-allowed opacity-50" : ""
+                        }`}
                       />
                       <span className="text-sm text-gray-700">이벤트 활성화</span>
                     </label>

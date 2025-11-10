@@ -195,8 +195,18 @@ const AdminDashboard = () => {
         {/* 최근 예약 현황 */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">최근 예약 현황</h3>
-            <p className="text-sm text-gray-600">오늘의 예약 및 체크인 현황</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">최근 예약 현황</h3>
+                <p className="text-sm text-gray-600">오늘의 예약 및 체크인 현황</p>
+              </div>
+              <button 
+                onClick={() => router.push('/admin/reservations')}
+                className="text-[#3B82F6] hover:text-blue-800 text-sm font-medium"
+              >
+                전체 보기
+              </button>
+            </div>
           </div>
           
           <div className="overflow-x-auto">

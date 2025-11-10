@@ -24,11 +24,13 @@ const Statistics = () => {
     totalRevenue: 0,
     totalReservationCount: 0,
     activeHotels: 0,
-    newHotelsThisMonth: 0,
-    newCustomersThisMonth: 0
+    newHotels: 0,
+    newCustomers: 0
   });
   const [monthlyCommissionData, setMonthlyCommissionData] = useState([]);
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+  const [minYear, setMinYear] = useState(2000); // 최소 연도 (기본값)
+  const currentYear = new Date().getFullYear();
   const [regionStats, setRegionStats] = useState([]);
   const [regionStatsLoading, setRegionStatsLoading] = useState(true);
   const [memberGradeStats, setMemberGradeStats] = useState([]);
@@ -50,8 +52,8 @@ const Statistics = () => {
             totalRevenue: response.data.totalRevenue || 0,
             totalReservationCount: response.data.totalReservationCount || 0,
             activeHotels: response.data.activeHotels || 0,
-            newHotelsThisMonth: response.data.newHotelsThisMonth || 0,
-            newCustomersThisMonth: response.data.newCustomersThisMonth || 0
+            newHotels: response.data.newHotels || 0,
+            newCustomers: response.data.newCustomers || 0
           });
         }
       } catch (error) {
@@ -70,7 +72,14 @@ const Statistics = () => {
       try {
         const response = await axiosInstance.get('/master/statistics/monthlyCommission');
         if (response.data) {
-          setMonthlyCommissionData(response.data || []);
+          setMonthlyCommissionData(response.data.monthlyData || response.data || []);
+          if (response.data.minYear) {
+            setMinYear(response.data.minYear);
+            // selectedYear가 minYear보다 작으면 minYear로 조정
+            if (selectedYear < response.data.minYear) {
+              setSelectedYear(response.data.minYear);
+            }
+          }
         }
       } catch (error) {
         console.error('월별 수수료 수익 조회 오류:', error);
@@ -78,6 +87,7 @@ const Statistics = () => {
     };
 
     fetchMonthlyCommission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 지역별 통계 데이터 조회
@@ -244,34 +254,26 @@ const Statistics = () => {
     {
       title: '총 매출',
       value: formatCurrency(statistics.totalRevenue),
-      change: '+0%',
-      changeType: 'positive',
       icon: <DollarSign size={40} />,
       description: `${getDateRangeDescription()} 총 매출액`
     },
     {
       title: '총 예약',
       value: statistics.totalReservationCount.toLocaleString(),
-      change: '+0%',
-      changeType: 'positive',
       icon: <Calendar size={40} />,
       description: `${getDateRangeDescription()} 총 예약 건수`
     },
     {
-      title: '활성 호텔',
+      title: '현재 운영중인 호텔',
       value: statistics.activeHotels.toLocaleString(),
-      change: `+${statistics.newHotelsThisMonth}`,
-      changeType: 'positive',
       icon: <Building2 size={40} />,
-      description: `이번달 신규: ${statistics.newHotelsThisMonth}개`
+      description: `${getDateRangeDescription()} 승인된 호텔 수`
     },
     {
       title: '신규 회원',
-      value: statistics.newCustomersThisMonth.toLocaleString(),
-      change: '+0%',
-      changeType: 'positive',
+      value: statistics.newCustomers.toLocaleString(),
       icon: <Users size={40} />,
-      description: '이번 달 신규 가입자'
+      description: `${getDateRangeDescription()} 신규 가입자`
     }
   ];
 
@@ -301,9 +303,6 @@ const Statistics = () => {
               <option value="quarter">최근 3개월</option>
               <option value="year">최근 1년</option>
             </select>
-            <button className="bg-[#7C3AED] text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-              리포트 다운로드
-            </button>
           </div>
         </div>
 
@@ -323,13 +322,8 @@ const Statistics = () => {
           ) : (
             overallStats.map((stat, index) => (
               <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center mb-4">
                   <div className="text-3xl">{stat.icon}</div>
-                  <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                    stat.changeType === 'positive' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {stat.change}
-                  </span>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
@@ -350,10 +344,14 @@ const Statistics = () => {
               <input
                 id="yearSelect"
                 type="number"
-                min="2000"
-                max="2100"
+                min={minYear}
+                max={currentYear}
                 value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value || `${new Date().getFullYear()}`, 10))}
+                onChange={(e) => {
+                  const inputValue = parseInt(e.target.value || `${currentYear}`, 10);
+                  const year = Math.min(Math.max(inputValue, minYear), currentYear);
+                  setSelectedYear(year);
+                }}
                 className="w-28 border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
               />
             </div>
