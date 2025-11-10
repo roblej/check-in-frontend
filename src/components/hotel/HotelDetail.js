@@ -38,6 +38,7 @@ const HotelDetail = ({
   onSearchParamsChange,
   onLoadingChange,
   onClose,
+  onHeaderPriceChange,
 }) => {
   const router = useRouter();
   const urlSearchParams = useSearchParams();
@@ -108,6 +109,20 @@ const HotelDetail = ({
   // 커스텀 훅 사용
   const { hotelData, rooms, dinings, isLoading, errorMessage, formatPrice } =
     useHotelData(contentId, localSearchParams, onLoadingChange);
+
+  const lowestPrice = useMemo(() => {
+    if (!Array.isArray(rooms) || rooms.length === 0) return 0;
+    const basePrices = rooms.map((r) => r.basePrice || r.price || 0);
+    const minPrice = Math.min(...basePrices);
+    const nights = Number(localSearchParams?.nights || 1);
+    return minPrice * (Number.isNaN(nights) ? 1 : nights);
+  }, [rooms, localSearchParams?.nights]);
+
+  useEffect(() => {
+    if (onHeaderPriceChange) {
+      onHeaderPriceChange(lowestPrice > 0 ? lowestPrice : null);
+    }
+  }, [lowestPrice, onHeaderPriceChange]);
 
   const {
     activeSection,
@@ -233,9 +248,19 @@ const HotelDetail = ({
       <div
         ref={headerRef}
         className={`w-full flex-shrink-0 ${
-          isModal ? "relative z-40 bg-white" : "sticky z-40 bg-gray-50"
+          isModal ? "sticky top-0 z-40 bg-white" : "sticky z-40 bg-gray-50"
         }`}
-        style={!isModal ? { top: "56px" } : undefined}
+        style={
+          !isModal
+            ? {
+                top:
+                  (typeof window !== "undefined" &&
+                  document.querySelector("header")?.classList.contains("sticky")
+                    ? document.querySelector("header")?.offsetHeight || 0
+                    : 0) + "px",
+              }
+            : undefined
+        }
       >
         <div
           className={
@@ -264,34 +289,33 @@ const HotelDetail = ({
       <div
         ref={navRef}
         className={`w-full flex-shrink-0 ${
-          isModal
-            ? "sticky top-0 z-30 shadow-sm bg-white"
-            : "sticky z-30 bg-gray-50"
+          isModal ? "sticky z-30 shadow-sm bg-white" : "sticky z-30 bg-gray-50"
         }`}
         style={
           isModal
             ? {
                 position: "sticky",
-                top: "0",
+                top: `${headerHeight || 0}px`,
                 alignSelf: "flex-start",
                 width: "100%",
               }
-            : !isModal
-            ? {
+            : {
                 top:
                   (headerRef.current?.offsetHeight || 0) +
-                  (typeof window !== "undefined"
-                    ? document.querySelector("header")?.offsetHeight || 56
-                    : 56) +
+                  (typeof window !== "undefined" &&
+                  document.querySelector("header")?.classList.contains("sticky")
+                    ? document.querySelector("header")?.offsetHeight || 0
+                    : 0) +
                   "px",
               }
-            : undefined
         }
       >
         <div
-          className={
-            isModal ? "px-2.5" : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
-          }
+          className={`${
+            isModal
+              ? "px-2.5 border-b border-gray-200"
+              : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-gray-200"
+          }`}
         >
           <HotelNavBar
             sections={navSections}
