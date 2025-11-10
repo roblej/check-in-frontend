@@ -155,7 +155,7 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail, customer, cu
           </div>
         )}
         {item.urgent && (
-          <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+          <div className="absolute top-3 left-3 bg-[#3B82F6] text-white px-2 py-1 rounded-full text-xs font-semibold">
             긴급
           </div>
         )}
@@ -205,13 +205,13 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail, customer, cu
               <p className="text-sm text-gray-500 line-through">
                 원가: {formatPrice(item.originalPrice || 0)}원
               </p>
-              <p className="text-xl font-bold text-orange-600">
+              <p className="text-xl font-bold text-[#3B82F6]">
                 {formatPrice(item.salePrice || 0)}원
               </p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500">할인</p>
-              <p className="text-lg font-semibold text-red-500">
+              <p className="text-lg font-semibold text-blue-600">
                 -{formatPrice((item.originalPrice || 0) - (item.salePrice || 0))}원
               </p>
             </div>
@@ -241,7 +241,7 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail, customer, cu
         <div className="flex gap-2">
           <Button
             variant="primary"
-            className="flex-1 bg-orange-500 hover:bg-orange-600"
+            className="flex-1 bg-[#3B82F6] hover:bg-blue-600"
             onClick={handleInquire}
             disabled={customerLoading || (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx)}
           >

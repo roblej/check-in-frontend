@@ -165,6 +165,18 @@ const HotelDetail = ({
     }
   }, [isModal, hotelData, headerRef]);
 
+  // tab=location 쿼리 파라미터가 있으면 위치 탭으로 자동 스크롤
+  useEffect(() => {
+    const tab = urlSearchParams?.get("tab");
+    if (tab === "location" && hotelData && scrollToSection) {
+      // 호텔 데이터가 로드되고 섹션이 렌더링될 시간을 주기 위해 약간의 지연
+      const timer = setTimeout(() => {
+        scrollToSection("location");
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [urlSearchParams, hotelData, scrollToSection]);
+
   /**
    * 로컬 검색 조건 업데이트 함수
    */
