@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/Button";
 import SearchCondition from "@/components/hotelSearch/SearchCondition";
 import { useSearchStore } from "@/stores/searchStore";
-import axios from "axios";
+import axios from "@/lib/axios";
 
 /**
  * 메인 페이지 히어로 섹션 컴포넌트

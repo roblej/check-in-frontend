@@ -6,12 +6,12 @@ import { useEffect, useState } from "react";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useAdminStore } from "@/stores/adminStore";
 import { deleteAdminIdxCookie } from "@/utils/cookieUtils";
-import axios from "axios";
+import axios from "@/lib/axios";
 const Header = () => {
   const router = useRouter();
   const { resetAccessToken, setInlogged, readAccessToken, verifyTokenWithBackend, isInlogged } = useCustomerStore();
   const { resetAdminData } = useAdminStore();
-  const logout_url = "/api/login/logout";
+  const logout_url = "/login/logout";
   
   // Hydration 오류 방지를 위한 상태
   const [isClient, setIsClient] = useState(false);

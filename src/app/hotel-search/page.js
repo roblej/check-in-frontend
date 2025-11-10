@@ -18,7 +18,7 @@ import {
   createHotelDetailUrl,
   formatSearchParamsForUrl,
 } from "@/utils/urlUtils";
-import axios from "axios";
+import axios from "@/lib/axios";
 import { useSearchParams, useRouter } from "next/navigation";
 
 const HotelSearchPageContent = () => {
@@ -319,7 +319,7 @@ const HotelSearchPageContent = () => {
   }, [isDatePickerOpen]);
 
   const [searchHotels, setSearchHotels] = useState([]);
-  const hotel_url = "api/hotel/search";
+  const hotel_url = "/hotel/search";
 
   // 호텔 데이터 (임시)
   const [filteredHotels, setFilteredHotels] = useState([]);

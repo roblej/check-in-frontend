@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import styles from "./signup.module.css";
-import axios from "axios";
+import axios from "@/lib/axios";
 
 export default function SignupPage() {
-  const signUp_url = "/api/login/signup";
-  const checkId_url = "/api/login/checkId";
-  const checkNickname_url = "/api/login/checkNickname";
-  const sendVerificationCode_url = "/api/login/send-verification-code";
-  const verifyEmail_url = "/api/login/verify-email";
+  const signUp_url = "/login/signup";
+  const checkId_url = "/login/checkId";
+  const checkNickname_url = "/login/checkNickname";
+  const sendVerificationCode_url = "/login/send-verification-code";
+  const verifyEmail_url = "/login/verify-email";
 
   const router = useRouter();
   const [formData, setFormData] = useState({
