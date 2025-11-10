@@ -67,10 +67,14 @@ function LoginForm() {
   let accessToken = "";
 
   const login_url = "/api/login";
-  const backendBaseUrl =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888";
-  const naverLogin_url = `${backendBaseUrl}/oauth2/authorization/naver`;
-  const kakaoLogin_url = `${backendBaseUrl}/oauth2/authorization/kakao`;
+  // OAuth2 요청은 nginx가 프록시하므로 현재 도메인 사용
+  // 프로덕션: https://checkinn.store/oauth2/authorization/naver
+  // 로컬: http://localhost:3333/oauth2/authorization/naver (Next.js rewrites 사용)
+  const oauth2BaseUrl = typeof window !== 'undefined' 
+    ? window.location.origin  // 클라이언트: 현재 도메인 사용
+    : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888");  // 서버: 환경 변수 사용
+  const naverLogin_url = `${oauth2BaseUrl}/oauth2/authorization/naver`;
+  const kakaoLogin_url = `${oauth2BaseUrl}/oauth2/authorization/kakao`;
   // 네이버 로그인을 위한 함수
 
   // 입력 필드 변경 핸들러

@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useMemo, useEffect } from 'react';
-import { Calendar, ChevronDown, MapPin } from 'lucide-react';
+import { useMemo, useEffect } from "react";
+import { Calendar, ChevronDown, MapPin } from "lucide-react";
 
-import Pagination from '@/components/Pagination';
+import Pagination from "@/components/Pagination";
 
 export default function ReservationSection({
   reservationTab,
@@ -35,9 +35,9 @@ export default function ReservationSection({
   handleRebook,
   handleReport,
   handleRegisterTrade,
-  handleEditTrade
+  handleEditTrade,
 }) {
-  const isDining = reservationType === 'dining';
+  const isDining = reservationType === "dining";
   const currentReservations = isDining
     ? diningReservations[reservationTab]
     : reservations[reservationTab];
@@ -48,41 +48,85 @@ export default function ReservationSection({
 
     return allReservations.sort((a, b) => {
       switch (currentSortBy) {
-        case 'checkinDesc': {
-          const aDate = new Date(((isDining ? a.reservationDate : a.checkIn) || '').replace(/\./g, '-') || (isDining ? a.reservationDate : a.checkIn));
-          const bDate = new Date(((isDining ? b.reservationDate : b.checkIn) || '').replace(/\./g, '-') || (isDining ? b.reservationDate : b.checkIn));
+        case "checkinDesc": {
+          const aDate = new Date(
+            ((isDining ? a.reservationDate : a.checkIn) || "").replace(
+              /\./g,
+              "-"
+            ) || (isDining ? a.reservationDate : a.checkIn)
+          );
+          const bDate = new Date(
+            ((isDining ? b.reservationDate : b.checkIn) || "").replace(
+              /\./g,
+              "-"
+            ) || (isDining ? b.reservationDate : b.checkIn)
+          );
           return bDate - aDate;
         }
-        case 'checkinAsc': {
-          const aDate = new Date(((isDining ? a.reservationDate : a.checkIn) || '').replace(/\./g, '-') || (isDining ? a.reservationDate : a.checkIn));
-          const bDate = new Date(((isDining ? b.reservationDate : b.checkIn) || '').replace(/\./g, '-') || (isDining ? b.reservationDate : b.checkIn));
+        case "checkinAsc": {
+          const aDate = new Date(
+            ((isDining ? a.reservationDate : a.checkIn) || "").replace(
+              /\./g,
+              "-"
+            ) || (isDining ? a.reservationDate : a.checkIn)
+          );
+          const bDate = new Date(
+            ((isDining ? b.reservationDate : b.checkIn) || "").replace(
+              /\./g,
+              "-"
+            ) || (isDining ? b.reservationDate : b.checkIn)
+          );
           return aDate - bDate;
         }
-        case 'priceDesc':
-          return ((b.totalPrice || b.totalprice || 0) - (a.totalPrice || a.totalprice || 0));
-        case 'priceAsc':
-          return ((a.totalPrice || a.totalprice || 0) - (b.totalPrice || b.totalprice || 0));
-        case 'checkoutDesc': {
+        case "priceDesc":
+          return (
+            (b.totalPrice || b.totalprice || 0) -
+            (a.totalPrice || a.totalprice || 0)
+          );
+        case "priceAsc":
+          return (
+            (a.totalPrice || a.totalprice || 0) -
+            (b.totalPrice || b.totalprice || 0)
+          );
+        case "checkoutDesc": {
           if (isDining) {
-            const aDate = new Date((a.reservationDate || '').replace(/\./g, '-') || a.reservationDate);
-            const bDate = new Date((b.reservationDate || '').replace(/\./g, '-') || b.reservationDate);
+            const aDate = new Date(
+              (a.reservationDate || "").replace(/\./g, "-") || a.reservationDate
+            );
+            const bDate = new Date(
+              (b.reservationDate || "").replace(/\./g, "-") || b.reservationDate
+            );
             return bDate - aDate;
           }
-          const aDate = new Date((a.checkOut || '').replace(/\./g, '-') || a.checkOut);
-          const bDate = new Date((b.checkOut || '').replace(/\./g, '-') || b.checkOut);
+          const aDate = new Date(
+            (a.checkOut || "").replace(/\./g, "-") || a.checkOut
+          );
+          const bDate = new Date(
+            (b.checkOut || "").replace(/\./g, "-") || b.checkOut
+          );
           return bDate - aDate;
         }
-        case 'reviewFirst': {
+        case "reviewFirst": {
           const aHasReview = isReviewWritten(a);
           const bHasReview = isReviewWritten(b);
           if (aHasReview === bHasReview) {
             if (isDining) {
-              const aDate = new Date((a.reservationDate || '').replace(/\./g, '-') || a.reservationDate);
-              const bDate = new Date((b.reservationDate || '').replace(/\./g, '-') || b.reservationDate);
+              const aDate = new Date(
+                (a.reservationDate || "").replace(/\./g, "-") ||
+                  a.reservationDate
+              );
+              const bDate = new Date(
+                (b.reservationDate || "").replace(/\./g, "-") ||
+                  b.reservationDate
+              );
               return bDate - aDate;
             }
-            const aDate = new Date((a.checkOut || '').replace(/\./g, '-') || a.checkOut);
-            const bDate = new Date((b.checkOut || '').replace(/\./g, '-') || b.checkOut);
+            const aDate = new Date(
+              (a.checkOut || "").replace(/\./g, "-") || a.checkOut
+            );
+            const bDate = new Date(
+              (b.checkOut || "").replace(/\./g, "-") || b.checkOut
+            );
             return bDate - aDate;
           }
           return aHasReview ? 1 : -1;
@@ -111,159 +155,238 @@ export default function ReservationSection({
   }, [setTotalElements, setTotalPages, totalItems, totalPagesCount]);
 
   const renderReservationCards = () =>
-    paginatedReservations.map((reservation) => (
-      <div
-        key={reservation.id || reservation.reservationNumber}
-        className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all"
-      >
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">
-            {isDining
-                ? (reservation.diningName || reservation.hotelName)
-                : reservation.hotelName}
-            </h3>
-            <p className="text-sm text-gray-500 flex items-center gap-1">
-              <MapPin className="w-4 h-4" />
-              {reservation.location}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {reservationTab === 'upcoming' && reservation.status === '예약확정' && !isTradeCompleted(reservation) && reservationType === 'hotel' && (
-              <button
-                onClick={() => isTradeRegistered(reservation) ? handleEditTrade(reservation) : handleRegisterTrade(reservation)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
-                  isTradeRegistered(reservation)
-                    ? 'bg-blue-50 hover:bg-blue-100 text-blue-600'
-                    : 'bg-green-50 hover:bg-green-100 text-green-600'
-                }`}
-              >
-                {isTradeRegistered(reservation) ? '양도거래 수정' : '양도거래 등록'}
-              </button>
-            )}
-            {reservationTab === 'completed' && reservation.status === '이용완료' && reservationType === 'hotel' && reservation.contentId && !isReported(reservation) && (
-              <button
-                onClick={() => handleReport(reservation)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap bg-red-50 hover:bg-red-100 text-red-600"
-              >
-                신고
-              </button>
-            )}
-            {reservationTab === 'completed' && reservation.status === '이용완료' && reservationType === 'hotel' && reservation.contentId && isReported(reservation) && (
-              <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-500 whitespace-nowrap">
-                신고 완료
-              </span>
-            )}
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-              reservation.status === '예약확정' ? 'bg-blue-100 text-blue-700' :
-              reservation.status === '이용완료' ? 'bg-green-100 text-green-700' :
-              'bg-red-100 text-red-700'
-            }`}>
-              {reservation.status}
-            </span>
-          </div>
-        </div>
+    paginatedReservations.map((reservation) => {
+      const totalPayment =
+        reservation.totalPrice ?? reservation.totalprice ?? 0;
+      const paidCash = reservation.cashUsed ?? 0;
+      const paidPoints = reservation.pointsUsed ?? 0;
+      const refundAmount = reservation.refundAmount ?? 0;
+      const refundCash = reservation.refundCash ?? 0;
+      const refundPoint = reservation.refundPoint ?? 0;
+      const paymentLabel =
+        reservationTab === "cancelled" ? "총 결제금액" : "실제 결제 금액";
+      const showRefundInfo =
+        reservationTab === "cancelled" &&
+        reservation.refundAmount !== null &&
+        reservation.refundAmount !== undefined;
 
-        <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-          {reservationType === 'dining' ? (
-            <>
-              <div>
-                <span className="text-gray-500">예약 날짜</span>
-                <p className="font-medium text-gray-900">{reservation.reservationDate || reservation.checkIn}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">예약 시간</span>
-                <p className="font-medium text-gray-900">{reservation.reservationTime || '-'}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">인원 수</span>
-                <p className="font-medium text-gray-900">{reservation.guest || 1}명</p>
-              </div>
-              <div>
-                <span className="text-gray-500">총 결제금액</span>
-                <p className="font-bold text-blue-600">{(reservation.totalPrice || reservation.totalprice || 0).toLocaleString()}원</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
-                <span className="text-gray-500">체크인</span>
-                <p className="font-medium text-gray-900">{reservation.checkIn}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">체크아웃</span>
-                <p className="font-medium text-gray-900">{reservation.checkOut}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">객실타입</span>
-                <p className="font-medium text-gray-900">{reservation.roomType}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">총 결제금액</span>
-                <p className="font-bold text-blue-600">{(reservation.totalprice ?? 0).toLocaleString()}원</p>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex gap-2">
-          {reservationTab === 'upcoming' && (
-            <>
-              <button
-                onClick={() => handleReservationDetail(reservation.id, reservationType)}
-                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-              >
-                예약 상세보기
-              </button>
-            {!isDining && (
-                <button
-                  onClick={() => handleHotelLocation(reservation)}
-                  className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-                >
-                  호텔 위치보기
-                </button>
-              )}
-              <button
-                onClick={() => handleCancelReservation(reservation)}
-                className="flex-1 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors"
-              >
-                예약 취소
-              </button>
-            </>
-          )}
-          {reservationTab === 'completed' && (
-            <>
-              <button
-                onClick={() => !isReviewWritten(reservation) && handleWriteReview(reservation)}
-                disabled={isReviewWritten(reservation)}
-                className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors ${
-                  isReviewWritten(reservation)
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }`}
-              >
-                리뷰 작성
-              </button>
-            {!isDining && (
-                <button
-                  onClick={() => handleRebook(reservation)}
-                  className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-                >
-                  재예약하기
-                </button>
-              )}
-            </>
-          )}
-          {reservationTab === 'cancelled' && reservation.refundAmount && (
-            <div className="flex-1 text-sm">
-              <p className="text-gray-600">
-                환불 금액: <span className="font-bold text-blue-600">{reservation.refundAmount.toLocaleString()}원</span>
+      return (
+        <div
+          key={reservation.id || reservation.reservationNumber}
+          className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all"
+        >
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">
+                {isDining
+                  ? reservation.diningName || reservation.hotelName
+                  : reservation.hotelName}
+              </h3>
+              <p className="text-sm text-gray-500 flex items-center gap-1">
+                <MapPin className="w-4 h-4" />
+                {reservation.location}
               </p>
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              {reservationTab === "upcoming" &&
+                reservation.status === "예약확정" &&
+                !isTradeCompleted(reservation) &&
+                reservationType === "hotel" && (
+                  <button
+                    onClick={() =>
+                      isTradeRegistered(reservation)
+                        ? handleEditTrade(reservation)
+                        : handleRegisterTrade(reservation)
+                    }
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                      isTradeRegistered(reservation)
+                        ? "bg-blue-50 hover:bg-blue-100 text-blue-600"
+                        : "bg-green-50 hover:bg-green-100 text-green-600"
+                    }`}
+                  >
+                    {isTradeRegistered(reservation)
+                      ? "양도거래 수정"
+                      : "양도거래 등록"}
+                  </button>
+                )}
+              {reservationTab === "completed" &&
+                reservation.status === "이용완료" &&
+                reservationType === "hotel" &&
+                reservation.contentId &&
+                !isReported(reservation) && (
+                  <button
+                    onClick={() => handleReport(reservation)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap bg-red-50 hover:bg-red-100 text-red-600"
+                  >
+                    신고
+                  </button>
+                )}
+              {reservationTab === "completed" &&
+                reservation.status === "이용완료" &&
+                reservationType === "hotel" &&
+                reservation.contentId &&
+                isReported(reservation) && (
+                  <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-500 whitespace-nowrap">
+                    신고 완료
+                  </span>
+                )}
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  reservation.status === "예약확정"
+                    ? "bg-blue-100 text-blue-700"
+                    : reservation.status === "이용완료"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
+                }`}
+              >
+                {reservation.status}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+            {reservationType === "dining" ? (
+              <>
+                <div>
+                  <span className="text-gray-500">예약 날짜</span>
+                  <p className="font-medium text-gray-900">
+                    {reservation.reservationDate || reservation.checkIn}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500">예약 시간</span>
+                  <p className="font-medium text-gray-900">
+                    {reservation.reservationTime || "-"}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500">인원 수</span>
+                  <p className="font-medium text-gray-900">
+                    {reservation.guest || 1}명
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500">{paymentLabel}</span>
+                  <p className="font-bold text-blue-600">
+                    {totalPayment.toLocaleString()}원
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <span className="text-gray-500">체크인</span>
+                  <p className="font-medium text-gray-900">
+                    {reservation.checkIn}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500">체크아웃</span>
+                  <p className="font-medium text-gray-900">
+                    {reservation.checkOut}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500">객실타입</span>
+                  <p className="font-medium text-gray-900">
+                    {reservation.roomType}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500">{paymentLabel}</span>
+                  {reservationTab === "cancelled" ? (
+                    <p className="font-bold text-blue-600">
+                      {totalPayment.toLocaleString()}원
+                      <span className="block text-xs text-gray-500">
+                        (캐시:{paidCash.toLocaleString()}원 / 포인트:
+                        {paidPoints.toLocaleString()}원)
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="font-bold text-blue-600">
+                      {totalPayment.toLocaleString()}원
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            {reservationTab === "upcoming" && (
+              <>
+                <button
+                  onClick={() =>
+                    handleReservationDetail(reservation.id, reservationType)
+                  }
+                  className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  예약 상세보기
+                </button>
+                {!isDining && (
+                  <button
+                    onClick={() => handleHotelLocation(reservation)}
+                    className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                  >
+                    호텔 위치보기
+                  </button>
+                )}
+                <button
+                  onClick={() => handleCancelReservation(reservation)}
+                  className="flex-1 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors"
+                >
+                  예약 취소
+                </button>
+              </>
+            )}
+            {reservationTab === "completed" && (
+              <>
+                <button
+                  onClick={() =>
+                    !isReviewWritten(reservation) &&
+                    handleWriteReview(reservation)
+                  }
+                  disabled={isReviewWritten(reservation)}
+                  className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors ${
+                    isReviewWritten(reservation)
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
+                >
+                  리뷰 작성
+                </button>
+                {!isDining && (
+                  <button
+                    onClick={() => handleRebook(reservation)}
+                    className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                  >
+                    재예약하기
+                  </button>
+                )}
+              </>
+            )}
+            {reservationTab === "cancelled" && (
+              <div className="flex-1 text-sm space-y-1">
+                {showRefundInfo && (
+                  <p className="text-gray-600">
+                    환불 금액:{" "}
+                    <span className="font-bold text-blue-600">
+                      {refundAmount.toLocaleString()}원
+                    </span>
+                    {reservationType !== "dining" && (
+                      <span className="ml-1 text-xs text-gray-500">
+                        (캐시:{refundCash.toLocaleString()}원 / 포인트:
+                        {refundPoint.toLocaleString()}원)
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    ));
+      );
+    });
 
   const renderEmptyState = () => (
     <div className="text-center py-12">
@@ -271,12 +394,14 @@ export default function ReservationSection({
         <Calendar className="w-8 h-8 text-gray-400" />
       </div>
       <p className="text-gray-500 text-lg font-medium mb-2">
-        {reservationTab === 'upcoming' && '이용 예정인 예약이 없습니다'}
-        {reservationTab === 'completed' && '이용 완료된 예약이 없습니다'}
-        {reservationTab === 'cancelled' && '취소된 예약이 없습니다'}
+        {reservationTab === "upcoming" && "이용 예정인 예약이 없습니다"}
+        {reservationTab === "completed" && "이용 완료된 예약이 없습니다"}
+        {reservationTab === "cancelled" && "취소된 예약이 없습니다"}
       </p>
       <p className="text-gray-400 text-sm">
-        {reservationType === 'dining' ? '새로운 다이닝을 예약해보세요!' : '새로운 호텔을 예약해보세요!'}
+        {reservationType === "dining"
+          ? "새로운 다이닝을 예약해보세요!"
+          : "새로운 호텔을 예약해보세요!"}
       </p>
     </div>
   );
@@ -284,7 +409,10 @@ export default function ReservationSection({
   const currentReservationsLength = sortedReservations.length;
 
   return (
-    <section id="reservation-section" className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
+    <section
+      id="reservation-section"
+      className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200"
+    >
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -294,26 +422,26 @@ export default function ReservationSection({
           <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => {
-                setReservationType('hotel');
+                setReservationType("hotel");
                 setCurrentPage(0);
               }}
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                reservationType === 'hotel'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                reservationType === "hotel"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
               숙소
             </button>
             <button
               onClick={() => {
-                setReservationType('dining');
+                setReservationType("dining");
                 setCurrentPage(0);
               }}
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                reservationType === 'dining'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                reservationType === "dining"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
               다이닝
@@ -326,13 +454,13 @@ export default function ReservationSection({
             onChange={(e) => {
               setSortBy((prev) => ({
                 ...prev,
-                [reservationTab]: e.target.value
+                [reservationTab]: e.target.value,
               }));
               setCurrentPage(0);
             }}
             className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
           >
-            {reservationTab === 'upcoming' && (
+            {reservationTab === "upcoming" && (
               <>
                 <option value="checkinAsc">체크인 날짜 가까운 순</option>
                 <option value="checkinDesc">체크인 날짜 먼 순</option>
@@ -340,7 +468,7 @@ export default function ReservationSection({
                 <option value="priceAsc">낮은 가격순</option>
               </>
             )}
-            {reservationTab === 'completed' && (
+            {reservationTab === "completed" && (
               <>
                 <option value="checkoutDesc">최근 방문 순</option>
                 <option value="checkinDesc">체크인 날짜 최신순</option>
@@ -350,7 +478,7 @@ export default function ReservationSection({
                 <option value="reviewFirst">리뷰 작성 안한 내역순</option>
               </>
             )}
-            {reservationTab === 'cancelled' && (
+            {reservationTab === "cancelled" && (
               <>
                 <option value="checkinDesc">취소 날짜 최신순</option>
                 <option value="checkinAsc">취소 날짜 오래된순</option>
@@ -366,42 +494,54 @@ export default function ReservationSection({
       <div className="flex gap-2 mb-6 border-b border-gray-200">
         <button
           onClick={() => {
-            setReservationTab('upcoming');
+            setReservationTab("upcoming");
             setCurrentPage(0);
           }}
           className={`px-6 py-3 font-medium transition-all border-b-2 ${
-            reservationTab === 'upcoming'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+            reservationTab === "upcoming"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
-          이용 예정 ({reservationType === 'dining' ? diningReservations.upcoming.length : (reservationCounts.upcoming || reservations.upcoming.length)})
+          이용 예정 (
+          {reservationType === "dining"
+            ? diningReservations.upcoming.length
+            : reservationCounts.upcoming || reservations.upcoming.length}
+          )
         </button>
         <button
           onClick={() => {
-            setReservationTab('completed');
+            setReservationTab("completed");
             setCurrentPage(0);
           }}
           className={`px-6 py-3 font-medium transition-all border-b-2 ${
-            reservationTab === 'completed'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+            reservationTab === "completed"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
-          이용 완료 ({reservationType === 'dining' ? diningReservations.completed.length : (reservationCounts.completed || reservations.completed.length)})
+          이용 완료 (
+          {reservationType === "dining"
+            ? diningReservations.completed.length
+            : reservationCounts.completed || reservations.completed.length}
+          )
         </button>
         <button
           onClick={() => {
-            setReservationTab('cancelled');
+            setReservationTab("cancelled");
             setCurrentPage(0);
           }}
           className={`px-6 py-3 font-medium transition-all border-b-2 ${
-            reservationTab === 'cancelled'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+            reservationTab === "cancelled"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
-          취소/환불 ({reservationType === 'dining' ? diningReservations.cancelled.length : (reservationCounts.cancelled || reservations.cancelled.length)})
+          취소/환불 (
+          {reservationType === "dining"
+            ? diningReservations.cancelled.length
+            : reservationCounts.cancelled || reservations.cancelled.length}
+          )
         </button>
       </div>
 
@@ -413,9 +553,13 @@ export default function ReservationSection({
           </div>
         )}
 
-        {!reservationsLoading && currentReservationsLength === 0 && renderEmptyState()}
+        {!reservationsLoading &&
+          currentReservationsLength === 0 &&
+          renderEmptyState()}
 
-        {!reservationsLoading && currentReservationsLength > 0 && renderReservationCards()}
+        {!reservationsLoading &&
+          currentReservationsLength > 0 &&
+          renderReservationCards()}
       </div>
 
       {!reservationsLoading && totalPages > 0 && (
@@ -430,4 +574,3 @@ export default function ReservationSection({
     </section>
   );
 }
-

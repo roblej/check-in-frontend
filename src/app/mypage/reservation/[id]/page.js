@@ -1,11 +1,20 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, User, Phone, Mail, CreditCard, Home } from 'lucide-react';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import { mypageAPI } from '@/lib/api/mypage';
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import {
+  ArrowLeft,
+  Calendar,
+  MapPin,
+  User,
+  Phone,
+  Mail,
+  CreditCard,
+  Home,
+} from "lucide-react";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { mypageAPI } from "@/lib/api/mypage";
 
 export default function ReservationDetailPage() {
   const router = useRouter();
@@ -22,19 +31,20 @@ export default function ReservationDetailPage() {
     const loadReservationDetail = async () => {
       setIsLoading(true);
       try {
-        console.log('📤 예약 상세 조회:', reservationId);
-        
+        console.log("📤 예약 상세 조회:", reservationId);
+
         // 백엔드 API 호출
         const data = await mypageAPI.getReservationDetail(reservationId);
-        
-        console.log('📥 받은 상세 데이터:', data);
-        
+
+        console.log("📥 받은 상세 데이터:", data);
+
         setReservation(data);
         setError(null);
-        
       } catch (err) {
-        console.error('❌ 예약 상세 조회 실패:', err);
-        setError(err.response?.data?.message || '예약 정보를 불러올 수 없습니다.');
+        console.error("❌ 예약 상세 조회 실패:", err);
+        setError(
+          err.response?.data?.message || "예약 정보를 불러올 수 없습니다."
+        );
       } finally {
         setIsLoading(false);
       }
@@ -48,12 +58,24 @@ export default function ReservationDetailPage() {
   // 숙박 일수 계산
   const calculateNights = (checkIn, checkOut) => {
     if (!checkIn || !checkOut) return 0;
-    const start = new Date(checkIn.replace(/\./g, '-'));
-    const end = new Date(checkOut.replace(/\./g, '-'));
+    const start = new Date(checkIn.replace(/\./g, "-"));
+    const end = new Date(checkOut.replace(/\./g, "-"));
     const diffTime = Math.abs(end - start);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };
+
+  const isCancelled = reservation?.status === "취소완료";
+  const totalPayment = reservation?.totalprice ?? 0;
+  const cashUsed = reservation?.cashUsed ?? 0;
+  const pointsUsed = reservation?.pointsUsed ?? 0;
+  const refundAmount = reservation?.refundAmount ?? 0;
+  const refundCash = reservation?.refundCash ?? 0;
+  const refundPoint = reservation?.refundPoint ?? 0;
+  const paymentLabel = isCancelled ? "총 결제금액" : "실제 결제 금액";
+  const shouldShowRefund =
+    reservation?.refundAmount !== null &&
+    reservation?.refundAmount !== undefined;
 
   // 로딩 중
   if (isLoading) {
@@ -76,9 +98,11 @@ export default function ReservationDetailPage() {
         <Header />
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <p className="text-red-600 mb-4">{error || '예약 정보를 찾을 수 없습니다.'}</p>
+            <p className="text-red-600 mb-4">
+              {error || "예약 정보를 찾을 수 없습니다."}
+            </p>
             <button
-              onClick={() => router.push('/mypage')}
+              onClick={() => router.push("/mypage")}
               className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
               마이페이지로 돌아가기
@@ -111,14 +135,21 @@ export default function ReservationDetailPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm text-gray-500 mb-1">예약번호</p>
-              <p className="text-xl font-bold text-gray-900">{reservation.reservationNumber || `R${reservation.id}`}</p>
+              <p className="text-xl font-bold text-gray-900">
+                {reservation.reservationNumber || `R${reservation.id}`}
+              </p>
             </div>
-            <span className={`px-4 py-2 text-sm font-medium rounded-full ${
-              reservation.status === '예약확정' ? 'bg-blue-100 text-blue-700' :
-              reservation.status === '이용완료' ? 'bg-green-100 text-green-700' :
-              reservation.status === '취소완료' ? 'bg-red-100 text-red-700' :
-              'bg-gray-100 text-gray-700'
-            }`}>
+            <span
+              className={`px-4 py-2 text-sm font-medium rounded-full ${
+                reservation.status === "예약확정"
+                  ? "bg-blue-100 text-blue-700"
+                  : reservation.status === "이용완료"
+                  ? "bg-green-100 text-green-700"
+                  : reservation.status === "취소완료"
+                  ? "bg-red-100 text-red-700"
+                  : "bg-gray-100 text-gray-700"
+              }`}
+            >
               {reservation.status}
             </span>
           </div>
@@ -133,7 +164,9 @@ export default function ReservationDetailPage() {
           <div className="space-y-3">
             <div>
               <p className="text-sm text-gray-500">호텔명</p>
-              <p className="text-lg font-bold text-gray-900">{reservation.hotelName}</p>
+              <p className="text-lg font-bold text-gray-900">
+                {reservation.hotelName}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-500 flex items-center gap-1">
@@ -158,17 +191,23 @@ export default function ReservationDetailPage() {
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-500">체크인</p>
-              <p className="text-lg font-medium text-gray-900">{reservation.checkIn}</p>
+              <p className="text-lg font-medium text-gray-900">
+                {reservation.checkIn}
+              </p>
               <p className="text-sm text-gray-500">15:00 이후</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">체크아웃</p>
-              <p className="text-lg font-medium text-gray-900">{reservation.checkOut}</p>
+              <p className="text-lg font-medium text-gray-900">
+                {reservation.checkOut}
+              </p>
               <p className="text-sm text-gray-500">11:00 까지</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">숙박 일수</p>
-              <p className="text-gray-900">{calculateNights(reservation.checkIn, reservation.checkOut)}박</p>
+              <p className="text-gray-900">
+                {calculateNights(reservation.checkIn, reservation.checkOut)}박
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-500">투숙 인원</p>
@@ -185,13 +224,35 @@ export default function ReservationDetailPage() {
           </h2>
           <div className="space-y-3">
             <div className="border-t border-gray-200 pt-3 flex justify-between">
-              <span className="text-lg font-bold text-gray-900">총 결제금액</span>
-              <span className="text-2xl font-bold text-blue-600">{(reservation.totalprice || 0).toLocaleString()}원</span>
+              <span className="text-lg font-bold text-gray-900">
+                {paymentLabel}
+              </span>
+              <div className="text-right">
+                <span className="text-2xl font-bold text-blue-600">
+                  {totalPayment.toLocaleString()}원
+                </span>
+                {isCancelled && (
+                  <p className="text-xs text-gray-500">
+                    (캐시:{cashUsed.toLocaleString()}원 / 포인트:
+                    {pointsUsed.toLocaleString()}원)
+                  </p>
+                )}
+              </div>
             </div>
-            {reservation.refundAmount && (
+            {shouldShowRefund && (
               <div className="flex justify-between pt-3 border-t border-gray-200">
                 <span className="text-gray-600">환불 금액</span>
-                <span className="text-red-600">{reservation.refundAmount.toLocaleString()}원</span>
+                <div className="text-right">
+                  <span className="text-red-600">
+                    {refundAmount.toLocaleString()}원
+                  </span>
+                  {isCancelled && (
+                    <p className="text-xs text-gray-500">
+                      (캐시:{refundCash.toLocaleString()}원 / 포인트:
+                      {refundPoint.toLocaleString()}원)
+                    </p>
+                  )}
+                </div>
               </div>
             )}
             <div className="flex justify-between pt-3 border-t border-gray-200">
@@ -204,15 +265,17 @@ export default function ReservationDetailPage() {
         {/* 액션 버튼 */}
         <div className="flex gap-3">
           <button
-            onClick={() => router.push(`/hotel/${reservation.contentId}?tab=location`)}
+            onClick={() =>
+              router.push(`/hotel/${reservation.contentId}?tab=location`)
+            }
             className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
           >
             호텔 위치 보기
           </button>
-          {reservation.status === '예약확정' && (
+          {reservation.status === "예약확정" && (
             <button
               onClick={() => {
-                if (confirm('예약을 취소하시겠습니까?')) {
+                if (confirm("예약을 취소하시겠습니까?")) {
                   router.push(`/mypage/reservation/${reservationId}/cancel`);
                 }
               }}
@@ -228,4 +291,3 @@ export default function ReservationDetailPage() {
     </div>
   );
 }
-

@@ -5,62 +5,6 @@ import MasterLayout from '@/components/master/MasterLayout';
 import Pagination from '@/components/Pagination';
 import { HelpCircle, Plus, Edit, Trash2, Eye, EyeOff, Search, Filter } from 'lucide-react';
 
-const mockFaqList = [
-  {
-    id: 1,
-    category: '예약/취소',
-    question: '호텔 예약을 취소하고 싶어요',
-    answer: '예약 취소는 마이페이지 > 예약 내역에서 가능합니다. 취소 정책에 따라 수수료가 부과될 수 있습니다.',
-    order: 1,
-    createdAt: '2024-06-10 16:22',
-    updatedAt: '2024-06-10 16:22',
-  },
-  {
-    id: 2,
-    category: '회원정보',
-    question: '비밀번호를 잊어버렸어요',
-    answer: '로그인 페이지에서 "비밀번호 찾기"를 클릭하여 이메일로 재설정 링크를 받으실 수 있습니다.',
-    order: 2,
-    createdAt: '2024-06-12 10:05',
-    updatedAt: '2024-06-12 10:05',
-  },
-  {
-    id: 3,
-    category: '결제',
-    question: '결제 방법은 어떤 것들이 있나요?',
-    answer: '신용카드, 체크카드, 계좌이체, 간편결제(카카오페이, 네이버페이) 등을 지원합니다.',
-    order: 3,
-    createdAt: '2024-06-13 09:18',
-    updatedAt: '2024-06-13 09:18',
-  },
-  {
-    id: 4,
-    category: '기술지원',
-    question: '사이트가 느려요',
-    answer: '인터넷 연결 상태를 확인해주세요. 문제가 지속되면 고객센터로 문의해주세요.',
-    order: 4,
-    createdAt: '2024-06-14 14:20',
-    updatedAt: '2024-06-14 14:20',
-  },
-  {
-    id: 5,
-    category: '호텔정보',
-    question: '체크인/체크아웃 시간은 언제인가요?',
-    answer: '일반적으로 체크인은 오후 3시, 체크아웃은 오전 11시입니다. 호텔마다 다를 수 있으니 예약 시 확인해주세요.',
-    order: 5,
-    createdAt: '2024-06-15 11:30',
-    updatedAt: '2024-06-15 11:30',
-  },
-  {
-    id: 6,
-    category: '예약/취소',
-    question: '예약 변경은 어떻게 하나요?',
-    answer: '예약 변경은 마이페이지에서 가능하며, 변경 가능 기간과 수수료는 예약 정책을 확인해주세요.',
-    order: 6,
-    createdAt: '2024-06-16 09:15',
-    updatedAt: '2024-06-16 09:15',
-  },
-];
 
 const categories = ['전체', '예약/취소', '회원정보', '결제', '기술지원', '호텔정보'];
 
