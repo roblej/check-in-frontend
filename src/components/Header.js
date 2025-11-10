@@ -77,6 +77,9 @@ const Header = () => {
               <Link href="/used" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
                 중고거래
               </Link>
+              <Link href="/tour-recommend" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+                🎯 여행지 추천
+              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-3">
