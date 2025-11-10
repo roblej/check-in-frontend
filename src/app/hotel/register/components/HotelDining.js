@@ -329,7 +329,7 @@ const HotelDining = ({ dining, addDining, removeDining, updateDining, errors, re
             <h4 className="text-sm font-medium text-purple-900 mb-1">다이닝 등록 안내</h4>
             <ul className="text-sm text-purple-700 space-y-1 list-disc list-inside">
               <li>호텔 내 레스토랑, 카페, 바 등 다이닝 시설을 등록할 수 있습니다</li>
-              <li>운영시간은 "09:00 - 21:00" 형식으로 입력하세요</li>
+              <li>운영시간은 &quot;09:00 - 21:00&quot; 형식으로 입력하세요</li>
               <li>예약 시간 단위는 고객이 예약할 수 있는 시간 간격입니다</li>
               <li>시간대별 최대 인원은 한 시간대에 예약 가능한 최대 인원 수입니다</li>
             </ul>
