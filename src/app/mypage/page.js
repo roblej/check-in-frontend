@@ -885,6 +885,7 @@ function MyPageContent() {
         <InquirySection
           inquiries={inquiries}
           onCreateInquiry={() => router.push('/center/inquiry')}
+          loading={inquiriesLoading}
         />
       </div>
 
