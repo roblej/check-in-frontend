@@ -22,12 +22,12 @@ const HeroSection = ({
   };
 
   return (
-    <section className="bg-gradient-to-r from-orange-50 to-red-50 py-12 md:py-16">
+    <section className="bg-gradient-to-r from-blue-50 to-indigo-50 py-12 md:py-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
             <span className="text-gray-900">예약 양도</span>
-            <span className="text-orange-600"> 중고거래</span>
+            <span className="text-[#3B82F6]"> 중고거래</span>
           </h1>
           <p className="text-lg text-gray-600 mb-2">사정상 가지 못하는 호텔 예약을 싼 값에 양도하세요</p>
           <p className="text-sm text-gray-500">취소 수수료 없이 합리적인 가격으로 호텔을 이용할 수 있습니다</p>

@@ -20,7 +20,7 @@ const UsedList = ({
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3B82F6] mx-auto"></div>
         <p className="text-gray-600 mt-4">양도거래 목록을 불러오는 중...</p>
       </div>
     );

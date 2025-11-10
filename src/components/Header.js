@@ -68,15 +68,18 @@ const Header = () => {
               체크인
             </Link>
             <nav className="hidden md:flex items-center gap-6">
-              <Link href="" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                뭐넣지
+              <Link href="/hotel-search" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+                숙소
               </Link>
-              <a href="/admin" className="text-sm font-semibold text-[#3B82F6] hover:text-blue-600 transition-colors">
-                관리자
-              </a>
-              <a href="/master" className="text-sm font-semibold text-[#7C3AED] hover:text-purple-600 transition-colors">
-                마스터
-              </a>
+              <Link href="/hotel-search?diningMode=true" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+                다이닝
+              </Link>
+              <Link href="/used" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+                중고거래
+              </Link>
+              <Link href="/dart-game" className="text-sm font-medium text-[#3B82F6] hover:text-blue-600 transition-colors">
+                여행지를 고르지 못했다면?
+              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-3">
@@ -88,12 +91,14 @@ const Header = () => {
             <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
               공유하기
             </button>
-            <button 
-              onClick={handleMyPageClick}
-              className="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
-            >
-              MY
-            </button>
+            {isClient && isInlogged() && (
+              <button 
+                onClick={handleMyPageClick}
+                className="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                MY
+              </button>
+            )}
             <Link href= {isClient && isInlogged() ? "/" : "/login"} onClick={isClient && isInlogged() ? handleLogout : ""} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
               {isClient && isInlogged() ? "로그아웃" : "로그인"}
             </Link>
