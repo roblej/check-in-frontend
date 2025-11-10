@@ -20,9 +20,11 @@ services:
     environment:
       - TZ=Asia/Seoul
       - BACKEND_HOST=${BACKEND_HOST:-http://localhost:8888}
+      - ENABLE_HTTPS_REDIRECT=${ENABLE_HTTPS_REDIRECT:-false}  # 로컬에서는 false, 프로덕션에서는 true
     restart: always
     volumes:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./ssl:/etc/nginx/ssl:ro  # SSL 인증서 디렉토리 마운트
     ports:
       - "80:80"
       - "443:443"
