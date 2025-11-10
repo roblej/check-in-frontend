@@ -31,31 +31,31 @@ const HotelHeader = ({
   //     : 0;
   /** 최저가 계산 */
   const lowestPrice =
-      Array.isArray(rooms) && rooms.length > 0
-          ? Math.min(...rooms.map(r => r.basePrice || r.price || 0)) *
-          (searchParams?.nights || 1)
-          : 0;
+    Array.isArray(rooms) && rooms.length > 0
+      ? Math.min(...rooms.map((r) => r.basePrice || r.price || 0)) *
+        (searchParams?.nights || 1)
+      : 0;
 
   return (
-    <div className={`bg-white border-b border-gray-200 z-40 shadow-sm flex-shrink-0`}>
-      <div
-        className={`${
-          isModal ? "px-2.5" : "px-4 sm:px-6 lg:px-8"
-        } py-3`}
-      >
+    <div
+      className={`bg-white border-b border-gray-200 z-40 shadow-sm flex-shrink-0`}
+    >
+      <div className={`${isModal ? "px-2.5" : "px-4 sm:px-6 lg:px-8"} py-3`}>
         <div className="flex items-center justify-between">
           {/* 호텔 기본 정보 */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1
-                className={`font-bold text-gray-900 truncate ${
-                  isModal ? "text-lg" : "text-2xl"
+                className={`font-bold text-gray-900 leading-tight ${
+                  isModal
+                    ? "text-lg sm:text-xl whitespace-normal break-words line-clamp-2"
+                    : "text-xl sm:text-2xl whitespace-normal break-words sm:truncate"
                 }`}
               >
                 {hotelData?.name}
               </h1>
-              <BookmarkButton 
-                contentId={contentId} 
+              <BookmarkButton
+                contentId={contentId}
                 size={isModal ? "small" : "medium"}
                 className="flex-shrink-0"
               />
@@ -73,7 +73,7 @@ const HotelHeader = ({
                 </div>
               )}
               {hotelData?.location && (
-                <span className="text-sm text-gray-600 truncate">
+                <span className="text-sm text-gray-600 whitespace-normal break-words sm:truncate">
                   {hotelData.location}
                 </span>
               )}
@@ -84,11 +84,11 @@ const HotelHeader = ({
           {isModal ? (
             <div className="flex items-start gap-4 ml-4">
               <div className="flex flex-col items-end gap-1">
-                <LiveViewerCount contentId={contentId} />
                 <p className="text-sm text-gray-500 mt-1">최저가</p>
                 <p className="text-xl font-bold text-blue-600">
                   ₩{formatPrice(lowestPrice)}~
                 </p>
+                <LiveViewerCount contentId={contentId} />
               </div>
               {onClose && (
                 <button
@@ -113,14 +113,12 @@ const HotelHeader = ({
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-6 ml-4">
+            <div className="flex flex-col items-end gap-1 ml-4">
+              <p className="text-sm text-gray-500">최저가</p>
+              <p className="text-xl font-bold text-blue-600">
+                ₩{formatPrice(lowestPrice)}~
+              </p>
               <LiveViewerCount contentId={contentId} />
-              <div className="text-right">
-                <p className="text-sm text-gray-500">최저가</p>
-                <p className="text-xl font-bold text-blue-600">
-                  ₩{formatPrice(lowestPrice)}~
-                </p>
-              </div>
             </div>
           )}
         </div>

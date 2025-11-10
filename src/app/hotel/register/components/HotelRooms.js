@@ -303,20 +303,21 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        객실 타입
+                        침대 타입
                       </label>
                       <select
-                        value={room.type}
-                        onChange={(e) => updateRoom(room.id, { type: e.target.value })}
+                        value={room.bedType}
+                        onChange={(e) => updateRoom(room.id, { bedType: e.target.value })}
                         disabled={readOnly}
                         className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
                       >
-                        <option value="">객실 타입을 선택하세요</option>
-                        {(initialData?.roomTypes || []).map((type) => (
-                          <option key={type.id} value={type.name}>
-                            {type.name}
-                          </option>
-                        ))}
+                        <option value="">침대 타입을 선택하세요</option>
+                        <option value="싱글">싱글</option>
+                        <option value="더블">더블</option>
+                        <option value="트윈">트윈</option>
+                        <option value="퀸">퀸</option>
+                        <option value="킹">킹</option>
+                        <option value="온돌">온돌</option>
                       </select>
                     </div>
 
@@ -379,26 +380,6 @@ const HotelRooms = ({ rooms, addRoom, removeRoom, updateRoom, errors, initialDat
                         className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
                         placeholder="25"
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        침대 타입
-                      </label>
-                      <select
-                        value={room.bedType}
-                        onChange={(e) => updateRoom(room.id, { bedType: e.target.value })}
-                        disabled={readOnly}
-                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
-                      >
-                        <option value="">침대 타입을 선택하세요</option>
-                        <option value="싱글">싱글</option>
-                        <option value="더블">더블</option>
-                        <option value="트윈">트윈</option>
-                        <option value="퀸">퀸</option>
-                        <option value="킹">킹</option>
-                        <option value="온돌">온돌</option>
-                      </select>
                     </div>
                   </div>
 

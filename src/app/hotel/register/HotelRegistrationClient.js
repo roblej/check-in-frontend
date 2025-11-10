@@ -176,7 +176,6 @@ const HotelRegistrationClient = ({ initialData }) => {
     const newRoom = {
       id: Date.now(),
       name: "",
-      type: "",
       price: "", // basePrice로 매핑됨
       capacity: 2,
       size: "",

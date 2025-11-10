@@ -53,10 +53,14 @@ const HotelApprovalDetail = () => {
   const [loading, setLoading] = useState(true);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [refusalMsg, setRefusalMsg] = useState("");
+  
+  // 탭별 데이터 로드 상태 추적
+  const [loadedTabs, setLoadedTabs] = useState(new Set());
+  const [loadingTabs, setLoadingTabs] = useState(new Set());
 
-  // 호텔 정보 로드
+  // 호텔 기본 정보 로드 (초기 로드 - 빠른 로딩)
   useEffect(() => {
-    const loadHotelInfo = async () => {
+    const loadHotelBasicInfo = async () => {
       try {
         setLoading(true);
         const response = await axiosInstance.get(`/master/hotelApproval/${registrationIdx}`);
@@ -64,7 +68,7 @@ const HotelApprovalDetail = () => {
         if (response.data.success && response.data.data) {
           const hotelData = response.data.data;
           
-          // formData에 호텔 정보 설정
+          // formData에 기본 정보만 설정 (images, rooms, dining은 빈 배열)
           setFormData(prev => ({
             ...prev,
             hotelInfo: {
@@ -89,9 +93,75 @@ const HotelApprovalDetail = () => {
     };
 
     if (registrationIdx) {
-      loadHotelInfo();
+      loadHotelBasicInfo();
     }
   }, [registrationIdx, router]);
+
+  // 탭별 데이터 지연 로딩
+  useEffect(() => {
+    const loadTabData = async () => {
+      // basic 탭은 이미 로드됨
+      if (currentTab === "basic" || loadedTabs.has(currentTab)) {
+        return;
+      }
+
+      // 이미 로딩 중이면 중복 요청 방지
+      if (loadingTabs.has(currentTab)) {
+        return;
+      }
+
+      try {
+        setLoadingTabs(prev => new Set(prev).add(currentTab));
+        
+        let apiPath = "";
+        if (currentTab === "images") {
+          apiPath = `/master/hotelApproval/${registrationIdx}/images`;
+        } else if (currentTab === "rooms") {
+          apiPath = `/master/hotelApproval/${registrationIdx}/rooms`;
+        } else if (currentTab === "dining") {
+          apiPath = `/master/hotelApproval/${registrationIdx}/dining`;
+        } else {
+          return;
+        }
+
+        const response = await axiosInstance.get(apiPath);
+        
+        if (response.data.success && response.data.data) {
+          const tabData = response.data.data;
+          
+          // 해당 탭의 데이터만 업데이트
+          setFormData(prev => {
+            const updated = { ...prev };
+            if (currentTab === "images") {
+              updated.images = tabData.images || [];
+              updated.events = tabData.events || [];
+            } else if (currentTab === "rooms") {
+              updated.rooms = tabData.rooms || [];
+            } else if (currentTab === "dining") {
+              updated.dining = tabData.dining || [];
+            }
+            return updated;
+          });
+          
+          // 로드 완료 표시
+          setLoadedTabs(prev => new Set(prev).add(currentTab));
+        }
+      } catch (error) {
+        console.error(`${currentTab} 탭 데이터 로드 실패:`, error);
+        alert(`${currentTab} 탭 데이터를 불러올 수 없습니다.`);
+      } finally {
+        setLoadingTabs(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(currentTab);
+          return newSet;
+        });
+      }
+    };
+
+    if (registrationIdx && currentTab) {
+      loadTabData();
+    }
+  }, [currentTab, registrationIdx, loadedTabs, loadingTabs]);
 
   // 폼 데이터 업데이트 함수
   const updateFormData = (section, data) => {
