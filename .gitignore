@@ -24,6 +24,12 @@
 .DS_Store
 *.pem
 
+# SSL certificates (민감한 정보이므로 Git에 커밋하지 않음)
+/ssl/
+*.crt
+*.key
+*.pem
+
 .idea/
 
 # debug
