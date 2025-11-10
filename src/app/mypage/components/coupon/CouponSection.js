@@ -2,37 +2,69 @@
 
 import { Gift } from 'lucide-react';
 
-export default function CouponSection({ couponTab, setCouponTab, coupons }) {
-  const renderCoupons = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {coupons[couponTab].map((coupon) => (
-        <div
-          key={coupon.id}
-          className={`border-2 rounded-xl p-5 transition-all ${
-            couponTab === 'available'
-              ? 'border-blue-300 bg-blue-50 hover:shadow-lg'
-              : 'border-gray-200 bg-gray-50'
-          }`}
-        >
-          <div className="flex items-start justify-between mb-3">
-            <Gift className={`w-8 h-8 ${couponTab === 'available' ? 'text-blue-600' : 'text-gray-400'}`} />
-            <span className={`text-2xl font-bold ${couponTab === 'available' ? 'text-blue-600' : 'text-gray-400'}`}>
-              {coupon.discount}
-            </span>
-          </div>
-          <h3 className={`font-bold mb-2 ${couponTab === 'available' ? 'text-gray-900' : 'text-gray-500'}`}>
-            {coupon.name}
-          </h3>
-          <p className="text-xs text-gray-500 mb-3">{coupon.condition}</p>
-          <div className="text-xs">
-            <span className={couponTab === 'available' ? 'text-gray-600' : 'text-gray-400'}>
-              {couponTab === 'used' ? `사용일: ${coupon.usedDate}` : `만료일: ${coupon.expiry}`}
-            </span>
-          </div>
+export default function CouponSection({ couponTab, setCouponTab, coupons, isLoading }) {
+  const currentCoupons = coupons?.[couponTab] ?? [];
+
+  const renderDiscount = (coupon) => {
+    if (coupon.discount) {
+      return coupon.discount;
+    }
+    if (typeof coupon.discountAmount === 'number' && !Number.isNaN(coupon.discountAmount)) {
+      return `${coupon.discountAmount.toLocaleString()}원`;
+    }
+    return '할인 정보 없음';
+  };
+
+  const renderCoupons = () => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center py-10 text-sm text-gray-500">
+          쿠폰을 불러오는 중입니다...
         </div>
-      ))}
-    </div>
-  );
+      );
+    }
+
+    if (!currentCoupons.length) {
+      return (
+        <div className="flex items-center justify-center py-10 text-sm text-gray-500">
+          표시할 쿠폰이 없습니다.
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {currentCoupons.map((coupon) => (
+          <div
+            key={coupon.id}
+            className={`border-2 rounded-xl p-5 transition-all ${
+              couponTab === 'available'
+                ? 'border-blue-300 bg-blue-50 hover:shadow-lg'
+                : 'border-gray-200 bg-gray-50'
+            }`}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <Gift className={`w-8 h-8 ${couponTab === 'available' ? 'text-blue-600' : 'text-gray-400'}`} />
+              <span className={`text-2xl font-bold ${couponTab === 'available' ? 'text-blue-600' : 'text-gray-400'}`}>
+                {renderDiscount(coupon)}
+              </span>
+            </div>
+            <h3 className={`font-bold mb-2 ${couponTab === 'available' ? 'text-gray-900' : 'text-gray-500'}`}>
+              {coupon.name}
+            </h3>
+            <p className="text-xs text-gray-500 mb-3">{coupon.condition || '예약 결제 시 사용 가능합니다.'}</p>
+            <div className="text-xs">
+              <span className={couponTab === 'available' ? 'text-gray-600' : 'text-gray-400'}>
+                {couponTab === 'used'
+                  ? `사용일: ${coupon.usedDate || '사용일 정보 없음'}`
+                  : `만료일: ${coupon.expiry || '만료일 정보 없음'}`}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">

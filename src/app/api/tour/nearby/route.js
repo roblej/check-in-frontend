@@ -102,7 +102,32 @@ export async function GET(req) {
       }
     }
 
-    const json = await res.json();
+    let json;
+    try {
+      json = await res.json();
+    } catch (parseError) {
+      const text = await res.text();
+      console.error("[TourAPI] JSON 파싱 실패:", parseError);
+      console.error("[TourAPI] 응답 텍스트:", text?.slice(0, 500));
+      return NextResponse.json(
+        { message: "TourAPI 응답 파싱 실패", detail: text?.slice(0, 500) },
+        { status: 502 }
+      );
+    }
+
+    // TourAPI 에러 응답 확인
+    if (json?.response?.header?.resultCode !== "0000" && json?.response?.header?.resultCode !== undefined) {
+      const resultMsg = json?.response?.header?.resultMsg || "알 수 없는 오류";
+      console.error("[TourAPI] API 오류:", {
+        resultCode: json?.response?.header?.resultCode,
+        resultMsg
+      });
+      return NextResponse.json(
+        { message: `TourAPI 오류: ${resultMsg}`, resultCode: json?.response?.header?.resultCode },
+        { status: 502 }
+      );
+    }
+
     let items =
       json?.response?.body?.items?.item && Array.isArray(json.response.body.items.item)
         ? json.response.body.items.item
@@ -114,31 +139,52 @@ export async function GET(req) {
     if (!items.length) {
       const rNum = parseInt(radius, 10) || 0;
       if (rNum < 10000) {
-        url = `${endpointV2}?${buildParams({ radius: Math.min(10000, (rNum || 3000) * 2) }).toString()}`;
-        res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
-        if (res.ok) {
-          const j2 = await res.json();
-          items = j2?.response?.body?.items?.item && Array.isArray(j2.response.body.items.item)
-            ? j2.response.body.items.item
-            : j2?.response?.body?.items?.item ? [j2.response.body.items.item] : [];
+        try {
+          url = `${endpointV2}?${buildParams({ radius: Math.min(10000, (rNum || 3000) * 2) }).toString()}`;
+          res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+          if (res.ok) {
+            const j2 = await res.json();
+            if (j2?.response?.header?.resultCode === "0000" || j2?.response?.header?.resultCode === undefined) {
+              items = j2?.response?.body?.items?.item && Array.isArray(j2.response.body.items.item)
+                ? j2.response.body.items.item
+                : j2?.response?.body?.items?.item ? [j2.response.body.items.item] : [];
+            }
+          }
+        } catch (e) {
+          console.warn("[TourAPI] 반경 확대 재시도 실패:", e);
         }
       }
     }
 
     if (!items.length && contentTypeId) {
-      url = `${endpointV2}?${buildParams({ contentTypeId: null }).toString()}`;
-      res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
-      if (res.ok) {
-        const j3 = await res.json();
-        items = j3?.response?.body?.items?.item && Array.isArray(j3.response.body.items.item)
-          ? j3.response.body.items.item
-          : j3?.response?.body?.items?.item ? [j3.response.body.items.item] : [];
+      try {
+        url = `${endpointV2}?${buildParams({ contentTypeId: null }).toString()}`;
+        res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+        if (res.ok) {
+          const j3 = await res.json();
+          if (j3?.response?.header?.resultCode === "0000" || j3?.response?.header?.resultCode === undefined) {
+            items = j3?.response?.body?.items?.item && Array.isArray(j3.response.body.items.item)
+              ? j3.response.body.items.item
+              : j3?.response?.body?.items?.item ? [j3.response.body.items.item] : [];
+          }
+        }
+      } catch (e) {
+        console.warn("[TourAPI] contentTypeId 제거 재시도 실패:", e);
       }
     }
 
     return NextResponse.json({ items });
   } catch (e) {
-    return NextResponse.json({ message: e?.message || "server error" }, { status: 500 });
+    console.error("[TourAPI] 에러 발생:", e);
+    console.error("[TourAPI] 에러 스택:", e?.stack);
+    return NextResponse.json(
+      { 
+        message: e?.message || "server error",
+        error: String(e),
+        stack: process.env.NODE_ENV === 'development' ? e?.stack : undefined
+      }, 
+      { status: 500 }
+    );
   }
 }
 

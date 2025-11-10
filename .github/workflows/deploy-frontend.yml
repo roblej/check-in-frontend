@@ -32,6 +32,8 @@ jobs:
         NEXT_PUBLIC_TOSS_CLIENT_KEY: ${{ secrets.NEXT_PUBLIC_TOSS_CLIENT_KEY }}
         TOSS_SECRET_KEY: ${{ secrets.TOSS_SECRET_KEY }}
         NEXT_TOUR_KEY: ${{secrets.NEXT_TOUR_KEY}}
+        BACKEND_HOST: ${{ secrets.BACKEND_HOST }}
+        ENABLE_HTTPS_REDIRECT: ${{ secrets.ENABLE_HTTPS_REDIRECT}}
     
     # SSH 키 설정
     - name: Set up SSH Key

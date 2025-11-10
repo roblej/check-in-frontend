@@ -25,4 +25,10 @@ export const userAPI = {
     const response = await axiosInstance.get("/coupons/my");
     return response.data;
   },
+
+  // 마이페이지 - 전체 쿠폰 이력 조회
+  getMyCouponHistory: async () => {
+    const response = await axiosInstance.get("/mypage/coupons");
+    return response.data;
+  },
 };
