@@ -2,6 +2,8 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { mypageAPI } from '@/lib/api/mypage';
+import axiosInstance from '@/lib/axios';
+import { userAPI } from '@/lib/api/user';
 import { centerAPI } from '@/lib/api/center';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
@@ -17,6 +19,58 @@ import RecentHotelsSection from './components/recent/RecentHotelsSection';
 import CouponSection from './components/coupon/CouponSection';
 import InquirySection from './components/inquiry/InquirySection';
 import Pagination from '@/components/Pagination';
+
+const formatCouponDate = (isoString) => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return '';
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}.${month}.${day}`;
+};
+
+const categorizeCoupons = (couponList = []) => {
+  const now = new Date();
+  const baseConditionText = '예약 결제 시 적용 가능합니다.';
+
+  const categorized = {
+    available: [],
+    used: [],
+    expired: [],
+  };
+
+  couponList.forEach((coupon) => {
+    const discountValue = Number(coupon.discount ?? 0);
+    const formattedDiscount = Number.isNaN(discountValue)
+      ? ''
+      : `${discountValue.toLocaleString()}원`;
+    const endDate = coupon.endDate ? new Date(coupon.endDate) : null;
+    const displayCoupon = {
+      id: coupon.couponIdx,
+      name: coupon.templateName || '쿠폰',
+      discount: formattedDiscount || '할인 정보 없음',
+      discountAmount: Number.isNaN(discountValue) ? 0 : discountValue,
+      condition: coupon.condition || baseConditionText,
+      expiry: formatCouponDate(coupon.endDate) || '만료일 정보 없음',
+      usedDate: coupon.usedDate ? formatCouponDate(coupon.usedDate) : '사용일 정보 없음',
+      status: coupon.status,
+    };
+
+    if (coupon.status === 1) {
+      categorized.used.push(displayCoupon);
+      return;
+    }
+
+    if (endDate && endDate < now) {
+      categorized.expired.push(displayCoupon);
+      return;
+    }
+
+    categorized.available.push(displayCoupon);
+  });
+
+  return categorized;
+};
 
 // useSearchParams를 사용하는 컴포넌트 분리
 function TabQueryHandler({ onTabChange }) {
@@ -89,6 +143,14 @@ function MyPageContent() {
   // 백엔드에서 가져온 사용자 정보 상태
   const [userData, setUserData] = useState(null);
 
+  // 쿠폰 상태
+  const [coupons, setCoupons] = useState({
+    available: [],
+    used: [],
+    expired: [],
+  });
+  const [couponsLoading, setCouponsLoading] = useState(false);
+
   // 사용자 데이터를 API로 직접 가져오는 함수
   const fetchUserData = async () => {
     try {
@@ -117,6 +179,28 @@ function MyPageContent() {
       return null;
     }
   };
+
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      setCouponsLoading(true);
+      try {
+        const response = await userAPI.getMyCouponHistory();
+        const rawCoupons = response?.data ?? [];
+        setCoupons(categorizeCoupons(rawCoupons));
+      } catch (error) {
+        console.error('❌ 쿠폰 데이터 불러오기 실패:', error);
+        setCoupons({
+          available: [],
+          used: [],
+          expired: [],
+        });
+      } finally {
+        setCouponsLoading(false);
+      }
+    };
+
+    fetchCoupons();
+  }, []);
 
   // URL 쿼리 파라미터에서 탭 설정 읽기 (TabQueryHandler 컴포넌트로 분리됨)
 
@@ -777,21 +861,6 @@ function MyPageContent() {
     return reviewedReservationIds.has(reservIdx);
   };
 
-  // 더미 데이터 (쿠폰 등)
-  const coupons = {
-    available: [
-      { id: 1, name: '신규가입 웰컴 쿠폰', discount: '10%', condition: '최소 10만원 이상 예약시', expiry: '2025.12.31' },
-      { id: 2, name: '가을 시즌 특별 할인', discount: '50,000원', condition: '제주도 호텔 한정', expiry: '2025.11.30' },
-      { id: 3, name: 'VIP 회원 전용 쿠폰', discount: '15%', condition: '전 호텔 사용 가능', expiry: '2025.12.31' }
-    ],
-    used: [
-      { id: 4, name: '여름 시즌 쿠폰', discount: '30,000원', condition: '전 호텔', usedDate: '2025.09.15' }
-    ],
-    expired: [
-      { id: 5, name: '추석 연휴 특가', discount: '20%', condition: '최소 20만원 이상', expiry: '2025.09.30' }
-    ]
-  };
-
   const likedHotels = [
     { id: 1, name: '스카이 파크 센트럴', location: '명동·남산', price: 140000, rating: 4.8 },
     { id: 2, name: '제주 호텔 리스텔', location: '제주시', price: 98000, rating: 4.5 },
@@ -880,6 +949,7 @@ function MyPageContent() {
           couponTab={couponTab}
           setCouponTab={setCouponTab}
           coupons={coupons}
+          isLoading={couponsLoading}
         />
 
         <InquirySection
