@@ -367,8 +367,6 @@ export default function ReservationSection({
             )}
             {reservationTab === "cancelled" && (
               <div className="flex-1 text-sm space-y-1">
-
-
                 {showRefundInfo && (
                   <p className="text-gray-600">
                     환불 금액:{" "}
