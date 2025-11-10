@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnly = false }) => {
+const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnly = false, isEditMode = false }) => {
   // 기본 주소(도로명주소)와 상세주소 분리 관리
   const [baseAddress, setBaseAddress] = useState(""); // 도로명 주소
   const [detailAddress, setDetailAddress] = useState(""); // 상세 주소
@@ -103,7 +103,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
 
   // 주소 검색 버튼 클릭 핸들러
   const handleAddressSearch = () => {
-    if (readOnly) return;
+    if (readOnly || isEditMode) return;
 
     // Daum 우편번호 서비스가 로드되지 않았으면 경고
     if (!window.daum || !window.daum.Postcode) {
@@ -172,7 +172,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
 
   // 상세주소 변경 핸들러
   const handleDetailAddressChange = (e) => {
-    if (readOnly) return;
+    if (readOnly || isEditMode) return;
     const newDetailAddress = e.target.value;
     setDetailAddress(newDetailAddress);
     // 기본 주소 + 상세주소 조합하여 formData에 저장
@@ -211,11 +211,11 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
               type="text"
               value={formData.hotelInfo.title || ""}
               onChange={(e) => updateFormData("hotelInfo", { title: e.target.value })}
-              readOnly={readOnly}
-              disabled={readOnly}
+              readOnly={readOnly || isEditMode}
+              disabled={readOnly || isEditMode}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.title ? "border-red-500" : "border-gray-300"
-              } ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
+              } ${readOnly || isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="호텔명을 입력하세요"
             />
             {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title}</p>}
@@ -248,9 +248,9 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
                 <button
                   type="button"
                   onClick={handleAddressSearch}
-                  disabled={readOnly}
+                  disabled={readOnly || isEditMode}
                   className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-                    readOnly ? "bg-gray-400 cursor-not-allowed hover:bg-gray-400" : ""
+                    readOnly || isEditMode ? "bg-gray-400 cursor-not-allowed hover:bg-gray-400" : ""
                   }`}
                 >
                   주소 검색
@@ -259,10 +259,10 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
                   type="text"
                   value={baseAddress || ""}
                   readOnly
-                  disabled={readOnly}
+                  disabled={readOnly || isEditMode}
                   className={`flex-1 px-3 py-2 border rounded-md bg-gray-50 cursor-not-allowed ${
                     errors.adress ? "border-red-500" : "border-gray-300"
-                  } ${readOnly ? "bg-gray-100" : ""}`}
+                  } ${readOnly || isEditMode ? "bg-gray-100" : ""}`}
                   placeholder="주소 검색 버튼을 클릭하여 주소를 선택하세요"
                 />
               </div>
@@ -270,11 +270,11 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
                 type="text"
                 value={detailAddress || ""}
                 onChange={handleDetailAddressChange}
-                readOnly={readOnly}
-                disabled={readOnly}
+                readOnly={readOnly || isEditMode}
+                disabled={readOnly || isEditMode}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.adress ? "border-red-500" : "border-gray-300"
-                } ${readOnly ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                } ${readOnly || isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                 placeholder="상세주소를 입력하세요 (예: 101호, 지하 1층)"
               />
             </div>
