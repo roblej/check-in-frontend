@@ -77,8 +77,8 @@ const Header = () => {
               <Link href="/used" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
                 중고거래
               </Link>
-              <Link href="/tour-recommend" className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                🎯 여행지 추천
+              <Link href="/dart-game" className="text-sm font-medium text-[#3B82F6] hover:text-blue-600 transition-colors">
+                여행지를 고르지 못했다면?
               </Link>
             </nav>
           </div>
