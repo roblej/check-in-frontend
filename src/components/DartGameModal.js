@@ -973,7 +973,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
           setSelectedTour(null);
           setTourNearbyHotels([]);
         } else {
-          onClose();
+        onClose();
         }
       }
     };

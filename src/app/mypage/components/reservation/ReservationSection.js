@@ -13,6 +13,8 @@ export default function ReservationSection({
   reservationCounts,
   reservations,
   diningReservations,
+  usedItems,
+  usedItemsLoading,
   sortBy,
   setSortBy,
   currentPage,
@@ -38,6 +40,7 @@ export default function ReservationSection({
   handleEditTrade,
 }) {
   const isDining = reservationType === "dining";
+  const isUsed = reservationTab === "used";
   const currentReservations = isDining
     ? diningReservations[reservationTab]
     : reservations[reservationTab];
@@ -209,6 +212,16 @@ export default function ReservationSection({
                       : "양도거래 등록"}
                   </button>
                 )}
+              {isUsed &&
+                reservation.usedItemStatus === 0 && // 판매중 상태
+                reservationType === "hotel" && (
+                  <button
+                    onClick={() => handleEditTrade(reservation)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap bg-blue-50 hover:bg-blue-100 text-blue-600"
+                  >
+                    판매게시물 수정
+                  </button>
+                )}
               {reservationTab === "completed" &&
                 reservation.status === "이용완료" &&
                 reservationType === "hotel" &&
@@ -232,14 +245,39 @@ export default function ReservationSection({
                 )}
               <span
                 className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  reservation.status === "예약확정"
+                  // 중고거래 탭인 경우 UsedItem 상태 표시
+                  isUsed && reservation.usedItemStatus !== undefined && reservation.usedItemStatus !== null
+                    ? reservation.usedItemStatus === 0
+                      ? "bg-blue-100 text-blue-700" // 판매중
+                      : reservation.usedItemStatus === 1
+                      ? "bg-yellow-100 text-yellow-700" // 거래중
+                      : reservation.usedItemStatus === 2
+                      ? "bg-green-100 text-green-700" // 판매완료
+                      : reservation.usedItemStatus === 3
+                      ? "bg-gray-100 text-gray-700" // 기간만료
+                      : reservation.usedItemStatus === 4
+                      ? "bg-red-100 text-red-700" // 판매취소
+                      : "bg-gray-100 text-gray-700"
+                    : reservation.status === "예약확정"
                     ? "bg-blue-100 text-blue-700"
                     : reservation.status === "이용완료"
                     ? "bg-green-100 text-green-700"
                     : "bg-red-100 text-red-700"
                 }`}
               >
-                {reservation.status}
+                {isUsed && reservation.usedItemStatus !== undefined && reservation.usedItemStatus !== null
+                  ? reservation.usedItemStatus === 0
+                    ? "판매중"
+                    : reservation.usedItemStatus === 1
+                    ? "거래중"
+                    : reservation.usedItemStatus === 2
+                    ? "판매완료"
+                    : reservation.usedItemStatus === 3
+                    ? "기간만료"
+                    : reservation.usedItemStatus === 4
+                    ? "판매취소"
+                    : reservation.status
+                  : reservation.status}
               </span>
             </div>
           </div>
@@ -543,6 +581,22 @@ export default function ReservationSection({
             : reservationCounts.cancelled || reservations.cancelled.length}
           )
         </button>
+        {/* 중고거래 탭 (숙소일 때만 표시) */}
+        {!isDining && (
+          <button
+            onClick={() => {
+              setReservationTab("used");
+              setCurrentPage(0);
+            }}
+            className={`px-6 py-3 font-medium transition-all border-b-2 ${
+              reservationTab === "used"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            중고거래 ({reservationCounts?.used || reservations?.used?.length || 0})
+          </button>
+        )}
       </div>
 
       <div className="space-y-4">
@@ -553,13 +607,9 @@ export default function ReservationSection({
           </div>
         )}
 
-        {!reservationsLoading &&
-          currentReservationsLength === 0 &&
-          renderEmptyState()}
+        {!reservationsLoading && currentReservationsLength === 0 && renderEmptyState()}
 
-        {!reservationsLoading &&
-          currentReservationsLength > 0 &&
-          renderReservationCards()}
+        {!reservationsLoading && currentReservationsLength > 0 && renderReservationCards()}
       </div>
 
       {!reservationsLoading && totalPages > 0 && (
