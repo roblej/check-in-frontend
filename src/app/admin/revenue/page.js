@@ -21,27 +21,38 @@ const formatCurrency = (value) => `₩${(value || 0).toLocaleString()}`;
 
 const RevenuePage = () => {
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState({ todayRevenue: 0, todayPayments: 0, monthlyRevenue: [] });
+  const [summary, setSummary] = useState({ todayRevenue: 0, todayPayments: 0, monthlyRevenue: [], minYear: null });
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+  const currentYear = new Date().getFullYear();
+  const minYear = summary.minYear || 2000; // 최소 연도 (매출 데이터가 있는 가장 오래된 연도)
 
-  const didFetch = useRef(false);
+  const fetchSummary = async (year) => {
+    try {
+      setLoading(true);
+      const res = await axiosInstance.get('/admin/revenueSummary', {
+        params: { year }
+      });
+      setSummary(res.data || { todayRevenue: 0, todayPayments: 0, monthlyRevenue: [], minYear: null });
+    } catch (e) {
+      console.error('매출 요약 조회 실패:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const lastFetchedYear = useRef(null);
+
+  // 초기 로딩 및 연도 변경 시 해당 연도 데이터 요청
   useEffect(() => {
-    if (didFetch.current) return;
-    didFetch.current = true;
-    const fetchSummary = async () => {
-      try {
-        setLoading(true);
-        const res = await axiosInstance.get('/admin/revenueSummary');
-        setSummary(res.data || { todayRevenue: 0, todayPayments: 0, monthlyRevenue: [] });
-      } catch (e) {
-        console.error('매출 요약 조회 실패:', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSummary();
-  }, []);
+    // 같은 연도를 중복 요청하지 않도록 체크
+    if (lastFetchedYear.current === selectedYear) {
+      return;
+    }
+    
+    lastFetchedYear.current = selectedYear;
+    fetchSummary(selectedYear);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedYear]);
 
   // 표 높이는 고정 max-height로 관리하여 월/일 전환 시 일관된 스크롤 동작 유지
 
@@ -98,10 +109,14 @@ const RevenuePage = () => {
                 <input
                   id="yearPanel"
                   type="number"
-                  min="2000"
-                  max="2100"
+                  min={minYear}
+                  max={currentYear}
                   value={selectedYear}
-                  onChange={(e) => setSelectedYear(parseInt(e.target.value || `${new Date().getFullYear()}`, 10))}
+                  onChange={(e) => {
+                    const inputValue = parseInt(e.target.value || `${currentYear}`, 10);
+                    const year = Math.min(Math.max(inputValue, minYear), currentYear);
+                    setSelectedYear(year);
+                  }}
                   className="w-28 border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
                 />
               </div>
@@ -150,18 +165,18 @@ const RevenuePage = () => {
 
         {/* 우측 상단: 카드 2개 (오늘 매출/오늘 예약) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:col-span-2 order-1 lg:order-1">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 h-fit">
             <div className="flex items-center">
-              <div className="text-green-600 mr-4"><DollarSign size={32} /></div>
+              <div className="text-green-600 mr-4"><DollarSign size={28} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">오늘 매출</p>
                 <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.todayRevenue)}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 h-fit">
             <div className="flex items-center">
-              <div className="text-blue-600 mr-4"><Calendar size={32} /></div>
+              <div className="text-blue-600 mr-4"><Calendar size={28} /></div>
               <div>
                 <p className="text-sm font-medium text-gray-600">오늘 예약</p>
                 <p className="text-2xl font-bold text-gray-900">{summary.todayPayments}</p>
@@ -171,7 +186,7 @@ const RevenuePage = () => {
         </div>
 
         {/* 우측 하단: 매출 추이 차트 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 h-full flex flex-col min-h-[28rem] lg:col-span-2 order-2 lg:order-3">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 h-full flex flex-col min-h-[32rem] lg:col-span-2 order-2 lg:order-3">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">매출 추이</h3>
           </div>
