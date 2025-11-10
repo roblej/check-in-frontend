@@ -16,7 +16,7 @@ const HotelNavBar = ({ sections, activeSection, onSectionClick, isModal }) => {
           key={section.id}
           onClick={() => onSectionClick(section.id)}
           className={`${
-            isModal ? "px-3 py-2" : "px-6 py-3"
+            isModal ? "px-3 py-2" : "px-6 py-1"
           } font-medium transition-colors whitespace-nowrap ${
             activeSection === section.id
               ? "text-blue-600 border-b-2 border-blue-600"

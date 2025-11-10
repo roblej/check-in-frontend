@@ -23,6 +23,10 @@ const HotelHeader = ({
   isModal,
   onClose,
 }) => {
+  if (isModal) {
+    return null;
+  }
+
   // 평균가 계산
   // const averagePrice =
   //   Array.isArray(rooms) && rooms.length > 0
@@ -40,87 +44,34 @@ const HotelHeader = ({
     <div
       className={`bg-white border-b border-gray-200 z-40 shadow-sm flex-shrink-0`}
     >
-      <div className={`${isModal ? "px-2.5" : "px-4 sm:px-6 lg:px-8"} py-3`}>
-        <div className="flex items-center justify-between">
-          {/* 호텔 기본 정보 */}
-          <div className="flex-1 min-w-0">
+      <div className="px-4 sm:px-6 lg:px-8 py-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <h1
-                className={`font-bold text-gray-900 leading-tight ${
-                  isModal
-                    ? "text-lg sm:text-xl whitespace-normal break-words line-clamp-2"
-                    : "text-xl sm:text-2xl whitespace-normal break-words sm:truncate"
-                }`}
-              >
-                {hotelData?.name}
+              <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                {hotelData?.name || "호텔 정보"}
               </h1>
-              <BookmarkButton
-                contentId={contentId}
-                size={isModal ? "small" : "medium"}
-                className="flex-shrink-0"
-              />
-            </div>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              {hotelData?.rating > 0 && (
-                <div className="flex items-center">
-                  <span className="text-yellow-500 text-sm">⭐</span>
-                  <span className="text-sm font-medium ml-1">
-                    {hotelData.rating.toFixed(1)}
-                  </span>
-                  <span className="text-sm text-gray-500 ml-1">
-                    ({hotelData.reviewCount})
-                  </span>
-                </div>
-              )}
-              {hotelData?.location && (
-                <span className="text-sm text-gray-600 whitespace-normal break-words sm:truncate">
-                  {hotelData.location}
-                </span>
+              {contentId && (
+                <BookmarkButton
+                  contentId={contentId}
+                  size="medium"
+                  className="shadow-md"
+                />
               )}
             </div>
+            {contentId && (
+              <div className="text-sm text-gray-600">
+                <LiveViewerCount contentId={contentId} showAlways />
+              </div>
+            )}
           </div>
 
-          {/* 가격 및 조회수 */}
-          {isModal ? (
-            <div className="flex items-start gap-4 ml-4">
-              <div className="flex flex-col items-end gap-1">
-                <p className="text-sm text-gray-500 mt-1">최저가</p>
-                <p className="text-xl font-bold text-blue-600">
-                  ₩{formatPrice(lowestPrice)}~
-                </p>
-                <LiveViewerCount contentId={contentId} />
-              </div>
-              {onClose && (
-                <button
-                  onClick={onClose}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  aria-label="닫기"
-                >
-                  <svg
-                    className="w-6 h-6 text-gray-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              )}
+          <div className="text-right leading-tight">
+            <div className="text-sm text-gray-500">최저가</div>
+            <div className="text-2xl font-bold text-blue-600">
+              ₩{formatPrice(lowestPrice)}~
             </div>
-          ) : (
-            <div className="flex flex-col items-end gap-1 ml-4">
-              <p className="text-sm text-gray-500">최저가</p>
-              <p className="text-xl font-bold text-blue-600">
-                ₩{formatPrice(lowestPrice)}~
-              </p>
-              <LiveViewerCount contentId={contentId} />
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
