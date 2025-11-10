@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { mypageAPI } from '@/lib/api/mypage';
+import { centerAPI } from '@/lib/api/center';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
@@ -15,6 +16,7 @@ import FavoritesSection from './components/favorites/FavoritesSection';
 import RecentHotelsSection from './components/recent/RecentHotelsSection';
 import CouponSection from './components/coupon/CouponSection';
 import InquirySection from './components/inquiry/InquirySection';
+import Pagination from '@/components/Pagination';
 
 // useSearchParams를 사용하는 컴포넌트 분리
 function TabQueryHandler({ onTabChange }) {
@@ -80,6 +82,10 @@ function MyPageContent() {
   const [writableReviews, setWritableReviews] = useState([]);
   const [writableReviewsLoading, setWritableReviewsLoading] = useState(false);
 
+  // 문의 내역 상태
+  const [inquiries, setInquiries] = useState([]);
+  const [inquiriesLoading, setInquiriesLoading] = useState(false);
+
   // 백엔드에서 가져온 사용자 정보 상태
   const [userData, setUserData] = useState(null);
 
@@ -114,6 +120,13 @@ function MyPageContent() {
 
   // URL 쿼리 파라미터에서 탭 설정 읽기 (TabQueryHandler 컴포넌트로 분리됨)
 
+  // userData가 설정되면 문의 내역 로드
+  useEffect(() => {
+    if (userData?.customerIdx) {
+      loadInquiries();
+    }
+  }, [userData?.customerIdx]);
+
   // 실제 토큰 검증 및 초기 데이터 로드
   // 경로 변경 시 리뷰 목록 갱신 (리뷰 작성 후 마이페이지로 돌아왔을 때)
   useEffect(() => {
@@ -128,11 +141,12 @@ function MyPageContent() {
       if (isRecentlyVerified()) {
         console.log('✅ 최근 검증됨 - 중복 검증 건너뛰기');
         // 사용자 데이터는 API로 직접 가져오기
-        await fetchUserData();
+        const userDataResult = await fetchUserData();
         loadAllReservations();
         loadAllDiningReservations(); // 다이닝 예약도 로드
         loadWritableReviews();
         loadWrittenReviews();
+        // loadInquiries는 userData 변경 시 useEffect에서 자동 호출됨
         // loadAllReservations에서 이미 전체 데이터를 가져왔으므로 추가 API 호출 불필요
         return;
       }
@@ -152,6 +166,7 @@ function MyPageContent() {
         loadAllDiningReservations(); // 다이닝 예약도 로드
         loadWritableReviews();
         loadWrittenReviews();
+        // loadInquiries는 userData 변경 시 useEffect에서 자동 호출됨
         // loadAllReservations에서 이미 전체 데이터를 가져왔으므로 추가 API 호출 불필요
       } else {
         // 토큰 검증 실패 - 로그인 페이지로 리다이렉트
@@ -564,6 +579,47 @@ function MyPageContent() {
     }
   };
 
+  // 문의 내역 불러오기 (내가 작성한 문의/신고만)
+  const loadInquiries = async () => {
+    if (!userData?.customerIdx) {
+      return;
+    }
+
+    setInquiriesLoading(true);
+    try {
+      // 문의와 신고를 모두 가져오기
+      const [inquiriesResponse, reportsResponse] = await Promise.all([
+        // 문의 조회 (사이트문의 + 객실문의)
+        centerAPI.getInquiries({
+          mainCategory: '문의',
+          customerIdx: userData.customerIdx,
+          page: 0,
+          size: 1000,
+        }),
+        // 신고 조회
+        centerAPI.getInquiries({
+          mainCategory: '신고',
+          customerIdx: userData.customerIdx,
+          page: 0,
+          size: 1000,
+        }),
+      ]);
+
+      // 두 결과를 합치기
+      const allInquiries = [
+        ...(inquiriesResponse?.content || []),
+        ...(reportsResponse?.content || []),
+      ];
+
+      setInquiries(allInquiries);
+    } catch (error) {
+      console.error('문의 내역 로드 실패:', error);
+      setInquiries([]);
+    } finally {
+      setInquiriesLoading(false);
+    }
+  };
+
   const handleRegisterTrade = (reservation) => {
     // 양도거래 등록 페이지로 이동 (예약 정보 전달)
     router.push(`/used/register?reservIdx=${reservation.reservIdx || reservation.id}`);
@@ -747,23 +803,6 @@ function MyPageContent() {
     { id: 2, name: '호텔 현대바이...', location: '속초', viewDate: '2025.10.13', price: 180000 }
   ];
 
-  const inquiries = [
-    {
-      id: 1,
-      title: '예약 변경 문의',
-      date: '2025.10.10',
-      status: '답변완료',
-      answer: '예약 변경은 체크인 3일 전까지 가능합니다.'
-    },
-    {
-      id: 2,
-      title: '결제 오류 문의',
-      date: '2025.09.28',
-      status: '답변완료',
-      answer: '결제가 정상적으로 처리되었습니다.'
-    }
-  ];
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -846,6 +885,7 @@ function MyPageContent() {
         <InquirySection
           inquiries={inquiries}
           onCreateInquiry={() => router.push('/center/inquiry')}
+          loading={inquiriesLoading}
         />
       </div>
 
