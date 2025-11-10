@@ -1,7 +1,21 @@
 # Cloudflare X-Forwarded-Proto를 기반으로 프로토콜 결정
+# Cloudflare를 통해 들어오는 요청은 항상 HTTPS이므로 https로 설정
 map $http_x_forwarded_proto $forwarded_proto {
     default $http_x_forwarded_proto;
     '' https;  # Cloudflare 헤더가 없으면 https로 가정 (프로덕션 환경)
+}
+
+# 프로덕션 환경에서는 항상 https 사용
+map $host $is_production {
+    default 0;
+    checkinn.store 1;
+    www.checkinn.store 1;
+}
+
+map "$is_production:$http_x_forwarded_proto" $final_proto {
+    default $http_x_forwarded_proto;
+    "1:" https;  # 프로덕션 환경이고 헤더가 없으면 https
+    "1:http" https;  # 프로덕션 환경에서 http가 오면 https로 변경
 }
 
 # HTTP에서 HTTPS로 리다이렉트 (프로덕션 환경에서만)
@@ -27,8 +41,8 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        # Cloudflare의 X-Forwarded-Proto 사용 (없으면 https로 가정)
-        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        # 프로덕션 환경에서는 항상 https 사용 (네이버 OAuth2 콜백 URL 일치를 위해)
+        proxy_set_header X-Forwarded-Proto $final_proto;
         
         # 쿠키 전달을 위한 설정
         proxy_cookie_path / /;
@@ -47,8 +61,8 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        # Cloudflare의 X-Forwarded-Proto 사용 (없으면 https로 가정)
-        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        # 프로덕션 환경에서는 항상 https 사용 (네이버 OAuth2 콜백 URL 일치를 위해)
+        proxy_set_header X-Forwarded-Proto $final_proto;
         
         # 쿠키 전달을 위한 설정
         proxy_cookie_path / /;
@@ -170,8 +184,8 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        # Cloudflare의 X-Forwarded-Proto 사용 (없으면 https로 가정)
-        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        # 프로덕션 환경에서는 항상 https 사용 (네이버 OAuth2 콜백 URL 일치를 위해)
+        proxy_set_header X-Forwarded-Proto $final_proto;
         
         # 쿠키 전달을 위한 설정
         proxy_cookie_path / /;
@@ -190,8 +204,8 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        # Cloudflare의 X-Forwarded-Proto 사용 (없으면 https로 가정)
-        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        # 프로덕션 환경에서는 항상 https 사용 (네이버 OAuth2 콜백 URL 일치를 위해)
+        proxy_set_header X-Forwarded-Proto $final_proto;
         
         # 쿠키 전달을 위한 설정
         proxy_cookie_path / /;
