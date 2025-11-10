@@ -470,7 +470,7 @@ const HotelManagement = () => {
 
 
         {/* 통계 요약 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
           <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 lg:p-6 rounded-lg shadow-sm border border-purple-200">
             <div className="flex items-center justify-between">
               <div>
