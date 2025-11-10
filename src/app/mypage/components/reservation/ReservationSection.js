@@ -46,9 +46,27 @@ export default function ReservationSection({
     : reservations[reservationTab];
 
   const sortedReservations = useMemo(() => {
-    const allReservations = [...(currentReservations || [])];
+    let allReservations = [...(currentReservations || [])];
     const currentSortBy = sortBy[reservationTab];
 
+    // 중고거래 탭인 경우 상태 필터링
+    if (isUsed) {
+      // 상태 필터 적용
+      if (currentSortBy !== "all") {
+        const statusFilter = parseInt(currentSortBy);
+        allReservations = allReservations.filter(
+          (reservation) => reservation.usedItemStatus === statusFilter
+        );
+      }
+      // 상태별로 필터링 후 체크인 날짜 기준 내림차순 정렬
+      return allReservations.sort((a, b) => {
+        const aDate = new Date((a.checkIn || "").replace(/\./g, "-") || a.checkIn);
+        const bDate = new Date((b.checkIn || "").replace(/\./g, "-") || b.checkIn);
+        return bDate - aDate; // 최신순
+      });
+    }
+
+    // 일반 탭의 경우 기존 정렬 로직
     return allReservations.sort((a, b) => {
       switch (currentSortBy) {
         case "checkinDesc": {
@@ -138,7 +156,7 @@ export default function ReservationSection({
           return 0;
       }
     });
-  }, [currentReservations, isDining, reservationTab, sortBy, isReviewWritten]);
+  }, [currentReservations, isDining, reservationTab, sortBy, isReviewWritten, isUsed]);
 
   const paginatedReservations = useMemo(() => {
     const startIndex = currentPage * pageSize;
@@ -159,15 +177,18 @@ export default function ReservationSection({
 
   const renderReservationCards = () =>
     paginatedReservations.map((reservation) => {
-      const totalPayment =
-        reservation.totalPrice ?? reservation.totalprice ?? 0;
+      // 중고거래 탭인 경우 판매 가격 사용, 그 외에는 실제 결제 금액 사용
+      const totalPayment = isUsed && reservation.usedItemPrice !== undefined && reservation.usedItemPrice !== null
+        ? reservation.usedItemPrice
+        : (reservation.totalPrice ?? reservation.totalprice ?? 0);
       const paidCash = reservation.cashUsed ?? 0;
       const paidPoints = reservation.pointsUsed ?? 0;
       const refundAmount = reservation.refundAmount ?? 0;
       const refundCash = reservation.refundCash ?? 0;
       const refundPoint = reservation.refundPoint ?? 0;
-      const paymentLabel =
-        reservationTab === "cancelled" ? "총 결제금액" : "실제 결제 금액";
+      const paymentLabel = isUsed
+        ? "판매 가격"
+        : (reservationTab === "cancelled" ? "총 결제금액" : "실제 결제 금액");
       const showRefundInfo =
         reservationTab === "cancelled" &&
         reservation.refundAmount !== null &&
@@ -431,15 +452,8 @@ export default function ReservationSection({
       <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
         <Calendar className="w-8 h-8 text-gray-400" />
       </div>
-      <p className="text-gray-500 text-lg font-medium mb-2">
-        {reservationTab === "upcoming" && "이용 예정인 예약이 없습니다"}
-        {reservationTab === "completed" && "이용 완료된 예약이 없습니다"}
-        {reservationTab === "cancelled" && "취소된 예약이 없습니다"}
-      </p>
-      <p className="text-gray-400 text-sm">
-        {reservationType === "dining"
-          ? "새로운 다이닝을 예약해보세요!"
-          : "새로운 호텔을 예약해보세요!"}
+      <p className="text-gray-500 text-lg font-medium">
+        내역이 존재하지 않습니다
       </p>
     </div>
   );
@@ -522,6 +536,16 @@ export default function ReservationSection({
                 <option value="checkinAsc">취소 날짜 오래된순</option>
                 <option value="priceDesc">높은 가격순</option>
                 <option value="priceAsc">낮은 가격순</option>
+              </>
+            )}
+            {isUsed && (
+              <>
+                <option value="all">전체</option>
+                <option value="0">판매중</option>
+                <option value="1">거래중</option>
+                <option value="2">판매완료</option>
+                <option value="3">기간만료</option>
+                <option value="4">판매취소</option>
               </>
             )}
           </select>

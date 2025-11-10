@@ -602,7 +602,11 @@ function MyPageContent() {
 
   const handleHotelLocation = (reservation) => {
     // 호텔 상세 페이지로 이동 (호텔 위치 정보 포함)
-    router.push(`/hotel/${reservation.id}?tab=location`);
+    if (reservation.contentId) {
+      router.push(`/hotel/${reservation.contentId}?tab=location`);
+    } else {
+      alert('호텔 정보를 찾을 수 없습니다.');
+    }
   };
 
   const handleCancelReservation = (reservation) => {
@@ -834,7 +838,8 @@ function MyPageContent() {
   const [sortBy, setSortBy] = useState({
     upcoming: 'checkinAsc',    // 이용 예정: 체크인 날짜 가까운 순
     completed: 'checkoutDesc', // 이용 완료: 최근 방문 순
-    cancelled: 'checkinDesc'  // 취소/환불: 체크인 날짜 최신순
+    cancelled: 'checkinDesc', // 취소/환불: 체크인 날짜 최신순
+    used: 'all'                // 중고거래: 전체 (상태 필터)
   });
 
   // 리뷰 작성 완료된 예약 ID Set (빠른 조회를 위해)
