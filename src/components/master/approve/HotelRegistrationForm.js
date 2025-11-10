@@ -38,7 +38,8 @@ const HotelRegistrationForm = ({
   isSubmitting,
   onSaveDraft,
   onApprove,
-  onReject
+  onReject,
+  loadingTabs = new Set() // 탭 로딩 상태 (approve 모드에서만 사용)
 }) => {
   const tabs = [
     { id: "basic", name: "기본 정보", icon: "📋" },
@@ -61,6 +62,7 @@ const HotelRegistrationForm = ({
             errors={errors}
             initialData={initialData}
             readOnly={isReadOnly}
+            isEditMode={isEditMode}
           />
         );
       case "rooms":
@@ -139,6 +141,16 @@ const HotelRegistrationForm = ({
           ))}
         </nav>
       </div>
+      
+      {/* 탭 로딩 인디케이터 */}
+      {loadingTabs && loadingTabs.size > 0 && (
+        <div className="px-6 py-2 bg-blue-50 border-b border-blue-200">
+          <div className="flex items-center text-sm text-blue-600">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+            <span>데이터를 불러오는 중...</span>
+          </div>
+        </div>
+      )}
 
       {/* 탭 콘텐츠 */}
       <div className="p-6">

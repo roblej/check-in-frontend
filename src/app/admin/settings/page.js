@@ -39,8 +39,7 @@ const SettingsPage = () => {
 
   const [initialData, setInitialData] = useState({
     regions: [],
-    amenities: [],
-    roomTypes: []
+    amenities: []
   });
 
   const [selectedRegion, setSelectedRegion] = useState('');
@@ -102,22 +101,42 @@ const SettingsPage = () => {
               };
             }),
             events: [],
-            dining: (data.dining || []).map(dining => ({
-              id: dining.diningIdx || Date.now(),
-              diningIdx: dining.diningIdx,
-              name: dining.name || '',
-              type: '',
-              operatingHours: dining.operatingHours || '',
-              menu: '',
-              description: dining.description || '',
-              basePrice: dining.basePrice || '',
-              totalSeats: dining.totalSeats || ''
-            })),
+            dining: (data.dining || []).map(dining => {
+              // operatingHours를 openTime과 closeTime으로 분리
+              let openTime = '';
+              let closeTime = '';
+              if (dining.operatingHours) {
+                const parts = dining.operatingHours.split(' - ').map(s => s.trim());
+                if (parts.length === 2) {
+                  openTime = parts[0];
+                  closeTime = parts[1];
+                } else if (parts.length === 1) {
+                  openTime = parts[0];
+                }
+              }
+              
+              return {
+                id: dining.diningIdx || Date.now(),
+                diningIdx: dining.diningIdx,
+                name: dining.name || '',
+                type: '',
+                operatingHours: dining.operatingHours || '',
+                openTime: openTime,
+                closeTime: closeTime,
+                menu: '',
+                description: dining.description || '',
+                content: dining.content || '',
+                basePrice: dining.basePrice || '',
+                totalSeats: dining.totalSeats || '',
+                slotDuration: dining.slotDuration || 30,
+                maxGuestsPerSlot: dining.maxGuestsPerSlot || '',
+                status: dining.status !== undefined ? dining.status : 0
+              };
+            }),
             rooms: (data.rooms || []).map((room, index) => ({
               id: room.roomIdx || Date.now() + index,
               roomIdx: room.roomIdx,
               name: room.name || '',
-              type: '', // Room 엔티티에 없음
               price: room.basePrice || '',
               capacity: room.capacity || 2,
               size: '', // Room 엔티티에 없음
@@ -222,10 +241,15 @@ const SettingsPage = () => {
       name: '',
       type: '',
       operatingHours: '',
+      openTime: '',
+      closeTime: '',
       menu: '',
       description: '',
+      content: '',
       basePrice: '',
-      totalSeats: ''
+      totalSeats: '',
+      slotDuration: 30,
+      maxGuestsPerSlot: ''
     };
     
     setFormData(prev => ({
@@ -298,15 +322,31 @@ const SettingsPage = () => {
           status: room.status !== undefined ? room.status : 1,
           roomCount: room.roomCount || 1
         })),
-        dining: formData.dining.map(dining => ({
-          diningIdx: dining.diningIdx || null,
-          name: dining.name,
-          type: dining.type || '',
-          operatingHours: dining.operatingHours || '',
-          description: dining.description || '',
-          basePrice: dining.basePrice ? parseInt(dining.basePrice) : null,
-          totalSeats: dining.totalSeats ? parseInt(dining.totalSeats) : null
-        }))
+        dining: formData.dining.map(dining => {
+          // openTime과 closeTime을 operatingHours 형식으로 조합
+          let operatingHours = '';
+          if (dining.openTime && dining.closeTime) {
+            operatingHours = `${dining.openTime} - ${dining.closeTime}`;
+          } else if (dining.openTime) {
+            operatingHours = dining.openTime;
+          } else if (dining.operatingHours) {
+            operatingHours = dining.operatingHours;
+          }
+          
+          return {
+            diningIdx: dining.diningIdx || null,
+            name: dining.name,
+            type: dining.type || '',
+            operatingHours: operatingHours,
+            description: dining.description || '',
+            content: dining.content || '',
+            basePrice: dining.basePrice ? parseInt(dining.basePrice) : null,
+            totalSeats: dining.totalSeats ? parseInt(dining.totalSeats) : null,
+            slotDuration: dining.slotDuration ? parseInt(dining.slotDuration) : null,
+            maxGuestsPerSlot: dining.maxGuestsPerSlot ? parseInt(dining.maxGuestsPerSlot) : null,
+            status: dining.status !== undefined ? dining.status : 0
+          };
+        })
       };
       
       const response = await axiosInstance.put('/admin/hotelInfoForEdit', requestData);
