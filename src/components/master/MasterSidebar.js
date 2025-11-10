@@ -8,7 +8,6 @@ import {
   Building2, 
   Users, 
   TrendingUp, 
-  Settings,
   Gift,
   ChevronDown,
   ChevronRight,
@@ -18,15 +17,17 @@ import {
   BarChart,
   Ticket,
   Server,
-  UserCog,
-  Globe,
   CreditCard,
   AlertTriangle
 } from 'lucide-react';
 
 const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
   const pathname = usePathname();
+  
+  // 서버와 클라이언트 모두 동일한 초기 상태로 시작 (hydration mismatch 방지)
   const [openMenus, setOpenMenus] = useState({});
+  // 초기 복원 완료 여부 (애니메이션 제어용)
+  const [isRestored, setIsRestored] = useState(false);
   const menuItems = [
     {
       id: 'dashboard',
@@ -78,16 +79,6 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
         { id: 'coupon-templates', name: '쿠폰 템플릿', path: '/master/coupon-templates', icon: <Ticket size={16} /> },
         { id: 'coupon-batch', name: '쿠폰 일괄 처리', path: '/master/coupon-batch', icon: <Server size={16} /> }
       ]
-    },
-    {
-      id: 'settings',
-      name: '설정',
-      icon: <Settings size={20} />,
-      submenu: [
-        { id: 'site-settings', name: '사이트 설정', path: '/master/site-settings', icon: <Globe size={16} /> },
-        { id: 'system-settings', name: '시스템 설정', path: '/master/system-settings', icon: <Settings size={16} /> },
-        { id: 'user-management', name: '사용자 관리', path: '/master/user-management', icon: <UserCog size={16} /> }
-      ]
     }
   ];
 
@@ -99,15 +90,42 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
     return submenu && submenu.some(item => pathname === item.path);
   };
 
-  // 서브메뉴가 활성화된 경우 자동으로 열림
+  // 클라이언트에서만 localStorage에서 열린 메뉴 상태 복원 (hydration 후 실행)
   useEffect(() => {
-    const newOpenMenus = {};
-    menuItems.forEach((item) => {
-      if (item.submenu && isSubmenuActive(item.submenu)) {
-        newOpenMenus[item.id] = true;
+    const saved = localStorage.getItem('masterSidebarOpenMenus');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setOpenMenus(parsed);
+      } catch (e) {
+        // 파싱 실패 시 무시
+        console.error('Failed to parse saved sidebar state:', e);
       }
+    }
+    // 복원 완료 표시 (다음 프레임에서 애니메이션 활성화)
+    requestAnimationFrame(() => {
+      setIsRestored(true);
     });
-    setOpenMenus(newOpenMenus);
+  }, []); // 마운트 시 한 번만 실행
+
+  // localStorage에 열린 메뉴 상태 저장
+  useEffect(() => {
+    if (typeof window !== 'undefined' && Object.keys(openMenus).length > 0) {
+      localStorage.setItem('masterSidebarOpenMenus', JSON.stringify(openMenus));
+    }
+  }, [openMenus]);
+
+  // 서브메뉴가 활성화된 경우 자동으로 열림 (기존에 열려있던 메뉴는 유지)
+  useEffect(() => {
+    setOpenMenus(prev => {
+      const newOpenMenus = { ...prev }; // 기존 상태 유지
+      menuItems.forEach((item) => {
+        if (item.submenu && isSubmenuActive(item.submenu)) {
+          newOpenMenus[item.id] = true; // 활성화된 메뉴만 추가로 열기
+        }
+      });
+      return newOpenMenus;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -176,7 +194,9 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
                       
                       {/* 서브메뉴 */}
                       {hasSubmenu && (
-                        <ul className={`ml-8 mt-1 space-y-1 transition-all duration-200 overflow-hidden ${
+                        <ul className={`ml-8 mt-1 space-y-1 overflow-hidden ${
+                          isRestored ? 'transition-all duration-200' : '' // 복원 완료 후에만 애니메이션
+                        } ${
                           isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                         }`}>
                           {item.submenu.map((subItem) => (
@@ -267,7 +287,9 @@ const MasterSidebar = ({ isOpen, onClose, onToggle }) => {
                       
                       {/* 서브메뉴 */}
                       {hasSubmenu && (
-                        <ul className={`ml-4 mt-1 space-y-1 transition-all duration-200 overflow-hidden ${
+                        <ul className={`ml-4 mt-1 space-y-1 overflow-hidden ${
+                          isRestored ? 'transition-all duration-200' : '' // 복원 완료 후에만 애니메이션
+                        } ${
                           isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                         }`}>
                           {item.submenu.map((subItem) => (

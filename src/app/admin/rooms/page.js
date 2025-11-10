@@ -1,16 +1,12 @@
 'use client';
 
 import { useEffect, useState, Suspense, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { CheckCircle, Building2, Sparkles, Wrench, HelpCircle, Home, DollarSign, X, Eye, Calendar } from 'lucide-react';
+import { CheckCircle, Building2, Sparkles, X, Calendar } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
-  const roomUpdate_url = "/admin/roomUpdate";
-  const roomStatus_url = "/admin/roomStatus";
-
 const RoomsInner = () => {
-  const router = useRouter();
   const roomList_url = "/admin/roomList";
   const searchParams = useSearchParams();
   const selectedDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
@@ -77,11 +73,6 @@ const RoomsInner = () => {
     setShowDetailModal(true);
   };
 
-  const handleManageClick = (room) => {
-    // TODO: 관리 모달 구현
-    alert('관리 기능은 추후 구현 예정입니다.');
-  };
-
   return (
     <AdminLayout>
       <div className="space-y-6 p-6">
@@ -98,7 +89,7 @@ const RoomsInner = () => {
         </div>
 
         {/* 객실 현황 통계 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center">
               <div className="text-blue-600 mr-3"><Building2 size={24} /></div>
@@ -123,17 +114,6 @@ const RoomsInner = () => {
               <div>
                 <div className="text-sm text-gray-600">예약된 객실</div>
                 <div className="text-xl font-bold text-yellow-600">{totalRoomCount - availableRoomCount}</div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center">
-              <div className="text-gray-600 mr-3"><Building2 size={24} /></div>
-              <div>
-                <div className="text-sm text-gray-600">예약률</div>
-                <div className="text-xl font-bold text-gray-600">
-                  {totalRoomCount > 0 ? Math.round(((totalRoomCount - availableRoomCount) / totalRoomCount) * 100) : 0}%
-                </div>
               </div>
             </div>
           </div>
@@ -176,25 +156,22 @@ const RoomsInner = () => {
                 {room.hasReservation && room.customerName && (
                   <div className="border-t border-gray-200 pt-3 mb-4">
                     <div className="text-sm text-gray-600 mb-1">예약 고객</div>
-                    <div className="text-sm font-medium text-gray-900">{room.customerName}</div>
+                    <div className="text-sm font-medium text-gray-900 mb-2">{room.customerName}</div>
+                    {room.guest && (
+                      <div className="text-sm text-gray-600">
+                        예약 인원: <span className="font-medium text-gray-900">{room.guest}명</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* 액션 버튼들 */}
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => handleDetailClick(room)}
-                    className="flex-1 bg-[#3B82F6] text-white py-2 px-3 rounded text-sm hover:bg-blue-600 transition-colors"
-                  >
-                    상세보기
-                  </button>
-                  <button 
-                    onClick={() => handleManageClick(room)}
-                    className="flex-1 bg-gray-600 text-white py-2 px-3 rounded text-sm hover:bg-gray-700 transition-colors"
-                  >
-                    관리
-                  </button>
-                </div>
+                {/* 액션 버튼 */}
+                <button 
+                  onClick={() => handleDetailClick(room)}
+                  className="w-full bg-[#3B82F6] text-white py-2 px-3 rounded text-sm hover:bg-blue-600 transition-colors"
+                >
+                  상세보기
+                </button>
               </div>
             ))}
           </div>
@@ -208,7 +185,6 @@ const RoomsInner = () => {
               setShowDetailModal(false);
               setSelectedRoom(null);
             }}
-            onUpdate={fetchRoomStatus}
           />
         )}
       </div>
@@ -224,49 +200,8 @@ const RoomsPage = () => {
   );
 };
 
-// 객실 상세 정보 모달 컴포넌트
-const RoomDetailModal = ({ room, onClose, onUpdate }) => {
-  const [roomData, setRoomData] = useState({
-    roomIdx: room.roomIdx || 0,
-    name: room.name || '',
-    capacity: room.capacity || 0,
-    basePrice: room.basePrice || 0,
-    // TODO: 추후 다른 필드들도 추가
-  });
-
-  const handleSubmit = async () => {
-    // TODO: 객실 수정 API 호출
-    console.log('객실 수정:', roomData);
-    alert('객실 정보를 수정 하시겠습니까?');
-    try {
-      const response = await axiosInstance.post(roomUpdate_url, roomData);
-      if (response.data.success) {
-        alert('객실 정보가 수정되었습니다.');
-        onUpdate();
-        onClose();
-      }
-    } catch (error) {
-      console.error('객실 수정 오류:', error);
-    }
-  };
-
-  const handleDeactivate = async () => {
-    // TODO: 객실 비활성화 API 호출
-    console.log('객실 비활성화:', room.roomIdx, room.contentId);
-    alert('해당 객실을 비활성화 처리 하겠습니까?');
-    try {
-      const response = await axiosInstance.post(roomStatus_url, {
-        roomIdx: room.roomIdx,
-        status: 0
-      });
-      if (response.data.success) {
-        alert('객실 비활성화 처리가 완료되었습니다.');
-        onUpdate();
-      }
-    } catch (error) {
-      console.error('객실 비활성화 오류:', error);
-    }
-  };
+// 객실 상세 정보 모달 컴포넌트 (조회 전용)
+const RoomDetailModal = ({ room, onClose }) => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
@@ -291,57 +226,69 @@ const RoomDetailModal = ({ room, onClose, onUpdate }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">객실명</label>
-              <input
-                type="text"
-                value={roomData.name}
-                onChange={(e) => setRoomData({...roomData, name: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
+                {room.name || '-'}
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">수용인원</label>
-              <input
-                type="number"
-                value={roomData.capacity}
-                onChange={(e) => setRoomData({...roomData, capacity: parseInt(e.target.value) || 0})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
+                {room.capacity || 0}명
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">기본 가격</label>
-              <input
-                type="number"
-                value={roomData.basePrice}
-                onChange={(e) => setRoomData({...roomData, basePrice: parseInt(e.target.value) || 0})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
+                ₩{room.basePrice?.toLocaleString() || '0'}
+              </div>
             </div>
 
-            {/* TODO: 추후 다른 필드들 추가 */}
+            {/* 예약 정보 섹션 */}
+            {room.hasReservation && (
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">예약 정보</h3>
+                <div className="space-y-3">
+                  {room.customerName && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">예약 고객</label>
+                      <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
+                        {room.customerName}
+                      </div>
+                    </div>
+                  )}
+
+                  {room.guest && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">예약 인원</label>
+                      <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
+                        {room.guest}명
+                      </div>
+                    </div>
+                  )}
+
+                  {room.specialRequest && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">요청사항</label>
+                      <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 min-h-[80px] whitespace-pre-wrap">
+                        {room.specialRequest}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* 푸터 */}
-        <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
-          <button
-            onClick={handleDeactivate}
-            className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
-          >
-            비활성화
-          </button>
+        <div className="px-6 py-4 border-t bg-gray-50 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            취소
-          </button>
-          <button
-            onClick={handleSubmit}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
           >
-            수정
+            닫기
           </button>
         </div>
       </div>

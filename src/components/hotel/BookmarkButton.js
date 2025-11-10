@@ -35,11 +35,11 @@ const BookmarkButton = ({ contentId, size = "small", className = "" }) => {
             setBookmarkedHotels(new Set(bookmarkContentIds));
           }
         })
-        .catch((err) => {
-          console.error(
-            "북마크 목록 API 에러:",
-            err.response?.data?.message || err.message
-          );
+          .catch((err) => {
+            console.error(
+                "북마크 목록 API 에러:",
+                err.response?.data?.message || err.message
+            );
         });
     } else {
       // 로그아웃 상태일 때: 북마크 목록 초기화
