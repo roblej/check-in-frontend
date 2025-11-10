@@ -4,8 +4,20 @@ import axios from "axios";
 const getAxiosInstance = () => {
   // 서버 사이드
   if (typeof window === 'undefined') {
+    // 서버 사이드에서는 백엔드로 직접 요청
+    // BACKEND_HOST 환경 변수 사용 (없으면 NEXT_PUBLIC_API_URL 사용)
+    let apiUrl = process.env.BACKEND_HOST || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888';
+    
+    // api.checkinn.store를 백엔드 직접 주소로 변경
+    // 또는 checkinn.store를 백엔드 직접 주소로 변경
+    if (apiUrl.includes('api.checkinn.store') || apiUrl.includes('checkinn.store')) {
+      // 프로덕션 환경에서는 BACKEND_HOST 사용 (백엔드 EC2 직접 주소)
+      // 로컬에서는 localhost:8888 사용
+      apiUrl = process.env.BACKEND_HOST || 'http://localhost:8888';
+    }
+    
     return axios.create({
-      baseURL: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api`,
+      baseURL: `${apiUrl}/api`,
       timeout: 10000,
       headers: {
         "Content-Type": "application/json",

@@ -8,6 +8,7 @@ services:
       - TZ=Asia/Seoul
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - BACKEND_HOST=${BACKEND_HOST:-http://localhost:8888}
     networks:
       - checkin_net
     restart: unless-stopped
