@@ -366,6 +366,15 @@ const TossPaymentsWidget = ({
               "used_payment_success_data",
               JSON.stringify(usedPaymentData)
             );
+            // 결제 완료 플래그 설정 (결제 페이지에서 이탈 시 취소하지 않도록)
+            const usedTradeIdx = usedPaymentData.usedTradeIdx;
+            if (usedTradeIdx) {
+              sessionStorage.setItem(`used_payment_completed_${usedTradeIdx}`, '1');
+              console.log("[PAY][Widget] 결제 완료 플래그 설정:", {
+                usedTradeIdx,
+                flag: `used_payment_completed_${usedTradeIdx}`
+              });
+            }
           }
           console.log("[PAY][Widget] used_payment_success_data 저장:", {
             orderId: usedPaymentData.orderId,
