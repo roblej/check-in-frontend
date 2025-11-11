@@ -601,7 +601,8 @@ const UsedPaymentForm = ({ initialData }) => {
       sessionStorage.setItem(`used_payment_completed_${usedTradeIdx}`, '1');
       console.log("세션 스토리지에 결제 정보 저장 완료:", successData);
 
-      // 백엔드 검증 API 호출 (/api/payments)
+      // 백엔드 검증 API 호출 (/api/payments/confirm)
+      // 백엔드 DTO에 맞춰 필수 필드만 전송 (hotelName, roomType, salePrice는 백엔드에서 사용하지 않음)
       requestData = {
         paymentKey: paymentResult.paymentKey,
         orderId: paymentResult.orderId,
@@ -611,9 +612,6 @@ const UsedPaymentForm = ({ initialData }) => {
         customerIdx: paymentInfo.customerIdx,
         usedTradeIdx: usedTradeIdx, // 최신 세션 스토리지에서 읽은 값 사용
         usedItemIdx: latestPaymentInfo.usedItemIdx,
-        hotelName: latestPaymentInfo.hotelName,
-        roomType: latestPaymentInfo.roomType,
-        salePrice: latestPaymentInfo.salePrice,
         customerName: paymentInfo.customerName,
         customerEmail: paymentInfo.customerEmail,
         customerPhone: paymentInfo.customerPhone,

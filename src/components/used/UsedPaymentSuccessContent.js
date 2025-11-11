@@ -183,6 +183,7 @@ const UsedPaymentSuccessContent = () => {
         });
         
         // 백엔드 검증 API 호출 (/api/payments)
+        // 백엔드 DTO에 맞춰 필수 필드만 전송 (hotelName, roomType, salePrice는 백엔드에서 사용하지 않음)
         const requestData = {
           paymentKey: paymentKey,
           orderId: orderId,
@@ -192,9 +193,6 @@ const UsedPaymentSuccessContent = () => {
           customerIdx: parsedData.customerIdx || null,
           usedTradeIdx: usedTradeIdx, // 이미 위에서 파싱됨
           usedItemIdx: usedItemIdx ? parseInt(usedItemIdx, 10) : (parsedData.usedItemIdx ? parseInt(parsedData.usedItemIdx, 10) : null),
-          hotelName: parsedData.hotelName || '',
-          roomType: parsedData.roomType || '',
-          salePrice: parsedData.salePrice || amount || parsedData.amount,
           customerName: parsedData.customerName || '',
           customerEmail: parsedData.customerEmail || '',
           customerPhone: parsedData.customerPhone || '',
@@ -234,8 +232,19 @@ const UsedPaymentSuccessContent = () => {
           message: error.message,
           response: error.response?.data,
           status: error.response?.status,
+          responseText: error.response?.data ? JSON.stringify(error.response.data, null, 2) : undefined,
         });
-        setError(error.response?.data?.message || error.message || '결제 검증 중 오류가 발생했습니다.');
+        
+        // 400 에러인 경우 백엔드 에러 메시지를 자세히 표시
+        if (error.response?.status === 400) {
+          const errorMessage = error.response?.data?.message || 
+                               error.response?.data?.error || 
+                               JSON.stringify(error.response?.data) ||
+                               '결제 검증 요청이 잘못되었습니다.';
+          setError(`결제 검증 실패: ${errorMessage}`);
+        } else {
+          setError(error.response?.data?.message || error.message || '결제 검증 중 오류가 발생했습니다.');
+        }
       } finally {
         setLoading(false);
       }
