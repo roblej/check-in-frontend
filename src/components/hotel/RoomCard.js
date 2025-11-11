@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
 import axiosInstance from "@/lib/axios";
 import { hotelAPI } from "@/lib/api/hotel";
+import { getOrCreateTabLockId } from "@/utils/lockId";
 import RoomBookmarkButton from "./RoomBookmarkButton";
 import RoomGallery from "./RoomGallery";
 
@@ -96,19 +97,41 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
         });
       } catch (_) {}
 
-      const lockResult = await axiosInstance.post("/reservations/lock", {
+      const lockId = getOrCreateTabLockId();
+      const lockPayload = {
         contentId: String(contentId),
         roomId: Number(roomId),
         checkIn,
-      });
+      };
 
-      if (!lockResult.data.success) {
-        alert(
-          lockResult.data.message || "이미 다른 사용자가 예약 진행 중입니다."
-        );
+      if (lockId) {
+        lockPayload.lockId = lockId;
+      }
+
+      const lockResult = await axiosInstance.post(
+        "/reservations/lock",
+        lockPayload
+      );
+
+      const {
+        success: lockSuccess,
+        message: lockMessage,
+        expireTime,
+        lockId: responseLockId,
+      } = lockResult.data || {};
+
+      if (!lockSuccess) {
+        alert(lockMessage || "이미 다른 사용자가 예약 진행 중입니다.");
         setIsLocking(false);
         return;
       }
+
+      const resolvedLockId = responseLockId || lockId || getOrCreateTabLockId();
+      const parsedExpire = expireTime ? Date.parse(expireTime) : null;
+      const computedLockExpiresAt =
+        typeof parsedExpire === "number" && !Number.isNaN(parsedExpire)
+          ? parsedExpire
+          : Date.now() + 10 * 60 * 1000;
 
       // 2단계: 락 생성 성공 → 결제 정보 저장 후 이동
       const reservationData = {
@@ -133,6 +156,10 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
           roomPrice: room.basePrice || room.price,
           totalPrice: totalPrice,
           roomImage: room.imageUrl,
+          lockId: resolvedLockId,
+          lockExpireTime: expireTime || null,
+          lockExpiresAt: computedLockExpiresAt,
+          expiresAt: computedLockExpiresAt,
           amenities: room.amenities || [],
         },
       };
