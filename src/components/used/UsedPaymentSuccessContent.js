@@ -28,51 +28,40 @@ const UsedPaymentSuccessContent = () => {
       const urlCheckIn = searchParams.get('checkIn');
       const urlCheckOut = searchParams.get('checkOut');
       
-      let storedSuccessData = null;
+      // 세션 스토리지에서 결제 정보 읽기
+      let storedSuccessData = sessionStorage.getItem('used_payment_success_data');
       
-      // URL 파라미터에 필수 정보가 있으면 sessionStorage에 저장하고 URL에서 제거
-      if (urlOrderId && urlPaymentKey && urlAmount) {
-        console.log('🔍 URL 파라미터에서 결제 정보 읽기 (URL에서 제거 예정):', {
-          orderId: urlOrderId,
-          paymentKey: urlPaymentKey,
-          amount: urlAmount,
-          usedTradeIdx: urlUsedTradeIdx
+      if (storedSuccessData) {
+        const parsedData = JSON.parse(storedSuccessData);
+        
+        // URL 파라미터에 paymentKey가 있고 세션 스토리지에 없으면 병합
+        if (urlPaymentKey && !parsedData.paymentKey) {
+          parsedData.paymentKey = urlPaymentKey;
+          sessionStorage.setItem('used_payment_success_data', JSON.stringify(parsedData));
+          storedSuccessData = JSON.stringify(parsedData);
+          console.log('✅ URL 파라미터에서 paymentKey를 가져와 세션 스토리지에 병합');
+        }
+        
+        console.log('🔍 세션 스토리지에서 결제 정보 읽기:', {
+          data: parsedData,
+          usedTradeIdx: parsedData.usedTradeIdx,
+          tradeIdx: parsedData.tradeIdx,
+          paymentKey: parsedData.paymentKey ? '***' : undefined
         });
-        
-        // URL 파라미터로부터 데이터 구성
-        const urlData = {
-          orderId: urlOrderId,
-          paymentKey: urlPaymentKey,
-          amount: parseInt(urlAmount, 10),
-          type: 'used_hotel',
-          cash: 0,
-          point: 0,
-          card: parseInt(urlAmount, 10),
-          tradeIdx: urlUsedTradeIdx || '', // 호환성을 위해 유지
-          usedTradeIdx: urlUsedTradeIdx || '', // 백엔드 검증에 필수
-          usedItemIdx: urlUsedItemIdx || '',
-          hotelName: urlHotelName || '호텔명',
-          roomType: urlRoomType || '객실 정보',
-          checkIn: urlCheckIn || '',
-          checkOut: urlCheckOut || ''
-        };
-        
-        // 세션 스토리지에 저장
-        sessionStorage.setItem('used_payment_success_data', JSON.stringify(urlData));
-        storedSuccessData = JSON.stringify(urlData);
-        console.log('✅ URL 파라미터 데이터를 세션 스토리지에 저장:', urlData);
-        
-        // URL 파라미터 제거 (히스토리 API 사용)
+      } else {
+        console.warn('⚠️ 세션 스토리지에 결제 정보가 없습니다.');
+      }
+      
+      // URL 파라미터가 있으면 제거 (히스토리 API 사용)
+      if (urlOrderId || urlPaymentKey || urlAmount) {
+        console.log('🔍 URL 파라미터 발견 (paymentKey 병합 후 제거):', {
+          urlOrderId,
+          urlPaymentKey: urlPaymentKey ? '***' : undefined,
+          urlAmount,
+          urlUsedTradeIdx
+        });
         if (typeof window !== 'undefined') {
           window.history.replaceState({}, '', '/used-payment/success');
-        }
-      } else {
-        // URL 파라미터가 없으면 세션 스토리지에서 확인
-        storedSuccessData = sessionStorage.getItem('used_payment_success_data');
-        if (storedSuccessData) {
-          console.log('🔍 세션 스토리지에서 결제 정보 읽기:', {
-            data: JSON.parse(storedSuccessData)
-          });
         }
       }
       
@@ -146,8 +135,16 @@ const UsedPaymentSuccessContent = () => {
         const usedTradeIdxRaw = parsedData.usedTradeIdx || parsedData.tradeIdx;
         const usedItemIdx = parsedData.usedItemIdx;
         
-        // usedTradeIdx가 유효한 숫자인지 확인
-        const usedTradeIdx = usedTradeIdxRaw ? (typeof usedTradeIdxRaw === 'number' ? usedTradeIdxRaw : parseInt(usedTradeIdxRaw, 10)) : null;
+        // usedTradeIdx가 유효한 숫자인지 확인 (빈 문자열이나 0 이하 값 제외)
+        let usedTradeIdx = null;
+        if (usedTradeIdxRaw) {
+          if (typeof usedTradeIdxRaw === 'number') {
+            usedTradeIdx = usedTradeIdxRaw > 0 ? usedTradeIdxRaw : null;
+          } else if (typeof usedTradeIdxRaw === 'string' && usedTradeIdxRaw.trim() !== '') {
+            const parsed = parseInt(usedTradeIdxRaw.trim(), 10);
+            usedTradeIdx = !isNaN(parsed) && parsed > 0 ? parsed : null;
+          }
+        }
         
         // 필요한 정보가 없거나 유효하지 않으면 스킵
         if (!orderId || !paymentKey || !usedTradeIdx || isNaN(usedTradeIdx) || usedTradeIdx <= 0) {
@@ -202,7 +199,7 @@ const UsedPaymentSuccessContent = () => {
           amount: requestData.amount,
           usedTradeIdx: requestData.usedTradeIdx,
           usedItemIdx: requestData.usedItemIdx,
-          source: urlOrderId ? 'URL 파라미터' : '세션 스토리지'
+          source: '세션 스토리지'
         });
 
         const response = await axios.post('/payments', requestData);
