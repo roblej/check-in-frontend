@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
 import axios from "@/lib/axios";
+import { getOrCreateTabLockId } from "@/utils/lockId";
 
 /**
  * 예약 락 생명주기만 관리하는 Wrapper
@@ -29,12 +30,14 @@ export default function ReservationLockWrapper({ children }) {
         const contentId = paymentDraft.meta.contentId;
         const roomId = paymentDraft.meta.roomIdx || paymentDraft.meta.roomId;
         const checkIn = paymentDraft.meta.checkIn;
+        const lockId = paymentDraft.meta.lockId || getOrCreateTabLockId();
 
         if (contentId && roomId && checkIn) {
           await axios.post("/reservations/unlock", {
             contentId: String(contentId),
             roomId: Number(roomId),
             checkIn: String(checkIn),
+            lockId: lockId ? String(lockId) : undefined,
           });
           console.log("✅ 취소: 락 해제 완료");
         }
@@ -102,6 +105,7 @@ export default function ReservationLockWrapper({ children }) {
         contentId: String(contentId),
         roomId: Number(roomId),
         checkIn: String(checkIn),
+        lockId: paymentDraft.meta.lockId || getOrCreateTabLockId(),
       });
 
       const apiUrl = `${

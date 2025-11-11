@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { reservationLockAPI } from "@/lib/api/reservation";
+import { getOrCreateTabLockId } from "@/utils/lockId";
 
 /**
  * 예약 락 관리 커스텀 훅
@@ -18,7 +19,7 @@ import { reservationLockAPI } from "@/lib/api/reservation";
  */
 const useReservationLock = (contentId, roomId, checkIn, enabled = true) => {
   const lockCreatedRef = useRef(false);
-  const lockDataRef = useRef({ contentId: null, roomId: null });
+  const lockDataRef = useRef({ contentId: null, roomId: null, lockId: null });
 
   /**
    * 예약 락 생성
@@ -35,15 +36,17 @@ const useReservationLock = (contentId, roomId, checkIn, enabled = true) => {
     }
 
     try {
+      const lockId = getOrCreateTabLockId();
       const result = await reservationLockAPI.createLock(
         contentId,
         roomId,
-        checkIn
+        checkIn,
+        lockId
       );
 
       if (result.success) {
         lockCreatedRef.current = true;
-        lockDataRef.current = { contentId, roomId };
+        lockDataRef.current = { contentId, roomId, lockId };
         console.log("✅ 예약 락 생성 성공:", result);
       } else {
         console.warn("⚠️ 예약 락 생성 실패:", result.message);
@@ -64,8 +67,11 @@ const useReservationLock = (contentId, roomId, checkIn, enabled = true) => {
    * 예약 락 해제
    */
   const releaseLock = useCallback(async () => {
-    const { contentId: lockContentId, roomId: lockRoomId } =
-      lockDataRef.current;
+    const {
+      contentId: lockContentId,
+      roomId: lockRoomId,
+      lockId,
+    } = lockDataRef.current;
 
     if (!lockCreatedRef.current || !lockContentId || !lockRoomId) {
       console.log("락이 생성되지 않았거나 이미 해제됨");
@@ -77,12 +83,13 @@ const useReservationLock = (contentId, roomId, checkIn, enabled = true) => {
         lockContentId,
         lockRoomId,
         null,
-        checkIn
+        checkIn,
+        lockId
       );
 
       if (result.success) {
         lockCreatedRef.current = false;
-        lockDataRef.current = { contentId: null, roomId: null };
+        lockDataRef.current = { contentId: null, roomId: null, lockId: null };
         console.log("✅ 예약 락 해제 성공:", result);
       }
 
@@ -104,8 +111,11 @@ const useReservationLock = (contentId, roomId, checkIn, enabled = true) => {
     if (!enabled) return;
 
     const handleBeforeUnload = () => {
-      const { contentId: lockContentId, roomId: lockRoomId } =
-        lockDataRef.current;
+      const {
+        contentId: lockContentId,
+        roomId: lockRoomId,
+        lockId,
+      } = lockDataRef.current;
 
       if (lockCreatedRef.current && lockContentId && lockRoomId) {
         // Beacon API 사용 (비동기 요청이 완료되지 않아도 전송 보장)
@@ -113,6 +123,7 @@ const useReservationLock = (contentId, roomId, checkIn, enabled = true) => {
           contentId: lockContentId,
           roomId: lockRoomId,
           checkIn,
+          lockId,
         });
 
         const apiUrl = `${
