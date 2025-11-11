@@ -116,7 +116,8 @@ function MyPageContent() {
   const [reservations, setReservations] = useState({
     upcoming: [],
     completed: [],
-    cancelled: []
+    cancelled: [],
+    used: [] // 중고거래 탭 추가
   });
 
   // 다이닝 예약 데이터 상태 (별도로 관리)
@@ -128,6 +129,10 @@ function MyPageContent() {
 
   // 양도거래 등록 상태
   const [tradeStatus, setTradeStatus] = useState({});
+
+  // 중고거래 아이템 목록 (판매자의 매물)
+  const [usedItems, setUsedItems] = useState([]);
+  const [usedItemsLoading, setUsedItemsLoading] = useState(false);
 
   // 신고 상태 (contentId별)
   const [reportStatus, setReportStatus] = useState({});
@@ -213,6 +218,13 @@ function MyPageContent() {
     }
   }, [userData?.customerIdx]);
 
+  // userData가 설정되면 중고거래 아이템 로드 (백업용) - 이제 사용하지 않음
+  // useEffect(() => {
+  //   if (userData?.customerIdx) {
+  //     loadUsedItems(userData.customerIdx);
+  //   }
+  // }, [userData?.customerIdx]);
+
   // 실제 토큰 검증 및 초기 데이터 로드
   // 경로 변경 시 리뷰 목록 갱신 (리뷰 작성 후 마이페이지로 돌아왔을 때)
   useEffect(() => {
@@ -232,6 +244,7 @@ function MyPageContent() {
         loadAllDiningReservations(); // 다이닝 예약도 로드
         loadWritableReviews();
         loadWrittenReviews();
+        // loadUsedItems는 더 이상 필요 없음 (loadAllReservations에서 'used' 상태로 로드됨)
         // loadInquiries는 userData 변경 시 useEffect에서 자동 호출됨
         // loadAllReservations에서 이미 전체 데이터를 가져왔으므로 추가 API 호출 불필요
         return;
@@ -252,6 +265,7 @@ function MyPageContent() {
         loadAllDiningReservations(); // 다이닝 예약도 로드
         loadWritableReviews();
         loadWrittenReviews();
+        // loadUsedItems는 더 이상 필요 없음 (loadAllReservations에서 'used' 상태로 로드됨)
         // loadInquiries는 userData 변경 시 useEffect에서 자동 호출됨
         // loadAllReservations에서 이미 전체 데이터를 가져왔으므로 추가 API 호출 불필요
       } else {
@@ -305,43 +319,64 @@ function MyPageContent() {
         };
       };
       
-      // 세 가지 상태를 병렬로 불러오기 (각각 전체 데이터)
-      const [upcomingData, completedData, cancelledData] = await Promise.all([
+      // 네 가지 상태를 병렬로 불러오기 (각각 전체 데이터)
+      const [upcomingData, completedData, cancelledData, usedData] = await Promise.all([
         loadAllByStatus('upcoming'),
         loadAllByStatus('completed'),
-        loadAllByStatus('cancelled')
+        loadAllByStatus('cancelled'),
+        loadAllByStatus('used') // 중고거래 탭 추가
       ]);
 
       console.log('📥 API 응답 데이터:', {
         upcoming: upcomingData,
         completed: completedData,
-        cancelled: cancelledData
+        cancelled: cancelledData,
+        used: usedData
       });
 
+      // 중고거래에 등록된 예약의 reservIdx Set 생성 (이용예정 탭에서 제외하기 위함)
+      const usedReservIdxSet = new Set(
+        (usedData?.reservations || []).map(r => r.id || r.reservIdx)
+      );
+
+      // 이용예정 탭에서 중고거래에 등록된 예약 제외
+      const filteredUpcoming = (upcomingData?.reservations || []).filter(
+        reservation => {
+          const reservIdx = reservation.id || reservation.reservIdx;
+          return !usedReservIdxSet.has(reservIdx);
+        }
+      );
+
       setReservations({
-        upcoming: upcomingData?.reservations || [],
+        upcoming: filteredUpcoming, // 양도거래 등록된 예약 제외
         completed: completedData?.reservations || [],
-        cancelled: cancelledData?.reservations || []
+        cancelled: cancelledData?.reservations || [],
+        used: usedData?.reservations || [] // 중고거래 탭 추가
       });
 
       // 각 탭별 전체 개수 업데이트 (초기 로드 시)
       setReservationCounts({
-        upcoming: upcomingData?.totalElements || 0,
+        upcoming: filteredUpcoming.length, // 필터링된 개수
         completed: completedData?.totalElements || 0,
-        cancelled: cancelledData?.totalElements || 0
+        cancelled: cancelledData?.totalElements || 0,
+        used: usedData?.totalElements || 0 // 중고거래 탭 추가
       });
 
       console.log('✅ 전체 예약 데이터 로드 완료:', {
-        upcoming: upcomingData?.reservations?.length || 0,
+        upcoming: filteredUpcoming.length, // 필터링된 개수
         completed: completedData?.reservations?.length || 0,
-        cancelled: cancelledData?.reservations?.length || 0
+        cancelled: cancelledData?.reservations?.length || 0,
+        used: usedData?.reservations?.length || 0
       });
 
-  // 예약별 양도거래 등록 여부 확인
-       await checkTradeStatus(upcomingData?.reservations || []);
+  // 예약별 양도거래 등록 여부 확인 (필터링된 이용예정 예약만)
+       await checkTradeStatus(filteredUpcoming);
 
        // 이용완료 예약의 신고 상태 확인
        await checkReportStatus(completedData?.reservations || []);
+
+       // 중고거래 예약의 양도거래 등록 여부 확인
+       await checkTradeStatus(usedData?.reservations || []);
 
      } catch (error) {
       console.error('❌ 예약 내역 로드 실패:', error);
@@ -444,65 +479,35 @@ function MyPageContent() {
     }
   };
 
-  // 예약 내역 API 호출 (페이지네이션 지원)
-  const loadReservations = async (status, page = 0, size = 3) => {
+  // 예약 내역 API 호출 (전체 데이터 조회용 - 페이지네이션은 프론트엔드에서 처리)
+  const loadReservations = async (status) => {
     setReservationsLoading(true);
     try {
-      console.log('📤 예약 내역 요청:', status, `page=${page}, size=${size}`);
+      console.log('📤 예약 내역 요청 (전체):', status);
       
-      // 백엔드 API 호출 (페이지네이션 파라미터 추가)
-      const response = await mypageAPI.getReservations(status, page, size);
+      // 백엔드에서 전체 데이터 조회 (페이지네이션 없이)
+      // 큰 페이지 사이즈로 전체 데이터 가져오기
+      const response = await mypageAPI.getReservations(status, 0, 1000);
       
       console.log('📥 받은 데이터:', response);
       
-      // 백엔드가 페이지네이션을 지원하지 않을 경우를 대비한 처리
+      // 전체 데이터 가져오기
       let allReservations = response?.reservations || response?.content || [];
       const totalItems = response?.totalElements || allReservations.length;
       
-      // 페이지네이션 정보 업데이트
-      if (response?.totalPages !== undefined) {
-        // 백엔드가 Page 객체를 반환하는 경우
-        setTotalPages(response.totalPages);
-        setTotalElements(response.totalElements || 0);
-        setCurrentPage(response.number !== undefined ? response.number : page);
-        setPageSize(response.size !== undefined ? response.size : size);
-        
-        // 각 탭별 전체 개수 업데이트 (페이지네이션과 무관한 전체 개수)
-        setReservationCounts(prev => ({
-          ...prev,
-          [status]: response.totalElements || 0
-        }));
-      } else {
-        // 백엔드가 전체 리스트를 반환하는 경우 - 프론트엔드에서 슬라이싱
-        const totalPagesCount = Math.ceil(totalItems / size);
-        const startIndex = page * size;
-        const endIndex = startIndex + size;
-        const paginatedReservations = allReservations.slice(startIndex, endIndex);
-        
-        setTotalPages(totalPagesCount);
-        setTotalElements(totalItems);
-        setCurrentPage(page);
-        setPageSize(size);
-        
-        // 각 탭별 전체 개수 업데이트
-        setReservationCounts(prev => ({
-          ...prev,
-          [status]: totalItems
-        }));
-        
-        // 슬라이싱된 데이터만 저장
-        allReservations = paginatedReservations;
-        
-        console.log(`📄 프론트엔드 페이지네이션 적용: 전체 ${totalItems}개 중 ${startIndex + 1}-${Math.min(endIndex, totalItems)}개 표시`);
-      }
-      
-      // 상태 업데이트
+      // 전체 데이터를 상태에 저장 (프론트엔드에서 슬라이싱)
       setReservations(prev => ({
         ...prev,
         [status]: allReservations
       }));
       
-      console.log(`✅ ${status} 예약 내역 로드 완료:`, allReservations.length, '건');
+      // 각 탭별 전체 개수 업데이트
+      setReservationCounts(prev => ({
+        ...prev,
+        [status]: totalItems
+      }));
+      
+      console.log(`✅ ${status} 예약 내역 로드 완료:`, allReservations.length, '건 (전체)');
       
     } catch (error) {
       console.error('❌ 예약 내역 로드 실패:', error);
@@ -527,8 +532,7 @@ function MyPageContent() {
   // 페이지 변경 핸들러 (프론트엔드 페이지네이션)
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
-    // 이미 loadAllReservations에서 전체 데이터를 가져왔으므로 API 호출 불필요
-    // 프론트엔드에서 슬라이싱만 처리
+    // 전체 데이터는 이미 loadAllReservations에서 불러왔으므로 프론트엔드에서만 페이지 변경
   };
 
   // 예약 관련 핸들러
@@ -542,7 +546,11 @@ function MyPageContent() {
 
   const handleHotelLocation = (reservation) => {
     // 호텔 상세 페이지로 이동 (호텔 위치 정보 포함)
-    router.push(`/hotel/${reservation.id}?tab=location`);
+    if (reservation.contentId) {
+      router.push(`/hotel/${reservation.contentId}?tab=location`);
+    } else {
+      alert('호텔 정보를 찾을 수 없습니다.');
+    }
   };
 
   const handleCancelReservation = (reservation) => {
@@ -694,6 +702,31 @@ function MyPageContent() {
     return status?.status === 2; // status 2 = 거래완료
   };
 
+  // 중고거래 아이템 목록 로드
+  const loadUsedItems = async (customerIdx = null) => {
+    const targetCustomerIdx = customerIdx || userData?.customerIdx;
+    if (!targetCustomerIdx) {
+      console.log('중고거래 아이템 로드 스킵: customerIdx 없음', { customerIdx, userData });
+      return;
+    }
+    console.log('중고거래 아이템 로드 시작: customerIdx=', targetCustomerIdx);
+    setUsedItemsLoading(true);
+    try {
+      const { usedAPI } = await import('@/lib/api/used');
+      const response = await usedAPI.getSellerItems();
+      console.log('중고거래 아이템 API 응답:', response);
+      const items = response?.items || [];
+      console.log('중고거래 아이템 개수:', items.length);
+      setUsedItems(items);
+    } catch (error) {
+      console.error('중고거래 아이템 로드 실패:', error);
+      console.error('에러 상세:', error.response?.data || error.message);
+      setUsedItems([]);
+    } finally {
+      setUsedItemsLoading(false);
+    }
+  };
+
   // 신고 상태 확인
   const checkReportStatus = async (reservations) => {
     const { centerAPI } = await import('@/lib/api/center');
@@ -736,14 +769,21 @@ function MyPageContent() {
   const [reservationCounts, setReservationCounts] = useState({
     upcoming: 0,
     completed: 0,
-    cancelled: 0
+    cancelled: 0,
+    used: 0 // 중고거래 탭 추가
   });
+
+  // 탭 변경 시 첫 페이지로 리셋 (전체 데이터는 이미 loadAllReservations에서 불러옴)
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [reservationTab]);
 
   // 정렬 상태 (각 탭별로 관리)
   const [sortBy, setSortBy] = useState({
     upcoming: 'checkinAsc',    // 이용 예정: 체크인 날짜 가까운 순
     completed: 'checkoutDesc', // 이용 완료: 최근 방문 순
-    cancelled: 'checkinDesc'  // 취소/환불: 체크인 날짜 최신순
+    cancelled: 'checkinDesc', // 취소/환불: 체크인 날짜 최신순
+    used: 'all'                // 중고거래: 전체 (상태 필터)
   });
 
   // 리뷰 작성 완료된 예약 ID Set (빠른 조회를 위해)
@@ -834,6 +874,8 @@ function MyPageContent() {
           reservationCounts={reservationCounts}
           reservations={reservations}
           diningReservations={diningReservations}
+          usedItems={usedItems}
+          usedItemsLoading={usedItemsLoading}
           sortBy={sortBy}
           setSortBy={setSortBy}
           currentPage={currentPage}
