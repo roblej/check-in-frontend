@@ -121,7 +121,7 @@ const HotelSearchResults = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleHotelDetailOpen(hotel.contentId);
+                        handleHotelClick(hotel.contentId);
                       }}
                       className="bg-[#3B82F6] hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                     >
