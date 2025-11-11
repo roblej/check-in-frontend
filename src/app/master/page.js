@@ -73,29 +73,21 @@ const MasterDashboard = () => {
     {
       title: '등록된 호텔',
       value: `${hotelCount}`,
-      change: '+8',
-      changeType: 'positive',
       icon: <Hotel size={40} />
     },
     {
       title: '총 회원수',
       value: `${customerCount}`,
-      change: '+234',
-      changeType: 'positive',
       icon: <Users size={40} />
     },
     {
       title: '오늘 예약',
       value: `${pendingCount}`,
-      change: '+12%',
-      changeType: 'positive',
       icon: <CalendarCheck size={40} />
     },
     {
       title: '총 매출',
       value: `₩${formatCurrency(paymentAmount)}`,
-      change: '+18%',
-      changeType: 'positive',
       icon: <CircleDollarSign size={40} />
     }
   ];
@@ -153,14 +145,6 @@ const MasterDashboard = () => {
                   <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
                 </div>
                 <div className="text-2xl sm:text-3xl">{stat.icon}</div>
-              </div>
-              <div className="mt-2 sm:mt-4 flex items-center">
-                <span className={`text-xs sm:text-sm font-medium ${
-                  stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {stat.change}
-                </span>
-                <span className="text-xs sm:text-sm text-gray-500 ml-1">전일 대비</span>
               </div>
             </div>
           ))}

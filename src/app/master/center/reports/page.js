@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
 import { AlertTriangle, Clock, CheckCircle, AlertCircle, X } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
+import { hotelAPI } from '@/lib/api/hotel';
+import { getFocusSection } from '@/constants/reportMapping';
+import HotelInfoView from '@/components/master/reports/HotelInfoView';
 
 export default function ReportListPage() {
   const [reports, setReports] = useState([]);
@@ -22,6 +25,16 @@ export default function ReportListPage() {
   const [selectedReport, setSelectedReport] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [activeTab, setActiveTab] = useState('report'); // 'report' | 'hotel'
+  
+  // 호텔 정보 상태
+  const [hotelInfo, setHotelInfo] = useState(null);
+  const [hotelLoading, setHotelLoading] = useState(false);
+  const [focusInfo, setFocusInfo] = useState(null);
+  
+  // 신고 누적 정보 상태
+  const [reportStats, setReportStats] = useState(null);
+  const [previousReports, setPreviousReports] = useState([]);
 
   useEffect(() => {
     fetchReports();
@@ -30,39 +43,29 @@ export default function ReportListPage() {
   const fetchReports = async () => {
     try {
       // 백엔드 API 호출 - 신고 카테고리만 조회
-      const response = await fetch('/api/center/posts/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          mainCategory: '신고',
-          page: 0,
-          size: 1000,
-        }),
+      const response = await axiosInstance.post('/center/posts/search', {
+        mainCategory: '신고',
+        page: 0,
+        size: 1000,
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        // 백엔드 데이터를 프론트엔드 형식으로 변환
-        const convertedReports = (data.content || []).map(item => ({
-          id: item.centerIdx,
-          username: item.customerIdx ? `고객${item.customerIdx}` : '관리자',
-          email: item.customerIdx ? `customer${item.customerIdx}@test.com` : 'admin@test.com',
-          title: item.title,
-          content: item.content,
-          contentId: item.contentId, // 호텔 ID
-          status: item.status === 0 ? 'pending' : item.status === 1 ? 'in_progress' : 'completed',
-          category: item.subCategory || '기타',
-          priority: item.priority === 0 ? 'low' : item.priority === 1 ? 'medium' : 'high',
-          createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
-          answeredAt: item.status === 2 ? item.updatedAt : null,
-          assignedTo: item.adminIdx ? `관리자${item.adminIdx}` : '미배정',
-        }));
-        setReports(convertedReports);
-      } else {
-        setReports([]);
-      }
+      const data = response.data;
+      // 백엔드 데이터를 프론트엔드 형식으로 변환
+      const convertedReports = (data.content || []).map(item => ({
+        id: item.centerIdx,
+        username: item.customerIdx ? `고객${item.customerIdx}` : '관리자',
+        email: item.customerIdx ? `customer${item.customerIdx}@test.com` : 'admin@test.com',
+        title: item.title,
+        content: item.content,
+        contentId: item.contentId, // 호텔 ID
+        status: item.status === 0 ? 'pending' : item.status === 1 ? 'in_progress' : 'completed',
+        category: item.subCategory || '기타',
+        priority: item.priority === 0 ? 'low' : item.priority === 1 ? 'medium' : 'high',
+        createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
+        answeredAt: item.status === 2 ? item.updatedAt : null,
+        assignedTo: item.adminIdx ? `관리자${item.adminIdx}` : '미배정',
+      }));
+      setReports(convertedReports);
     } catch (error) {
       console.error('신고 조회 실패:', error);
       setReports([]);
@@ -166,11 +169,132 @@ export default function ReportListPage() {
   };
 
   // 모달 열기
-  const handleViewReport = (reportId) => {
+  const handleViewReport = async (reportId) => {
     const report = reports.find(r => r.id === reportId);
     setSelectedReport(report);
     setIsModalOpen(true);
     setReplyText('');
+    setActiveTab('report');
+    setHotelInfo(null);
+    setFocusInfo(null);
+    setReportStats(null);
+    setPreviousReports([]);
+    
+    // 신고가 호텔 관련이고 contentId가 있으면 호텔 정보 및 신고 통계 미리 로드
+    if (report && report.contentId) {
+      // 기본 포커스 정보 계산 (객실명 없이)
+      const initialFocus = getFocusSection({
+        category: report.category,
+        content: report.content
+      });
+      setFocusInfo(initialFocus);
+      
+      // 호텔 정보 및 신고 통계 병렬 로드
+      Promise.all([
+        loadHotelInfo(report.contentId, report),
+        loadReportStats(report.contentId, reportId)
+      ]);
+    }
+  };
+  
+  // 호텔 정보 로드 (호텔명과 전화번호만)
+  const loadHotelInfo = async (contentId, report) => {
+    if (!contentId) return;
+    
+    try {
+      setHotelLoading(true);
+      
+      // 호텔 기본 정보만 로드 (이미지 제외)
+      const hotelResponse = await hotelAPI.getHotelDetail(contentId).catch(err => {
+        console.error('호텔 기본 정보 로드 실패:', err);
+        return null;
+      });
+      
+      // 호텔 기본 정보
+      const hotelData = hotelResponse?.data || hotelResponse;
+      if (!hotelData) {
+        setHotelInfo(null);
+        return;
+      }
+      
+      const hotelInfoData = {
+        title: hotelData.title,
+        tel: hotelData.tel || '-'
+      };
+      
+      setHotelInfo(hotelInfoData);
+      
+      // 포커스 정보는 기본 정보만 표시하므로 간소화
+      if (report) {
+        const focus = {
+          section: 'basicInfo',
+          highlight: ['basicInfo'],
+          autoScroll: false,
+          categoryCode: null,
+          matchedRooms: []
+        };
+        setFocusInfo(focus);
+      }
+    } catch (error) {
+      console.error('호텔 정보 로드 실패:', error);
+      setHotelInfo(null);
+    } finally {
+      setHotelLoading(false);
+    }
+  };
+  
+  // 신고 통계 및 이전 신고 내역 로드
+  const loadReportStats = async (contentId, currentReportId) => {
+    if (!contentId) return;
+    
+    try {
+      // 해당 호텔의 모든 신고 조회
+      const response = await axiosInstance.post('/center/posts/search', {
+        mainCategory: '신고',
+        contentId: contentId,
+        page: 0,
+        size: 1000,
+      });
+      
+      const data = response.data;
+      const allReports = (data.content || []).map(item => ({
+        id: item.centerIdx,
+        title: item.title,
+        category: item.subCategory || '기타',
+        createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
+        status: item.status === 0 ? 'pending' : item.status === 1 ? 'in_progress' : 'completed'
+      }));
+      
+      // 현재 신고 제외한 이전 신고들
+      const previous = allReports.filter(r => r.id !== currentReportId);
+      
+      // 통계 계산
+      const stats = {
+        totalCount: allReports.length,
+        previousCount: previous.length,
+        pendingCount: previous.filter(r => r.status === 'pending').length,
+        completedCount: previous.filter(r => r.status === 'completed').length,
+        categoryCounts: previous.reduce((acc, r) => {
+          acc[r.category] = (acc[r.category] || 0) + 1;
+          return acc;
+        }, {})
+      };
+      
+      setReportStats(stats);
+      setPreviousReports(previous);
+    } catch (error) {
+      console.error('신고 통계 로드 실패:', error);
+    }
+  };
+  
+  // 탭 변경 핸들러
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    
+    // 호텔 정보 탭으로 전환 시 호텔 정보 로드
+    if (tab === 'hotel' && selectedReport?.contentId && !hotelInfo) {
+      loadHotelInfo(selectedReport.contentId, selectedReport);
+    }
   };
 
   // 모달 닫기
@@ -178,6 +302,9 @@ export default function ReportListPage() {
     setIsModalOpen(false);
     setSelectedReport(null);
     setReplyText('');
+    setActiveTab('report');
+    setHotelInfo(null);
+    setFocusInfo(null);
   };
 
   // 답변 전송
@@ -466,60 +593,155 @@ export default function ReportListPage() {
         {/* 상세보기 모달 */}
         {isModalOpen && selectedReport && (
           <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+            <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
               {/* 모달 헤더 */}
-              <div className="flex justify-between items-center p-6 border-b border-gray-200">
-                <div>
+              <div className="flex justify-between items-start p-6 border-b border-gray-200">
+                <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900">{selectedReport.title}</h3>
                   <p className="text-sm text-gray-600">{selectedReport.username} • {selectedReport.email}</p>
                   {selectedReport.contentId && (
                     <p className="text-sm text-gray-500 mt-1">호텔 ID: {selectedReport.contentId}</p>
                   )}
+                  
+                  {/* 신고 누적 통계 */}
+                  {reportStats && (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">총 신고 횟수: </span>
+                          <span className={`font-bold ${
+                            reportStats.totalCount >= 10 ? 'text-red-600' :
+                            reportStats.totalCount >= 5 ? 'text-orange-600' :
+                            'text-gray-900'
+                          }`}>
+                            {reportStats.totalCount}건
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">이전 신고: </span>
+                          <span className="font-semibold text-gray-900">{reportStats.previousCount}건</span>
+                        </div>
+                        {reportStats.totalCount >= 5 && (
+                          <span className="px-2 py-1 text-xs font-semibold bg-red-100 text-red-800 rounded">
+                            ⚠️ 경고 대상
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={handleCloseModal}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 ml-4"
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
+              {/* 탭 네비게이션 */}
+              {selectedReport.contentId && (
+                <div className="border-b border-gray-200">
+                  <nav className="flex space-x-8 px-6" aria-label="Tabs">
+                    <button
+                      onClick={() => handleTabChange('report')}
+                      className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                        activeTab === 'report'
+                          ? 'border-red-500 text-red-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      신고 내용
+                    </button>
+                    <button
+                      onClick={() => handleTabChange('hotel')}
+                      className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                        activeTab === 'hotel'
+                          ? 'border-red-500 text-red-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      호텔 정보
+                    </button>
+                  </nav>
+                </div>
+              )}
+
               {/* 모달 내용 */}
               <div className="p-6 overflow-y-auto max-h-[60vh]">
-                <div className="space-y-6">
-                  {/* 신고 정보 */}
-                  <div className="bg-red-50 rounded-lg p-4">
-                    <div className="flex items-center gap-4 mb-3">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedReport.status)}`}>
-                        {getStatusText(selectedReport.status)}
-                      </span>
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(selectedReport.priority)}`}>
-                        {getPriorityText(selectedReport.priority)}
-                      </span>
-                      <span className="text-xs text-gray-500">{selectedReport.category}</span>
+                {activeTab === 'report' ? (
+                  <div className="space-y-6">
+                    {/* 신고 정보 */}
+                    <div className="bg-red-50 rounded-lg p-4">
+                      <div className="flex items-center gap-4 mb-3">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedReport.status)}`}>
+                          {getStatusText(selectedReport.status)}
+                        </span>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(selectedReport.priority)}`}>
+                          {getPriorityText(selectedReport.priority)}
+                        </span>
+                        <span className="text-xs text-gray-500">{selectedReport.category}</span>
+                      </div>
+                      <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {selectedReport.content}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-2">
+                        작성일: {selectedReport.createdAt}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                      {selectedReport.content}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-2">
-                      작성일: {selectedReport.createdAt}
-                    </div>
-                  </div>
 
-                  {/* 답변 입력 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      처리 내용 작성
-                    </label>
-                    <textarea
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      placeholder="신고에 대한 처리 내용을 작성해주세요..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
-                      rows={6}
-                    />
+                    {/* 이전 신고 내역 */}
+                    {previousReports.length > 0 && (
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <h4 className="text-sm font-semibold text-blue-900 mb-3">
+                          이전 신고 내역 ({previousReports.length}건)
+                        </h4>
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                          {previousReports.slice(0, 5).map((prevReport) => (
+                            <div key={prevReport.id} className="text-xs bg-white p-2 rounded border border-blue-100">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-medium text-gray-900">{prevReport.title}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-xs ${
+                                  prevReport.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                  prevReport.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {prevReport.status === 'completed' ? '처리완료' :
+                                   prevReport.status === 'in_progress' ? '처리중' : '대기중'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <span>{prevReport.category}</span>
+                                <span>•</span>
+                                <span>{prevReport.createdAt}</span>
+                              </div>
+                            </div>
+                          ))}
+                          {previousReports.length > 5 && (
+                            <p className="text-xs text-gray-500 text-center mt-2">
+                              외 {previousReports.length - 5}건 더...
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 답변 입력 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        처리 내용 작성
+                      </label>
+                      <textarea
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="신고에 대한 처리 내용을 작성해주세요..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                        rows={6}
+                      />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <HotelInfoView hotelInfo={hotelInfo} />
+                )}
               </div>
 
               {/* 모달 푸터 */}
@@ -530,12 +752,14 @@ export default function ReportListPage() {
                 >
                   취소
                 </button>
-                <button
-                  onClick={handleSendReply}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                >
-                  처리 완료
-                </button>
+                {activeTab === 'report' && (
+                  <button
+                    onClick={handleSendReply}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    처리 완료
+                  </button>
+                )}
               </div>
             </div>
           </div>
