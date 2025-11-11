@@ -48,7 +48,8 @@ const UsedPaymentSuccessContent = () => {
           cash: 0,
           point: 0,
           card: parseInt(urlAmount, 10),
-          tradeIdx: urlUsedTradeIdx || '',
+          tradeIdx: urlUsedTradeIdx || '', // 호환성을 위해 유지
+          usedTradeIdx: urlUsedTradeIdx || '', // 백엔드 검증에 필수
           usedItemIdx: urlUsedItemIdx || '',
           hotelName: urlHotelName || '호텔명',
           roomType: urlRoomType || '객실 정보',
@@ -83,6 +84,17 @@ const UsedPaymentSuccessContent = () => {
       }
 
       const parsedData = JSON.parse(storedSuccessData);
+      const usedTradeIdx = parsedData.tradeIdx || parsedData.usedTradeIdx;
+      
+      // 결제 완료 플래그 설정 (결제 페이지에서 이탈 시 취소하지 않도록)
+      if (usedTradeIdx) {
+        sessionStorage.setItem(`used_payment_completed_${usedTradeIdx}`, '1');
+        console.log('✅ 성공 페이지에서 결제 완료 플래그 설정:', {
+          usedTradeIdx,
+          flag: `used_payment_completed_${usedTradeIdx}`
+        });
+      }
+      
       setSuccessData({
         orderId: parsedData.orderId || '',
         amount: parsedData.amount || 0,
@@ -130,12 +142,22 @@ const UsedPaymentSuccessContent = () => {
         const orderId = parsedData.orderId;
         const paymentKey = parsedData.paymentKey;
         const amount = parsedData.amount || parsedData.card;
-        const usedTradeIdx = parsedData.usedTradeIdx || parsedData.tradeIdx;
+        // usedTradeIdx 우선, 없으면 tradeIdx 사용
+        const usedTradeIdxRaw = parsedData.usedTradeIdx || parsedData.tradeIdx;
         const usedItemIdx = parsedData.usedItemIdx;
         
-        // 필요한 정보가 없으면 스킵
-        if (!orderId || !paymentKey || !usedTradeIdx) {
-          console.warn('백엔드 검증을 위한 필수 정보가 없습니다:', { orderId, paymentKey, usedTradeIdx });
+        // usedTradeIdx가 유효한 숫자인지 확인
+        const usedTradeIdx = usedTradeIdxRaw ? (typeof usedTradeIdxRaw === 'number' ? usedTradeIdxRaw : parseInt(usedTradeIdxRaw, 10)) : null;
+        
+        // 필요한 정보가 없거나 유효하지 않으면 스킵
+        if (!orderId || !paymentKey || !usedTradeIdx || isNaN(usedTradeIdx) || usedTradeIdx <= 0) {
+          console.warn('백엔드 검증을 위한 필수 정보가 없습니다:', { 
+            orderId, 
+            paymentKey, 
+            usedTradeIdx: usedTradeIdxRaw,
+            parsedUsedTradeIdx: usedTradeIdx,
+            parsedData: parsedData
+          });
           return;
         }
 
@@ -161,7 +183,7 @@ const UsedPaymentSuccessContent = () => {
           totalPrice: amount || parsedData.amount, // 총 결제 금액
           type: "used_hotel",
           customerIdx: parsedData.customerIdx || null,
-          usedTradeIdx: parseInt(usedTradeIdx, 10), // URL 파라미터 또는 세션 스토리지에서 읽은 값
+          usedTradeIdx: usedTradeIdx, // 이미 위에서 파싱됨
           usedItemIdx: usedItemIdx ? parseInt(usedItemIdx, 10) : (parsedData.usedItemIdx ? parseInt(parsedData.usedItemIdx, 10) : null),
           hotelName: parsedData.hotelName || '',
           roomType: parsedData.roomType || '',

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { mypageAPI } from '@/lib/api/mypage';
 import axiosInstance from '@/lib/axios';
 import { userAPI } from '@/lib/api/user';
@@ -19,6 +19,32 @@ import RecentHotelsSection from './components/recent/RecentHotelsSection';
 import CouponSection from './components/coupon/CouponSection';
 import InquirySection from './components/inquiry/InquirySection';
 import Pagination from '@/components/Pagination';
+
+const FavoritesPreviewFallback = () => (
+  <section className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        <div className="w-6 h-6 rounded-full bg-gray-200 animate-pulse" />
+        <div className="h-5 w-24 bg-gray-200 rounded animate-pulse" />
+      </div>
+      <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+    </div>
+    <div className="space-y-3">
+      {[1, 2, 3].map((index) => (
+        <div
+          key={index}
+          className="flex gap-3 p-3 border border-gray-200 rounded-lg animate-pulse"
+        >
+          <div className="w-16 h-16 bg-gray-200 rounded-lg" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 bg-gray-200 rounded w-2/3" />
+            <div className="h-3 bg-gray-100 rounded w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+);
 
 const formatCouponDate = (isoString) => {
   if (!isoString) return '';
@@ -500,7 +526,7 @@ function MyPageContent() {
         ...prev,
         [status]: allReservations
       }));
-      
+
       // 각 탭별 전체 개수 업데이트
       setReservationCounts(prev => ({
         ...prev,
@@ -508,7 +534,7 @@ function MyPageContent() {
       }));
       
       console.log(`✅ ${status} 예약 내역 로드 완료:`, allReservations.length, '건 (전체)');
-      
+
     } catch (error) {
       console.error('❌ 예약 내역 로드 실패:', error);
       
@@ -616,7 +642,7 @@ function MyPageContent() {
   };
 
   // 문의 내역 불러오기 (내가 작성한 문의/신고만)
-  const loadInquiries = async () => {
+  const loadInquiries = useCallback(async () => {
     if (!userData?.customerIdx) {
       return;
     }
@@ -654,7 +680,12 @@ function MyPageContent() {
     } finally {
       setInquiriesLoading(false);
     }
-  };
+  }, [userData?.customerIdx]);
+
+  // userData가 설정되면 문의 내역 로드
+  useEffect(() => {
+    loadInquiries();
+  }, [loadInquiries]);
 
   const handleRegisterTrade = (reservation) => {
     // 양도거래 등록 페이지로 이동 (예약 정보 전달)
@@ -860,7 +891,7 @@ function MyPageContent() {
         <TabQueryHandler onTabChange={setReservationTab} />
       </Suspense>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <ProfileHeader
           userData={userData}
           onEditProfile={() => router.push('/mypage/edit')}
@@ -915,9 +946,11 @@ function MyPageContent() {
           onNavigateToReviews={() => router.push('/mypage/reviews')}
         />
 
-        <div className="grid md:grid-cols-2 gap-6 mb-6">
-          <FavoritesSection likedHotels={likedHotels} />
-          <RecentHotelsSection recentHotels={recentHotels} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+          <Suspense fallback={<FavoritesPreviewFallback />}>
+            <FavoritesSection />
+          </Suspense>
+          <RecentHotelsSection recentHotels={[]} />
         </div>
 
         <CouponSection
