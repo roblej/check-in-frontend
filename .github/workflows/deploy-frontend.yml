@@ -34,6 +34,7 @@ jobs:
         NEXT_TOUR_KEY: ${{secrets.NEXT_TOUR_KEY}}
         BACKEND_HOST: ${{ secrets.BACKEND_HOST }}
         ENABLE_HTTPS_REDIRECT: ${{ secrets.ENABLE_HTTPS_REDIRECT}}
+        NEXT_PUBLIC_ROOM_IMAGE_BASE_URL: ${{ secrets.NEXT_PUBLIC_ROOM_IMAGE_BASE_URL }}
     
     # SSH 키 설정
     - name: Set up SSH Key
@@ -101,6 +102,7 @@ jobs:
         echo "TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}" >> .env.production
         echo "NEXT_TOUR_KEY=${{ secrets.NEXT_TOUR_KEY }}" >> .env.production
         echo "BACKEND_HOST=${{ secrets.BACKEND_HOST }}" >> .env.production
+        echo "NEXT_PUBLIC_ROOM_IMAGE_BASE_URL=${{ secrets.NEXT_PUBLIC_ROOM_IMAGE_BASE_URL }}" >> .env.production
         # 4. Docker Compose로 서비스 시작
         sudo docker-compose --env-file .env.production up -d --build
         
