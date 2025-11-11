@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
-import axios from "axios";
+import axios from "@/lib/axios";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useAdminStore } from "@/stores/adminStore";
 import { setAdminIdxCookie } from "@/utils/cookieUtils";
@@ -22,7 +22,7 @@ function AdminLoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   let accessToken = "";
 
-  const login_url = "/api/login";
+  const login_url = "/login";
 
   // 입력 필드 변경 핸들러
   const handleChange = (e) => {
@@ -98,7 +98,7 @@ function AdminLoginForm() {
 
           // admin의 type 조회 (마스터인지 관리자인지 확인)
           try {
-            const typeResponse = await fetch(`/api/admin/type/${adminIdx}`, {
+            const typeResponse = await fetch(`/admin/type/${adminIdx}`, {
               credentials: 'include'
             });
             

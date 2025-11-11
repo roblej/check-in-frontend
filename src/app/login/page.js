@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Header from "@/components/Header";
 import styles from "./login.module.css";
-import axios from "axios";
+import axios from "@/lib/axios";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useAdminStore } from "@/stores/adminStore";
 import { setAdminIdxCookie } from "@/utils/cookieUtils";
@@ -66,7 +66,7 @@ function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false);
   let accessToken = "";
 
-  const login_url = "/api/login";
+  const login_url = "/login";
   // OAuth2 요청은 nginx가 프록시하므로 현재 도메인 사용
   // 프로덕션: https://checkinn.store/oauth2/authorization/naver
   // 로컬: http://localhost:3333/oauth2/authorization/naver (Next.js rewrites 사용)
