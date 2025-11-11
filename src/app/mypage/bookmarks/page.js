@@ -275,7 +275,7 @@ export default function MyBookmarkPage() {
 
   const handleCopyShareUrl = useCallback(() => {
     if (shareSelectedIds.length === 0) return;
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3333';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://checkinn.store';
     const shareUrl = `${origin}/share?idxs=${shareSelectedIds.join(',')}`;
 
     const finalize = () => {
