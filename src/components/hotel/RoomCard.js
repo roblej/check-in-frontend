@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
@@ -16,9 +17,14 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
   const [galleryOpen, setGalleryOpen] = useState(false); // 갤러리 모달 열림 상태
   const [imageCount, setImageCount] = useState(0); // 이미지 개수
 
-  // S3 기본 경로 상수
-  const BASE_URL =
-    "https://sist-checkin.s3.ap-northeast-2.amazonaws.com/hotelroom/";
+  const roomImageBaseUrl = process.env.NEXT_PUBLIC_ROOM_IMAGE_BASE_URL;
+  if (!roomImageBaseUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_ROOM_IMAGE_BASE_URL 환경 변수가 설정되어 있지 않습니다."
+    );
+  }
+  const ensureTrailingSlash = (url) => (url.endsWith("/") ? url : `${url}/`);
+  const baseUrlWithSlash = ensureTrailingSlash(roomImageBaseUrl);
 
   /**
    * @function getImageUrl
@@ -26,8 +32,9 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
    * 이미지가 없을 경우 default.jpg 로 대체
    */
   const getImageUrl = (imageUrl) => {
-    if (!imageUrl) return `${BASE_URL}default.jpg`;
-    return `${BASE_URL}${imageUrl}`;
+    if (!imageUrl) return `${baseUrlWithSlash}default.jpg`;
+    if (imageUrl.startsWith("http")) return imageUrl;
+    return `${baseUrlWithSlash}${imageUrl}`;
   };
 
   // 숙박 일수에 따른 총 가격 계산 (추가 요금 포함)
@@ -169,12 +176,14 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
         >
           {room.imageUrl ? (
             <>
-              <img
+              <Image
                 src={getImageUrl(room.imageUrl)}
                 alt={room.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                onError={(e) => {
-                  e.currentTarget.src = `${BASE_URL}default.jpg`;
+                fill
+                sizes="(max-width: 768px) 100vw, 256px"
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                onError={(event) => {
+                  event.currentTarget.src = `${baseUrlWithSlash}default.jpg`;
                 }}
               />
               {/* 이미지 개수 표시 */}

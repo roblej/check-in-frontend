@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { hotelAPI } from "@/lib/api/hotel";
 import { getOrCreateSessionId } from "@/lib/redisSession";
 
@@ -20,8 +20,15 @@ import { getOrCreateSessionId } from "@/lib/redisSession";
 
 //////////////***********여기는 패널창***************
 const LiveViewerCount = ({ contentId, showAlways = true, priceLabel }) => {
-  // sessionStorage에서 캐싱된 sessionId 가져오기
-  const sessionId = getOrCreateSessionId();
+  const [sessionId, setSessionId] = useState(null);
+  const [isClient, setIsClient] = useState(false);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    setIsClient(true);
+    const session = getOrCreateSessionId();
+    setSessionId(session);
+  }, []);
 
   // 진입 시 세션 등록 + 초기 조회수 조회(이탈 시 수동 제거하지 않음 - TTL 3분으로 자동 만료)
   useEffect(() => {
@@ -31,8 +38,12 @@ const LiveViewerCount = ({ contentId, showAlways = true, priceLabel }) => {
       try {
         // 1. Redis 세션 등록
         await hotelAPI.enterHotel(contentId, sessionId);
-        // 2. 초기 조회수 조회 (TTL 갱신도 함께)
-        await hotelAPI.getHotelViews(contentId, sessionId);
+        const response = await hotelAPI.getHotelViews(contentId, sessionId);
+        const initialViews = response?.data?.views ?? response ?? 0;
+        queryClient.setQueryData(
+          ["hotelViews", contentId, sessionId],
+          initialViews
+        );
       } catch (err) {
         // 타임아웃이나 네트워크 오류는 무시 (조회수는 선택적 기능)
         console.warn("조회자 초기화 실패 (무시됨):", err.message);
@@ -40,12 +51,11 @@ const LiveViewerCount = ({ contentId, showAlways = true, priceLabel }) => {
     };
 
     initSession();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contentId]);
+  }, [contentId, sessionId, queryClient]);
 
   // TanStack Query로 20초마다 실시간 조회수 refetch (sessionId 전달하여 TTL 갱신)
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["hotelViews", contentId],
+    queryKey: ["hotelViews", contentId, sessionId],
     queryFn: async () => {
       try {
         const response = await hotelAPI.getHotelViews(contentId, sessionId);
@@ -56,9 +66,18 @@ const LiveViewerCount = ({ contentId, showAlways = true, priceLabel }) => {
       }
     },
     refetchInterval: 20000, // 20초마다 자동 갱신
-    enabled: !!contentId && !!sessionId, // contentId와 sessionId가 있을 때만 쿼리 실행
+    enabled: isClient && !!contentId && !!sessionId, // contentId와 sessionId가 있을 때만 쿼리 실행
     retry: false, // 실패 시 재시도 안 함
   });
+
+  if (!isClient || !sessionId) {
+    return (
+      <div className="flex items-center gap-1 text-sm text-gray-600">
+        <div className="w-2 h-2 bg-gray-300 rounded-full animate-pulse"></div>
+        <span>조회수 로딩 중...</span>
+      </div>
+    );
+  }
 
   // 로딩 상태일 때는 로딩 표시
   if (isLoading) {

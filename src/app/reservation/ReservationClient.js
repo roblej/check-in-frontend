@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
@@ -9,6 +10,15 @@ import { reservationLockAPI } from "@/lib/api/reservation";
 import TossPaymentsWidget from "@/components/payment/TossPaymentsWidget";
 import PaymentSummary from "@/components/payment/PaymentSummary";
 import ReservationLockWrapper from "./ReservationLockWrapper";
+
+const roomImageBaseUrl = process.env.NEXT_PUBLIC_ROOM_IMAGE_BASE_URL;
+if (!roomImageBaseUrl) {
+  throw new Error(
+    "NEXT_PUBLIC_ROOM_IMAGE_BASE_URL 환경 변수가 설정되어 있지 않습니다."
+  );
+}
+const ensureTrailingSlash = (url) => (url.endsWith("/") ? url : `${url}/`);
+const ROOM_IMAGE_BASE_URL = ensureTrailingSlash(roomImageBaseUrl);
 
 const ReservationClient = () => {
   const router = useRouter();
@@ -610,6 +620,17 @@ const ReservationClient = () => {
 
   if (gateContent) return gateContent;
 
+  const getRoomImageUrl = () => {
+    if (!paymentDraft?.meta) return `${ROOM_IMAGE_BASE_URL}default.jpg`;
+    const imagePath = paymentDraft.meta.roomImage;
+    if (!imagePath || imagePath.trim() === "") {
+      return `${ROOM_IMAGE_BASE_URL}default.jpg`;
+    }
+    return imagePath.startsWith("http")
+      ? imagePath
+      : `${ROOM_IMAGE_BASE_URL}${imagePath}`;
+  };
+
   return (
     <ReservationLockWrapper>
       {({ handleCancel }) => (
@@ -632,21 +653,18 @@ const ReservationClient = () => {
                   예약 정보
                 </h2>
                 <div className="flex gap-6">
-                  {(() => {
-                    const S3_BASE_URL =
-                      "https://sist-checkin.s3.ap-northeast-2.amazonaws.com/hotelroom/";
-                    const roomImageUrl = paymentDraft.meta.roomImage
-                      ? `${S3_BASE_URL}${paymentDraft.meta.roomImage}`
-                      : `${S3_BASE_URL}default.jpg`;
-
-                    return (
-                      <img
-                        src={roomImageUrl}
-                        alt={paymentDraft.meta.roomName || "호텔 이미지"}
-                        className="w-40 h-36 object-cover rounded-lg"
-                      />
-                    );
-                  })()}
+                  <div className="relative h-36 w-40 flex-shrink-0 overflow-hidden rounded-lg">
+                    <Image
+                      src={getRoomImageUrl()}
+                      alt={paymentDraft.meta.roomName || "호텔 이미지"}
+                      fill
+                      sizes="160px"
+                      className="object-cover"
+                      onError={(event) => {
+                        event.currentTarget.src = `${ROOM_IMAGE_BASE_URL}default.jpg`;
+                      }}
+                    />
+                  </div>
 
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -845,8 +863,8 @@ const ReservationClient = () => {
                   )}
                 </div>
                 <p className="mt-4 text-xs text-gray-600">
-                  포인트 악용 시 계정 정지 및 환불 불가합니다. 쿠폰은
-                  환불 시 복구되지 않습니다.
+                  포인트 악용 시 계정 정지 및 환불 불가합니다. 쿠폰은 환불 시
+                  복구되지 않습니다.
                 </p>
               </div>
 
