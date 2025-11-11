@@ -127,6 +127,7 @@ const TossPaymentsWidget = ({
             : "hotel_reservation");
 
         // 중고 호텔은 공통 결제 검증 API를 사용하지 않고, 호출자(onSuccess)에서 처리하도록 위임
+        // onSuccess에서 검증 후 /used-payment/success로 리다이렉트
         if (resolvedType === "used_hotel") {
           setIsVerifying(false);
           if (onSuccess) onSuccess(paymentResult);
@@ -213,24 +214,11 @@ const TossPaymentsWidget = ({
         if (result?.success) {
           if (onSuccess) onSuccess(result);
           
-          // 양도거래(used_hotel)의 경우 sessionStorage에 저장하고 URL 파라미터 없이 리다이렉트
-          if (resolvedType === "used_hotel") {
-            const paymentData = {
-              orderId: result.orderId,
-              paymentKey: result.paymentKey,
-              amount: result.amount,
-              type: resolvedType,
-              usedTradeIdx: hotelInfo?.usedTradeIdx,
-              usedItemIdx: hotelInfo?.usedItemIdx,
-            };
-            sessionStorage.setItem("used_payment_success_data", JSON.stringify(paymentData));
-            router.push("/checkout/success");
-          } else {
-            // 호텔/다이닝 예약은 기존대로 URL 파라미터 사용
-            router.push(
-              `/checkout/success?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}&type=${resolvedType}`
-            );
-          }
+          // 호텔/다이닝 예약은 URL 파라미터 사용
+          // used_hotel은 onSuccess에서 처리하므로 여기서는 처리하지 않음
+          router.push(
+            `/checkout/success?orderId=${result.orderId}&paymentKey=${result.paymentKey}&amount=${result.amount}&type=${resolvedType}`
+          );
         } else {
           if (onFail) onFail(new Error(result?.message || "결제 검증 실패"));
           router.push(
