@@ -5,13 +5,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import axios from '@/lib/axios';
 
 /**
- * 간단한 중고 호텔 결제 성공 페이지 (페이지 이탈 감지 로직 제거)
+ * 중고 호텔 결제 성공 페이지
+ * - DB 업데이트가 완료될 때까지 로딩 표시
+ * - 백엔드 검증 완료 후 성공 화면 표시
  */
 const UsedPaymentSuccessContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [successData, setSuccessData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [isVerified, setIsVerified] = useState(false);
   const processedRef = useRef(false);
 
   // 세션 스토리지에서 결제 성공 정보 가져오기 (URL 파라미터는 사용하지 않음)
@@ -106,24 +110,26 @@ const UsedPaymentSuccessContent = () => {
         salePrice: parsedData.salePrice || 0,
         discountAmount: parsedData.discountAmount || 0,
       });
-      setLoading(false);
+      // 로딩 상태는 백엔드 검증이 완료될 때까지 유지
     } catch (error) {
       console.error('결제 정보 읽기 실패:', error);
-      alert('결제 정보를 불러오는 중 오류가 발생했습니다.');
-      router.push('/used');
+      setError('결제 정보를 불러오는 중 오류가 발생했습니다.');
+      setLoading(false);
     }
   }, [router, searchParams]);
 
-  // 모바일 리다이렉트 플로우 또는 데스크톱에서 백엔드 검증이 실패한 경우 백엔드 검증 수행
+  // 백엔드 검증 수행 (DB 업데이트)
   useEffect(() => {
     const run = async () => {
-      if (processedRef.current) return;
+      if (processedRef.current || !successData) return;
       
       try {
-        // sessionStorage에서 결제 정보 가져오기 (URL 파라미터는 이미 제거됨)
+        // sessionStorage에서 결제 정보 가져오기
         const storedSuccessData = sessionStorage.getItem('used_payment_success_data');
         if (!storedSuccessData) {
           console.error('결제 성공 정보를 찾을 수 없습니다.');
+          setError('결제 정보를 찾을 수 없습니다.');
+          setLoading(false);
           return;
         }
         
@@ -146,7 +152,7 @@ const UsedPaymentSuccessContent = () => {
           }
         }
         
-        // 필요한 정보가 없거나 유효하지 않으면 스킵
+        // 필요한 정보가 없거나 유효하지 않으면 에러
         if (!orderId || !paymentKey || !usedTradeIdx || isNaN(usedTradeIdx) || usedTradeIdx <= 0) {
           console.warn('백엔드 검증을 위한 필수 정보가 없습니다:', { 
             orderId, 
@@ -155,6 +161,8 @@ const UsedPaymentSuccessContent = () => {
             parsedUsedTradeIdx: usedTradeIdx,
             parsedData: parsedData
           });
+          setError('결제 검증에 필요한 정보가 없습니다.');
+          setLoading(false);
           return;
         }
 
@@ -162,6 +170,8 @@ const UsedPaymentSuccessContent = () => {
         const processedKey = `used_payment_processed_${orderId}`;
         if (sessionStorage.getItem(processedKey) === '1') {
           console.log('이미 처리된 결제입니다:', orderId);
+          setIsVerified(true);
+          setLoading(false);
           return;
         }
 
@@ -208,12 +218,14 @@ const UsedPaymentSuccessContent = () => {
           console.log('✅ 백엔드 검증 및 DB 업데이트 완료:', response.data);
           console.log('✅ DB 업데이트 완료:');
           console.log('  - UsedPay 저장 완료');
-          console.log('  - UsedTrade 상태 업데이트 완료 (ststus=1)');
+          console.log('  - UsedTrade 상태 업데이트 완료 (status=1)');
           console.log('  - UsedItem 상태 업데이트 완료 (status=2)');
           sessionStorage.setItem(processedKey, '1');
           processedRef.current = true;
+          setIsVerified(true);
         } else {
           console.error('백엔드 검증 실패:', response.data.message);
+          setError(response.data.message || '결제 검증에 실패했습니다.');
         }
       } catch (error) {
         console.error('백엔드 검증 오류:', error);
@@ -222,14 +234,17 @@ const UsedPaymentSuccessContent = () => {
           response: error.response?.data,
           status: error.response?.status,
         });
+        setError(error.response?.data?.message || error.message || '결제 검증 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
       }
     };
     
-    // 데이터가 로드된 후에 실행
-    if (!loading && successData) {
+    // successData가 로드된 후에 실행
+    if (successData && !processedRef.current) {
       run();
     }
-  }, [loading, successData]);
+  }, [successData]);
 
   const handleNavigateToUsed = () => {
     sessionStorage.removeItem('used_payment_success_data');
@@ -243,10 +258,54 @@ const UsedPaymentSuccessContent = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">결제 정보를 불러오는 중...</p>
+      <div className="flex-1 flex items-center justify-center py-20">
+        <div className="text-center max-w-md px-4">
+          {/* 로딩 애니메이션 */}
+          <div className="relative mb-8">
+            <div className="animate-spin rounded-full h-20 w-20 border-b-4 border-blue-600 mx-auto"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-blue-600 text-2xl">💳</div>
+            </div>
+          </div>
+
+          {/* 로딩 메시지 */}
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            결제를 처리하고 있습니다
+          </h2>
+          <p className="text-gray-600 mb-6">
+            결제 정보를 검증하고 데이터베이스를 업데이트 중입니다.
+            <br />
+            잠시만 기다려주세요...
+          </p>
+
+          {/* 안내 메시지 */}
+          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-800">
+              ⚠️ 페이지를 새로고침하거나 닫지 마세요
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-20">
+        <div className="max-w-md mx-auto px-4">
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+            <div className="text-red-500 text-6xl mb-4">❌</div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              결제 처리 실패
+            </h1>
+            <p className="text-red-600 mb-6">{error}</p>
+            <button
+              onClick={() => router.push('/used')}
+              className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              중고 호텔로 돌아가기
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -258,16 +317,16 @@ const UsedPaymentSuccessContent = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
-      {/* 성공 메시지 */}
-      <div className="text-center mb-12">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
-          <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">🎉 중고 호텔 결제 완료!</h1>
-        <p className="text-xl text-gray-600">안전하게 거래가 완료되었습니다.</p>
-      </div>
+          {/* 성공 메시지 */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
+              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">🎉 중고 호텔 결제 완료!</h1>
+            <p className="text-xl text-gray-600">안전하게 거래가 완료되었습니다.</p>
+          </div>
 
       {/* 결제 정보 카드 */}
       <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
