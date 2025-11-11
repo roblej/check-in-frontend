@@ -101,5 +101,11 @@ export const usedAPI = {
     const response = await axiosInstance.get('/customer/me');
     return response.data;
   },
+
+  // 판매자의 양도거래 아이템 목록 조회 (마이페이지용)
+  getSellerItems: async () => {
+    const response = await axiosInstance.get('/used/seller/items');
+    return response.data;
+  },
 };
 

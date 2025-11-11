@@ -17,7 +17,9 @@ import { getOrCreateSessionId } from "@/lib/redisSession";
  * @param {string} contentId - 호텔 ID
  * @param {boolean} showAlways - 항상 표시할지 여부 (기본값: false, 조회수가 0일 때는 숨김)
  */
-const LiveViewerCount = ({ contentId, showAlways = true }) => {
+
+//////////////***********여기는 패널창***************
+const LiveViewerCount = ({ contentId, showAlways = true, priceLabel }) => {
   // sessionStorage에서 캐싱된 sessionId 가져오기
   const sessionId = getOrCreateSessionId();
 
@@ -61,7 +63,7 @@ const LiveViewerCount = ({ contentId, showAlways = true }) => {
   // 로딩 상태일 때는 로딩 표시
   if (isLoading) {
     return (
-      <div className="flex items-center gap-1 text-sm text-gray-400">
+      <div className="flex items-center gap-1 text-sm text-gray-600">
         <div className="w-2 h-2 bg-gray-300 rounded-full animate-pulse"></div>
         <span>조회수 로딩 중...</span>
       </div>
@@ -71,7 +73,7 @@ const LiveViewerCount = ({ contentId, showAlways = true }) => {
   // 에러 상태일 때는 에러 표시
   if (isError) {
     return (
-      <div className="flex items-center gap-1 text-sm text-gray-400">
+      <div className="flex items-center gap-1 text-sm text-gray-600">
         <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
         <span>조회수 확인 불가</span>
       </div>

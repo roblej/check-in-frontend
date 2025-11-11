@@ -140,14 +140,14 @@ export async function GET(req) {
       const rNum = parseInt(radius, 10) || 0;
       if (rNum < 10000) {
         try {
-          url = `${endpointV2}?${buildParams({ radius: Math.min(10000, (rNum || 3000) * 2) }).toString()}`;
-          res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
-          if (res.ok) {
-            const j2 = await res.json();
+        url = `${endpointV2}?${buildParams({ radius: Math.min(10000, (rNum || 3000) * 2) }).toString()}`;
+        res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+        if (res.ok) {
+          const j2 = await res.json();
             if (j2?.response?.header?.resultCode === "0000" || j2?.response?.header?.resultCode === undefined) {
-              items = j2?.response?.body?.items?.item && Array.isArray(j2.response.body.items.item)
-                ? j2.response.body.items.item
-                : j2?.response?.body?.items?.item ? [j2.response.body.items.item] : [];
+          items = j2?.response?.body?.items?.item && Array.isArray(j2.response.body.items.item)
+            ? j2.response.body.items.item
+            : j2?.response?.body?.items?.item ? [j2.response.body.items.item] : [];
             }
           }
         } catch (e) {
@@ -158,14 +158,14 @@ export async function GET(req) {
 
     if (!items.length && contentTypeId) {
       try {
-        url = `${endpointV2}?${buildParams({ contentTypeId: null }).toString()}`;
-        res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
-        if (res.ok) {
-          const j3 = await res.json();
+      url = `${endpointV2}?${buildParams({ contentTypeId: null }).toString()}`;
+      res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+      if (res.ok) {
+        const j3 = await res.json();
           if (j3?.response?.header?.resultCode === "0000" || j3?.response?.header?.resultCode === undefined) {
-            items = j3?.response?.body?.items?.item && Array.isArray(j3.response.body.items.item)
-              ? j3.response.body.items.item
-              : j3?.response?.body?.items?.item ? [j3.response.body.items.item] : [];
+        items = j3?.response?.body?.items?.item && Array.isArray(j3.response.body.items.item)
+          ? j3.response.body.items.item
+          : j3?.response?.body?.items?.item ? [j3.response.body.items.item] : [];
           }
         }
       } catch (e) {

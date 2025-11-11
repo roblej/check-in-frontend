@@ -38,31 +38,6 @@ const HotelDining = ({ dining, addDining, removeDining, updateDining, errors, re
     updateDining(diningId, { ...currentItem, [field]: value });
   };
 
-  // operatingHours를 openTime과 closeTime으로 변환
-  const handleOperatingHoursChange = (diningId, operatingHours) => {
-    if (readOnly) return;
-    
-    // "09:00 - 21:00" 형식 파싱
-    const parts = operatingHours.split('-').map(s => s.trim());
-    if (parts.length === 2) {
-      updateDiningItem(diningId, 'openTime', parts[0]);
-      updateDiningItem(diningId, 'closeTime', parts[1]);
-    } else {
-      // 단일 값이면 openTime으로 설정
-      updateDiningItem(diningId, 'openTime', operatingHours);
-    }
-  };
-
-  // openTime과 closeTime을 operatingHours 형식으로 변환
-  const getOperatingHours = (item) => {
-    if (item.openTime && item.closeTime) {
-      return `${item.openTime} - ${item.closeTime}`;
-    }
-    if (item.openTime) {
-      return item.openTime;
-    }
-    return "";
-  };
 
   const slotDurationOptions = [
     { value: 15, label: '15분' },
@@ -110,28 +85,45 @@ const HotelDining = ({ dining, addDining, removeDining, updateDining, errors, re
         </div>
       ) : (
         <div className="space-y-6">
-          {dining.map((item, index) => (
-            <div key={item.id || item.diningIdx} className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm">
-              {/* 다이닝 헤더 */}
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900">
-                    {item.name || `다이닝 ${index + 1}`}
-                  </h4>
-                  {item.diningIdx && (
-                    <span className="text-xs text-gray-500 mt-1">ID: {item.diningIdx}</span>
+          {dining.map((item, index) => {
+            const isInactive = item.status === 1; // status가 1이면 비활성화
+            
+            return (
+              <div 
+                key={item.id || item.diningIdx} 
+                className={`border rounded-lg p-6 shadow-sm ${
+                  isInactive 
+                    ? 'border-orange-300 bg-orange-50 opacity-75' 
+                    : 'border-gray-200 bg-white'
+                }`}
+              >
+                {/* 다이닝 헤더 */}
+                <div className="flex justify-between items-start mb-6">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className={`text-lg font-semibold ${isInactive ? 'text-gray-600' : 'text-gray-900'}`}>
+                        {item.name || `다이닝 ${index + 1}`}
+                      </h4>
+                      {isInactive && (
+                        <span className="px-2 py-0.5 text-xs font-medium bg-orange-200 text-orange-800 rounded-full">
+                          비활성화
+                        </span>
+                      )}
+                    </div>
+                    {item.diningIdx && (
+                      <span className="text-xs text-gray-500 mt-1">ID: {item.diningIdx}</span>
+                    )}
+                  </div>
+                  {!readOnly && (
+                    <button
+                      onClick={() => removeDiningItem(item.id || item.diningIdx)}
+                      className="flex items-center gap-1 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                    >
+                      <Trash2 size={16} />
+                      삭제
+                    </button>
                   )}
                 </div>
-                {!readOnly && (
-                  <button
-                    onClick={() => removeDiningItem(item.id || item.diningIdx)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                  >
-                    <Trash2 size={16} />
-                    삭제
-                  </button>
-                )}
-              </div>
 
               {/* 다이닝 정보 입력 폼 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -154,20 +146,99 @@ const HotelDining = ({ dining, addDining, removeDining, updateDining, errors, re
                 </div>
 
                 {/* 운영시간 */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Clock size={16} className="inline mr-1" />
                     운영시간 <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={getOperatingHours(item)}
-                    onChange={(e) => handleOperatingHoursChange(item.id || item.diningIdx, e.target.value)}
-                    disabled={readOnly}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    placeholder="예: 07:00 - 10:00"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">형식: HH:mm - HH:mm (예: 09:00 - 21:00)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* 오픈 시간 */}
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1.5">오픈 시간</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={item.openTime ? item.openTime.split(':')[0] || '' : ''}
+                          onChange={(e) => {
+                            const hour = e.target.value.padStart(2, '0');
+                            const minute = item.openTime ? (item.openTime.split(':')[1] || '00') : '00';
+                            updateDiningItem(item.id || item.diningIdx, 'openTime', `${hour}:${minute}`);
+                          }}
+                          disabled={readOnly}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
+                        >
+                          <option value="">시</option>
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <option key={i} value={String(i).padStart(2, '0')}>
+                              {i}시
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={item.openTime ? item.openTime.split(':')[1] || '' : ''}
+                          onChange={(e) => {
+                            const minute = e.target.value.padStart(2, '0');
+                            const hour = item.openTime ? (item.openTime.split(':')[0] || '00') : '00';
+                            updateDiningItem(item.id || item.diningIdx, 'openTime', `${hour}:${minute}`);
+                          }}
+                          disabled={readOnly}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
+                        >
+                          <option value="">분</option>
+                          {[0, 15, 30, 45].map(m => (
+                            <option key={m} value={String(m).padStart(2, '0')}>
+                              {m}분
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    
+                    {/* 마감 시간 */}
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1.5">마감 시간</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={item.closeTime ? item.closeTime.split(':')[0] || '' : ''}
+                          onChange={(e) => {
+                            const hour = e.target.value.padStart(2, '0');
+                            const minute = item.closeTime ? (item.closeTime.split(':')[1] || '00') : '00';
+                            updateDiningItem(item.id || item.diningIdx, 'closeTime', `${hour}:${minute}`);
+                          }}
+                          disabled={readOnly}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
+                        >
+                          <option value="">시</option>
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <option key={i} value={String(i).padStart(2, '0')}>
+                              {i}시
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={item.closeTime ? item.closeTime.split(':')[1] || '' : ''}
+                          onChange={(e) => {
+                            const minute = e.target.value.padStart(2, '0');
+                            const hour = item.closeTime ? (item.closeTime.split(':')[0] || '00') : '00';
+                            updateDiningItem(item.id || item.diningIdx, 'closeTime', `${hour}:${minute}`);
+                          }}
+                          disabled={readOnly}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
+                        >
+                          <option value="">분</option>
+                          {[0, 15, 30, 45].map(m => (
+                            <option key={m} value={String(m).padStart(2, '0')}>
+                              {m}분
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  {item.openTime && item.closeTime && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      선택된 시간: {item.openTime} - {item.closeTime}
+                    </p>
+                  )}
                 </div>
 
                 {/* 예약 시간 단위 */}
@@ -248,14 +319,19 @@ const HotelDining = ({ dining, addDining, removeDining, updateDining, errors, re
                     운영 상태
                   </label>
                   <select
-                    value={item.status !== undefined ? item.status : 1}
+                    value={item.status !== undefined ? item.status : 0}
                     onChange={(e) => updateDiningItem(item.id || item.diningIdx, 'status', parseInt(e.target.value))}
                     disabled={readOnly}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
-                    <option value={1}>활성</option>
-                    <option value={0}>비활성</option>
+                    <option value={0}>활성</option>
+                    <option value={1}>비활성</option>
                   </select>
+                  {isInactive && (
+                    <p className="text-xs text-orange-600 mt-1">
+                      ⚠️ 비활성화된 다이닝은 고객에게 표시되지 않습니다. 다시 활성화하려면 상태를 변경하세요.
+                    </p>
+                  )}
                 </div>
 
                 {/* 설명 */}
@@ -317,7 +393,8 @@ const HotelDining = ({ dining, addDining, removeDining, updateDining, errors, re
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
