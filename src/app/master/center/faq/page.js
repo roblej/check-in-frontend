@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import MasterLayout from '@/components/master/MasterLayout';
 import Pagination from '@/components/Pagination';
 import { HelpCircle, Plus, Edit, Trash2, Eye, EyeOff, Search, Filter } from 'lucide-react';
+import axiosInstance from '@/lib/axios';
 
 
 const categories = ['전체', '예약/취소', '회원정보', '결제', '기술지원', '호텔정보'];
@@ -38,46 +39,33 @@ export default function FaqManagementPage() {
   const fetchFaqs = useCallback(async (page = 0, size = pageSize, searchTerm = null, category = null) => {
     try {
       // 백엔드 API 호출 - FAQ 카테고리만 조회 (페이지네이션 적용)
-      const response = await fetch('/api/center/posts/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          mainCategory: 'FAQ',
-          subCategory: category,
-          title: searchTerm,
-          page: page,
-          size: size,
-        }),
+      const response = await axiosInstance.post('/center/posts/search', {
+        mainCategory: 'FAQ',
+        subCategory: category,
+        title: searchTerm,
+        page: page,
+        size: size,
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        
-        // 백엔드 데이터를 프론트엔드 형식으로 변환
-        const convertedFaqs = (data.content || []).map(item => ({
-          id: item.centerIdx,
-          centerIdx: item.centerIdx,
-          category: item.subCategory || '기타',
-          question: item.title,
-          answer: item.content,
-          order: item.priority || 0,
-          createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
-          updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleString('ko-KR') : '',
-        }));
-        
-        setFaqs(convertedFaqs);
-        
-        // 페이지네이션 정보 업데이트
-        setTotalPages(data.totalPages || 0);
-        setTotalElements(data.totalElements || 0);
-      } else {
-        // API 실패시 목 데이터 사용
-        setFaqs(mockFaqList);
-        setTotalPages(Math.ceil(mockFaqList.length / pageSize));
-        setTotalElements(mockFaqList.length);
-      }
+      const data = response.data;
+      
+      // 백엔드 데이터를 프론트엔드 형식으로 변환
+      const convertedFaqs = (data.content || []).map(item => ({
+        id: item.centerIdx,
+        centerIdx: item.centerIdx,
+        category: item.subCategory || '기타',
+        question: item.title,
+        answer: item.content,
+        order: item.priority || 0,
+        createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
+        updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleString('ko-KR') : '',
+      }));
+      
+      setFaqs(convertedFaqs);
+      
+      // 페이지네이션 정보 업데이트
+      setTotalPages(data.totalPages || 0);
+      setTotalElements(data.totalElements || 0);
     } catch (error) {
       console.error('FAQ 조회 실패:', error);
       // 에러시 목 데이터 사용
@@ -173,18 +161,12 @@ export default function FaqManagementPage() {
       case 'delete':
         if (confirm(`${faq.question}를 삭제하시겠습니까?`)) {
           try {
-            const response = await fetch(`/api/center/posts/${faq.centerIdx}`, {
-              method: 'DELETE',
-            });
+            await axiosInstance.delete(`/center/posts/${faq.centerIdx}`);
 
-            if (response.ok) {
-              alert(`${faq.question}를 삭제했습니다.`);
-              const searchValue = activeSearchTerm.trim() || null;
-              const categoryValue = activeCategoryFilter === '전체' ? null : activeCategoryFilter;
-              fetchFaqs(currentPage, pageSize, searchValue, categoryValue); // 목록 새로고침
-            } else {
-              alert('FAQ 삭제에 실패했습니다.');
-            }
+            alert(`${faq.question}를 삭제했습니다.`);
+            const searchValue = activeSearchTerm.trim() || null;
+            const categoryValue = activeCategoryFilter === '전체' ? null : activeCategoryFilter;
+            fetchFaqs(currentPage, pageSize, searchValue, categoryValue); // 목록 새로고침
           } catch (error) {
             console.error('FAQ 삭제 실패:', error);
             alert('FAQ 삭제 중 오류가 발생했습니다.');
@@ -203,31 +185,21 @@ export default function FaqManagementPage() {
     }
     
     try {
-      const response = await fetch('/api/center/posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: newFaq.question,
-          adminIdx: 2,
-          mainCategory: 'FAQ',
-          subCategory: newFaq.category,
-          content: newFaq.answer,
-          priority: 0,
-        }),
+      await axiosInstance.post('/center/posts', {
+        title: newFaq.question,
+        adminIdx: 2,
+        mainCategory: 'FAQ',
+        subCategory: newFaq.category,
+        content: newFaq.answer,
+        priority: 0,
       });
 
-      if (response.ok) {
-        alert('새 FAQ가 추가되었습니다.');
-        setNewFaq({ category: '', question: '', answer: '', order: 0 });
-        setIsAddModalOpen(false);
-        const searchValue = activeSearchTerm.trim() || null;
-        const categoryValue = activeCategoryFilter === '전체' ? null : activeCategoryFilter;
-        fetchFaqs(currentPage, pageSize, searchValue, categoryValue); // 목록 새로고침
-      } else {
-        alert('FAQ 추가에 실패했습니다.');
-      }
+      alert('새 FAQ가 추가되었습니다.');
+      setNewFaq({ category: '', question: '', answer: '', order: 0 });
+      setIsAddModalOpen(false);
+      const searchValue = activeSearchTerm.trim() || null;
+      const categoryValue = activeCategoryFilter === '전체' ? null : activeCategoryFilter;
+      fetchFaqs(currentPage, pageSize, searchValue, categoryValue); // 목록 새로고침
     } catch (error) {
       console.error('FAQ 추가 실패:', error);
       alert('FAQ 추가 중 오류가 발생했습니다.');
@@ -241,31 +213,21 @@ export default function FaqManagementPage() {
     }
     
     try {
-      const response = await fetch(`/api/center/posts/${editingFaq.centerIdx}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: editingFaq.question,
-          mainCategory: 'FAQ',
-          subCategory: editingFaq.category,
-          content: editingFaq.answer,
-          priority: editingFaq.order,
-          status: 2, // 완료 상태
-        }),
+      await axiosInstance.put(`/center/posts/${editingFaq.centerIdx}`, {
+        title: editingFaq.question,
+        mainCategory: 'FAQ',
+        subCategory: editingFaq.category,
+        content: editingFaq.answer,
+        priority: editingFaq.order,
+        status: 2, // 완료 상태
       });
 
-      if (response.ok) {
-        alert('FAQ가 수정되었습니다.');
-        setIsEditModalOpen(false);
-        setEditingFaq(null);
-        const searchValue = activeSearchTerm.trim() || null;
-        const categoryValue = activeCategoryFilter === '전체' ? null : activeCategoryFilter;
-        fetchFaqs(currentPage, pageSize, searchValue, categoryValue); // 목록 새로고침
-      } else {
-        alert('FAQ 수정에 실패했습니다.');
-      }
+      alert('FAQ가 수정되었습니다.');
+      setIsEditModalOpen(false);
+      setEditingFaq(null);
+      const searchValue = activeSearchTerm.trim() || null;
+      const categoryValue = activeCategoryFilter === '전체' ? null : activeCategoryFilter;
+      fetchFaqs(currentPage, pageSize, searchValue, categoryValue); // 목록 새로고침
     } catch (error) {
       console.error('FAQ 수정 실패:', error);
       alert('FAQ 수정 중 오류가 발생했습니다.');
