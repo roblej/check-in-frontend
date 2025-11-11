@@ -10,16 +10,16 @@ const Footer = () => {
         <div className="flex flex-col lg:flex-row justify-between gap-8 mb-8">
           {/* 좌측 링크 */}
           <div className="flex flex-wrap gap-4 text-sm">
-            <a href="#" className="font-semibold text-gray-900 hover:text-[#3B82F6] transition-colors">
+            <a href="/center?tab=terms" className="font-semibold text-gray-900 hover:text-[#3B82F6] transition-colors">
               개인정보처리방침
             </a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">
+            <a href="/center?tab=terms" className="text-gray-600 hover:text-gray-900 transition-colors">
               이용약관
             </a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">
+            <a href="/center" className="text-gray-600 hover:text-gray-900 transition-colors">
               고객센터
             </a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors">
+            <a href="/center?tab=terms" className="text-gray-600 hover:text-gray-900 transition-colors">
               사업자정보 공개
             </a>
           </div>

@@ -26,13 +26,13 @@ const HotelPolicy = ({ checkInTime = "", checkOutTime = "" }) => {
         )}
         <div>
           <h3 className="font-semibold mb-2">취소 정책</h3>
-          <p className="text-sm">• 체크인 3일 전까지 무료 취소 가능</p>
-          <p className="text-sm">• 이후 취소 시 1박 요금이 부과됩니다</p>
+          <p className="text-sm">• 체크인 7일 전및 체크인 당일은 무료 취소 가능</p>
+          <p className="text-sm">• 그 외에는 정책에 따라 추가 수수료 및 환불 불가</p>
         </div>
         <div>
           <h3 className="font-semibold mb-2">아동 정책</h3>
           <p className="text-sm">• 모든 연령의 아동 투숙 가능</p>
-          <p className="text-sm">• 7세 이하 아동 무료 (기존 침대 이용 시)</p>
+          <p className="text-sm">• 투숙인원의 추가인원당 2만원의 추가요금이 발생 할 수 있습니다.</p>
         </div>
         <div>
           <h3 className="font-semibold mb-2">반려동물</h3>

@@ -2,10 +2,28 @@ import axios from "axios";
 
 // 서버/클라이언트 구분하여 적절한 인스턴스 반환
 const getAxiosInstance = () => {
+  try {
   // 서버 사이드
   if (typeof window === 'undefined') {
+      // 서버 사이드에서는 백엔드로 직접 요청
+      // BACKEND_HOST 환경 변수 사용 (없으면 NEXT_PUBLIC_API_URL 사용)
+      let apiUrl = process.env.BACKEND_HOST || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888';
+      
+      // api.checkinn.store를 백엔드 직접 주소로 변경
+      // 또는 checkinn.store를 백엔드 직접 주소로 변경
+      if (apiUrl && (apiUrl.includes('api.checkinn.store') || apiUrl.includes('checkinn.store'))) {
+        // 프로덕션 환경에서는 BACKEND_HOST 사용 (백엔드 EC2 직접 주소)
+        // 로컬에서는 localhost:8888 사용
+        apiUrl = process.env.BACKEND_HOST || 'http://localhost:8888';
+      }
+      
+      // apiUrl이 유효한지 확인
+      if (!apiUrl || typeof apiUrl !== 'string') {
+        apiUrl = 'http://localhost:8888';
+      }
+      
     return axios.create({
-      baseURL: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/api`,
+        baseURL: `${apiUrl}/api`,
       timeout: 10000,
       headers: {
         "Content-Type": "application/json",
@@ -23,10 +41,40 @@ const getAxiosInstance = () => {
     },
     withCredentials: true,
   });
+  } catch (error) {
+    // 에러 발생 시 기본 인스턴스 반환
+    console.error('Axios 인스턴스 생성 실패:', error);
+    return axios.create({
+      baseURL: "/api",
+      timeout: 10000,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      withCredentials: true,
+    });
+  }
 };
 
 // Axios 인스턴스 생성
-const axiosInstance = getAxiosInstance();
+let axiosInstance;
+try {
+  axiosInstance = getAxiosInstance();
+  // 인스턴스가 유효한지 확인
+  if (!axiosInstance || typeof axiosInstance.interceptors === 'undefined') {
+    throw new Error('Invalid axios instance');
+  }
+} catch (error) {
+  console.error('Axios 인스턴스 초기화 실패:', error);
+  // 기본 인스턴스로 폴백
+  axiosInstance = axios.create({
+    baseURL: "/api",
+    timeout: 10000,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    withCredentials: true,
+  });
+}
 
 // 요청 인터셉터
 axiosInstance.interceptors.request.use(

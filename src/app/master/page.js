@@ -174,7 +174,10 @@ const MasterDashboard = () => {
                 <h3 className="text-sm sm:text-lg font-semibold text-gray-900">최근 호텔 등록 요청</h3>
                 <p className="text-xs sm:text-sm text-gray-600">승인 대기중인 호텔 등록 요청 {hotelRequestCount}건 (가장 먼저 요청을 한 호텔 5개만 보여집니다)</p>
               </div>
-              <button className="text-[#7C3AED] hover:text-purple-800 text-xs sm:text-sm font-medium">
+              <button 
+                onClick={() => router.push('/master/hotel-approval')}
+                className="text-[#7C3AED] hover:text-purple-800 text-xs sm:text-sm font-medium"
+              >
                 전체 보기
               </button>
             </div>
@@ -248,13 +251,13 @@ const MasterDashboard = () => {
         {/* 빠른 액션 버튼들 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6">
-            <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-4">호텔 승인 관리</h3>
-            <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4">대기중인 호텔 등록을 승인하세요</p>
+            <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-4">호텔 목록</h3>
+            <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4">등록된 호텔 목록을 확인하세요</p>
             <button 
-              onClick={() => router.push('/master/hotel-approval')}
+              onClick={() => router.push('/master/hotels')}
               className="w-full bg-[#7C3AED] text-white py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm"
             >
-              승인 관리
+              호텔 목록
             </button>
           </div>
           

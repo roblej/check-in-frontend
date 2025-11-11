@@ -257,7 +257,9 @@ const HeroSection = () => {
         </div>
 
         {/* 검색 폼과 중고거래 버튼 */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-200">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* 검색 폼 - 8/10 비율 */}
+          <div className="flex-[8] bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-200">
           {/* 검색 타입 탭 */}
           <div className="flex gap-2 mb-6">
             <button
@@ -396,12 +398,13 @@ const HeroSection = () => {
             onClick={handleSearch}
             variant="primary"
             size="lg"
-            className="w-full mb-4"
+              className="w-full mb-4 md:mb-0"
           >
             검색
           </Button>
 
-          {/* 예약 양도 버튼 - 검색 버튼과 같은 크기 */}
+            {/* 모바일용 예약 양도 버튼 - 검색 패널 안쪽, 검색 버튼 아래에 표시 */}
+            <div className="md:hidden">
           <button
             onClick={() => (window.location.href = "/used")}
             className="w-full bg-gradient-to-br from-orange-400 to-red-500 hover:from-orange-500 hover:to-red-600 text-white rounded-lg shadow-lg py-3 px-4 border border-orange-300 transition-all duration-300 hover:shadow-xl hover:scale-[1.02] flex items-center justify-center gap-2 font-semibold text-base"
@@ -409,6 +412,27 @@ const HeroSection = () => {
             <span className="text-2xl">🏨</span>
             <span>예약 양도 중고거래</span>
           </button>
+            </div>
+          </div>
+
+          {/* 중고거래 시스템 버튼 - 2/10 비율 (데스크톱만 우측에 표시) */}
+          <div className="hidden md:flex flex-[2] flex-col justify-center">
+            <button
+              onClick={() => (window.location.href = "/used")}
+              className="bg-gradient-to-br from-orange-400 to-red-500 hover:from-orange-500 hover:to-red-600 text-white rounded-2xl shadow-xl p-6 md:p-8 border border-orange-300 transition-all duration-300 hover:shadow-2xl hover:scale-105 h-full flex flex-col items-center justify-center"
+            >
+              <div className="text-4xl md:text-5xl mb-3">🏨</div>
+              <div className="text-center">
+                <div className="text-lg md:text-xl font-bold mb-2">
+                  예약 양도
+                </div>
+                <div className="text-sm md:text-base opacity-90">중고거래</div>
+                <div className="text-xs md:text-sm mt-2 opacity-75">
+                  싼 값에 양도
+                </div>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     </section>
