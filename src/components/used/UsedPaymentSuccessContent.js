@@ -39,72 +39,28 @@ const UsedPaymentSuccessContent = () => {
           usedTradeIdx: urlUsedTradeIdx
         });
         
-        // 기존 세션 스토리지에서 결제 정보 확인 (usedTradeIdx 등 추가 정보를 위해)
-        const existingData = sessionStorage.getItem('used_payment_success_data');
-        let existingParsed = null;
-        if (existingData) {
-          try {
-            existingParsed = JSON.parse(existingData);
-            console.log('🔍 기존 세션 스토리지 데이터 확인:', existingParsed);
-          } catch (e) {
-            console.warn('기존 세션 스토리지 데이터 파싱 실패:', e);
-          }
-        }
-        
-        // used_payment_current를 통해 최신 거래 정보 확인
-        const currentTradeIdx = sessionStorage.getItem('used_payment_current');
-        let currentTradeData = null;
-        if (currentTradeIdx) {
-          try {
-            const tradeDataKey = `used_payment_${currentTradeIdx}`;
-            const tradeData = sessionStorage.getItem(tradeDataKey);
-            if (tradeData) {
-              currentTradeData = JSON.parse(tradeData);
-              console.log('🔍 최신 거래 정보 확인:', {
-                usedTradeIdx: currentTradeIdx,
-                tradeData: currentTradeData
-              });
-            }
-          } catch (e) {
-            console.warn('최신 거래 정보 파싱 실패:', e);
-          }
-        }
-        
-        // URL 파라미터로부터 데이터 구성 (기존 데이터와 병합)
+        // URL 파라미터로부터 데이터 구성
         const urlData = {
           orderId: urlOrderId,
           paymentKey: urlPaymentKey,
           amount: parseInt(urlAmount, 10),
           type: 'used_hotel',
-          cash: existingParsed?.cash || 0,
-          point: existingParsed?.point || 0,
+          cash: 0,
+          point: 0,
           card: parseInt(urlAmount, 10),
-          // usedTradeIdx는 URL 파라미터 우선, 없으면 최신 거래 정보, 그 다음 기존 세션 스토리지에서 가져오기
-          tradeIdx: urlUsedTradeIdx || currentTradeIdx || existingParsed?.tradeIdx || existingParsed?.usedTradeIdx || '',
-          usedTradeIdx: urlUsedTradeIdx || currentTradeIdx || existingParsed?.usedTradeIdx || existingParsed?.tradeIdx || '',
-          usedItemIdx: urlUsedItemIdx || currentTradeData?.usedItemIdx || existingParsed?.usedItemIdx || '',
-          customerIdx: existingParsed?.customerIdx || currentTradeData?.customerIdx || null,
-          customerName: existingParsed?.customerName || currentTradeData?.customerName || '',
-          customerEmail: existingParsed?.customerEmail || currentTradeData?.customerEmail || '',
-          customerPhone: existingParsed?.customerPhone || currentTradeData?.customerPhone || '',
-          hotelName: urlHotelName || existingParsed?.hotelName || currentTradeData?.hotelName || '호텔명',
-          hotelImage: existingParsed?.hotelImage || currentTradeData?.hotelImage || null,
-          hotelAddress: existingParsed?.hotelAddress || currentTradeData?.hotelAddress || '',
-          roomType: urlRoomType || existingParsed?.roomType || currentTradeData?.roomType || '객실 정보',
-          checkIn: urlCheckIn || existingParsed?.checkIn || currentTradeData?.checkIn || '',
-          checkOut: urlCheckOut || existingParsed?.checkOut || currentTradeData?.checkOut || '',
-          guests: existingParsed?.guests || currentTradeData?.guests || 0,
-          nights: existingParsed?.nights || currentTradeData?.nights || 0,
-          seller: existingParsed?.seller || currentTradeData?.seller || '',
-          originalPrice: existingParsed?.originalPrice || currentTradeData?.originalPrice || 0,
-          salePrice: existingParsed?.salePrice || currentTradeData?.salePrice || parseInt(urlAmount, 10),
-          discountAmount: existingParsed?.discountAmount || currentTradeData?.discountAmount || 0,
+          tradeIdx: urlUsedTradeIdx || '', // 호환성을 위해 유지
+          usedTradeIdx: urlUsedTradeIdx || '', // 백엔드 검증에 필수
+          usedItemIdx: urlUsedItemIdx || '',
+          hotelName: urlHotelName || '호텔명',
+          roomType: urlRoomType || '객실 정보',
+          checkIn: urlCheckIn || '',
+          checkOut: urlCheckOut || ''
         };
         
         // 세션 스토리지에 저장
         sessionStorage.setItem('used_payment_success_data', JSON.stringify(urlData));
         storedSuccessData = JSON.stringify(urlData);
-        console.log('✅ URL 파라미터 데이터를 세션 스토리지에 저장 (기존 데이터 병합):', urlData);
+        console.log('✅ URL 파라미터 데이터를 세션 스토리지에 저장:', urlData);
         
         // URL 파라미터 제거 (히스토리 API 사용)
         if (typeof window !== 'undefined') {
@@ -246,7 +202,7 @@ const UsedPaymentSuccessContent = () => {
           amount: requestData.amount,
           usedTradeIdx: requestData.usedTradeIdx,
           usedItemIdx: requestData.usedItemIdx,
-          source: '세션 스토리지'
+          source: urlOrderId ? 'URL 파라미터' : '세션 스토리지'
         });
 
         const response = await axios.post('/payments', requestData);

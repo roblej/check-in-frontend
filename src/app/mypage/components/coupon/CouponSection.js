@@ -33,11 +33,11 @@ export default function CouponSection({ couponTab, setCouponTab, coupons, isLoad
     }
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {currentCoupons.map((coupon) => (
           <div
             key={coupon.id}
-            className={`border-2 rounded-xl p-5 transition-all ${
+            className={`border-2 rounded-lg sm:rounded-xl p-4 sm:p-5 transition-all ${
               couponTab === 'available'
                 ? 'border-blue-300 bg-blue-50 hover:shadow-lg'
                 : 'border-gray-200 bg-gray-50'
@@ -67,18 +67,18 @@ export default function CouponSection({ couponTab, setCouponTab, coupons, isLoad
   };
 
   return (
-    <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <Gift className="w-6 h-6 text-blue-600" />
+    <section className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-200">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+          <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
           쿠폰 관리
         </h2>
       </div>
 
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
+      <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-200 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setCouponTab('available')}
-          className={`px-6 py-3 font-medium transition-all border-b-2 ${
+          className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
             couponTab === 'available'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -88,7 +88,7 @@ export default function CouponSection({ couponTab, setCouponTab, coupons, isLoad
         </button>
         <button
           onClick={() => setCouponTab('used')}
-          className={`px-6 py-3 font-medium transition-all border-b-2 ${
+          className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
             couponTab === 'used'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -98,7 +98,7 @@ export default function CouponSection({ couponTab, setCouponTab, coupons, isLoad
         </button>
         <button
           onClick={() => setCouponTab('expired')}
-          className={`px-6 py-3 font-medium transition-all border-b-2 ${
+          className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
             couponTab === 'expired'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'

@@ -260,19 +260,19 @@ export default function FavoritesSection() {
   }, [previewItems, loading, error, router]);
 
   return (
-    <section className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <Heart className="w-6 h-6 text-red-500" />
+    <section className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border border-gray-200">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+          <Heart className="w-5 h-5 sm:w-6 sm:h-6 text-red-500" />
           찜목록
         </h2>
         <button
           type="button"
           onClick={() => router.push('/mypage/bookmarks')}
-          className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+          className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
         >
           전체보기
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </button>
       </div>
       {content}

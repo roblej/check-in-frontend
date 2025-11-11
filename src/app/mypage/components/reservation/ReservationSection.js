@@ -197,21 +197,21 @@ export default function ReservationSection({
       return (
         <div
           key={reservation.id || reservation.reservationNumber}
-          className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all"
+          className="border border-gray-200 rounded-lg sm:rounded-xl p-4 sm:p-5 hover:shadow-md transition-all"
         >
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0 mb-3 sm:mb-4">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1 truncate">
                 {isDining
                   ? reservation.diningName || reservation.hotelName
                   : reservation.hotelName}
               </h3>
-              <p className="text-sm text-gray-500 flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                {reservation.location}
+              <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-1 truncate">
+                <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span className="truncate">{reservation.location}</span>
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               {reservationTab === "upcoming" &&
                 reservation.status === "예약확정" &&
                 !isTradeCompleted(reservation) &&
@@ -303,7 +303,7 @@ export default function ReservationSection({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4 text-xs sm:text-sm">
             {reservationType === "dining" ? (
               <>
                 <div>
@@ -371,28 +371,28 @@ export default function ReservationSection({
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             {reservationTab === "upcoming" && (
               <>
                 <button
                   onClick={() =>
                     handleReservationDetail(reservation.id, reservationType)
                   }
-                  className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                  className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm sm:text-base"
                 >
                   예약 상세보기
                 </button>
                 {!isDining && (
                   <button
                     onClick={() => handleHotelLocation(reservation)}
-                    className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                    className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm sm:text-base"
                   >
                     호텔 위치보기
                   </button>
                 )}
                 <button
                   onClick={() => handleCancelReservation(reservation)}
-                  className="flex-1 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors"
+                  className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors text-sm sm:text-base"
                 >
                   예약 취소
                 </button>
@@ -406,7 +406,7 @@ export default function ReservationSection({
                     handleWriteReview(reservation)
                   }
                   disabled={isReviewWritten(reservation)}
-                  className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors ${
+                  className={`flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                     isReviewWritten(reservation)
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-blue-600 hover:bg-blue-700 text-white"
@@ -417,7 +417,7 @@ export default function ReservationSection({
                 {!isDining && (
                   <button
                     onClick={() => handleRebook(reservation)}
-                    className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                    className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm sm:text-base"
                   >
                     재예약하기
                   </button>
@@ -463,21 +463,21 @@ export default function ReservationSection({
   return (
     <section
       id="reservation-section"
-      className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200"
+      className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-200"
     >
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-blue-600" />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
             예약 내역
           </h2>
-          <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1 w-full sm:w-auto">
             <button
               onClick={() => {
                 setReservationType("hotel");
                 setCurrentPage(0);
               }}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${
                 reservationType === "hotel"
                   ? "bg-white text-blue-600 shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
@@ -490,7 +490,7 @@ export default function ReservationSection({
                 setReservationType("dining");
                 setCurrentPage(0);
               }}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${
                 reservationType === "dining"
                   ? "bg-white text-blue-600 shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
@@ -500,7 +500,7 @@ export default function ReservationSection({
             </button>
           </div>
         </div>
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <select
             value={sortBy[reservationTab]}
             onChange={(e) => {
@@ -510,7 +510,7 @@ export default function ReservationSection({
               }));
               setCurrentPage(0);
             }}
-            className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+            className="appearance-none bg-white border border-gray-300 rounded-lg px-3 sm:px-4 py-2 pr-8 text-xs sm:text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer w-full sm:w-auto"
           >
             {reservationTab === "upcoming" && (
               <>
@@ -553,13 +553,13 @@ export default function ReservationSection({
         </div>
       </div>
 
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
+      <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-200 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => {
             setReservationTab("upcoming");
             setCurrentPage(0);
           }}
-          className={`px-6 py-3 font-medium transition-all border-b-2 ${
+          className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
             reservationTab === "upcoming"
               ? "border-blue-600 text-blue-600"
               : "border-transparent text-gray-500 hover:text-gray-700"
@@ -576,7 +576,7 @@ export default function ReservationSection({
             setReservationTab("completed");
             setCurrentPage(0);
           }}
-          className={`px-6 py-3 font-medium transition-all border-b-2 ${
+          className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
             reservationTab === "completed"
               ? "border-blue-600 text-blue-600"
               : "border-transparent text-gray-500 hover:text-gray-700"
@@ -593,7 +593,7 @@ export default function ReservationSection({
             setReservationTab("cancelled");
             setCurrentPage(0);
           }}
-          className={`px-6 py-3 font-medium transition-all border-b-2 ${
+          className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
             reservationTab === "cancelled"
               ? "border-blue-600 text-blue-600"
               : "border-transparent text-gray-500 hover:text-gray-700"
@@ -612,7 +612,7 @@ export default function ReservationSection({
               setReservationTab("used");
               setCurrentPage(0);
             }}
-            className={`px-6 py-3 font-medium transition-all border-b-2 ${
+            className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
               reservationTab === "used"
                 ? "border-blue-600 text-blue-600"
                 : "border-transparent text-gray-500 hover:text-gray-700"
