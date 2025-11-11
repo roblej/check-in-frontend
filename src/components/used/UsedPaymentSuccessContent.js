@@ -124,20 +124,48 @@ const UsedPaymentSuccessContent = () => {
     const run = async () => {
       if (processedRef.current || !successData) return;
       
-      try {
-        const orderId = successData.orderId;
-        const processedKey = `used_payment_processed_${orderId}`;
-        
-        // 이미 처리된 결제인지 확인 (데스크톱 Promise 플로우)
-        const isAlreadyProcessed = sessionStorage.getItem(processedKey) === '1';
-        
-        if (isAlreadyProcessed) {
-          console.log('✅ UsedPaymentForm에서 이미 검증이 완료되었습니다 (데스크톱 Promise 플로우). 성공 화면을 표시합니다.');
-          setIsVerified(true);
-          setLoading(false);
-          return;
+      const orderId = successData.orderId;
+      const processedKey = `used_payment_processed_${orderId}`;
+      const inFlightKey = `used_payment_inflight_${orderId}`;
+      
+      // 이미 처리된 결제인지 확인 (데스크톱 Promise 플로우)
+      const isAlreadyProcessed = sessionStorage.getItem(processedKey) === '1';
+      
+      if (isAlreadyProcessed) {
+        console.log('✅ UsedPaymentForm에서 이미 검증이 완료되었습니다 (데스크톱 Promise 플로우). 성공 화면을 표시합니다.');
+        setIsVerified(true);
+        setLoading(false);
+        processedRef.current = true;
+        return;
+      }
+      
+      // 중복 요청 방지: 이미 진행 중인 요청이 있는지 확인
+      const isInFlight = sessionStorage.getItem(inFlightKey) === '1';
+      if (isInFlight) {
+        console.log('⏳ 이미 진행 중인 검증 요청이 있습니다. 대기 중...');
+        // 진행 중인 요청이 완료될 때까지 대기 (최대 5초)
+        let waitCount = 0;
+        const maxWait = 50; // 5초 (100ms * 50)
+        while (waitCount < maxWait && sessionStorage.getItem(inFlightKey) === '1' && sessionStorage.getItem(processedKey) !== '1') {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          waitCount++;
         }
         
+        // 대기 후 다시 확인
+        if (sessionStorage.getItem(processedKey) === '1') {
+          console.log('✅ 대기 중 검증이 완료되었습니다.');
+          setIsVerified(true);
+          setLoading(false);
+          processedRef.current = true;
+          return;
+        }
+      }
+      
+      // 요청 시작 전에 즉시 플래그 설정 (중복 요청 방지)
+      processedRef.current = true;
+      sessionStorage.setItem(inFlightKey, '1');
+      
+      try {
         // 모바일 리다이렉트 플로우: 여기서 검증 수행
         console.log('🔵 모바일 리다이렉트 플로우: 백엔드 검증 시작');
         
@@ -207,24 +235,37 @@ const UsedPaymentSuccessContent = () => {
         if (response.data.success) {
           console.log('✅ 모바일 리다이렉트 플로우: 백엔드 검증 및 DB 업데이트 완료');
           sessionStorage.setItem(processedKey, '1');
-          processedRef.current = true;
           setIsVerified(true);
         } else {
           console.error('백엔드 검증 실패:', response.data.message);
           setError(response.data.message || '결제 검증에 실패했습니다.');
+          // 실패 시 processedRef를 false로 되돌려서 재시도 가능하게 함
+          processedRef.current = false;
         }
       } catch (error) {
         console.error('백엔드 검증 오류:', error);
+        
+        // 400 에러가 "이미 처리된 결제"인 경우 성공으로 처리
         if (error.response?.status === 400) {
           const errorMessage = error.response?.data?.message || 
                                error.response?.data?.error || 
-                               JSON.stringify(error.response?.data) ||
-                               '결제 검증 요청이 잘못되었습니다.';
-          setError(`결제 검증 실패: ${errorMessage}`);
+                               JSON.stringify(error.response?.data) || '';
+          
+          if (errorMessage.includes('이미 처리된') || errorMessage.includes('기존 요청을 처리중')) {
+            console.log('✅ 이미 처리된 결제입니다. 성공으로 처리합니다.');
+            sessionStorage.setItem(processedKey, '1');
+            setIsVerified(true);
+          } else {
+            setError(`결제 검증 실패: ${errorMessage}`);
+            processedRef.current = false;
+          }
         } else {
           setError(error.response?.data?.message || error.message || '결제 검증 중 오류가 발생했습니다.');
+          processedRef.current = false;
         }
       } finally {
+        // inFlight 플래그 제거
+        sessionStorage.removeItem(inFlightKey);
         setLoading(false);
       }
     };
