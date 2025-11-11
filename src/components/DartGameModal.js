@@ -927,11 +927,54 @@ const DartGameModal = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
+  // 브라우저 히스토리 관리 (뒤로가기로 모달 하나씩 닫기)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // 모달이 열릴 때 히스토리에 추가
+    const state = { type: 'dartModal' };
+    window.history.pushState(state, '', window.location.href);
+
+    // popstate 이벤트 핸들러 (뒤로가기 감지)
+    const handlePopState = () => {
+      // 선택된 관광지 모달이 열려있으면 먼저 닫기
+      if (selectedTour) {
+        setSelectedTour(null);
+        setTourNearbyHotels([]);
+        // 다시 히스토리에 추가 (관광지 모달 닫힌 상태 유지)
+        window.history.pushState({ type: 'dartModal' }, '', window.location.href);
+      } else {
+        // 관광지 모달이 없으면 메인 모달 닫기
+        onClose();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isOpen, selectedTour, onClose]);
+
+  // 관광지 선택 시 히스토리에 추가
+  useEffect(() => {
+    if (selectedTour && isOpen) {
+      const state = { type: 'dartModalTour', tourId: selectedTour.contentid || selectedTour.contentId };
+      window.history.pushState(state, '', window.location.href);
+    }
+  }, [selectedTour, isOpen]);
+
   // ESC 키로 모달 닫기
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
+        // 선택된 관광지 모달이 열려있으면 먼저 닫기
+        if (selectedTour) {
+          setSelectedTour(null);
+          setTourNearbyHotels([]);
+        } else {
         onClose();
+        }
       }
     };
 
@@ -944,7 +987,7 @@ const DartGameModal = ({ isOpen, onClose }) => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, selectedTour, onClose]);
 
   if (!isOpen) return null;
 
@@ -1320,7 +1363,10 @@ const DartGameModal = ({ isOpen, onClose }) => {
                       {selectedTour.title || '선택한 관광지'}
                     </div>
                     <button
-                      onClick={() => { setSelectedTour(null); setTourNearbyHotels([]); }}
+                      onClick={() => { 
+                        // 뒤로가기로 모달 닫기 (히스토리 관리)
+                        window.history.back();
+                      }}
                       className="p-2 rounded hover:bg-gray-100"
                       aria-label="닫기"
                     >

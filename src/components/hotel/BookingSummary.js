@@ -25,7 +25,7 @@ const BookingSummary = ({ searchParams, onEdit }) => {
             <>
               <span className="font-medium">
                 {new Date(searchParams.checkIn).toLocaleDateString("ko-KR", {
-                  year: "numeric",
+
                   month: "2-digit",
                   day: "2-digit",
                   weekday: "short",
@@ -34,7 +34,6 @@ const BookingSummary = ({ searchParams, onEdit }) => {
               <span>~</span>
               <span className="font-medium">
                 {new Date(searchParams.checkOut).toLocaleDateString("ko-KR", {
-                  year: "numeric",
                   month: "2-digit",
                   day: "2-digit",
                   weekday: "short",
@@ -66,11 +65,6 @@ const BookingSummary = ({ searchParams, onEdit }) => {
         </div>
       </div>
 
-      {/* 세금 포함 가격 안내 */}
-      <div className="flex items-center gap-1 mt-2 text-xs text-red-600">
-        <span>①</span>
-        <span>{searchParams.nights || 1}박 세금포함 가격</span>
-      </div>
     </div>
   );
 };

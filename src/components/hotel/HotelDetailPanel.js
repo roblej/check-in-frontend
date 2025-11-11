@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useRef, useCallback, useState } from "react";
+import { hotelAPI } from "@/lib/api/hotel";
+import BookmarkButton from "./BookmarkButton";
 import HotelDetail from "./HotelDetail";
+import LiveViewerCount from "./LiveViewerCount";
 
 /**
  * 호텔 상세 패널 - 패널은 고정, 내용만 교체
@@ -15,6 +18,13 @@ const HotelDetailPanel = ({
   const [currentContentId, setCurrentContentId] = useState(contentId);
   const [isLoading, setIsLoading] = useState(false);
   const [isFading, setIsFading] = useState(false);
+  const [headerTitle, setHeaderTitle] = useState("호텔 상세");
+  const [isHeaderLoading, setIsHeaderLoading] = useState(false);
+  const [headerPrice, setHeaderPrice] = useState(null);
+
+  useEffect(() => {
+    setHeaderPrice(null);
+  }, [contentId]);
 
   /** 닫기 */
   const handleClose = useCallback(() => {
@@ -41,6 +51,7 @@ const HotelDetailPanel = ({
       setCurrentContentId(null);
       setIsLoading(false);
       setIsFading(false);
+      setHeaderTitle("호텔 상세");
       return;
     }
 
@@ -57,6 +68,44 @@ const HotelDetailPanel = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contentId]); // currentContentId 제거하여 무한 루프 방지
+
+  /** 헤더용 호텔 정보 가져오기 */
+  useEffect(() => {
+    if (!contentId) return;
+
+    let isMounted = true;
+
+    const fetchHotelSummary = async () => {
+      try {
+        setIsHeaderLoading(true);
+        const response = await hotelAPI.getHotelDetail(contentId);
+        if (!isMounted) return;
+        const data = response?.data ?? response ?? {};
+        const title =
+          data?.title ||
+          data?.name ||
+          data?.hotelName ||
+          data?.contentName ||
+          "";
+        setHeaderTitle(title || "호텔 상세");
+      } catch (error) {
+        if (isMounted) {
+          setHeaderTitle("호텔 상세");
+          alert("호텔 정보를 불러오지 못했습니다.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsHeaderLoading(false);
+        }
+      }
+    };
+
+    fetchHotelSummary();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [contentId]);
 
   /** HotelDetail의 실제 API 로딩 상태 전달 */
   const handleLoadingChange = useCallback((loading) => {
@@ -93,27 +142,60 @@ const HotelDetailPanel = ({
                     lg:rounded-xl lg:max-w-[555px]"
       >
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0 rounded-t-xl">
-          <h2 className="text-xl font-bold text-gray-900">호텔 상세</h2>
-          <button
-            onClick={handleClose}
-            className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors shadow-sm"
-            aria-label="닫기"
-          >
-            <svg
-              className="w-5 h-5 text-gray-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0 rounded-t-xl">
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex w-full items-start gap-3">
+              <h2
+                className="flex-1 text-lg font-semibold text-gray-900 leading-tight break-words line-clamp-2 sm:line-clamp-none"
+                title={headerTitle}
+              >
+                {isHeaderLoading
+                  ? "호텔 정보를 불러오는 중..."
+                  : headerTitle || "호텔 상세"}
+              </h2>
+              {contentId && (
+                <BookmarkButton
+                  contentId={contentId}
+                  size="small"
+                  className="flex-shrink-0 shadow-none border border-gray-200 hover:border-gray-300"
+                />
+              )}
+            </div>
+            {contentId && (
+              <div className="text-sm text-gray-600">
+                <LiveViewerCount contentId={contentId} showAlways />
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right leading-tight">
+              <div className="text-sm text-gray-500">최저가</div>
+              <div className="text-xl font-bold text-blue-600">
+                {headerPrice
+                  ? `₩${new Intl.NumberFormat("ko-KR").format(headerPrice)}~`
+                  : "-"}
+              </div>
+            </div>
+            <button
+              onClick={handleClose}
+              className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors shadow-sm"
+              aria-label="닫기"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+              <svg
+                className="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* 내용 (fade 전환) */}
@@ -131,6 +213,7 @@ const HotelDetailPanel = ({
             scrollContainerRef={scrollContainerRef}
             onSearchParamsChange={onSearchParamsChange}
             onLoadingChange={handleLoadingChange}
+            onHeaderPriceChange={setHeaderPrice}
           />
         </div>
 

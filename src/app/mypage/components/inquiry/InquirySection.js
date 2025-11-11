@@ -9,7 +9,7 @@ export default function InquirySection({ inquiries, onCreateInquiry, loading }) 
   const [activeTab, setActiveTab] = useState('site'); // 'site', 'room', 'report'
   const [expandedAnswers, setExpandedAnswers] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
-  const pageSize = 5; // 페이지당 5개
+  const pageSize = 3; // 페이지당 3개
 
   // 탭별 개수 계산
   const tabCounts = useMemo(() => {

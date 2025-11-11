@@ -38,6 +38,7 @@ const HotelDetail = ({
   onSearchParamsChange,
   onLoadingChange,
   onClose,
+  onHeaderPriceChange,
 }) => {
   const router = useRouter();
   const urlSearchParams = useSearchParams();
@@ -109,6 +110,20 @@ const HotelDetail = ({
   const { hotelData, rooms, dinings, isLoading, errorMessage, formatPrice } =
     useHotelData(contentId, localSearchParams, onLoadingChange);
 
+  const lowestPrice = useMemo(() => {
+    if (!Array.isArray(rooms) || rooms.length === 0) return 0;
+    const basePrices = rooms.map((r) => r.basePrice || r.price || 0);
+    const minPrice = Math.min(...basePrices);
+    const nights = Number(localSearchParams?.nights || 1);
+    return minPrice * (Number.isNaN(nights) ? 1 : nights);
+  }, [rooms, localSearchParams?.nights]);
+
+  useEffect(() => {
+    if (onHeaderPriceChange) {
+      onHeaderPriceChange(lowestPrice > 0 ? lowestPrice : null);
+    }
+  }, [lowestPrice, onHeaderPriceChange]);
+
   const {
     activeSection,
     navSections: baseNavSections,
@@ -149,6 +164,18 @@ const HotelDetail = ({
       };
     }
   }, [isModal, hotelData, headerRef]);
+
+  // tab=location 쿼리 파라미터가 있으면 위치 탭으로 자동 스크롤
+  useEffect(() => {
+    const tab = urlSearchParams?.get("tab");
+    if (tab === "location" && hotelData && scrollToSection) {
+      // 호텔 데이터가 로드되고 섹션이 렌더링될 시간을 주기 위해 약간의 지연
+      const timer = setTimeout(() => {
+        scrollToSection("location");
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [urlSearchParams, hotelData, scrollToSection]);
 
   /**
    * 로컬 검색 조건 업데이트 함수
@@ -233,9 +260,19 @@ const HotelDetail = ({
       <div
         ref={headerRef}
         className={`w-full flex-shrink-0 ${
-          isModal ? "relative z-40 bg-white" : "sticky z-40 bg-gray-50"
+          isModal ? "sticky top-0 z-40 bg-white" : "sticky z-40 bg-gray-50"
         }`}
-        style={!isModal ? { top: "56px" } : undefined}
+        style={
+          !isModal
+            ? {
+                top:
+                  (typeof window !== "undefined" &&
+                  document.querySelector("header")?.classList.contains("sticky")
+                    ? document.querySelector("header")?.offsetHeight || 0
+                    : 0) + "px",
+              }
+            : undefined
+        }
       >
         <div
           className={
@@ -264,34 +301,33 @@ const HotelDetail = ({
       <div
         ref={navRef}
         className={`w-full flex-shrink-0 ${
-          isModal
-            ? "sticky top-0 z-30 shadow-sm bg-white"
-            : "sticky z-30 bg-gray-50"
+          isModal ? "sticky z-30 shadow-sm bg-white" : "sticky z-30 bg-gray-50"
         }`}
         style={
           isModal
             ? {
                 position: "sticky",
-                top: "0",
+                top: `${headerHeight || 0}px`,
                 alignSelf: "flex-start",
                 width: "100%",
               }
-            : !isModal
-            ? {
+            : {
                 top:
                   (headerRef.current?.offsetHeight || 0) +
-                  (typeof window !== "undefined"
-                    ? document.querySelector("header")?.offsetHeight || 56
-                    : 56) +
+                  (typeof window !== "undefined" &&
+                  document.querySelector("header")?.classList.contains("sticky")
+                    ? document.querySelector("header")?.offsetHeight || 0
+                    : 0) +
                   "px",
               }
-            : undefined
         }
       >
         <div
-          className={
-            isModal ? "px-2.5" : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
-          }
+          className={`${
+            isModal
+              ? "px-2.5 border-b border-gray-200"
+              : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-gray-200"
+          }`}
         >
           <HotelNavBar
             sections={navSections}
