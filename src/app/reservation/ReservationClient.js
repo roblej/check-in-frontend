@@ -22,7 +22,7 @@ const ROOM_IMAGE_BASE_URL = ensureTrailingSlash(roomImageBaseUrl);
 
 const ReservationClient = () => {
   const router = useRouter();
-  const { paymentDraft, loadFromStorage, clearPaymentDraft, getRemainingMs } =
+  const { paymentDraft, expiresAt, loadFromStorage, clearPaymentDraft } =
     usePaymentStore();
 
   const [customer, setCustomer] = useState(null);
@@ -84,14 +84,17 @@ const ReservationClient = () => {
           paymentDraft.meta.contentId || paymentDraft.meta.hotelId,
           paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
           paymentInfo.customerIdx,
-          paymentDraft.meta.checkIn
+          paymentDraft.meta.checkIn,
+          paymentDraft.meta.lockId
         );
       }
       alert("결제 시간이 만료되었습니다. 다시 예약해주세요.");
     } catch (error) {
       console.error("Lock 해제 실패:", error);
+    } finally {
+      clearPaymentDraft();
     }
-  }, [paymentDraft, paymentInfo.customerIdx]);
+  }, [paymentDraft, paymentInfo.customerIdx, clearPaymentDraft]);
 
   /**
    * 타이머 초기화 및 관리
@@ -100,27 +103,53 @@ const ReservationClient = () => {
    * - 이벤트 발생 시 1초 추가 감소
    */
   useEffect(() => {
-    if (!paymentDraft) return;
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
 
-    // 타이머 시작
+    if (!paymentDraft) {
+      setRemainingSeconds(0);
+      return;
+    }
+
+    if (!expiresAt) {
+      setRemainingSeconds(0);
+      handleTimeExpired();
+      return;
+    }
+
+    let expiredHandled = false;
+
+    const updateRemaining = () => {
+      const diffMs = expiresAt - Date.now();
+      const seconds = Math.max(0, Math.floor(diffMs / 1000));
+      setRemainingSeconds(seconds);
+      if (seconds <= 0 && !expiredHandled) {
+        expiredHandled = true;
+        handleTimeExpired();
+        return false;
+      }
+      return seconds > 0;
+    };
+
+    updateRemaining();
+
     timerRef.current = setInterval(() => {
-      setRemainingSeconds((prev) => {
-        if (prev <= 1) {
-          // 시간 종료 - Lock 해제
-          clearInterval(timerRef.current);
-          handleTimeExpired();
-          return 0;
-        }
-        return prev - 1;
-      });
+      const stillActive = updateRemaining();
+      if (!stillActive && timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     }, 1000);
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
-  }, [paymentDraft, handleTimeExpired]);
+  }, [paymentDraft, expiresAt, handleTimeExpired]);
 
   // httpOnly 쿠키에서 사용자 정보 가져오기
   useEffect(() => {
@@ -548,6 +577,7 @@ const ReservationClient = () => {
         roomId: paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
         checkIn: paymentDraft.meta.checkIn,
         checkOut: paymentDraft.meta.checkOut,
+        lockId: paymentDraft.meta.lockId || null,
         guests: paymentDraft.meta.guests,
         nights: paymentDraft.meta.nights,
         roomPrice: paymentDraft.meta.roomPrice,
