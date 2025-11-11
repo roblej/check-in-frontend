@@ -10,11 +10,12 @@ export const reservationLockAPI = {
    * @param {number} roomId - 객실 ID
    * @returns {Promise} 락 생성 결과
    */
-  createLock: async (contentId, roomId, checkIn, lockId) => {
+  createLock: async (contentId, roomId, checkIn, checkOut, lockId) => {
     const payload = {
       contentId,
       roomId,
       checkIn,
+      checkOut,
     };
 
     if (lockId) {
@@ -37,12 +38,14 @@ export const reservationLockAPI = {
     roomId,
     customerIdx = null,
     checkIn,
+    checkOut,
     lockId
   ) => {
     const payload = {
       contentId,
       roomId,
       checkIn,
+      checkOut,
     };
 
     if (customerIdx) {

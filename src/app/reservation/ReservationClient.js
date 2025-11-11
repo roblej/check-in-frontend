@@ -85,6 +85,7 @@ const ReservationClient = () => {
           paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
           paymentInfo.customerIdx,
           paymentDraft.meta.checkIn,
+          paymentDraft.meta.checkOut,
           paymentDraft.meta.lockId
         );
       }

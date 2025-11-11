@@ -31,12 +31,14 @@ export default function ReservationLockWrapper({ children }) {
         const roomId = paymentDraft.meta.roomIdx || paymentDraft.meta.roomId;
         const checkIn = paymentDraft.meta.checkIn;
         const lockId = paymentDraft.meta.lockId || getOrCreateTabLockId();
+        const checkOut = paymentDraft.meta.checkOut;
 
-        if (contentId && roomId && checkIn) {
+        if (contentId && roomId && checkIn && checkOut) {
           await axios.post("/reservations/unlock", {
             contentId: String(contentId),
             roomId: Number(roomId),
             checkIn: String(checkIn),
+            checkOut: String(checkOut),
             lockId: lockId ? String(lockId) : undefined,
           });
           console.log("✅ 취소: 락 해제 완료");
@@ -63,9 +65,43 @@ export default function ReservationLockWrapper({ children }) {
       isMountedRef.current = true;
     }, 0);
 
+    const sendUnlockBeacon = () => {
+      const contentId = paymentDraft.meta.contentId;
+      const roomId = paymentDraft.meta.roomIdx || paymentDraft.meta.roomId;
+      const checkIn = paymentDraft.meta.checkIn;
+      const checkOut = paymentDraft.meta.checkOut;
+
+      if (!contentId || !roomId || !checkIn || !checkOut) return;
+
+      const payload = JSON.stringify({
+        contentId: String(contentId),
+        roomId: Number(roomId),
+        checkIn: String(checkIn),
+        checkOut: String(checkOut),
+        lockId: paymentDraft.meta.lockId || getOrCreateTabLockId(),
+      });
+
+      const baseUrl =
+        process.env.NEXT_PUBLIC_FRONT_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        (typeof window !== "undefined"
+          ? window.location.origin
+          : "http://localhost:8888");
+      const apiUrl = `${baseUrl}/api/reservations/unlock`;
+
+      if (navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: "application/json" });
+        navigator.sendBeacon(apiUrl, blob);
+        console.log("📡 sendBeacon으로 unlock 전송");
+      }
+    };
+
     // beforeunload 플래그 설정
     const handleBeforeUnloadFlag = () => {
+      if (hasUnlockedRef.current) return;
       isUnloadingRef.current = true;
+      hasUnlockedRef.current = true;
+      sendUnlockBeacon();
     };
     window.addEventListener("beforeunload", handleBeforeUnloadFlag);
 
@@ -79,9 +115,8 @@ export default function ReservationLockWrapper({ children }) {
         return;
       }
 
-      // 새로고침 중이면 unlock 안 보냄
+      // 새로고침(이미 처리) 여부 초기화
       if (isUnloadingRef.current) {
-        console.log("🔄 새로고침 감지: unlock 안 보냄");
         isUnloadingRef.current = false;
         return;
       }
@@ -94,29 +129,7 @@ export default function ReservationLockWrapper({ children }) {
 
       // 뒤로가기/닫기로 추정 → unlock 시도
       hasUnlockedRef.current = true;
-      const contentId = paymentDraft.meta.contentId;
-      const roomId = paymentDraft.meta.roomIdx || paymentDraft.meta.roomId;
-      const checkIn = paymentDraft.meta.checkIn;
-
-      if (!contentId || !roomId || !checkIn) return;
-
-      console.log("🔙 페이지 이탈 감지: unlock 시도");
-      const payload = JSON.stringify({
-        contentId: String(contentId),
-        roomId: Number(roomId),
-        checkIn: String(checkIn),
-        lockId: paymentDraft.meta.lockId || getOrCreateTabLockId(),
-      });
-
-      const apiUrl = `${
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
-      }/api/reservations/unlock`;
-
-      if (navigator.sendBeacon) {
-        const blob = new Blob([payload], { type: "application/json" });
-        navigator.sendBeacon(apiUrl, blob);
-        console.log("📡 sendBeacon으로 unlock 전송");
-      }
+      sendUnlockBeacon();
     };
   }, [paymentDraft]);
 
