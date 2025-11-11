@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import axios from '@/lib/axios';
 
 /**
  * 중고 호텔 결제 성공 페이지
- * - UsedPaymentForm에서 이미 검증이 완료되었으므로 결과만 표시
- * - 일반 호텔 결제와 동일한 패턴 (검증은 결제 폼에서만 수행)
+ * - 데스크톱 Promise 플로우: UsedPaymentForm에서 이미 검증 완료 → 플래그 확인 후 결과 표시
+ * - 모바일 리다이렉트 플로우: 여기서 검증 수행 (UsedPaymentForm의 onSuccess가 호출되지 않음)
  */
 const UsedPaymentSuccessContent = () => {
   const router = useRouter();
@@ -117,32 +118,119 @@ const UsedPaymentSuccessContent = () => {
     }
   }, [router, searchParams]);
 
-  // UsedPaymentForm에서 이미 검증이 완료되었으므로, 여기서는 검증하지 않고 바로 성공 화면 표시
+  // 백엔드 검증 수행 (모바일 리다이렉트 플로우 대비)
+  // 데스크톱 Promise 플로우에서는 UsedPaymentForm에서 이미 검증 완료되어 플래그가 설정됨
   useEffect(() => {
-    if (!successData) return;
+    const run = async () => {
+      if (processedRef.current || !successData) return;
+      
+      try {
+        const orderId = successData.orderId;
+        const processedKey = `used_payment_processed_${orderId}`;
+        
+        // 이미 처리된 결제인지 확인 (데스크톱 Promise 플로우)
+        const isAlreadyProcessed = sessionStorage.getItem(processedKey) === '1';
+        
+        if (isAlreadyProcessed) {
+          console.log('✅ UsedPaymentForm에서 이미 검증이 완료되었습니다 (데스크톱 Promise 플로우). 성공 화면을 표시합니다.');
+          setIsVerified(true);
+          setLoading(false);
+          return;
+        }
+        
+        // 모바일 리다이렉트 플로우: 여기서 검증 수행
+        console.log('🔵 모바일 리다이렉트 플로우: 백엔드 검증 시작');
+        
+        const storedSuccessData = sessionStorage.getItem('used_payment_success_data');
+        if (!storedSuccessData) {
+          console.error('결제 성공 정보를 찾을 수 없습니다.');
+          setError('결제 정보를 찾을 수 없습니다.');
+          setLoading(false);
+          return;
+        }
+        
+        const parsedData = JSON.parse(storedSuccessData);
+        const paymentKey = parsedData.paymentKey;
+        const amount = parsedData.amount || parsedData.card;
+        const usedTradeIdxRaw = parsedData.usedTradeIdx || parsedData.tradeIdx;
+        const usedItemIdx = parsedData.usedItemIdx;
+        
+        // usedTradeIdx 파싱
+        let usedTradeIdx = null;
+        if (usedTradeIdxRaw) {
+          if (typeof usedTradeIdxRaw === 'number') {
+            usedTradeIdx = usedTradeIdxRaw > 0 ? usedTradeIdxRaw : null;
+          } else if (typeof usedTradeIdxRaw === 'string' && usedTradeIdxRaw.trim() !== '') {
+            const parsed = parseInt(usedTradeIdxRaw.trim(), 10);
+            usedTradeIdx = !isNaN(parsed) && parsed > 0 ? parsed : null;
+          }
+        }
+        
+        if (!orderId || !paymentKey || !usedTradeIdx || isNaN(usedTradeIdx) || usedTradeIdx <= 0) {
+          console.warn('백엔드 검증을 위한 필수 정보가 없습니다:', { 
+            orderId, 
+            paymentKey, 
+            usedTradeIdx: usedTradeIdxRaw,
+            parsedUsedTradeIdx: usedTradeIdx
+          });
+          setError('결제 검증에 필요한 정보가 없습니다.');
+          setLoading(false);
+          return;
+        }
+        
+        const requestData = {
+          paymentKey: paymentKey,
+          orderId: orderId,
+          amount: amount || parsedData.card || parsedData.amount,
+          totalPrice: amount || parsedData.amount,
+          type: "used_hotel",
+          customerIdx: parsedData.customerIdx || null,
+          usedTradeIdx: usedTradeIdx,
+          usedItemIdx: usedItemIdx ? parseInt(usedItemIdx, 10) : (parsedData.usedItemIdx ? parseInt(parsedData.usedItemIdx, 10) : null),
+          customerName: parsedData.customerName || '',
+          customerEmail: parsedData.customerEmail || '',
+          customerPhone: parsedData.customerPhone || '',
+          method: (amount || parsedData.card || parsedData.amount) > 0 ? "mixed" : "cash_point_only",
+          pointsUsed: parsedData.point || 0,
+          cashUsed: parsedData.cash || 0,
+        };
+        
+        console.log('📤 모바일 리다이렉트 플로우: 백엔드 검증 요청', {
+          orderId: requestData.orderId,
+          paymentKey: requestData.paymentKey ? '***' : undefined,
+          amount: requestData.amount,
+          usedTradeIdx: requestData.usedTradeIdx
+        });
+        
+        const response = await axios.post('/payments/confirm', requestData);
+        
+        if (response.data.success) {
+          console.log('✅ 모바일 리다이렉트 플로우: 백엔드 검증 및 DB 업데이트 완료');
+          sessionStorage.setItem(processedKey, '1');
+          processedRef.current = true;
+          setIsVerified(true);
+        } else {
+          console.error('백엔드 검증 실패:', response.data.message);
+          setError(response.data.message || '결제 검증에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('백엔드 검증 오류:', error);
+        if (error.response?.status === 400) {
+          const errorMessage = error.response?.data?.message || 
+                               error.response?.data?.error || 
+                               JSON.stringify(error.response?.data) ||
+                               '결제 검증 요청이 잘못되었습니다.';
+          setError(`결제 검증 실패: ${errorMessage}`);
+        } else {
+          setError(error.response?.data?.message || error.message || '결제 검증 중 오류가 발생했습니다.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    // UsedPaymentForm에서 검증이 완료되었는지 확인
-    const orderId = successData.orderId;
-    const processedKey = `used_payment_processed_${orderId}`;
-    const isAlreadyProcessed = sessionStorage.getItem(processedKey) === '1';
-    
-    console.log('🔍 결제 처리 상태 확인:', {
-      orderId,
-      processedKey,
-      isAlreadyProcessed,
-      note: 'UsedPaymentForm에서 이미 검증 완료 (일반 호텔 결제와 동일한 패턴)'
-    });
-    
-    if (isAlreadyProcessed) {
-      console.log('✅ UsedPaymentForm에서 검증이 완료되었습니다. 성공 화면을 표시합니다.');
-      setIsVerified(true);
-      setLoading(false);
-    } else {
-      // UsedPaymentForm에서 검증하지 않은 경우 (직접 URL 접근 등)
-      // 이 경우는 정상적인 플로우가 아니므로 에러 표시
-      console.warn('⚠️ UsedPaymentForm에서 검증이 완료되지 않았습니다. 정상적인 결제 플로우가 아닙니다.');
-      setError('결제 정보를 찾을 수 없습니다. 정상적인 결제 플로우를 통해 접근해주세요.');
-      setLoading(false);
+    if (successData && !processedRef.current) {
+      run();
     }
   }, [successData]);
 
