@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { CheckCircle, Building2, Sparkles, X, Calendar } from 'lucide-react';
+import { CheckCircle, Building2, Sparkles, X, Calendar, ToggleLeft, ToggleRight, AlertCircle } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
 const RoomsInner = () => {
@@ -73,6 +73,31 @@ const RoomsInner = () => {
     setShowDetailModal(true);
   };
 
+  const handleStatusToggle = async (room, newStatus) => {
+    const statusText = newStatus === 1 ? '사용 가능' : '사용 불가';
+    if (!confirm(`${room.name}(${room.roomIdx}호)을(를) ${statusText}로 변경하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.post('/admin/roomStatus', {
+        roomIdx: room.roomIdx,
+        status: newStatus
+      });
+
+      if (response.data.success) {
+        alert(`${room.name}의 상태가 ${statusText}로 변경되었습니다.`);
+        // 상태 변경 후 목록 새로고침
+        fetchRoomStatus();
+      } else {
+        alert('상태 변경에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('상태 변경 오류:', error);
+      alert('상태 변경 중 오류가 발생했습니다.');
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6 p-6">
@@ -131,9 +156,18 @@ const RoomsInner = () => {
                 {/* 객실 번호 및 상태 */}
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-gray-900">{room.name}</h3>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(room.reservationStatus)}`}>
-                    {getStatusText(room.reservationStatus)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(room.reservationStatus)}`}>
+                      {getStatusText(room.reservationStatus)}
+                    </span>
+                    {/* 영구 상태 표시 */}
+                    {room.status === 0 && (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        사용불가
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* 객실 정보 */}
@@ -165,6 +199,31 @@ const RoomsInner = () => {
                   </div>
                 )}
 
+                {/* 빠른 상태 변경 */}
+                <div className="mb-3 p-2 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-gray-600">객실 상태</span>
+                    <button
+                      onClick={() => handleStatusToggle(room, room.status === 1 ? 0 : 1)}
+                      className="flex items-center gap-1 text-xs font-medium transition-colors"
+                      title={room.status === 1 ? '사용 불가로 변경' : '사용 가능으로 변경'}
+                    >
+                      {room.status === 1 ? (
+                        <>
+                          <ToggleRight className="w-4 h-4 text-green-600" />
+                          <span className="text-green-600">사용 가능</span>
+                        </>
+                      ) : (
+                        <>
+                          <ToggleLeft className="w-4 h-4 text-red-600" />
+                          <span className="text-red-600">사용 불가</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500">클릭하여 상태 변경</p>
+                </div>
+
                 {/* 액션 버튼 */}
                 <button 
                   onClick={() => handleDetailClick(room)}
@@ -185,6 +244,9 @@ const RoomsInner = () => {
               setShowDetailModal(false);
               setSelectedRoom(null);
             }}
+            onStatusChanged={() => {
+              fetchRoomStatus();
+            }}
           />
         )}
       </div>
@@ -200,8 +262,46 @@ const RoomsPage = () => {
   );
 };
 
-// 객실 상세 정보 모달 컴포넌트 (조회 전용)
-const RoomDetailModal = ({ room, onClose }) => {
+// 객실 상세 정보 모달 컴포넌트
+const RoomDetailModal = ({ room, onClose, onStatusChanged }) => {
+  const [currentStatus, setCurrentStatus] = useState(room.status);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // room이 변경될 때 상태 업데이트
+  useEffect(() => {
+    setCurrentStatus(room.status);
+  }, [room.status]);
+
+  const handleStatusToggle = async (newStatus) => {
+    const statusText = newStatus === 1 ? '사용 가능' : '사용 불가';
+    if (!confirm(`${room.name}(${room.roomIdx}호)을(를) ${statusText}로 변경하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const response = await axiosInstance.post('/admin/roomStatus', {
+        roomIdx: room.roomIdx,
+        status: newStatus
+      });
+
+      if (response.data.success) {
+        setCurrentStatus(newStatus);
+        alert(`${room.name}의 상태가 ${statusText}로 변경되었습니다.`);
+        // 부모 컴포넌트에 변경 알림
+        if (onStatusChanged) {
+          onStatusChanged();
+        }
+      } else {
+        alert('상태 변경에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('상태 변경 오류:', error);
+      alert('상태 변경 중 오류가 발생했습니다.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
@@ -243,6 +343,38 @@ const RoomDetailModal = ({ room, onClose }) => {
               <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
                 ₩{room.basePrice?.toLocaleString() || '0'}
               </div>
+            </div>
+
+            {/* 객실 상태 변경 */}
+            <div className="border-t border-gray-200 pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">객실 상태</label>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  {currentStatus === 1 ? (
+                    <>
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="text-sm font-medium text-green-600">사용 가능</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                      <span className="text-sm font-medium text-red-600">사용 불가</span>
+                    </>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleStatusToggle(currentStatus === 1 ? 0 : 1)}
+                  disabled={isUpdating}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    currentStatus === 1
+                      ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                      : 'bg-green-100 text-green-700 hover:bg-green-200'
+                  } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isUpdating ? '변경 중...' : currentStatus === 1 ? '사용 불가로 변경' : '사용 가능으로 변경'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">객실의 사용 가능 여부를 변경할 수 있습니다.</p>
             </div>
 
             {/* 예약 정보 섹션 */}

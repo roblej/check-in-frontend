@@ -91,29 +91,21 @@ const AdminDashboard = () => {
     {
       title: '오늘 체크인',
       value: `${todayCheckinCount}`,
-      change: '+12%',
-      changeType: 'positive',
       icon: <Building2 size={40} />
     },
     {
       title: '오늘 체크아웃',
       value: `${todayCheckoutCount}`,
-      change: '+8%',
-      changeType: 'positive',
       icon: <LogOut size={40} />
     },
     {
       title: '예약 대기',
       value: `${reservationCount}`,
-      change: '+23%',
-      changeType: 'positive',
       icon: <Calendar size={40} />
     },
     {
       title: '오늘 매출',
       value: `₩${thisMonthSales}`,
-      change: '+15%',
-      changeType: 'positive',
       icon: <DollarSign size={40} />
     }
   ];
@@ -179,14 +171,6 @@ const AdminDashboard = () => {
                   <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
                 </div>
                 <div className="text-blue-600">{stat.icon}</div>
-              </div>
-              <div className="mt-4 flex items-center">
-                <span className={`text-sm font-medium ${
-                  stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {stat.change}
-                </span>
-                <span className="text-sm text-gray-500 ml-1">전일 대비</span>
               </div>
             </div>
           ))}

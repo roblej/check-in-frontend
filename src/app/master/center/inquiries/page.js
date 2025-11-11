@@ -96,42 +96,31 @@ export default function InquiryListPage() {
   const fetchInquiries = async () => {
     try {
       // 백엔드 API 호출 - 문의 카테고리만 조회
-      const response = await fetch('/api/center/posts/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          mainCategory: '문의',
-          page: 0,
-          size: 1000,
-        }),
+      const response = await axiosInstance.post('/center/posts/search', {
+        mainCategory: '문의',
+        page: 0,
+        size: 1000,
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        // 백엔드 데이터를 프론트엔드 형식으로 변환
-        // contentId가 있는 문의는 제외 (호텔 문의 제외)
-        const convertedInquiries = (data.content || [])
-          .filter(item => !item.contentId) // contentId가 없는 것만 (사이트 문의만)
-          .map(item => ({
-            id: item.centerIdx,
-            username: item.customerIdx ? `고객${item.customerIdx}` : '관리자',
-            email: item.customerIdx ? `customer${item.customerIdx}@test.com` : 'admin@test.com',
-            title: item.title,
-            content: item.content,
-            status: item.status === 0 ? 'pending' : item.status === 1 ? 'in_progress' : 'completed',
-            category: item.subCategory || '기타',
-            priority: item.priority === 0 ? 'low' : item.priority === 1 ? 'medium' : 'high',
-            createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
-            answeredAt: item.status === 2 ? item.updatedAt : null,
-            assignedTo: item.adminIdx ? `관리자${item.adminIdx}` : '미배정',
-          }));
-        setInquiries(convertedInquiries);
-      } else {
-        // API 실패시 목 데이터 사용
-        setInquiries(mockInquiryList);
-      }
+      const data = response.data;
+      // 백엔드 데이터를 프론트엔드 형식으로 변환
+      // contentId가 있는 문의는 제외 (호텔 문의 제외)
+      const convertedInquiries = (data.content || [])
+        .filter(item => !item.contentId) // contentId가 없는 것만 (사이트 문의만)
+        .map(item => ({
+          id: item.centerIdx,
+          username: item.customerIdx ? `고객${item.customerIdx}` : '관리자',
+          email: item.customerIdx ? `customer${item.customerIdx}@test.com` : 'admin@test.com',
+          title: item.title,
+          content: item.content,
+          status: item.status === 0 ? 'pending' : item.status === 1 ? 'in_progress' : 'completed',
+          category: item.subCategory || '기타',
+          priority: item.priority === 0 ? 'low' : item.priority === 1 ? 'medium' : 'high',
+          createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR') : '',
+          answeredAt: item.status === 2 ? item.updatedAt : null,
+          assignedTo: item.adminIdx ? `관리자${item.adminIdx}` : '미배정',
+        }));
+      setInquiries(convertedInquiries);
     } catch (error) {
       console.error('문의 조회 실패:', error);
       // 에러시 목 데이터 사용
