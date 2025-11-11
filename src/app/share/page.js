@@ -8,19 +8,29 @@ const fetchHotelsByIds = async (ids) => {
     return [];
   }
 
-  const results = await Promise.all(
-    ids.map(async (contentId) => {
-      try {
-        const detail = await hotelAPI.getHotelDetail(contentId);
-        return normalizeHotelData(detail, contentId);
-      } catch (error) {
-        console.error(`공유 호텔 정보를 불러오지 못했습니다. contentId: ${contentId}`, error);
-        return null;
-      }
-    })
-  );
+  try {
+    const response = await hotelAPI.getHotelsByContentIds(ids);
+    const rawHotels = Array.isArray(response?.data)
+      ? response.data
+      : Array.isArray(response)
+      ? response
+      : [];
 
-  return results.filter(Boolean);
+    const normalizedMap = new Map();
+    rawHotels.forEach((hotel) => {
+      if (!hotel) return;
+      const contentId = hotel.contentId || hotel.contentid || hotel.id;
+      if (!contentId) return;
+      normalizedMap.set(String(contentId), normalizeHotelData(hotel, contentId));
+    });
+
+    return ids
+      .map((id) => normalizedMap.get(String(id)))
+      .filter(Boolean);
+  } catch (error) {
+    console.error("공유 호텔 목록 조회 실패", error);
+    return [];
+  }
 };
 
 const parseIds = (idxsString) => {

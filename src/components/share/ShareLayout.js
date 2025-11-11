@@ -118,7 +118,7 @@ const ShareLayout = ({ hotels = [], initialSelectedHotelId = null }) => {
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">1박 기준</p>
+              <p className="text-sm text-gray-500">1박 최저가</p>
               {hotel.minPrice ? (
                 hotel.maxPrice && hotel.maxPrice !== hotel.minPrice ? (
                   <p className="text-xl font-bold text-blue-500">
@@ -152,7 +152,7 @@ const ShareLayout = ({ hotels = [], initialSelectedHotelId = null }) => {
     <>
       <div className="flex-shrink-0 border-b border-gray-200 bg-white">
         <div className="mx-auto max-w-[1200px] px-4 py-6">
-          <h1 className="text-2xl font-bold text-gray-900">공유된 찜 목록</h1>
+          <h1 className="text-2xl font-bold text-gray-900">공유 호텔 목록</h1>
           <p className="mt-1 text-sm text-gray-600">
             친구가 공유한 호텔 목록입니다. 호텔을 클릭하면 상세 정보를 확인할 수 있어요.
           </p>
