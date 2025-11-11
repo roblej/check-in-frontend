@@ -3,6 +3,7 @@ import Footer from "@/components/Footer";
 import LiveViewerPanel from "@/components/hotel/LiveViewerPanel";
 import { hotelAPI } from "@/lib/api/hotel";
 import HotelDetailClient from "./HotelDetailClient";
+import ScrollToTopButton from "./ScrollToTopButton";
 
 /**
  * SSR 시점에서 동적 메타데이터 생성
@@ -63,6 +64,7 @@ const HotelDetailPage = async ({ params, searchParams }) => {
       />
       <Footer />
       <LiveViewerPanel contentId={contentId} />
+      <ScrollToTopButton />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { hotelAPI } from "@/lib/api/hotel";
 import { getOrCreateSessionId } from "@/lib/redisSession";
 
@@ -22,6 +22,7 @@ import { getOrCreateSessionId } from "@/lib/redisSession";
 const LiveViewerCount = ({ contentId, showAlways = true, priceLabel }) => {
   const [sessionId, setSessionId] = useState(null);
   const [isClient, setIsClient] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setIsClient(true);
@@ -37,8 +38,12 @@ const LiveViewerCount = ({ contentId, showAlways = true, priceLabel }) => {
       try {
         // 1. Redis 세션 등록
         await hotelAPI.enterHotel(contentId, sessionId);
-        // 2. 초기 조회수 조회 (TTL 갱신도 함께)
-        await hotelAPI.getHotelViews(contentId, sessionId);
+        const response = await hotelAPI.getHotelViews(contentId, sessionId);
+        const initialViews = response?.data?.views ?? response ?? 0;
+        queryClient.setQueryData(
+          ["hotelViews", contentId, sessionId],
+          initialViews
+        );
       } catch (err) {
         // 타임아웃이나 네트워크 오류는 무시 (조회수는 선택적 기능)
         console.warn("조회자 초기화 실패 (무시됨):", err.message);
@@ -46,7 +51,7 @@ const LiveViewerCount = ({ contentId, showAlways = true, priceLabel }) => {
     };
 
     initSession();
-  }, [contentId, sessionId]);
+  }, [contentId, sessionId, queryClient]);
 
   // TanStack Query로 20초마다 실시간 조회수 refetch (sessionId 전달하여 TTL 갱신)
   const { data, isLoading, isError } = useQuery({
