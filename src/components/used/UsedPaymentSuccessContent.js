@@ -166,20 +166,30 @@ const UsedPaymentSuccessContent = () => {
           return;
         }
 
-        // 이미 처리된 결제인지 확인
+        // 이미 처리된 결제인지 확인 (UsedPaymentForm에서 이미 검증 완료한 경우)
         const processedKey = `used_payment_processed_${orderId}`;
-        if (sessionStorage.getItem(processedKey) === '1') {
-          console.log('이미 처리된 결제입니다:', orderId);
+        const isAlreadyProcessed = sessionStorage.getItem(processedKey) === '1';
+        
+        console.log('🔍 중복 검증 방지 체크:', {
+          orderId,
+          processedKey,
+          isAlreadyProcessed,
+          sessionStorageValue: sessionStorage.getItem(processedKey)
+        });
+        
+        if (isAlreadyProcessed) {
+          console.log('✅ 이미 처리된 결제입니다 (UsedPaymentForm에서 검증 완료). 중복 검증을 스킵합니다:', orderId);
           setIsVerified(true);
           setLoading(false);
           return;
         }
 
-        console.log('🔵 백엔드 검증 API 호출 시작:', { 
+        console.log('🔵 백엔드 검증 API 호출 시작 (처음 검증):', { 
           orderId, 
           paymentKey, 
           usedTradeIdx,
-          source: '세션 스토리지'
+          source: '세션 스토리지',
+          note: 'UsedPaymentForm에서 검증하지 않은 경우 (직접 URL 접근 등)'
         });
         
         // 백엔드 검증 API 호출 (/api/payments)
