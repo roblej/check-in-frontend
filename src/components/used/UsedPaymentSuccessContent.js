@@ -2,12 +2,11 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import axios from '@/lib/axios';
 
 /**
  * 중고 호텔 결제 성공 페이지
- * - DB 업데이트가 완료될 때까지 로딩 표시
- * - 백엔드 검증 완료 후 성공 화면 표시
+ * - UsedPaymentForm에서 이미 검증이 완료되었으므로 결과만 표시
+ * - 일반 호텔 결제와 동일한 패턴 (검증은 결제 폼에서만 수행)
  */
 const UsedPaymentSuccessContent = () => {
   const router = useRouter();
@@ -118,151 +117,32 @@ const UsedPaymentSuccessContent = () => {
     }
   }, [router, searchParams]);
 
-  // 백엔드 검증 수행 (DB 업데이트)
+  // UsedPaymentForm에서 이미 검증이 완료되었으므로, 여기서는 검증하지 않고 바로 성공 화면 표시
   useEffect(() => {
-    const run = async () => {
-      if (processedRef.current || !successData) return;
-      
-      try {
-        // sessionStorage에서 결제 정보 가져오기
-        const storedSuccessData = sessionStorage.getItem('used_payment_success_data');
-        if (!storedSuccessData) {
-          console.error('결제 성공 정보를 찾을 수 없습니다.');
-          setError('결제 정보를 찾을 수 없습니다.');
-          setLoading(false);
-          return;
-        }
-        
-        const parsedData = JSON.parse(storedSuccessData);
-        const orderId = parsedData.orderId;
-        const paymentKey = parsedData.paymentKey;
-        const amount = parsedData.amount || parsedData.card;
-        // usedTradeIdx 우선, 없으면 tradeIdx 사용
-        const usedTradeIdxRaw = parsedData.usedTradeIdx || parsedData.tradeIdx;
-        const usedItemIdx = parsedData.usedItemIdx;
-        
-        // usedTradeIdx가 유효한 숫자인지 확인 (빈 문자열이나 0 이하 값 제외)
-        let usedTradeIdx = null;
-        if (usedTradeIdxRaw) {
-          if (typeof usedTradeIdxRaw === 'number') {
-            usedTradeIdx = usedTradeIdxRaw > 0 ? usedTradeIdxRaw : null;
-          } else if (typeof usedTradeIdxRaw === 'string' && usedTradeIdxRaw.trim() !== '') {
-            const parsed = parseInt(usedTradeIdxRaw.trim(), 10);
-            usedTradeIdx = !isNaN(parsed) && parsed > 0 ? parsed : null;
-          }
-        }
-        
-        // 필요한 정보가 없거나 유효하지 않으면 에러
-        if (!orderId || !paymentKey || !usedTradeIdx || isNaN(usedTradeIdx) || usedTradeIdx <= 0) {
-          console.warn('백엔드 검증을 위한 필수 정보가 없습니다:', { 
-            orderId, 
-            paymentKey, 
-            usedTradeIdx: usedTradeIdxRaw,
-            parsedUsedTradeIdx: usedTradeIdx,
-            parsedData: parsedData
-          });
-          setError('결제 검증에 필요한 정보가 없습니다.');
-          setLoading(false);
-          return;
-        }
-
-        // 이미 처리된 결제인지 확인 (UsedPaymentForm에서 이미 검증 완료한 경우)
-        const processedKey = `used_payment_processed_${orderId}`;
-        const isAlreadyProcessed = sessionStorage.getItem(processedKey) === '1';
-        
-        console.log('🔍 중복 검증 방지 체크:', {
-          orderId,
-          processedKey,
-          isAlreadyProcessed,
-          sessionStorageValue: sessionStorage.getItem(processedKey)
-        });
-        
-        if (isAlreadyProcessed) {
-          console.log('✅ 이미 처리된 결제입니다 (UsedPaymentForm에서 검증 완료). 중복 검증을 스킵합니다:', orderId);
-          setIsVerified(true);
-          setLoading(false);
-          return;
-        }
-
-        console.log('🔵 백엔드 검증 API 호출 시작 (처음 검증):', { 
-          orderId, 
-          paymentKey, 
-          usedTradeIdx,
-          source: '세션 스토리지',
-          note: 'UsedPaymentForm에서 검증하지 않은 경우 (직접 URL 접근 등)'
-        });
-        
-        // 백엔드 검증 API 호출 (/api/payments)
-        // 백엔드 DTO에 맞춰 필수 필드만 전송 (hotelName, roomType, salePrice는 백엔드에서 사용하지 않음)
-        const requestData = {
-          paymentKey: paymentKey,
-          orderId: orderId,
-          amount: amount || parsedData.card || parsedData.amount, // 카드 결제 금액
-          totalPrice: amount || parsedData.amount, // 총 결제 금액
-          type: "used_hotel",
-          customerIdx: parsedData.customerIdx || null,
-          usedTradeIdx: usedTradeIdx, // 이미 위에서 파싱됨
-          usedItemIdx: usedItemIdx ? parseInt(usedItemIdx, 10) : (parsedData.usedItemIdx ? parseInt(parsedData.usedItemIdx, 10) : null),
-          customerName: parsedData.customerName || '',
-          customerEmail: parsedData.customerEmail || '',
-          customerPhone: parsedData.customerPhone || '',
-          method: (amount || parsedData.card || parsedData.amount) > 0 ? "mixed" : "cash_point_only",
-          pointsUsed: parsedData.point || 0,
-          cashUsed: parsedData.cash || 0,
-        };
-
-        console.log('📤 백엔드 검증 요청 데이터:', {
-          orderId: requestData.orderId,
-          paymentKey: requestData.paymentKey ? '***' : undefined,
-          amount: requestData.amount,
-          usedTradeIdx: requestData.usedTradeIdx,
-          usedItemIdx: requestData.usedItemIdx,
-          source: '세션 스토리지'
-        });
-
-        // rewrites를 통해 백엔드로 직접 전달 (일반 호텔 결제와 동일한 방식)
-        const response = await axios.post('/payments/confirm', requestData);
-        
-        if (response.data.success) {
-          console.log('✅ 백엔드 검증 및 DB 업데이트 완료:', response.data);
-          console.log('✅ DB 업데이트 완료:');
-          console.log('  - UsedPay 저장 완료');
-          console.log('  - UsedTrade 상태 업데이트 완료 (status=1)');
-          console.log('  - UsedItem 상태 업데이트 완료 (status=2)');
-          sessionStorage.setItem(processedKey, '1');
-          processedRef.current = true;
-          setIsVerified(true);
-        } else {
-          console.error('백엔드 검증 실패:', response.data.message);
-          setError(response.data.message || '결제 검증에 실패했습니다.');
-        }
-      } catch (error) {
-        console.error('백엔드 검증 오류:', error);
-        console.error('에러 상세:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-          responseText: error.response?.data ? JSON.stringify(error.response.data, null, 2) : undefined,
-        });
-        
-        // 400 에러인 경우 백엔드 에러 메시지를 자세히 표시
-        if (error.response?.status === 400) {
-          const errorMessage = error.response?.data?.message || 
-                               error.response?.data?.error || 
-                               JSON.stringify(error.response?.data) ||
-                               '결제 검증 요청이 잘못되었습니다.';
-          setError(`결제 검증 실패: ${errorMessage}`);
-        } else {
-          setError(error.response?.data?.message || error.message || '결제 검증 중 오류가 발생했습니다.');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!successData) return;
     
-    // successData가 로드된 후에 실행
-    if (successData && !processedRef.current) {
-      run();
+    // UsedPaymentForm에서 검증이 완료되었는지 확인
+    const orderId = successData.orderId;
+    const processedKey = `used_payment_processed_${orderId}`;
+    const isAlreadyProcessed = sessionStorage.getItem(processedKey) === '1';
+    
+    console.log('🔍 결제 처리 상태 확인:', {
+      orderId,
+      processedKey,
+      isAlreadyProcessed,
+      note: 'UsedPaymentForm에서 이미 검증 완료 (일반 호텔 결제와 동일한 패턴)'
+    });
+    
+    if (isAlreadyProcessed) {
+      console.log('✅ UsedPaymentForm에서 검증이 완료되었습니다. 성공 화면을 표시합니다.');
+      setIsVerified(true);
+      setLoading(false);
+    } else {
+      // UsedPaymentForm에서 검증하지 않은 경우 (직접 URL 접근 등)
+      // 이 경우는 정상적인 플로우가 아니므로 에러 표시
+      console.warn('⚠️ UsedPaymentForm에서 검증이 완료되지 않았습니다. 정상적인 결제 플로우가 아닙니다.');
+      setError('결제 정보를 찾을 수 없습니다. 정상적인 결제 플로우를 통해 접근해주세요.');
+      setLoading(false);
     }
   }, [successData]);
 
