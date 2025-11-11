@@ -74,6 +74,22 @@ server {
         proxy_read_timeout 60s;
     }
 
+    # Next.js API Route 프록시 (payments API는 Next.js에서 처리)
+    location /api/payments {
+        proxy_pass http://frontend:3333;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        
+        # 타임아웃 설정
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
     # Next.js API Route 프록시 (tour API는 Next.js에서 처리)
     location /api/tour/ {
         proxy_pass http://frontend:3333;
@@ -210,6 +226,24 @@ server {
         # 쿠키 전달을 위한 설정
         proxy_cookie_path / /;
         proxy_cookie_domain off;
+        
+        # 타임아웃 설정
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # ----------------------------------------------------
+    # Next.js API Route 프록시 (payments API는 Next.js에서 처리)
+    # ----------------------------------------------------
+    location /api/payments {
+        proxy_pass http://frontend:3333;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https; # HTTPS 사용 명시
+        proxy_cache_bypass $http_upgrade;
         
         # 타임아웃 설정
         proxy_connect_timeout 60s;

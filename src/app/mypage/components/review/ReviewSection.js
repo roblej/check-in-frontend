@@ -29,21 +29,21 @@ export default function ReviewSection({
   }
 
   return (
-    <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <Star className="w-6 h-6 text-blue-600" />
+    <section className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-200">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+          <Star className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
           내 리뷰
         </h2>
-        <button onClick={() => setIsReviewOpen(false)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500">
-          <ChevronRight className="w-5 h-5 rotate-180" />
+        <button onClick={() => setIsReviewOpen(false)} className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 text-gray-500">
+          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 rotate-180" />
         </button>
       </div>
 
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
+      <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-200 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setReviewTab('writable')}
-          className={`px-6 py-3 font-medium transition-all border-b-2 ${
+          className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
             reviewTab === 'writable'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -53,7 +53,7 @@ export default function ReviewSection({
         </button>
         <button
           onClick={() => setReviewTab('written')}
-          className={`px-6 py-3 font-medium transition-all border-b-2 ${
+          className={`px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
             reviewTab === 'written'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -76,21 +76,21 @@ export default function ReviewSection({
             </div>
           ) : (
             writableReviews.map((review) => (
-              <div key={review.reservationIdx} className="border border-blue-200 bg-blue-50 rounded-xl p-7">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{review.hotelName}</h3>
-                    <p className="text-base text-gray-500">{review.location} · 체크아웃: {review.checkOutDate}</p>
+              <div key={review.reservationIdx} className="border border-blue-200 bg-blue-50 rounded-lg sm:rounded-xl p-4 sm:p-6 md:p-7">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0 mb-3 sm:mb-4">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-1 sm:mb-2 truncate">{review.hotelName}</h3>
+                    <p className="text-sm sm:text-base text-gray-500 truncate">{review.location} · 체크아웃: {review.checkOutDate}</p>
                   </div>
                   {review.daysLeft !== undefined && review.daysLeft > 0 && (
-                    <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+                    <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full whitespace-nowrap flex-shrink-0">
                       {review.daysLeft}일 남음
                     </span>
                   )}
                 </div>
                 <button
                   onClick={() => onWriteReview({ id: review.reservationIdx })}
-                  className="flex-1 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-base"
+                  className="w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm sm:text-base"
                 >
                   리뷰 작성
                 </button>
@@ -109,39 +109,39 @@ export default function ReviewSection({
             </div>
           ) : (
             writtenReviews.map((review) => (
-              <div key={review.reviewIdx} className="border border-gray-200 rounded-xl p-7">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+              <div key={review.reviewIdx} className="border border-gray-200 rounded-lg sm:rounded-xl p-4 sm:p-6 md:p-7">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0 mb-3 sm:mb-4">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 truncate">
                       {review.hotelName || review.hotelInfo?.title || '호텔 정보 없음'}
                     </h3>
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
                       <div className="flex">
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
-                            className={`w-5 h-5 ${i < (review.star || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                            className={`w-4 h-4 sm:w-5 sm:h-5 ${i < (review.star || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
                           />
                         ))}
                       </div>
-                      <span className="text-base text-gray-500">
+                      <span className="text-xs sm:text-sm md:text-base text-gray-500">
                         {review.createdAt ? new Date(review.createdAt).toLocaleDateString('ko-KR') : ''}
                       </span>
                       {review.isEdited && (
                         <span className="text-xs leading-none px-2 py-1 rounded bg-gray-100 text-gray-600">수정됨</span>
                       )}
                     </div>
-                    <p className="text-gray-700 mb-4 text-base leading-relaxed">{review.content}</p>
+                    <p className="text-gray-700 mb-3 sm:mb-4 text-sm sm:text-base leading-relaxed">{review.content}</p>
                   </div>
-                  <div className="flex gap-2 ml-4">
+                  <div className="flex gap-2 sm:ml-4 self-start sm:self-auto">
                     <button
                       onClick={() => onOpenEditModal(review)}
-                      className="p-2.5 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 sm:p-2.5 hover:bg-gray-100 rounded-lg transition-colors"
                     >
-                      <Edit className="w-5 h-5 text-gray-600" />
+                      <Edit className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
                     </button>
-                    <button className="p-2.5 hover:bg-red-50 rounded-lg transition-colors">
-                      <Trash2 className="w-5 h-5 text-red-600" />
+                    <button className="p-2 sm:p-2.5 hover:bg-red-50 rounded-lg transition-colors">
+                      <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
                     </button>
                   </div>
                 </div>
