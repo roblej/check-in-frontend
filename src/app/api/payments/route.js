@@ -215,12 +215,12 @@ export async function POST(req) {
         couponDiscount: backendRequestData.couponDiscount,
       });
       console.log("✅ 결제 타입 분기 성공:", paymentType);
-      console.log(
-        "백엔드 URL:",
-        `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
-        }/api/payments/confirm`
-      );
+      const backendUrl = process.env.BACKEND_HOST || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888";
+      console.log("백엔드 URL:", {
+        BACKEND_HOST: process.env.BACKEND_HOST ? "설정됨" : "미설정",
+        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "미설정",
+        최종_URL: `${backendUrl}/api/payments/confirm`,
+      });
       // Wrap backend call with in-flight guard to avoid duplicates
       if (orderId && inFlightByOrderId.has(orderId)) {
         const prev = await inFlightByOrderId.get(orderId);
@@ -228,24 +228,35 @@ export async function POST(req) {
       }
 
       const backendCall = async () => {
-        const backendResponse = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
-          }/api/payments/confirm`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              // Provide idempotency hint to backend if supported
-              "Idempotency-Key": orderId,
-            },
-            body: JSON.stringify(backendRequestData),
-          }
-        );
+        // 배포 환경에서는 BACKEND_HOST 우선 사용, 없으면 NEXT_PUBLIC_API_URL 사용
+        const backendUrl = process.env.BACKEND_HOST || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888";
+        const backendConfirmUrl = `${backendUrl}/api/payments/confirm`;
+        
+        console.log("[payments/api] 백엔드 URL:", {
+          BACKEND_HOST: process.env.BACKEND_HOST ? "설정됨" : "미설정",
+          NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "미설정",
+          최종_URL: backendConfirmUrl,
+        });
+
+        const backendResponse = await fetch(backendConfirmUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            // Provide idempotency hint to backend if supported
+            "Idempotency-Key": orderId,
+          },
+          body: JSON.stringify(backendRequestData),
+        });
 
         if (!backendResponse.ok) {
           const errorText = await backendResponse.text();
-          throw new Error(`백엔드 결제 검증 실패: ${errorText}`);
+          console.error("[payments/api] 백엔드 에러:", {
+            status: backendResponse.status,
+            statusText: backendResponse.statusText,
+            errorText: errorText,
+            backendUrl: backendConfirmUrl,
+          });
+          throw new Error(`백엔드 결제 검증 실패 (${backendResponse.status}): ${errorText}`);
         }
 
         const result = await backendResponse.json();
@@ -267,14 +278,32 @@ export async function POST(req) {
       }
       return NextResponse.json(result);
     } catch (error) {
+      console.error("[payments/api] 에러 발생:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        backendUrl: process.env.BACKEND_HOST || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888",
+      });
       return NextResponse.json(
-        { success: false, message: error.message },
+        { 
+          success: false, 
+          message: error.message,
+          error: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        },
         { status: 500 }
       );
     }
   } catch (e) {
+    console.error("[payments/api] 외부 에러 발생:", {
+      message: e?.message,
+      stack: e?.stack,
+      name: e?.name,
+    });
     return NextResponse.json(
-      { message: e?.message || "server error" },
+      { 
+        message: e?.message || "server error",
+        error: process.env.NODE_ENV === 'development' ? e?.stack : undefined,
+      },
       { status: 500 }
     );
   }
