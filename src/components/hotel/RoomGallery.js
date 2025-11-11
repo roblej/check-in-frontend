@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { hotelAPI } from "@/lib/api/hotel";
 
@@ -25,10 +26,16 @@ const RoomGallery = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [thumbnailErrors, setThumbnailErrors] = useState({});
 
-  // S3 기본 경로
-  const BASE_URL =
-    "https://sist-checkin.s3.ap-northeast-2.amazonaws.com/hotelroom/";
+  const roomImageBaseUrl = process.env.NEXT_PUBLIC_ROOM_IMAGE_BASE_URL;
+  if (!roomImageBaseUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_ROOM_IMAGE_BASE_URL 환경 변수가 설정되어 있지 않습니다."
+    );
+  }
+  const ensureTrailingSlash = (url) => (url.endsWith("/") ? url : `${url}/`);
+  const baseUrlWithSlash = ensureTrailingSlash(roomImageBaseUrl);
 
   useEffect(() => {
     const fetchImages = async () => {
@@ -71,12 +78,12 @@ const RoomGallery = ({
   }, [isOpen]);
 
   const getImageUrl = (imageUrl) => {
-    if (!imageUrl) return `${BASE_URL}default.jpg`;
+    if (!imageUrl) return `${baseUrlWithSlash}default.jpg`;
     // 이미 전체 URL이면 그대로 사용, 아니면 BASE_URL 추가
     if (imageUrl.startsWith("http")) {
       return imageUrl;
     }
-    return `${BASE_URL}${imageUrl}`;
+    return `${baseUrlWithSlash}${imageUrl}`;
   };
 
   const handleCloseGallery = () => {
@@ -159,12 +166,16 @@ const RoomGallery = ({
           )}
 
           {/* 메인 이미지 */}
-          <div className="relative max-w-4xl max-h-[90vh] mx-4">
-            <img
+          <div className="relative mx-4 w-[90vw] max-w-4xl h-[60vh] max-h-[90vh]">
+            <Image
               src={getImageUrl(safeImages[currentIndex]?.imageUrl)}
               alt={`객실 이미지 ${currentIndex + 1}`}
-              className="object-contain max-w-full max-h-full"
-              style={{ maxHeight: "90vh" }}
+              fill
+              sizes="(max-width: 768px) 90vw, 800px"
+              className="object-contain"
+              onError={(event) => {
+                event.currentTarget.src = `${baseUrlWithSlash}default.jpg`;
+              }}
             />
           </div>
 
@@ -181,6 +192,7 @@ const RoomGallery = ({
               {images.map((image, index) => {
                 const thumbnailUrl = image.imageUrl;
                 const hasValidUrl = thumbnailUrl && thumbnailUrl.trim() !== "";
+                const showFallback = !hasValidUrl || thumbnailErrors[index];
 
                 return (
                   <button
@@ -193,41 +205,24 @@ const RoomGallery = ({
                     } transition-opacity`}
                     style={{ backgroundColor: "#1f2937" }}
                   >
-                    {hasValidUrl ? (
-                      <img
-                        src={getImageUrl(thumbnailUrl)}
-                        alt={`썸네일 ${index + 1}`}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        style={{
-                          display: "block",
-                          minWidth: "100%",
-                          minHeight: "100%",
-                          zIndex: 1,
-                        }}
-                        loading="eager"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                          const parent = e.currentTarget.parentElement;
-                          if (parent) {
-                            let fallbackEl = parent.querySelector(
-                              ".thumbnail-fallback"
-                            );
-                            if (!fallbackEl) {
-                              fallbackEl = document.createElement("div");
-                              fallbackEl.className =
-                                "thumbnail-fallback absolute inset-0 flex items-center justify-center";
-                              fallbackEl.style.zIndex = "2";
-                              fallbackEl.innerHTML =
-                                '<span class="text-white text-xs">🖼️</span>';
-                              parent.appendChild(fallbackEl);
-                            }
-                          }
-                        }}
-                      />
-                    ) : (
+                    {showFallback ? (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-white text-xs">🖼️</span>
                       </div>
+                    ) : (
+                      <Image
+                        src={getImageUrl(thumbnailUrl)}
+                        alt={`썸네일 ${index + 1}`}
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                        onError={() =>
+                          setThumbnailErrors((prev) => ({
+                            ...prev,
+                            [index]: true,
+                          }))
+                        }
+                      />
                     )}
                   </button>
                 );

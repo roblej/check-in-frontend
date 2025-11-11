@@ -12,6 +12,9 @@ import axiosInstance from "@/lib/axios";
  * @param {string} [props.size="small"] - 버튼 크기 ("small" | "medium" | "large")
  * @param {string} [props.className] - 추가 CSS 클래스
  */
+let cachedBookmarkedIds = null;
+let bookmarksFetchPromise = null;
+
 const BookmarkButton = ({ contentId, size = "small", className = "" }) => {
   const router = useRouter();
   const inlogged = useCustomerStore((state) => state.inlogged);
@@ -22,28 +25,57 @@ const BookmarkButton = ({ contentId, size = "small", className = "" }) => {
 
   // 로그인 상태일 때 북마크 목록 가져오기
   useEffect(() => {
-    if (inlogged) {
-      axiosInstance
-        .get(hotelbookmarklist_url)
-        .then((res) => {
-          console.log("북마크 목록 API 응답:", res.data);
-          // 북마크 목록에서 contentId 추출하여 Set에 추가
-          if (res.data && Array.isArray(res.data)) {
-            const bookmarkContentIds = res.data.map(
-              (bookmark) => bookmark.contentId || bookmark
-            );
-            setBookmarkedHotels(new Set(bookmarkContentIds));
-          }
-        })
-          .catch((err) => {
-            console.error(
-                "북마크 목록 API 에러:",
-                err.response?.data?.message || err.message
-            );
-        });
-    } else {
-      // 로그아웃 상태일 때: 북마크 목록 초기화
+    const resetCache = () => {
+      cachedBookmarkedIds = null;
+      bookmarksFetchPromise = null;
       setBookmarkedHotels(new Set());
+    };
+
+    if (!inlogged) {
+      resetCache();
+      return;
+    }
+
+    const applyBookmarks = (ids) => {
+      if (!Array.isArray(ids)) return;
+      setBookmarkedHotels(new Set(ids));
+    };
+
+    const fetchBookmarks = async () => {
+      try {
+        const res = await axiosInstance.get(hotelbookmarklist_url);
+        if (res.data && Array.isArray(res.data)) {
+          cachedBookmarkedIds = res.data.map(
+            (bookmark) => bookmark.contentId || bookmark
+          );
+          applyBookmarks(cachedBookmarkedIds);
+        } else {
+          cachedBookmarkedIds = [];
+          setBookmarkedHotels(new Set());
+        }
+      } catch (err) {
+        console.error(
+          "북마크 목록 API 에러:",
+          err.response?.data?.message || err.message
+        );
+        cachedBookmarkedIds = [];
+        setBookmarkedHotels(new Set());
+      } finally {
+        bookmarksFetchPromise = null;
+      }
+    };
+
+    if (cachedBookmarkedIds) {
+      applyBookmarks(cachedBookmarkedIds);
+      return;
+    }
+
+    if (!bookmarksFetchPromise) {
+      bookmarksFetchPromise = fetchBookmarks();
+    } else {
+      bookmarksFetchPromise.then(() => {
+        if (cachedBookmarkedIds) applyBookmarks(cachedBookmarkedIds);
+      });
     }
   }, [inlogged]);
 
@@ -94,6 +126,11 @@ const BookmarkButton = ({ contentId, size = "small", className = "" }) => {
               newSet.delete(contentId);
               return newSet;
             });
+            if (cachedBookmarkedIds) {
+              cachedBookmarkedIds = cachedBookmarkedIds.filter(
+                (id) => id !== contentId
+              );
+            }
           }
         })
         .catch((err) => {
@@ -115,6 +152,11 @@ const BookmarkButton = ({ contentId, size = "small", className = "" }) => {
               newSet.add(contentId);
               return newSet;
             });
+            if (cachedBookmarkedIds) {
+              cachedBookmarkedIds = Array.from(
+                new Set([...cachedBookmarkedIds, contentId])
+              );
+            }
           }
         })
         .catch((err) => {
