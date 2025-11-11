@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { mypageAPI } from '@/lib/api/mypage';
 import axiosInstance from '@/lib/axios';
 import { userAPI } from '@/lib/api/user';
@@ -19,6 +19,32 @@ import RecentHotelsSection from './components/recent/RecentHotelsSection';
 import CouponSection from './components/coupon/CouponSection';
 import InquirySection from './components/inquiry/InquirySection';
 import Pagination from '@/components/Pagination';
+
+const FavoritesPreviewFallback = () => (
+  <section className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        <div className="w-6 h-6 rounded-full bg-gray-200 animate-pulse" />
+        <div className="h-5 w-24 bg-gray-200 rounded animate-pulse" />
+      </div>
+      <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+    </div>
+    <div className="space-y-3">
+      {[1, 2, 3].map((index) => (
+        <div
+          key={index}
+          className="flex gap-3 p-3 border border-gray-200 rounded-lg animate-pulse"
+        >
+          <div className="w-16 h-16 bg-gray-200 rounded-lg" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 bg-gray-200 rounded w-2/3" />
+            <div className="h-3 bg-gray-100 rounded w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+);
 
 const formatCouponDate = (isoString) => {
   if (!isoString) return '';
@@ -498,7 +524,7 @@ function MyPageContent() {
         ...prev,
         [status]: allReservations
       }));
-      
+
       // 각 탭별 전체 개수 업데이트
       setReservationCounts(prev => ({
         ...prev,
@@ -506,7 +532,7 @@ function MyPageContent() {
       }));
       
       console.log(`✅ ${status} 예약 내역 로드 완료:`, allReservations.length, '건 (전체)');
-      
+
     } catch (error) {
       console.error('❌ 예약 내역 로드 실패:', error);
       
@@ -531,64 +557,6 @@ function MyPageContent() {
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
     // 전체 데이터는 이미 loadAllReservations에서 불러왔으므로 프론트엔드에서만 페이지 변경
-  };
-
-  // 더미 데이터 로드 (백엔드 미연결 시)
-  const loadDummyData = (status) => {
-    const dummyReservations = {
-      upcoming: [
-        {
-          id: 1,
-          hotelName: '그랜드 하얏트 서울',
-          location: '서울 강남구',
-          checkIn: '2025.10.20',
-          checkOut: '2025.10.22',
-          roomType: '디럭스 트윈',
-          price: 450000,
-          status: '예약확정'
-        },
-        {
-          id: 2,
-          hotelName: '신라호텔 제주',
-          location: '제주 제주시',
-          checkIn: '2025.11.05',
-          checkOut: '2025.11.07',
-          roomType: '오션뷰 킹',
-          price: 380000,
-          status: '예약확정'
-        }
-      ],
-      completed: [
-        {
-          id: 3,
-          hotelName: '롯데호텔 부산',
-          location: '부산 해운대구',
-          checkIn: '2025.09.15',
-          checkOut: '2025.09.17',
-          roomType: '스탠다드 더블',
-          price: 280000,
-          status: '이용완료'
-        }
-      ],
-      cancelled: [
-        {
-          id: 4,
-          hotelName: '파크 하얏트 서울',
-          location: '서울 용산구',
-          checkIn: '2025.10.01',
-          checkOut: '2025.10.03',
-          roomType: '디럭스 킹',
-          price: 420000,
-          status: '취소완료',
-          refundAmount: 378000
-        }
-      ]
-    };
-
-    setReservations(prev => ({
-      ...prev,
-      [status]: dummyReservations[status] || []
-    }));
   };
 
   // 예약 관련 핸들러
@@ -672,7 +640,7 @@ function MyPageContent() {
   };
 
   // 문의 내역 불러오기 (내가 작성한 문의/신고만)
-  const loadInquiries = async () => {
+  const loadInquiries = useCallback(async () => {
     if (!userData?.customerIdx) {
       return;
     }
@@ -710,7 +678,12 @@ function MyPageContent() {
     } finally {
       setInquiriesLoading(false);
     }
-  };
+  }, [userData?.customerIdx]);
+
+  // userData가 설정되면 문의 내역 로드
+  useEffect(() => {
+    loadInquiries();
+  }, [loadInquiries]);
 
   const handleRegisterTrade = (reservation) => {
     // 양도거래 등록 페이지로 이동 (예약 정보 전달)
@@ -901,17 +874,6 @@ function MyPageContent() {
     return reviewedReservationIds.has(reservIdx);
   };
 
-  const likedHotels = [
-    { id: 1, name: '스카이 파크 센트럴', location: '명동·남산', price: 140000, rating: 4.8 },
-    { id: 2, name: '제주 호텔 리스텔', location: '제주시', price: 98000, rating: 4.5 },
-    { id: 3, name: '강남 그랜드 호텔', location: '강남·서초', price: 185000, rating: 4.9 }
-  ];
-
-  const recentHotels = [
-    { id: 1, name: '나인브릿지 바이...', location: '제주·서귀포', viewDate: '2025.10.14', price: 420000 },
-    { id: 2, name: '호텔 현대바이...', location: '속초', viewDate: '2025.10.13', price: 180000 }
-  ];
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -927,7 +889,7 @@ function MyPageContent() {
         <TabQueryHandler onTabChange={setReservationTab} />
       </Suspense>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <ProfileHeader
           userData={userData}
           onEditProfile={() => router.push('/mypage/edit')}
@@ -982,9 +944,11 @@ function MyPageContent() {
           onNavigateToReviews={() => router.push('/mypage/reviews')}
         />
 
-        <div className="grid md:grid-cols-2 gap-6 mb-6">
-          <FavoritesSection likedHotels={likedHotels} />
-          <RecentHotelsSection recentHotels={recentHotels} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+          <Suspense fallback={<FavoritesPreviewFallback />}>
+            <FavoritesSection />
+          </Suspense>
+          <RecentHotelsSection recentHotels={[]} />
         </div>
 
         <CouponSection

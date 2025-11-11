@@ -215,11 +215,13 @@ export async function POST(req) {
         couponDiscount: backendRequestData.couponDiscount,
       });
       console.log("✅ 결제 타입 분기 성공:", paymentType);
+      // 서버 사이드에서는 BACKEND_HOST 사용 (없으면 NEXT_PUBLIC_API_URL 사용)
+      const backendUrl = process.env.BACKEND_HOST || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888";
+      const backendConfirmUrl = `${backendUrl}/api/payments/confirm`;
+      
       console.log(
         "백엔드 URL:",
-        `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
-        }/api/payments/confirm`
+        backendConfirmUrl
       );
       // Wrap backend call with in-flight guard to avoid duplicates
       if (orderId && inFlightByOrderId.has(orderId)) {
@@ -229,9 +231,7 @@ export async function POST(req) {
 
       const backendCall = async () => {
         const backendResponse = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL || "http://localhost:8888"
-          }/api/payments/confirm`,
+          backendConfirmUrl,
           {
             method: "POST",
             headers: {
