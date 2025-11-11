@@ -212,7 +212,8 @@ const UsedPaymentSuccessContent = () => {
           source: '세션 스토리지'
         });
 
-        const response = await axios.post('/payments', requestData);
+        // rewrites를 통해 백엔드로 직접 전달 (일반 호텔 결제와 동일한 방식)
+        const response = await axios.post('/payments/confirm', requestData);
         
         if (response.data.success) {
           console.log('✅ 백엔드 검증 및 DB 업데이트 완료:', response.data);

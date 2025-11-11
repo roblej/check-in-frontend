@@ -130,6 +130,7 @@ export async function POST(req) {
         });
       } else if (paymentType === "used_hotel") {
         // 중고 호텔 결제 데이터 구성
+        // totalPrice는 백엔드에서 실 결제 금액으로 사용되도록 amount와 동일하게 전달 (일반 호텔과 동일)
         backendRequestData = {
           paymentKey,
           orderId,
@@ -138,10 +139,12 @@ export async function POST(req) {
           customerIdx: body.customerInfo?.customerIdx || body.customerIdx || 1,
           usedTradeIdx: body.hotelInfo?.usedTradeIdx || body.usedTradeIdx,
           usedItemIdx: body.hotelInfo?.usedItemIdx || body.usedItemIdx,
+          // totalPrice는 백엔드에서 실 결제 금액으로 사용되도록 amount와 동일하게 전달
+          totalPrice: body.totalPrice || amount,
           // 선택 메타
-          hotelName: body.hotelInfo?.hotelName,
-          roomType: body.hotelInfo?.roomType,
-          salePrice: body.hotelInfo?.salePrice,
+          hotelName: body.hotelInfo?.hotelName || body.hotelName,
+          roomType: body.hotelInfo?.roomType || body.roomType,
+          salePrice: body.hotelInfo?.salePrice || body.salePrice,
           customerName: body.customerInfo?.name || body.customerName,
           customerEmail: body.customerInfo?.email || body.customerEmail,
           customerPhone: body.customerInfo?.phone || body.customerPhone,
