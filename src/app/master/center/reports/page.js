@@ -207,28 +207,18 @@ export default function ReportListPage() {
     }
   };
   
-  // 호텔 정보 로드
+  // 호텔 정보 로드 (호텔명과 전화번호만)
   const loadHotelInfo = async (contentId, report) => {
     if (!contentId) return;
     
     try {
       setHotelLoading(true);
       
-      // 병렬로 호텔 정보, 객실 정보, 호텔 이미지 로드
-      const [hotelResponse, roomsResponse, hotelImagesResponse] = await Promise.all([
-        hotelAPI.getHotelDetail(contentId).catch(err => {
-          console.error('호텔 기본 정보 로드 실패:', err);
-          return null;
-        }),
-        hotelAPI.getHotelRooms(contentId).catch(err => {
-          console.error('객실 정보 로드 실패:', err);
-          return [];
-        }),
-        axiosInstance.get(`/hotels/${contentId}/images`).catch(err => {
-          console.error('호텔 이미지 로드 실패:', err);
-          return { data: [] };
-        })
-      ]);
+      // 호텔 기본 정보만 로드 (이미지 제외)
+      const hotelResponse = await hotelAPI.getHotelDetail(contentId).catch(err => {
+        console.error('호텔 기본 정보 로드 실패:', err);
+        return null;
+      });
       
       // 호텔 기본 정보
       const hotelData = hotelResponse?.data || hotelResponse;
@@ -237,64 +227,22 @@ export default function ReportListPage() {
         return;
       }
       
-      // 객실 정보
-      const rooms = roomsResponse?.data || roomsResponse || [];
-      
-      // 호텔 이미지
-      const hotelImages = hotelImagesResponse?.data || [];
-      
-      // 각 객실의 이미지도 로드
-      const roomsWithImages = await Promise.all(
-        rooms.map(async (room) => {
-          let roomImages = [];
-          if (room.roomIdx) {
-            try {
-              const roomImagesResponse = await hotelAPI.getRoomImages(contentId, room.roomIdx);
-              roomImages = roomImagesResponse?.data || roomImagesResponse || [];
-            } catch (err) {
-              console.error(`객실 ${room.roomIdx} 이미지 로드 실패:`, err);
-            }
-          }
-          
-          // imageUrl이 있으면 배열에 추가
-          if (room.imageUrl && roomImages.length === 0) {
-            roomImages = [{ imageUrl: room.imageUrl }];
-          }
-          
-          return {
-            roomIdx: room.roomIdx,
-            name: room.name,
-            price: room.basePrice || room.price,
-            bedType: room.bedType,
-            maxOccupancy: room.capacity || room.maxOccupancy,
-            images: roomImages.map(img => ({
-              imageUrl: img.originUrl || img.smallUrl || img.imageUrl || img
-            }))
-          };
-        })
-      );
-      
       const hotelInfoData = {
         title: hotelData.title,
-        adress: hotelData.adress,
-        tel: hotelData.tel || '-',
-        imageUrl: hotelData.imageUrl,
-        images: hotelImages.map(img => ({
-          originUrl: img.originUrl,
-          smallUrl: img.smallUrl
-        })),
-        rooms: roomsWithImages
+        tel: hotelData.tel || '-'
       };
       
       setHotelInfo(hotelInfoData);
       
-      // 호텔 정보 로드 완료 후 포커스 정보 재계산 (객실명 포함)
+      // 포커스 정보는 기본 정보만 표시하므로 간소화
       if (report) {
-        const roomNames = roomsWithImages.map(room => room.name).filter(Boolean);
-        const focus = getFocusSection({
-          category: report.category,
-          content: report.content
-        }, roomNames);
+        const focus = {
+          section: 'basicInfo',
+          highlight: ['basicInfo'],
+          autoScroll: false,
+          categoryCode: null,
+          matchedRooms: []
+        };
         setFocusInfo(focus);
       }
     } catch (error) {
@@ -802,13 +750,7 @@ export default function ReportListPage() {
                     </div>
                   </div>
                 ) : (
-                  <HotelInfoView
-                    hotelInfo={hotelInfo}
-                    focusSection={focusInfo?.section}
-                    highlightSections={focusInfo?.highlight || []}
-                    autoScroll={focusInfo?.autoScroll || false}
-                    matchedRooms={focusInfo?.matchedRooms || []}
-                  />
+                  <HotelInfoView hotelInfo={hotelInfo} />
                 )}
               </div>
 
