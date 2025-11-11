@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import styles from "./signup.module.css";
-import axios from "axios";
+import axios from "@/lib/axios";
 
 export default function SignupPage() {
-  const signUp_url = "/api/login/signup";
-  const checkId_url = "/api/login/checkId";
-  const checkNickname_url = "/api/login/checkNickname";
-  const sendVerificationCode_url = "/api/login/send-verification-code";
-  const verifyEmail_url = "/api/login/verify-email";
+  const signUp_url = "/login/signup";
+  const checkId_url = "/login/checkId";
+  const checkNickname_url = "/login/checkNickname";
+  const sendVerificationCode_url = "/login/send-verification-code";
+  const verifyEmail_url = "/login/verify-email";
 
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -41,6 +41,7 @@ export default function SignupPage() {
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [codeSent, setCodeSent] = useState(false); // 인증 코드 발송 여부
+  const isAdmin = formData.role === "admin";
   
   function signUp(){
     axios.post(signUp_url, formData)
@@ -247,26 +248,30 @@ export default function SignupPage() {
       newErrors.passwordConfirm = "비밀번호가 일치하지 않습니다.";
     }
 
-    // 이메일 검사
-    if (!formData.email) {
-      newErrors.email = "이메일을 입력해주세요.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "올바른 이메일 형식이 아닙니다.";
-    } else if (!emailVerified) {
-      newErrors.email = "이메일 인증을 완료해주세요.";
+    // 이메일 검사 (회원 전용)
+    if (!isAdmin) {
+      if (!formData.email) {
+        newErrors.email = "이메일을 입력해주세요.";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        newErrors.email = "올바른 이메일 형식이 아닙니다.";
+      } else if (!emailVerified) {
+        newErrors.email = "이메일 인증을 완료해주세요.";
+      }
     }
 
-    // 닉네임 검사 (2-10자)
-    if (!formData.nickname) {
-      newErrors.nickname = "닉네임을 입력해주세요.";
-    } else if (formData.nickname.length < 2 || formData.nickname.length > 10) {
-      newErrors.nickname = "닉네임은 2-10자로 입력해주세요.";
-    } else if (nicknameStatus === 'error') {
-      // 닉네임 중복 검사 실패 시
-      newErrors.nickname = nicknameMessage || "닉네임 중복 검사가 필요합니다.";
-    } else if (nicknameStatus !== 'success') {
-      // 닉네임 중복 검사가 아직 완료되지 않은 경우
-      newErrors.nickname = "닉네임 중복 검사를 완료해주세요.";
+    // 닉네임 검사 (회원 전용)
+    if (!isAdmin) {
+      if (!formData.nickname) {
+        newErrors.nickname = "닉네임을 입력해주세요.";
+      } else if (formData.nickname.length < 2 || formData.nickname.length > 10) {
+        newErrors.nickname = "닉네임은 2-10자로 입력해주세요.";
+      } else if (nicknameStatus === 'error') {
+        // 닉네임 중복 검사 실패 시
+        newErrors.nickname = nicknameMessage || "닉네임 중복 검사가 필요합니다.";
+      } else if (nicknameStatus !== 'success') {
+        // 닉네임 중복 검사가 아직 완료되지 않은 경우
+        newErrors.nickname = "닉네임 중복 검사를 완료해주세요.";
+      }
     }
 
     // 전화번호 검사 (숫자만,11자)
@@ -283,14 +288,9 @@ export default function SignupPage() {
       newErrors.name = "이름은 2자 이상 입력해주세요.";
     }
 
-    // 생년월일 검사
-    if (!formData.birthday) {
+    // 생년월일 검사 (회원 전용)
+    if (!isAdmin && !formData.birthday) {
       newErrors.birthday = "생년월일을 입력해주세요.";
-    }
-
-    // 성별 검사
-    if (!formData.gender) {
-      newErrors.gender = "성별을 선택해주세요.";
     }
 
     setErrors(newErrors);
@@ -461,98 +461,102 @@ export default function SignupPage() {
             </div>
 
             {/* 이메일 */}
-            <div className={styles.formGroup}>
-              <label htmlFor="email" className={styles.label}>
-                이메일 <span className={styles.required}>*</span>
-              </label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  disabled={emailVerified}
-                  className={`${styles.input} ${errors.email ? styles.inputError : ""}`}
-                  placeholder="example@email.com"
-                  style={{ flex: 1 }}
-                />
-                <button
-                  type="button"
-                  onClick={handleSendVerificationCode}
-                  disabled={isSendingCode || emailVerified}
-                  className={styles.verifyButton}
-                >
-                  {isSendingCode ? '전송 중...' : emailVerified ? '인증 완료' : '인증번호 전송'}
-                </button>
-              </div>
-              
-              {/* 에러 메시지 */}
-              {errors.email && !emailVerified && (
-                <span className={styles.errorMessage}>{errors.email}</span>
-              )}
-              
-              {/* 인증 코드 입력 필드 */}
-              {codeSent && !emailVerified && (
-                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+            {!isAdmin && (
+              <div className={styles.formGroup}>
+                <label htmlFor="email" className={styles.label}>
+                  이메일 <span className={styles.required}>*</span>
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <input
-                    type="text"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value)}
-                    className={styles.input}
-                    placeholder="인증 코드 입력"
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    disabled={emailVerified}
+                    className={`${styles.input} ${errors.email ? styles.inputError : ""}`}
+                    placeholder="example@email.com"
                     style={{ flex: 1 }}
                   />
                   <button
                     type="button"
-                    onClick={handleVerifyEmail}
-                    disabled={isVerifyingCode}
+                    onClick={handleSendVerificationCode}
+                    disabled={isSendingCode || emailVerified}
                     className={styles.verifyButton}
                   >
-                    {isVerifyingCode ? '확인 중...' : '확인'}
+                    {isSendingCode ? '전송 중...' : emailVerified ? '인증 완료' : '인증번호 전송'}
                   </button>
                 </div>
-              )}
-              
-              {/* 성공 메시지 */}
-              {emailVerified && (
-                <span className={styles.successMessage}>✓ 이메일 인증이 완료되었습니다.</span>
-              )}
-            </div>
+                
+                {/* 에러 메시지 */}
+                {errors.email && !emailVerified && (
+                  <span className={styles.errorMessage}>{errors.email}</span>
+                )}
+                
+                {/* 인증 코드 입력 필드 */}
+                {codeSent && !emailVerified && (
+                  <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                    <input
+                      type="text"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      className={styles.input}
+                      placeholder="인증 코드 입력"
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifyEmail}
+                      disabled={isVerifyingCode}
+                      className={styles.verifyButton}
+                    >
+                      {isVerifyingCode ? '확인 중...' : '확인'}
+                    </button>
+                  </div>
+                )}
+                
+                {/* 성공 메시지 */}
+                {emailVerified && (
+                  <span className={styles.successMessage}>✓ 이메일 인증이 완료되었습니다.</span>
+                )}
+              </div>
+            )}
 
             {/* 닉네임 */}
-            <div className={styles.formGroup}>
-              <label htmlFor="nickname" className={styles.label}>
-                닉네임 <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="text"
-                id="nickname"
-                name="nickname"
-                value={formData.nickname}
-                onChange={handleChange}
-                className={`${styles.input} ${
-                  errors.nickname || nicknameStatus === 'error' 
-                    ? styles.inputError 
-                    : nicknameStatus === 'success' 
-                    ? styles.inputSuccess 
-                    : ""
-                }`}
-                placeholder="2-10자"
-              />
-              {nicknameMessage && (
-                <span className={
-                  nicknameStatus === 'success' 
-                    ? styles.successMessage
-                    : styles.errorMessage
-                }>
-                  {nicknameMessage}
-                </span>
-              )}
-              {errors.nickname && !nicknameMessage && (
-                <span className={styles.errorMessage}>{errors.nickname}</span>
-              )}
-            </div>
+            {!isAdmin && (
+              <div className={styles.formGroup}>
+                <label htmlFor="nickname" className={styles.label}>
+                  닉네임 <span className={styles.required}>*</span>
+                </label>
+                <input
+                  type="text"
+                  id="nickname"
+                  name="nickname"
+                  value={formData.nickname}
+                  onChange={handleChange}
+                  className={`${styles.input} ${
+                    errors.nickname || nicknameStatus === 'error' 
+                      ? styles.inputError 
+                      : nicknameStatus === 'success' 
+                      ? styles.inputSuccess 
+                      : ""
+                  }`}
+                  placeholder="2-10자"
+                />
+                {nicknameMessage && (
+                  <span className={
+                    nicknameStatus === 'success' 
+                      ? styles.successMessage
+                      : styles.errorMessage
+                  }>
+                    {nicknameMessage}
+                  </span>
+                )}
+                {errors.nickname && !nicknameMessage && (
+                  <span className={styles.errorMessage}>{errors.nickname}</span>
+                )}
+              </div>
+            )}
 
             {/* 이름 */}
             <div className={styles.formGroup}>
@@ -593,67 +597,57 @@ export default function SignupPage() {
             </div>
 
             {/* 생년월일 */}
-            <div className={styles.formGroup}>
-              <label htmlFor="birthday" className={styles.label}>
-                생년월일 <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="date"
-                id="birthday"
-                name="birthday"
-                value={formData.birthday}
-                onChange={handleChange}
-                className={`${styles.input} ${errors.birthday ? styles.inputError : ""}`}
-              />
-              {errors.birthday && (
-                <span className={styles.errorMessage}>{errors.birthday}</span>
-              )}
-            </div>
+            {!isAdmin && (
+              <div className={styles.formGroup}>
+                <label htmlFor="birthday" className={styles.label}>
+                  생년월일 <span className={styles.required}>*</span>
+                </label>
+                <input
+                  type="date"
+                  id="birthday"
+                  name="birthday"
+                  value={formData.birthday}
+                  onChange={handleChange}
+                  className={`${styles.input} ${errors.birthday ? styles.inputError : ""}`}
+                />
+                {errors.birthday && (
+                  <span className={styles.errorMessage}>{errors.birthday}</span>
+                )}
+              </div>
+            )}
 
             {/* 성별 */}
-            <div className={styles.formGroup}>
-              <label className={styles.label}>
-                성별 <span className={styles.required}>*</span>
-              </label>
-              <div className={styles.radioGroup}>
-                <label className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="gender"
-                    value="male"
-                    checked={formData.gender === "male"}
-                    onChange={handleChange}
-                    className={styles.radioInput}
-                  />
-                  <span>남성</span>
+            {!isAdmin && (
+              <div className={styles.formGroup}>
+                <label className={styles.label}>
+                  성별
                 </label>
-                <label className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="gender"
-                    value="female"
-                    checked={formData.gender === "female"}
-                    onChange={handleChange}
-                    className={styles.radioInput}
-                  />
-                  <span>여성</span>
-                </label>
-                <label className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="gender"
-                    value="other"
-                    checked={formData.gender === "other"}
-                    onChange={handleChange}
-                    className={styles.radioInput}
-                  />
-                  <span>기타</span>
-                </label>
+                <div className={styles.radioGroup}>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="male"
+                      checked={formData.gender === "male"}
+                      onChange={handleChange}
+                      className={styles.radioInput}
+                    />
+                    <span>남성</span>
+                  </label>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="female"
+                      checked={formData.gender === "female"}
+                      onChange={handleChange}
+                      className={styles.radioInput}
+                    />
+                    <span>여성</span>
+                  </label>
+                </div>
               </div>
-              {errors.gender && (
-                <span className={styles.errorMessage}>{errors.gender}</span>
-              )}
-            </div>
+            )}
 
             {/* 제출 버튼 */}
             <button
