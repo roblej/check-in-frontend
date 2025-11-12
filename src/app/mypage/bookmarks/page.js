@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Building2, Hotel, MapPin, ChevronRight, Calendar, X, CheckSquare, Square, Copy } from 'lucide-react';
 import { bookmarkAPI } from '@/lib/api/bookmark';
 import { hotelAPI } from '@/lib/api/hotel';
+import Pagination from '@/components/Pagination';
 
 const ROOM_IMAGE_BASE_URL = (() => {
   const base = process.env.NEXT_PUBLIC_ROOM_IMAGE_BASE_URL || '';
@@ -30,6 +31,8 @@ const TABS = [
   { key: 'hotel', label: '호텔 찜목록' },
   { key: 'room', label: '객실 찜목록' },
 ];
+
+const PAGE_SIZE = 10;
 
 const SectionHeader = ({ title, description }) => (
   <div className="mb-8">
@@ -67,73 +70,113 @@ const TabList = ({ activeTab, counts, onChange }) => (
   </div>
 );
 
-const HotelBookmarkCard = ({ item, onDelete, shareMode = false, selected = false, onToggleSelect }) => (
-  <article
-    className={`relative overflow-hidden rounded-3xl border bg-white shadow-sm transition-all duration-200 hover:shadow-lg ${
-      shareMode && selected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
-    }`}
-  >
-    {shareMode ? (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onToggleSelect?.(item.contentId);
-        }}
-        className={`absolute top-3 right-3 md:top-4 md:right-4 text-gray-400 hover:text-blue-600 transition-colors z-10 rounded-full bg-white/80 p-1.5 shadow ${
-          selected ? 'text-blue-600' : ''
-        }`}
-        aria-label="호텔 공유 대상 선택"
-        aria-pressed={selected}
-      >
-        {selected ? <CheckSquare className="w-5 h-5 md:w-6 md:h-6" /> : <Square className="w-5 h-5 md:w-6 md:h-6" />}
-      </button>
-    ) : (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onDelete(item.contentId);
-        }}
-        className="absolute top-3 right-3 md:top-4 md:right-4 text-gray-400 hover:text-red-600 transition-colors z-10"
-        aria-label="호텔 찜 삭제"
-      >
-        <X className="w-5 h-5 md:w-6 md:h-6" />
-      </button>
-    )}
-    <Link
-      href={`/hotel/${item.contentId}`}
-      className="group flex flex-col md:flex-row h-full"
+const HotelBookmarkCard = ({ item, onDelete, shareMode = false, selected = false, onToggleSelect }) => {
+  const handleCardClick = (e) => {
+    if (shareMode) {
+      e.preventDefault();
+      e.stopPropagation();
+      onToggleSelect?.(item.contentId);
+    }
+  };
+
+  return (
+    <article
+      className={`relative overflow-hidden rounded-3xl border bg-white shadow-sm transition-all duration-200 hover:shadow-lg ${
+        shareMode && selected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
+      } ${shareMode ? 'cursor-pointer' : ''}`}
+      onClick={shareMode ? handleCardClick : undefined}
     >
-      <div className="w-full h-40 md:h-auto md:w-48 md:aspect-[4/3] bg-gray-100">
-        {item.thumbnail ? (
-          <img
-            src={item.thumbnail}
-            alt={`${item.title} 썸네일`}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
-            <Building2 className="w-10 h-10" />
+      {shareMode ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleSelect?.(item.contentId);
+          }}
+          className={`absolute top-3 right-3 md:top-4 md:right-4 text-gray-400 hover:text-blue-600 transition-colors z-10 rounded-full bg-white/80 p-1.5 shadow ${
+            selected ? 'text-blue-600' : ''
+          }`}
+          aria-label="호텔 공유 대상 선택"
+          aria-pressed={selected}
+        >
+          {selected ? <CheckSquare className="w-5 h-5 md:w-6 md:h-6" /> : <Square className="w-5 h-5 md:w-6 md:h-6" />}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDelete(item.contentId);
+          }}
+          className="absolute top-3 right-3 md:top-4 md:right-4 text-gray-400 hover:text-red-600 transition-colors z-10"
+          aria-label="호텔 찜 삭제"
+        >
+          <X className="w-5 h-5 md:w-6 md:h-6" />
+        </button>
+      )}
+      {shareMode ? (
+        <div className="group flex flex-col md:flex-row h-full">
+          <div className="w-full h-40 md:h-auto md:w-48 md:aspect-[4/3] bg-gray-100">
+            {item.thumbnail ? (
+              <img
+                src={item.thumbnail}
+                alt={`${item.title} 썸네일`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <Building2 className="w-10 h-10" />
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      <div className="flex-1 p-4 md:p-6 space-y-3">
-        <div>
-          <h3 className="text-base md:text-lg font-semibold text-gray-900">
-            {item.title}
-          </h3>
-          <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500 mt-1">
-            <MapPin className="w-4 h-4" />
-            {item.region}
+          <div className="flex-1 p-4 md:p-6 space-y-3">
+            <div>
+              <h3 className="text-base md:text-lg font-semibold text-gray-900">
+                {item.title}
+              </h3>
+              <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500 mt-1">
+                <MapPin className="w-4 h-4" />
+                {item.region}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </Link>
-  </article>
-);
+      ) : (
+        <Link
+          href={`/hotel/${item.contentId}`}
+          className="group flex flex-col md:flex-row h-full"
+        >
+          <div className="w-full h-40 md:h-auto md:w-48 md:aspect-[4/3] bg-gray-100">
+            {item.thumbnail ? (
+              <img
+                src={item.thumbnail}
+                alt={`${item.title} 썸네일`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <Building2 className="w-10 h-10" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 p-4 md:p-6 space-y-3">
+            <div>
+              <h3 className="text-base md:text-lg font-semibold text-gray-900">
+                {item.title}
+              </h3>
+              <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500 mt-1">
+                <MapPin className="w-4 h-4" />
+                {item.region}
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
+    </article>
+  );
+};
 
 const RoomBookmarkCard = ({ item, onDelete }) => (
   <article className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition-all duration-200">
@@ -226,6 +269,8 @@ export default function MyBookmarkPage() {
   const [selectedHotelIds, setSelectedHotelIds] = useState(new Set());
   const shareSelectedIds = useMemo(() => Array.from(selectedHotelIds), [selectedHotelIds]);
   const [copiedToast, setCopiedToast] = useState(null);
+  const [hotelPage, setHotelPage] = useState(0);
+  const [roomPage, setRoomPage] = useState(0);
 
   useEffect(() => {
     if (!copiedToast) return;
@@ -254,6 +299,69 @@ export default function MyBookmarkPage() {
       setSelectedHotelIds(new Set());
     }
   }, [isShareMode, selectedHotelIds.size]);
+
+  const hotelTotalElements = hotelState.items.length;
+  const hotelTotalPages = Math.ceil(hotelTotalElements / PAGE_SIZE);
+  const hotelItemsForPage = useMemo(() => {
+    const start = hotelPage * PAGE_SIZE;
+    return hotelState.items.slice(start, start + PAGE_SIZE);
+  }, [hotelState.items, hotelPage]);
+
+  const roomTotalElements = roomState.items.length;
+  const roomTotalPages = Math.ceil(roomTotalElements / PAGE_SIZE);
+  const roomItemsForPage = useMemo(() => {
+    const start = roomPage * PAGE_SIZE;
+    return roomState.items.slice(start, start + PAGE_SIZE);
+  }, [roomState.items, roomPage]);
+
+  useEffect(() => {
+    if (hotelTotalPages === 0) {
+      if (hotelPage !== 0) {
+        setHotelPage(0);
+      }
+      return;
+    }
+    if (hotelPage > hotelTotalPages - 1) {
+      setHotelPage(hotelTotalPages - 1);
+    }
+  }, [hotelPage, hotelTotalPages]);
+
+  useEffect(() => {
+    if (roomTotalPages === 0) {
+      if (roomPage !== 0) {
+        setRoomPage(0);
+      }
+      return;
+    }
+    if (roomPage > roomTotalPages - 1) {
+      setRoomPage(roomTotalPages - 1);
+    }
+  }, [roomPage, roomTotalPages]);
+
+  const handleTabChange = useCallback((nextTab) => {
+    setActiveTab(nextTab);
+    if (nextTab === 'hotel') {
+      setHotelPage(0);
+    } else {
+      setRoomPage(0);
+    }
+  }, []);
+
+  const handleHotelPageChange = useCallback(
+    (nextPage) => {
+      if (nextPage < 0 || nextPage >= hotelTotalPages) return;
+      setHotelPage(nextPage);
+    },
+    [hotelTotalPages]
+  );
+
+  const handleRoomPageChange = useCallback(
+    (nextPage) => {
+      if (nextPage < 0 || nextPage >= roomTotalPages) return;
+      setRoomPage(nextPage);
+    },
+    [roomTotalPages]
+  );
 
   const handleToggleShareMode = useCallback(() => {
     if (hotelState.items.length === 0) return;
@@ -499,18 +607,29 @@ export default function MyBookmarkPage() {
     }
 
     return (
-      <div className="space-y-4">
-        {hotelState.items.map((item) => (
-          <HotelBookmarkCard
-            key={item.id}
-            item={item}
-            onDelete={handleHotelDelete}
-            shareMode={isShareMode}
-            selected={selectedHotelIds.has(item.contentId)}
-            onToggleSelect={handleToggleHotelSelect}
+      <>
+        <div className="space-y-4">
+          {hotelItemsForPage.map((item) => (
+            <HotelBookmarkCard
+              key={item.id}
+              item={item}
+              onDelete={handleHotelDelete}
+              shareMode={isShareMode}
+              selected={selectedHotelIds.has(item.contentId)}
+              onToggleSelect={handleToggleHotelSelect}
+            />
+          ))}
+        </div>
+        {hotelTotalPages > 0 && (
+          <Pagination
+            currentPage={hotelPage}
+            totalPages={hotelTotalPages}
+            totalElements={hotelTotalElements}
+            pageSize={PAGE_SIZE}
+            onPageChange={handleHotelPageChange}
           />
-        ))}
-      </div>
+        )}
+      </>
     );
   };
 
@@ -543,11 +662,22 @@ export default function MyBookmarkPage() {
     }
 
     return (
-      <div className="space-y-4">
-        {roomState.items.map((item) => (
-          <RoomBookmarkCard key={item.id} item={item} onDelete={handleRoomDelete} />
-        ))}
-      </div>
+      <>
+        <div className="space-y-4">
+          {roomItemsForPage.map((item) => (
+            <RoomBookmarkCard key={item.id} item={item} onDelete={handleRoomDelete} />
+          ))}
+        </div>
+        {roomTotalPages > 0 && (
+          <Pagination
+            currentPage={roomPage}
+            totalPages={roomTotalPages}
+            totalElements={roomTotalElements}
+            pageSize={PAGE_SIZE}
+            onPageChange={handleRoomPageChange}
+          />
+        )}
+      </>
     );
   };
 
@@ -574,7 +704,7 @@ export default function MyBookmarkPage() {
           마이페이지로 돌아가기
         </button>
         <SectionHeader title="내 찜 목록" description="관심 있게 담아둔 호텔과 객실을 한 곳에서 확인해보세요." />
-        <TabList activeTab={activeTab} counts={counts} onChange={setActiveTab} />
+        <TabList activeTab={activeTab} counts={counts} onChange={handleTabChange} />
         <div className="flex items-center gap-2 text-gray-500 text-sm mb-4">
           <span className="flex items-center gap-2 text-gray-500">
             <Calendar className="w-4 h-4" />
