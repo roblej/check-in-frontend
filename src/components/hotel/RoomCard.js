@@ -79,8 +79,9 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
         searchParams?.contentId || searchParams?.hotelId || room?.contentId;
       const roomId = room.roomIdx || room.id;
       const checkIn = String(searchParams?.checkIn || "");
+      const checkOut = String(searchParams?.checkOut || "");
 
-      if (!contentId || !roomId || !checkIn) {
+      if (!contentId || !roomId || !checkIn || !checkOut) {
         alert("객실/날짜 정보가 올바르지 않습니다. 날짜를 다시 선택해주세요.");
         setIsLocking(false);
         return;
@@ -93,6 +94,7 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
             contentId: String(contentId),
             roomId: Number(roomId),
             checkIn,
+            checkOut,
           },
         });
       } catch (_) {}
@@ -102,6 +104,7 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
         contentId: String(contentId),
         roomId: Number(roomId),
         checkIn,
+        checkOut,
       };
 
       if (lockId) {
@@ -150,7 +153,7 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
           roomIdx: roomId,
           roomName: room.name,
           checkIn,
-          checkOut: searchParams?.checkOut,
+          checkOut,
           guests: searchParams?.guests || searchParams?.adults || 2,
           nights: nights,
           roomPrice: room.basePrice || room.price,
@@ -160,6 +163,7 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
           lockExpireTime: expireTime || null,
           lockExpiresAt: computedLockExpiresAt,
           expiresAt: computedLockExpiresAt,
+          lockCheckOut: checkOut,
           amenities: room.amenities || [],
         },
       };

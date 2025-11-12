@@ -17,7 +17,13 @@ import { getOrCreateTabLockId } from "@/utils/lockId";
  * @param {boolean} enabled - 락 활성화 여부
  * @returns {Object} { createLock, releaseLock, isLocked }
  */
-const useReservationLock = (contentId, roomId, checkIn, enabled = true) => {
+const useReservationLock = (
+  contentId,
+  roomId,
+  checkIn,
+  checkOut,
+  enabled = true
+) => {
   const lockCreatedRef = useRef(false);
   const lockDataRef = useRef({ contentId: null, roomId: null, lockId: null });
 
@@ -41,6 +47,7 @@ const useReservationLock = (contentId, roomId, checkIn, enabled = true) => {
         contentId,
         roomId,
         checkIn,
+        checkOut,
         lockId
       );
 
@@ -84,6 +91,7 @@ const useReservationLock = (contentId, roomId, checkIn, enabled = true) => {
         lockRoomId,
         null,
         checkIn,
+        checkOut,
         lockId
       );
 
@@ -123,6 +131,7 @@ const useReservationLock = (contentId, roomId, checkIn, enabled = true) => {
           contentId: lockContentId,
           roomId: lockRoomId,
           checkIn,
+          checkOut,
           lockId,
         });
 
