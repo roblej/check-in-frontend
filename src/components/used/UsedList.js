@@ -12,8 +12,6 @@ const UsedList = ({
   pageSize, 
   onPageChange,
   onInquire,
-  onBookmark,
-  onHotelDetail,
   customer,
   customerLoading
 }) => {
@@ -38,8 +36,6 @@ const UsedList = ({
               key={uniqueKey}
               item={item}
               onInquire={onInquire}
-              onBookmark={onBookmark}
-              onHotelDetail={onHotelDetail}
               customer={customer}
               customerLoading={customerLoading}
             />
