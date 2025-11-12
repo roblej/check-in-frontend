@@ -19,6 +19,7 @@ import RecentHotelsSection from './components/recent/RecentHotelsSection';
 import CouponSection from './components/coupon/CouponSection';
 import InquirySection from './components/inquiry/InquirySection';
 import Pagination from '@/components/Pagination';
+import { useRecentViewedHotels } from '@/hooks/useRecentViewedHotels';
 
 const FavoritesPreviewFallback = () => (
   <section className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
@@ -127,6 +128,12 @@ function MyPageContent() {
   
   // Zustand에서 고객 정보 가져오기
   const { verifyTokenWithBackend, isRecentlyVerified } = useCustomerStore();
+  const {
+    hotels: recentHotels,
+    isLoading: recentHotelsLoading,
+    loadRecentHotels,
+    syncLocalCacheFromStore,
+  } = useRecentViewedHotels();
   
   // 탭 상태 관리
   const [reservationTab, setReservationTab] = useState('upcoming'); // upcoming, completed, cancelled
@@ -210,6 +217,14 @@ function MyPageContent() {
       return null;
     }
   };
+
+  useEffect(() => {
+    loadRecentHotels({ page: 0, replace: true, limit: 3 }).catch(() => undefined);
+  }, [loadRecentHotels]);
+
+  useEffect(() => {
+    syncLocalCacheFromStore();
+  }, [syncLocalCacheFromStore, recentHotels]);
 
   useEffect(() => {
     const fetchCoupons = async () => {
@@ -948,7 +963,11 @@ function MyPageContent() {
           <Suspense fallback={<FavoritesPreviewFallback />}>
             <FavoritesSection />
           </Suspense>
-          <RecentHotelsSection recentHotels={[]} />
+          <RecentHotelsSection
+            hotels={recentHotels}
+            isLoading={recentHotelsLoading}
+            onSeeAll={() => router.push('/mypage/recent-hotels')}
+          />
         </div>
 
         <CouponSection

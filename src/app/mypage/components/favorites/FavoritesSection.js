@@ -264,7 +264,7 @@ export default function FavoritesSection() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
           <Heart className="w-6 h-6 text-red-500" />
-          찜목록
+          찜 목록
         </h2>
         <button
           type="button"
