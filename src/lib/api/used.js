@@ -107,5 +107,21 @@ export const usedAPI = {
     const response = await axiosInstance.get('/used/seller/items');
     return response.data;
   },
+
+  // 결제 페이지 진입 시 락 생성
+  createPaymentPageLock: async (usedTradeIdx, buyerIdx = null) => {
+    const response = await axiosInstance.post(`/used/trade/${usedTradeIdx}/lock`, {
+      buyerIdx
+    });
+    return response.data;
+  },
+
+  // 결제 페이지 이탈 시 락 해제
+  releasePaymentPageLock: async (usedTradeIdx, buyerIdx = null) => {
+    const response = await axiosInstance.post(`/used/trade/${usedTradeIdx}/unlock`, {
+      buyerIdx
+    });
+    return response.data;
+  },
 };
 

@@ -19,6 +19,7 @@ import { updateUrlParams, formatSearchParamsForUrl } from "@/utils/urlUtils";
 import { useHotelData } from "./hooks/useHotelData";
 import { useHotelNavigation } from "./hooks/useHotelNavigation";
 import { useRecordHotelView } from "@/hooks/useRecordHotelView";
+import { userAPI } from "@/lib/api/user";
 
 /**
  * 호텔 상세 정보 컴포넌트
@@ -439,7 +440,18 @@ const HotelDetail = ({
                         )}
                       </div>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
+                          // 로그인 체크
+                          try {
+                            await userAPI.getProfile();
+                          } catch (error) {
+                            if (error.response?.status === 401 || !error.response) {
+                              alert("로그인이 필요합니다.");
+                              router.push("/login");
+                              return;
+                            }
+                          }
+
                           // URL에서 다이닝 날짜 직접 읽기
                           const diningDateFromUrl =
                             urlSearchParams.get("diningDate");
