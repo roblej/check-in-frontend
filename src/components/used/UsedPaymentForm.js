@@ -24,6 +24,7 @@ const UsedPaymentForm = ({ initialData }) => {
   const beforeUnloadHandlerRef = useRef(null); // beforeunload 핸들러 참조
   const visibilityChangeHandlerRef = useRef(null); // visibilitychange 핸들러 참조
   const lockKeyRef = useRef(null); // 락 키 저장 (unlock용)
+  const isBackButtonRef = useRef(false); // 뒤로가기 감지용 ref
 
   // 사용자 정보 로드
   useEffect(() => {
@@ -341,6 +342,23 @@ const UsedPaymentForm = ({ initialData }) => {
     const usedTradeIdx = paymentInfo.usedTradeIdx;
     const buyerIdx = customer?.customerIdx || null;
 
+    // 뒤로가기 감지 플래그 초기화
+    isBackButtonRef.current = false;
+
+    // popstate 이벤트 핸들러 (뒤로가기/앞으로가기 감지)
+    const handlePopState = () => {
+      console.log("🔙 뒤로가기 감지");
+      isBackButtonRef.current = true;
+      // 뒤로가기 시 즉시 unlock 처리
+      if (!hasUnlockedRef.current && lockCreatedRef.current && !checkPaymentCompleted()) {
+        hasUnlockedRef.current = true;
+        sendUnlockBeacon(usedTradeIdx, buyerIdx);
+        if (!isPaymentCompletedRef.current && !hasCancelledRef.current) {
+          cancelTradeOnExit(usedTradeIdx);
+        }
+      }
+    };
+
     // beforeunload 이벤트 핸들러 (브라우저 탭/창 닫기 또는 새로고침)
     const handleBeforeUnload = () => {
       if (hasUnlockedRef.current) return;
@@ -351,21 +369,30 @@ const UsedPaymentForm = ({ initialData }) => {
         return;
       }
       
-      // 새로고침으로 인한 이탈인지 확인 (새로고침 시에는 unlock 하지 않음)
-      isUnloadingRef.current = true;
-      hasUnlockedRef.current = true;
-
-      // 결제 완료되지 않은 경우에만 unlock 요청 (새로고침 제외)
-      // 새로고침은 페이지가 다시 로드되므로 락을 유지해야 함
-      // 일반 이탈(탭 닫기, 다른 페이지 이동)만 unlock
-      // 하지만 beforeunload에서는 새로고침과 일반 이탈을 구분할 수 없으므로
-      // 여기서는 unlock을 하지 않고, cleanup에서 처리
+      // 뒤로가기가 아닌 경우에만 unlock 시도
+      // 새로고침의 경우 페이지가 다시 로드되므로 락이 유지됨 (백엔드에서 같은 사용자면 락 유지)
+      // 다른 이탈(탭 닫기, 다른 페이지 이동)의 경우 unlock 실행
+      if (!isBackButtonRef.current && lockCreatedRef.current) {
+        console.log("🔓 beforeunload: unlock 시도");
+        hasUnlockedRef.current = true;
+        isUnloadingRef.current = true;
+        sendUnlockBeacon(usedTradeIdx, buyerIdx);
+        if (!isPaymentCompletedRef.current && !hasCancelledRef.current) {
+          cancelTradeOnExit(usedTradeIdx);
+        }
+      } else {
+        console.log("⏭️ beforeunload: unlock 건너뜀", {
+          isBackButton: isBackButtonRef.current,
+          lockCreated: lockCreatedRef.current
+        });
+      }
     };
 
     // 핸들러 참조 저장
     beforeUnloadHandlerRef.current = handleBeforeUnload;
 
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
 
     // 컴포넌트 언마운트 시 (뒤로가기 등 - 새로고침 제외)
     return () => {
@@ -374,19 +401,18 @@ const UsedPaymentForm = ({ initialData }) => {
       if (beforeUnloadHandlerRef.current) {
         window.removeEventListener('beforeunload', beforeUnloadHandlerRef.current);
       }
+      window.removeEventListener('popstate', handlePopState);
       
       if (!isMountedRef.current) {
         console.log("⏭️ StrictMode 초기 cleanup: unlock 무시");
         return;
       }
 
-      if (isUnloadingRef.current) {
-        // 새로고침인 경우 unlock 하지 않음 (락 유지)
-        console.log("⏭️ 새로고침 감지: unlock 무시 (락 유지)");
-        isUnloadingRef.current = false;
+      // 뒤로가기인 경우 이미 unlock 처리했으므로 중복 방지
+      if (isBackButtonRef.current) {
+        console.log("⏭️ 뒤로가기: 이미 unlock 처리 완료");
         return;
       }
-
       // 락이 생성되지 않았으면 unlock 하지 않음 (초기 마운트 시 cleanup 방지)
       if (!lockCreatedRef.current) {
         console.log("⏭️ 락이 생성되지 않음: unlock 무시 (초기 마운트 또는 락 생성 실패)");
@@ -403,8 +429,16 @@ const UsedPaymentForm = ({ initialData }) => {
         console.log('✅ cleanup: 결제 완료 플래그 확인됨, unlock 요청 안 함');
         return;
       }
+
+      // beforeunload에서 이미 unlock을 시도한 경우 (새로고침 또는 탭 닫기)
+      if (isUnloadingRef.current) {
+        console.log("⏭️ beforeunload에서 이미 unlock 시도: cleanup에서 중복 방지");
+        isUnloadingRef.current = false;
+        return;
+      }
       
-      // 새로고침이 아닌 경우에만 unlock 요청 (뒤로가기, 다른 페이지 이동 등)
+      // 다른 페이지 이동 등 (beforeunload가 발생하지 않은 경우)
+      console.log("🔓 cleanup: 다른 페이지 이동 등으로 인한 unlock 시도");
       hasUnlockedRef.current = true;
       sendUnlockBeacon(usedTradeIdx, buyerIdx);
       
@@ -578,12 +612,49 @@ const UsedPaymentForm = ({ initialData }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  /**
+   * 숫자 입력 처리 (0으로 시작 불가)
+   * @param {string} value - 입력값
+   * @returns {string} - 정제된 값
+   */
+  const handleNumericInput = (value) => {
+    // 숫자만 추출
+    const numericValue = value.replace(/[^0-9]/g, "");
+
+    // 빈 문자열이면 그대로 반환
+    if (numericValue === "") return "";
+
+    // 0으로 시작하는 경우 (예: "01000") 앞의 0 제거
+    return numericValue.replace(/^0+/, "") || "0";
+  };
+
   // 캐시 사용량 변경
   const handleCashChange = (value) => {
+    const totalAmount = paymentInfo.salePrice || 0;
+    const sanitized = handleNumericInput(value);
     const cashAmount = Math.max(
       0,
-      Math.min(parseInt(value) || 0, paymentInfo.customerCash)
+      Math.min(parseInt(sanitized) || 0, paymentInfo.customerCash)
     );
+
+    // 90% 제한 검증 (최소 10%는 카드 결제 필요)
+    const currentPoint = paymentInfo.usePoint || 0;
+    const totalUsage = cashAmount + currentPoint;
+    const maxAllowed = Math.floor(totalAmount * 0.9);
+
+    if (totalUsage > maxAllowed) {
+      alert(
+        "포인트와 캐시를 합쳐서 상품 금액의 90% 이상 사용할 수 없습니다. (최소 10%는 카드 결제 필요)"
+      );
+      // 최대 허용 금액으로 자동 조정
+      const adjustedCash = Math.max(0, maxAllowed - currentPoint);
+      setPaymentInfo((prev) => ({
+        ...prev,
+        useCash: Math.min(adjustedCash, paymentInfo.customerCash),
+      }));
+      return;
+    }
+
     setPaymentInfo((prev) => ({
       ...prev,
       useCash: cashAmount,
@@ -592,10 +663,31 @@ const UsedPaymentForm = ({ initialData }) => {
 
   // 포인트 사용량 변경
   const handlePointChange = (value) => {
+    const totalAmount = paymentInfo.salePrice || 0;
+    const sanitized = handleNumericInput(value);
     const pointAmount = Math.max(
       0,
-      Math.min(parseInt(value) || 0, paymentInfo.customerPoint)
+      Math.min(parseInt(sanitized) || 0, paymentInfo.customerPoint)
     );
+
+    // 90% 제한 검증 (최소 10%는 카드 결제 필요)
+    const currentCash = paymentInfo.useCash || 0;
+    const totalUsage = currentCash + pointAmount;
+    const maxAllowed = Math.floor(totalAmount * 0.9);
+
+    if (totalUsage > maxAllowed) {
+      alert(
+        "포인트와 캐시를 합쳐서 상품 금액의 90% 이상 사용할 수 없습니다. (최소 10%는 카드 결제 필요)"
+      );
+      // 최대 허용 금액으로 자동 조정
+      const adjustedPoint = Math.max(0, maxAllowed - currentCash);
+      setPaymentInfo((prev) => ({
+        ...prev,
+        usePoint: Math.min(adjustedPoint, paymentInfo.customerPoint),
+      }));
+      return;
+    }
+
     setPaymentInfo((prev) => ({
       ...prev,
       usePoint: pointAmount,
@@ -1128,13 +1220,13 @@ const UsedPaymentForm = ({ initialData }) => {
                     캐시 사용 (보유: {paymentInfo.customerCash.toLocaleString()}원)
                   </label>
                   <input
-                    type="number"
-                    value={paymentInfo.useCash}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={paymentInfo.useCash || ""}
                     onChange={(e) => handleCashChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="사용할 캐시 금액"
-                    min="0"
-                    max={paymentInfo.customerCash}
                   />
                 </div>
 
@@ -1144,13 +1236,13 @@ const UsedPaymentForm = ({ initialData }) => {
                     포인트 사용 (보유: {paymentInfo.customerPoint.toLocaleString()}P)
                   </label>
                   <input
-                    type="number"
-                    value={paymentInfo.usePoint}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={paymentInfo.usePoint || ""}
                     onChange={(e) => handlePointChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="사용할 포인트"
-                    min="0"
-                    max={paymentInfo.customerPoint}
                   />
                 </div>
 
