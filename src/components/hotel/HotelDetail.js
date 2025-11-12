@@ -18,6 +18,7 @@ import { useSearchStore } from "@/stores/searchStore";
 import { updateUrlParams, formatSearchParamsForUrl } from "@/utils/urlUtils";
 import { useHotelData } from "./hooks/useHotelData";
 import { useHotelNavigation } from "./hooks/useHotelNavigation";
+import { useRecordHotelView } from "@/hooks/useRecordHotelView";
 
 /**
  * 호텔 상세 정보 컴포넌트
@@ -118,6 +119,34 @@ const HotelDetail = ({
     return minPrice * (Number.isNaN(nights) ? 1 : nights);
   }, [rooms, localSearchParams?.nights]);
 
+  const recordHotelView = useRecordHotelView();
+  const hasRecordedViewRef = useRef(null);
+
+  useEffect(() => {
+    hasRecordedViewRef.current = null;
+  }, [contentId]);
+
+  useEffect(() => {
+    if (!hotelData) {
+      return;
+    }
+
+    if (hasRecordedViewRef.current === contentId) {
+      return;
+    }
+
+    const payload = {
+      contentId,
+      hotelName: hotelData.name,
+      address: hotelData.location,
+      imageUrl: Array.isArray(hotelData.images) ? hotelData.images[0] : "",
+      minPrice: lowestPrice > 0 ? lowestPrice : null,
+    };
+
+    recordHotelView(payload);
+    hasRecordedViewRef.current = contentId;
+  }, [hotelData, contentId, lowestPrice, recordHotelView]);
+
   useEffect(() => {
     if (onHeaderPriceChange) {
       onHeaderPriceChange(lowestPrice > 0 ? lowestPrice : null);
@@ -205,8 +234,8 @@ const HotelDetail = ({
   // 로딩 상태
   if (isLoading) {
     return (
-      <div className="bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">
+      <div className="bg-gray-50 flex min-h-[420px] justify-center px-4">
+        <div className="flex flex-col items-center py-16 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">호텔 정보를 불러오는 중...</p>
         </div>

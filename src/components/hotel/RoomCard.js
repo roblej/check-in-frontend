@@ -6,7 +6,12 @@ import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
 import axiosInstance from "@/lib/axios";
 import { hotelAPI } from "@/lib/api/hotel";
-import { getOrCreateTabLockId } from "@/utils/lockId";
+import {
+  getReservationIdentifiers,
+  setLockStartedAt,
+  logReservationIdentifiers,
+  clearLockState,
+} from "@/utils/lockId";
 import RoomBookmarkButton from "./RoomBookmarkButton";
 import RoomGallery from "./RoomGallery";
 
@@ -68,6 +73,8 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
   }, [room, searchParams]);
 
   // 예약 버튼 클릭 핸들러 (락 적용)
+  const TEN_MINUTES_MS = 10 * 60 * 1000;
+
   const handleReservation = async () => {
     if (isLocking) return; // 이미 처리 중이면 무시
 
@@ -99,7 +106,15 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
         });
       } catch (_) {}
 
-      const lockId = getOrCreateTabLockId();
+      clearLockState();
+      const freshInitialIso = new Date().toISOString();
+      setLockStartedAt(freshInitialIso);
+      const identifiers = getReservationIdentifiers({
+        lockStartedAtOverride: freshInitialIso,
+      });
+      logReservationIdentifiers("RoomCard: attempting createLock", identifiers);
+
+      const { sessionId, tabId, lockId, lockStartedAt } = identifiers;
       const lockPayload = {
         contentId: String(contentId),
         roomId: Number(roomId),
@@ -107,9 +122,10 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
         checkOut,
       };
 
-      if (lockId) {
-        lockPayload.lockId = lockId;
-      }
+      if (lockId) lockPayload.lockId = lockId;
+      if (sessionId) lockPayload.sessionId = sessionId;
+      if (tabId) lockPayload.tabId = tabId;
+      if (lockStartedAt) lockPayload.initialLockAt = lockStartedAt;
 
       const lockResult = await axiosInstance.post(
         "/reservations/lock",
@@ -121,6 +137,7 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
         message: lockMessage,
         expireTime,
         lockId: responseLockId,
+        initialLockAt,
       } = lockResult.data || {};
 
       if (!lockSuccess) {
@@ -129,12 +146,20 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
         return;
       }
 
-      const resolvedLockId = responseLockId || lockId || getOrCreateTabLockId();
+      const resolvedLockId = responseLockId || lockId;
+      const resolvedInitialLockAt =
+        initialLockAt || lockStartedAt || new Date().toISOString();
+      setLockStartedAt(resolvedInitialLockAt);
+
+      const initialLockMs = Date.parse(resolvedInitialLockAt);
       const parsedExpire = expireTime ? Date.parse(expireTime) : null;
+
       const computedLockExpiresAt =
-        typeof parsedExpire === "number" && !Number.isNaN(parsedExpire)
+        Number.isFinite(initialLockMs) && initialLockMs > 0
+          ? initialLockMs + TEN_MINUTES_MS
+          : typeof parsedExpire === "number" && !Number.isNaN(parsedExpire)
           ? parsedExpire
-          : Date.now() + 10 * 60 * 1000;
+          : Date.now() + TEN_MINUTES_MS;
 
       // 2단계: 락 생성 성공 → 결제 정보 저장 후 이동
       const reservationData = {
@@ -164,6 +189,7 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
           lockExpiresAt: computedLockExpiresAt,
           expiresAt: computedLockExpiresAt,
           lockCheckOut: checkOut,
+          lockInitialAt: resolvedInitialLockAt,
           amenities: room.amenities || [],
         },
       };
