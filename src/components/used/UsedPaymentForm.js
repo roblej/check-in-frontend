@@ -354,7 +354,7 @@ const UsedPaymentForm = ({ initialData }) => {
       // 새로고침으로 인한 이탈인지 확인 (새로고침 시에는 unlock 하지 않음)
       isUnloadingRef.current = true;
       hasUnlockedRef.current = true;
-      
+
       // 결제 완료되지 않은 경우에만 unlock 요청 (새로고침 제외)
       // 새로고침은 페이지가 다시 로드되므로 락을 유지해야 함
       // 일반 이탈(탭 닫기, 다른 페이지 이동)만 unlock
@@ -397,7 +397,7 @@ const UsedPaymentForm = ({ initialData }) => {
         console.log("⏭️ 이미 unlock 완료: 중복 방지");
         return;
       }
-
+      
       // 성공 페이지로 이동한 경우 확인
       if (checkPaymentCompleted()) {
         console.log('✅ cleanup: 결제 완료 플래그 확인됨, unlock 요청 안 함');
