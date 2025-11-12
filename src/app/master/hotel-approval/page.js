@@ -24,6 +24,12 @@ const HotelApproval = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [pageSize, setPageSize] = useState(5);
 
+  // 모달 상태 관리
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [selectedRegistrationIdx, setSelectedRegistrationIdx] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [selectedHotelName, setSelectedHotelName] = useState('');
+
   // API에서 호텔 승인 요청 데이터 가져오기
   const getData = async (page = currentPage, size = pageSize) => {
     try {
@@ -84,8 +90,48 @@ const HotelApproval = () => {
       return;
     }
     
+    // 일괄 승인은 confirm 다이얼로그 사용
+    if (action === 'approve') {
+      if (!confirm(`선택한 ${selectedRequests.length}개 호텔을 승인하시겠습니까?`)) {
+        return;
+      }
+    } else {
+      // 일괄 거절은 사유 입력 필요 (간단하게 처리)
+      const reason = prompt('거절 사유를 입력해주세요:');
+      if (!reason || reason.trim() === '') {
+        alert('거절 사유를 입력해주세요.');
+        return;
+      }
+      
+      try {
+        const promises = selectedRequests.map(registrationIdx => 
+          axiosInstance.post('/master/rejectHotel', { 
+            registrationIdx,
+            refusalMsg: reason.trim()
+          })
+        );
+        
+        const responses = await Promise.all(promises);
+        const successCount = responses.filter(response => response.data.success).length;
+        
+        if (successCount === selectedRequests.length) {
+          alert(`${successCount}개 요청이 거부되었습니다.`);
+        } else {
+          alert(`${successCount}/${selectedRequests.length}개 요청이 처리되었습니다.`);
+        }
+        
+        getData();
+        setSelectedRequests([]);
+        return;
+      } catch (error) {
+        console.error('일괄 거절 오류:', error);
+        alert('일괄 거절 중 오류가 발생했습니다.');
+        return;
+      }
+    }
+    
     try {
-      const apiEndpoint = action === 'approve' ? '/master/approveHotel' : '/master/rejectHotel';
+      const apiEndpoint = '/master/approveHotel';
       const promises = selectedRequests.map(registrationIdx => 
         axiosInstance.post(apiEndpoint, { registrationIdx })
       );
@@ -94,7 +140,7 @@ const HotelApproval = () => {
       const successCount = responses.filter(response => response.data.success).length;
       
       if (successCount === selectedRequests.length) {
-        alert(`${successCount}개 요청이 ${action === 'approve' ? '승인' : '거부'}되었습니다.`);
+        alert(`${successCount}개 요청이 승인되었습니다.`);
       } else {
         alert(`${successCount}/${selectedRequests.length}개 요청이 처리되었습니다.`);
       }
@@ -109,22 +155,66 @@ const HotelApproval = () => {
     setSelectedRequests([]);
   };
 
-  const handleApproval = async (registrationIdx, action) => {
+  const handleApprovalClick = (registrationIdx, action, hotelName) => {
+    if (action === 'reject') {
+      setSelectedRegistrationIdx(registrationIdx);
+      setSelectedHotelName(hotelName);
+      setRejectReason('');
+      setShowRejectModal(true);
+    } else {
+      // 승인은 confirm 다이얼로그 사용 (상세보기 화면과 동일)
+      handleApprove(registrationIdx);
+    }
+  };
+
+  const handleApprove = async (registrationIdx) => {
+    if (!confirm("이 호텔을 승인하시겠습니까?")) {
+      return;
+    }
+
     try {
-      const apiEndpoint = action === 'approve' ? '/master/approveHotel' : '/master/rejectHotel';
-      const response = await axiosInstance.post(apiEndpoint, {
+      const response = await axiosInstance.post('/master/approveHotel', {
         registrationIdx: registrationIdx
       });
 
       if (response.data.success) {
-        alert(response.data.message);
+        alert("호텔이 승인되었습니다.");
         // 데이터 새로고침
         getData();
       } else {
-        alert('오류: ' + response.data.message);
+        alert("승인 처리 중 오류가 발생했습니다.");
       }
     } catch (error) {
-      console.error('API 호출 오류:', error);
+      console.error('승인 실패:', error);
+      alert('서버 오류가 발생했습니다.');
+    }
+  };
+
+  const handleRejectConfirm = async () => {
+    if (!rejectReason || rejectReason.trim() === '') {
+      alert('거절 사유를 입력해주세요.');
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.post('/master/rejectHotel', {
+        registrationIdx: selectedRegistrationIdx,
+        refusalMsg: rejectReason.trim()
+      });
+
+      if (response.data.success) {
+        alert("호텔이 거부되었습니다.");
+        setShowRejectModal(false);
+        setRejectReason('');
+        setSelectedRegistrationIdx(null);
+        setSelectedHotelName('');
+        // 데이터 새로고침
+        getData();
+      } else {
+        alert('거부 처리 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('거부 실패:', error);
       alert('서버 오류가 발생했습니다.');
     }
   };
@@ -323,13 +413,13 @@ const HotelApproval = () => {
                           상세보기
                         </button>
                         <button 
-                          onClick={() => handleApproval(request.registrationIdx, 'reject')}
+                          onClick={() => handleApprovalClick(request.registrationIdx, 'reject', request.hotelInfo?.title || '호텔')}
                           className="text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50 transition-colors"
                         >
                           거부
                         </button>
                         <button 
-                          onClick={() => handleApproval(request.registrationIdx, 'approve')}
+                          onClick={() => handleApprovalClick(request.registrationIdx, 'approve', request.hotelInfo?.title || '호텔')}
                           className="text-green-600 hover:text-green-800 px-2 py-1 rounded hover:bg-green-50 transition-colors"
                         >
                           승인
@@ -377,13 +467,13 @@ const HotelApproval = () => {
                     상세
                   </button>
                   <button 
-                    onClick={() => handleApproval(request.registrationIdx, 'reject')}
+                    onClick={() => handleApprovalClick(request.registrationIdx, 'reject', request.hotelInfo?.title || '호텔')}
                     className="text-red-600 hover:text-red-800 text-xs"
                   >
                     거부
                   </button>
                   <button 
-                    onClick={() => handleApproval(request.registrationIdx, 'approve')}
+                    onClick={() => handleApprovalClick(request.registrationIdx, 'approve', request.hotelInfo?.title || '호텔')}
                     className="text-green-600 hover:text-green-800 text-xs"
                   >
                     승인
@@ -406,6 +496,50 @@ const HotelApproval = () => {
             />
           </div>
         )}
+
+        {/* 거절 사유 입력 모달 */}
+        {showRejectModal && (
+          <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">호텔 거절</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                <span className="font-medium">{selectedHotelName}</span> 호텔을 거절하시겠습니까?
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  거절 사유 <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="거절 사유를 입력해주세요"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                  rows={4}
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowRejectModal(false);
+                    setRejectReason('');
+                    setSelectedRegistrationIdx(null);
+                    setSelectedHotelName('');
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleRejectConfirm}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+                >
+                  거절
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </MasterLayout>
   );
