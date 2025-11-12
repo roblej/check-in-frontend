@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { usedAPI } from '@/lib/api/used';
 
 const ResaleSearch = ({ 
@@ -8,6 +9,9 @@ const ResaleSearch = ({
   initialSearchParams, 
   onDataUpdate 
 }) => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [destination, setDestination] = useState(initialSearchParams?.destination || '');
   const [checkIn, setCheckIn] = useState(initialSearchParams?.checkIn || '');
   const [checkOut, setCheckOut] = useState(initialSearchParams?.checkOut || '');
@@ -19,7 +23,7 @@ const ResaleSearch = ({
   const [currentPage, setCurrentPage] = useState(initialSearchParams?.page || 0);
   const [totalPages, setTotalPages] = useState(initialData?.totalPages || 0);
   const [totalElements, setTotalElements] = useState(initialData?.totalElements || 0);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(9);
   
   // 검색 조건 상태 (실제 검색에 사용)
   const [searchConditions, setSearchConditions] = useState({
@@ -219,6 +223,17 @@ const ResaleSearch = ({
 
   // 페이지 변경
   const handlePageChange = (page) => {
+    // URL 파라미터 업데이트
+    const params = new URLSearchParams(searchParams.toString());
+    if (page > 0) {
+      params.set('page', page.toString());
+    } else {
+      params.delete('page');
+    }
+    
+    // URL 업데이트 (히스토리 스택에 추가하지 않음)
+    router.replace(`?${params.toString()}`, { scroll: false });
+    
     fetchUsedTradeList(page, searchConditions);
   };
 
@@ -310,9 +325,22 @@ const ResaleSearch = ({
       priceFilter: 'all'
     };
     
+    // URL 파라미터도 초기화
+    const params = new URLSearchParams();
+    router.replace(`?${params.toString()}`, { scroll: false });
+    
     setSearchConditions(resetConditions);
     fetchUsedTradeList(0, resetConditions);
   };
+
+  // URL 파라미터 변경 감지 (페이지 변경 등)
+  useEffect(() => {
+    const urlPage = parseInt(searchParams.get('page')) || 0;
+    if (urlPage !== currentPage && !loading) {
+      setCurrentPage(urlPage);
+      fetchUsedTradeList(urlPage, searchConditions);
+    }
+  }, [searchParams]);
 
   // 현재 상태를 반환하는 객체
   const searchState = {
