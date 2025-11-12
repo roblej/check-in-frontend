@@ -38,38 +38,53 @@ const CheckinPage = () => {
   const [checkinList, setCheckinList] = useState([]);
   const [filteredList, setFilteredList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const didFetch = useRef(false);
+  const lastFetchedPageRef = useRef(null);
 
-  function getData(){
-    axiosInstance.get(api_url).then(res => {
+  function getData(page = currentPage, size = pageSize){
+    axiosInstance.get(api_url, {
+      params: {
+        page: page,
+        size: size
+      }
+    }).then(res => {
       console.log(res.data);
-      setCheckinList(res.data.content);
+      setCheckinList(res.data.content || []);
+      setTotalPages(res.data.totalPages || 0);
+      setTotalElements(res.data.totalElements || 0);
     });
   }
   
   useEffect(() => {
-    if (didFetch.current) return;
+    if (didFetch.current && lastFetchedPageRef.current === currentPage) return;
     didFetch.current = true;
+    lastFetchedPageRef.current = currentPage;
     
-    getData();
-  }, []);
+    getData(currentPage, pageSize);
+  }, [currentPage]);
 
 
 
-  // 검색 필터링
+  // 검색 필터링 (클라이언트 측 필터링은 제거하고 서버 측 페이징 사용)
   useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredList(checkinList);
-    } else {
-      const filtered = checkinList.filter(reservation => 
-        reservation.reservIdx.toString().includes(searchTerm) ||
-        (reservation.customer?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        reservation.roomIdx.toString().includes(searchTerm)
-      );
-      setFilteredList(filtered);
-    }
-  }, [searchTerm, checkinList]);
+    setFilteredList(checkinList);
+  }, [checkinList]);
+
+  // 검색 버튼 클릭 핸들러
+  const handleSearch = () => {
+    setCurrentPage(0);
+    getData(0, pageSize);
+  };
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
 
   const handleCheckin = async (orderIdx) => {
     if (!confirm('체크인을 처리하시겠습니까?')) return;
@@ -79,12 +94,12 @@ const CheckinPage = () => {
     checkInData(orderIdx);
     
     // 성공 후 목록 새로고침
-    getData();
+    getData(currentPage, pageSize);
   };
 
   // 새로고침
   const fetchData = () => {
-    getData();
+    getData(currentPage, pageSize);
   };
 
   return (
@@ -105,9 +120,20 @@ const CheckinPage = () => {
                 placeholder="예약번호, 고객명, 객실번호로 검색..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearch();
+                  }
+                }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
+            <button
+              onClick={handleSearch}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              검색
+            </button>
             <button
               onClick={fetchData}
               className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
@@ -122,7 +148,7 @@ const CheckinPage = () => {
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">체크인 대기 목록</h3>
             <p className="text-sm text-gray-600">
-              총 {checkinList.length}건의 체크인 대기 예약이 있습니다.
+              총 {totalElements}건의 체크인 대기 예약이 있습니다.
             </p>
           </div>
           
@@ -202,6 +228,56 @@ const CheckinPage = () => {
             </table>
           </div>
         </div>
+
+        {/* 페이지네이션 */}
+        {totalPages > 1 && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                총 {totalElements}건 중 {currentPage * pageSize + 1}-{Math.min((currentPage + 1) * pageSize, totalElements)}건 표시
+              </div>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 0}
+                  className={`px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 ${currentPage === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  이전
+                </button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i;
+                  } else if (currentPage < 3) {
+                    pageNum = i;
+                  } else if (currentPage > totalPages - 4) {
+                    pageNum = totalPages - 5 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <button 
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-1 text-sm border border-gray-300 rounded ${
+                        currentPage === pageNum ? 'bg-[#3B82F6] text-white' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum + 1}
+                    </button>
+                  );
+                })}
+                <button 
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages - 1}
+                  className={`px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 ${currentPage >= totalPages - 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  다음
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

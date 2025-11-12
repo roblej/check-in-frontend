@@ -51,7 +51,6 @@ const RevenuePage = () => {
     
     lastFetchedYear.current = selectedYear;
     fetchSummary(selectedYear);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear]);
 
   // 표 높이는 고정 max-height로 관리하여 월/일 전환 시 일관된 스크롤 동작 유지
@@ -81,10 +80,30 @@ const RevenuePage = () => {
     const windowData = enriched.filter((r) => r.monthIndex >= minIndex && r.monthIndex <= anchor.monthIndex);
     return windowData.map((row, idx) => {
       const prev = idx > 0 ? windowData[idx - 1] : null;
-      const mom = prev ? ((row.revenue - prev.revenue) / (prev.revenue || 1)) * 100 : 0;
+      // 전월이 없거나 전월 수익이 0원이거나 null/undefined이면 mom을 null로 설정 (차트에서 표시 안 함)
+      // Number()로 변환하여 타입 안전성 확보
+      const prevRevenue = prev ? Number(prev.revenue) : 0;
+      const hasNoPrevRevenue = !prev || prevRevenue === 0 || isNaN(prevRevenue);
+      const mom = hasNoPrevRevenue 
+        ? null 
+        : ((Number(row.revenue) - prevRevenue) / prevRevenue) * 100;
       return { ...row, mom, label: row.label };
     });
   }, [monthlyRows, selectedYear]);
+
+  // 매출 통계가 없는지 확인 (HotelSettlement 테이블에 데이터가 없는 경우)
+  const hasNoRevenueData = useMemo(() => {
+    // minYear가 null이거나, monthlyRevenue가 비어있거나, 모든 매출이 0인 경우
+    if (!summary.minYear && (!summary.monthlyRevenue || summary.monthlyRevenue.length === 0)) {
+      return true;
+    }
+    // monthlyRevenue가 있지만 모든 매출이 0인 경우도 체크
+    if (summary.monthlyRevenue && summary.monthlyRevenue.length > 0) {
+      const hasAnyRevenue = summary.monthlyRevenue.some(m => m.revenue > 0);
+      return !hasAnyRevenue && summary.todayRevenue === 0;
+    }
+    return false;
+  }, [summary]);
 
   return (
     <AdminLayout>
@@ -96,6 +115,21 @@ const RevenuePage = () => {
             <p className="text-gray-600">매출 현황과 수익 분석을 확인하세요</p>
           </div>
         </div>
+
+        {/* 매출 통계가 없을 때 메시지 표시 */}
+        {!loading && hasNoRevenueData && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
+            <div className="flex flex-col items-center justify-center text-center">
+              <DollarSign className="w-16 h-16 text-gray-400 mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">통계가 없습니다!</h3>
+              <p className="text-gray-600">아직 매출 데이터가 없습니다. 예약이 발생하면 통계가 표시됩니다.</p>
+            </div>
+          </div>
+        )}
+
+        {/* 매출 통계가 있을 때만 기존 UI 표시 */}
+        {!loading && !hasNoRevenueData && (
+          <>
 
         {/* 레이아웃 통합: 좌측(월별 매출+연 선택), 우측 상단(카드 2개) + 우측 하단(차트) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
@@ -145,7 +179,13 @@ const RevenuePage = () => {
                   .sort((a, b) => b.monthNum - a.monthNum)
                   .map((row, index, arr) => {
                     const prev = index < arr.length - 1 ? arr[index + 1] : null;
-                    const change = prev ? ((row.revenue - prev.revenue) / (prev.revenue || 1)) * 100 : 0;
+                    // 전월이 없거나 전월 수익이 0원이거나 null/undefined이면 "수익 없음" 표시
+                    // Number()로 변환하여 타입 안전성 확보
+                    const prevRevenue = prev ? Number(prev.revenue) : 0;
+                    const hasNoPrevRevenue = !prev || prevRevenue === 0 || isNaN(prevRevenue);
+                    const change = hasNoPrevRevenue 
+                      ? null 
+                      : ((Number(row.revenue) - prevRevenue) / prevRevenue) * 100;
                     const avgRate = '-';
                     return (
                       <tr key={`m-${row.year}-${row.monthNum}`} className="hover:bg-gray-50">
@@ -153,7 +193,13 @@ const RevenuePage = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(row.revenue)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{avgRate}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>{change >= 0 ? '+' : ''}{change.toFixed(1)}%</span>
+                          {change === null ? (
+                            <span className="text-gray-500">수익 없음</span>
+                          ) : (
+                            <span className={`${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {change >= 0 ? '+' : ''}{change.toFixed(1)}%
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -221,6 +267,8 @@ const RevenuePage = () => {
           `}</style>
         </div>
         </div>
+          </>
+        )}
       </div>
     </AdminLayout>
   );
