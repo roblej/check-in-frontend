@@ -45,11 +45,9 @@ export default function RecentHotelsSection({
 
       <div className="flex flex-1 flex-col gap-3">
         {isLoading ? (
-          <>
-            <RecentHotelCardSkeleton />
-            <RecentHotelCardSkeleton />
-            <RecentHotelCardSkeleton />
-          </>
+          Array.from({ length: 10 }, (_, index) => (
+            <RecentHotelCardSkeleton key={`recent-hotel-skeleton-${index}`} />
+          ))
         ) : displayHotels.length > 0 ? (
           displayHotels.map((hotel) => (
             <RecentHotelCard

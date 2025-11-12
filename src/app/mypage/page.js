@@ -220,7 +220,7 @@ function MyPageContent() {
   };
 
   useEffect(() => {
-    loadRecentHotels({ page: 0, replace: true, limit: 3 }).catch(() => undefined);
+    loadRecentHotels({ page: 0, replace: true, limit: 10 }).catch(() => undefined);
   }, [loadRecentHotels]);
 
   useEffect(() => {
