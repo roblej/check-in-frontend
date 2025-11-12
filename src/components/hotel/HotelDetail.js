@@ -19,6 +19,7 @@ import { updateUrlParams, formatSearchParamsForUrl } from "@/utils/urlUtils";
 import { useHotelData } from "./hooks/useHotelData";
 import { useHotelNavigation } from "./hooks/useHotelNavigation";
 import { useRecordHotelView } from "@/hooks/useRecordHotelView";
+import { userAPI } from "@/lib/api/user";
 
 /**
  * 호텔 상세 정보 컴포넌트
@@ -64,12 +65,13 @@ const HotelDetail = ({
   useEffect(() => {
     if (searchParams && Object.keys(searchParams).length > 0) {
       // 날짜 파라미터가 있으면 업데이트
-      if (searchParams.checkIn || searchParams.checkOut) {
+      if (searchParams.checkIn || searchParams.checkOut || searchParams.roomIdx) {
         setLocalSearchParams((prev) => {
           // 값이 변경된 경우에만 업데이트 (무한 루프 방지)
           if (
             prev.checkIn !== searchParams.checkIn ||
-            prev.checkOut !== searchParams.checkOut
+            prev.checkOut !== searchParams.checkOut ||
+            prev.roomIdx !== searchParams.roomIdx
           ) {
             return {
               destination: searchParams.destination || prev.destination || "",
@@ -77,6 +79,7 @@ const HotelDetail = ({
               checkOut: searchParams.checkOut || "",
               nights: parseInt(searchParams.nights || prev.nights || "1"),
               adults: parseInt(searchParams.adults || prev.adults || "2"),
+              roomIdx: searchParams.roomIdx ? parseInt(searchParams.roomIdx) : undefined,
             };
           }
           return prev;
@@ -439,7 +442,18 @@ const HotelDetail = ({
                         )}
                       </div>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
+                          // 로그인 체크
+                          try {
+                            await userAPI.getProfile();
+                          } catch (error) {
+                            if (error.response?.status === 401 || !error.response) {
+                              alert("로그인이 필요합니다.");
+                              router.push("/login");
+                              return;
+                            }
+                          }
+
                           // URL에서 다이닝 날짜 직접 읽기
                           const diningDateFromUrl =
                             urlSearchParams.get("diningDate");

@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useAdminStore } from '@/stores/adminStore';
 import { deleteAdminIdxCookie } from '@/utils/cookieUtils';
+import axios from '@/lib/axios';
 
 const AdminHeader = ({ onMenuClick }) => {
   const pathname = usePathname();
@@ -13,6 +14,7 @@ const AdminHeader = ({ onMenuClick }) => {
   
   const handleLogout = () => {
     // 고객 스토어 초기화
+    axios.get('/login/logout');
     resetAccessToken("");
     setInlogged(false);
     

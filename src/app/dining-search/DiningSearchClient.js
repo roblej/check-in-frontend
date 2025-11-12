@@ -106,7 +106,24 @@ const DiningSearchClient = ({ destination, diningDate, mealType, adults }) => {
   };
 
   // 예약하기 핸들러
-  const handleReservation = (dining) => {
+  const handleReservation = async (dining) => {
+    // 로그인 체크
+    try {
+      const response = await fetch('/api/customer/me', { credentials: 'include' });
+      if (!response.ok) {
+        if (response.status === 401) {
+          alert("로그인이 필요합니다.");
+          router.push("/login");
+          return;
+        }
+      }
+    } catch (error) {
+      console.error("로그인 체크 실패:", error);
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+
     const params = new URLSearchParams({
       diningIdx: dining.diningIdx,
       contentId: dining.contentid,

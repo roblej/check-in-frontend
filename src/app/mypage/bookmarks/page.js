@@ -67,73 +67,113 @@ const TabList = ({ activeTab, counts, onChange }) => (
   </div>
 );
 
-const HotelBookmarkCard = ({ item, onDelete, shareMode = false, selected = false, onToggleSelect }) => (
-  <article
-    className={`relative overflow-hidden rounded-3xl border bg-white shadow-sm transition-all duration-200 hover:shadow-lg ${
-      shareMode && selected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
-    }`}
-  >
-    {shareMode ? (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onToggleSelect?.(item.contentId);
-        }}
-        className={`absolute top-3 right-3 md:top-4 md:right-4 text-gray-400 hover:text-blue-600 transition-colors z-10 rounded-full bg-white/80 p-1.5 shadow ${
-          selected ? 'text-blue-600' : ''
-        }`}
-        aria-label="호텔 공유 대상 선택"
-        aria-pressed={selected}
-      >
-        {selected ? <CheckSquare className="w-5 h-5 md:w-6 md:h-6" /> : <Square className="w-5 h-5 md:w-6 md:h-6" />}
-      </button>
-    ) : (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onDelete(item.contentId);
-        }}
-        className="absolute top-3 right-3 md:top-4 md:right-4 text-gray-400 hover:text-red-600 transition-colors z-10"
-        aria-label="호텔 찜 삭제"
-      >
-        <X className="w-5 h-5 md:w-6 md:h-6" />
-      </button>
-    )}
-    <Link
-      href={`/hotel/${item.contentId}`}
-      className="group flex flex-col md:flex-row h-full"
+const HotelBookmarkCard = ({ item, onDelete, shareMode = false, selected = false, onToggleSelect }) => {
+  const handleCardClick = (e) => {
+    if (shareMode) {
+      e.preventDefault();
+      e.stopPropagation();
+      onToggleSelect?.(item.contentId);
+    }
+  };
+
+  return (
+    <article
+      className={`relative overflow-hidden rounded-3xl border bg-white shadow-sm transition-all duration-200 hover:shadow-lg ${
+        shareMode && selected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
+      } ${shareMode ? 'cursor-pointer' : ''}`}
+      onClick={shareMode ? handleCardClick : undefined}
     >
-      <div className="w-full h-40 md:h-auto md:w-48 md:aspect-[4/3] bg-gray-100">
-        {item.thumbnail ? (
-          <img
-            src={item.thumbnail}
-            alt={`${item.title} 썸네일`}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
-            <Building2 className="w-10 h-10" />
+      {shareMode ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleSelect?.(item.contentId);
+          }}
+          className={`absolute top-3 right-3 md:top-4 md:right-4 text-gray-400 hover:text-blue-600 transition-colors z-10 rounded-full bg-white/80 p-1.5 shadow ${
+            selected ? 'text-blue-600' : ''
+          }`}
+          aria-label="호텔 공유 대상 선택"
+          aria-pressed={selected}
+        >
+          {selected ? <CheckSquare className="w-5 h-5 md:w-6 md:h-6" /> : <Square className="w-5 h-5 md:w-6 md:h-6" />}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDelete(item.contentId);
+          }}
+          className="absolute top-3 right-3 md:top-4 md:right-4 text-gray-400 hover:text-red-600 transition-colors z-10"
+          aria-label="호텔 찜 삭제"
+        >
+          <X className="w-5 h-5 md:w-6 md:h-6" />
+        </button>
+      )}
+      {shareMode ? (
+        <div className="group flex flex-col md:flex-row h-full">
+          <div className="w-full h-40 md:h-auto md:w-48 md:aspect-[4/3] bg-gray-100">
+            {item.thumbnail ? (
+              <img
+                src={item.thumbnail}
+                alt={`${item.title} 썸네일`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <Building2 className="w-10 h-10" />
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      <div className="flex-1 p-4 md:p-6 space-y-3">
-        <div>
-          <h3 className="text-base md:text-lg font-semibold text-gray-900">
-            {item.title}
-          </h3>
-          <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500 mt-1">
-            <MapPin className="w-4 h-4" />
-            {item.region}
+          <div className="flex-1 p-4 md:p-6 space-y-3">
+            <div>
+              <h3 className="text-base md:text-lg font-semibold text-gray-900">
+                {item.title}
+              </h3>
+              <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500 mt-1">
+                <MapPin className="w-4 h-4" />
+                {item.region}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </Link>
-  </article>
-);
+      ) : (
+        <Link
+          href={`/hotel/${item.contentId}`}
+          className="group flex flex-col md:flex-row h-full"
+        >
+          <div className="w-full h-40 md:h-auto md:w-48 md:aspect-[4/3] bg-gray-100">
+            {item.thumbnail ? (
+              <img
+                src={item.thumbnail}
+                alt={`${item.title} 썸네일`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <Building2 className="w-10 h-10" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 p-4 md:p-6 space-y-3">
+            <div>
+              <h3 className="text-base md:text-lg font-semibold text-gray-900">
+                {item.title}
+              </h3>
+              <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500 mt-1">
+                <MapPin className="w-4 h-4" />
+                {item.region}
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
+    </article>
+  );
+};
 
 const RoomBookmarkCard = ({ item, onDelete }) => (
   <article className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition-all duration-200">

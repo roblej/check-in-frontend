@@ -178,8 +178,6 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
           pageSize={searchState.pageSize}
           onPageChange={searchState.handlePageChange}
           onInquire={searchState.handleInquire}
-          onBookmark={searchState.handleBookmark}
-          onHotelDetail={handleHotelDetail}
           customer={customer}
           customerLoading={customerLoading}
         />
