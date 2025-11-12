@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { clearLockState } from "@/utils/lockId";
 
 // 10 minutes in milliseconds (600 seconds)
 const TEN_MINUTES_MS = 10 * 60 * 1000;
@@ -46,6 +47,7 @@ export const usePaymentStore = create((set, get) => ({
 
   clearPaymentDraft: () => {
     set({ paymentDraft: null, expiresAt: null });
+    clearLockState();
     try {
       localStorage.removeItem("payment:draft");
     } catch (_) {}
@@ -59,6 +61,7 @@ export const usePaymentStore = create((set, get) => ({
       if (!parsed?.expiresAt || parsed.expiresAt < Date.now()) {
         set({ paymentDraft: null, expiresAt: null });
         localStorage.removeItem("payment:draft");
+        clearLockState();
         return;
       }
       set({ paymentDraft: parsed.draft, expiresAt: parsed.expiresAt });
