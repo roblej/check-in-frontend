@@ -601,7 +601,8 @@ const UsedPaymentForm = ({ initialData }) => {
       sessionStorage.setItem(`used_payment_completed_${usedTradeIdx}`, '1');
       console.log("세션 스토리지에 결제 정보 저장 완료:", successData);
 
-      // 백엔드 검증 API 호출 (/api/payments)
+      // 백엔드 검증 API 호출 (/api/payments/confirm)
+      // 백엔드 DTO에 맞춰 필수 필드만 전송 (hotelName, roomType, salePrice는 백엔드에서 사용하지 않음)
       requestData = {
         paymentKey: paymentResult.paymentKey,
         orderId: paymentResult.orderId,
@@ -611,9 +612,6 @@ const UsedPaymentForm = ({ initialData }) => {
         customerIdx: paymentInfo.customerIdx,
         usedTradeIdx: usedTradeIdx, // 최신 세션 스토리지에서 읽은 값 사용
         usedItemIdx: latestPaymentInfo.usedItemIdx,
-        hotelName: latestPaymentInfo.hotelName,
-        roomType: latestPaymentInfo.roomType,
-        salePrice: latestPaymentInfo.salePrice,
         customerName: paymentInfo.customerName,
         customerEmail: paymentInfo.customerEmail,
         customerPhone: paymentInfo.customerPhone,
@@ -634,8 +632,8 @@ const UsedPaymentForm = ({ initialData }) => {
         sessionStorageTradeValue: sessionStorage.getItem(`used_payment_${requestData.usedTradeIdx}`) ? 'exists' : 'not found',
       });
 
-      // 백엔드 검증 API 호출 (Next.js API 라우트를 통해 백엔드로 전달)
-      const response = await axios.post('/payments', requestData);
+      // rewrites를 통해 백엔드로 직접 전달 (일반 호텔 결제와 동일한 방식)
+      const response = await axios.post('/payments/confirm', requestData);
       
       if (!response.data.success) {
         console.error("백엔드 검증 실패:", response.data.message);
@@ -649,8 +647,13 @@ const UsedPaymentForm = ({ initialData }) => {
       console.log("결제 검증 및 저장 성공:", response.data);
       console.log("✅ DB 업데이트 완료:");
       console.log("  - UsedPay 저장 완료");
-      console.log("  - UsedTrade 상태 업데이트 완료 (ststus=1)");
+      console.log("  - UsedTrade 상태 업데이트 완료 (status=1)");
       console.log("  - UsedItem 상태 업데이트 완료 (status=2)");
+      
+      // 이미 처리된 결제로 표시 (성공 페이지에서 중복 검증 방지)
+      const processedKey = `used_payment_processed_${paymentResult.orderId}`;
+      sessionStorage.setItem(processedKey, '1');
+      console.log('✅ 결제 처리 완료 플래그 설정:', processedKey);
       
       // 기존 결제 페이지 데이터 정리 (최신 usedTradeIdx 사용)
       if (usedTradeIdx) {
@@ -660,7 +663,7 @@ const UsedPaymentForm = ({ initialData }) => {
 
       // 성공 페이지로 이동 (페이지 이탈 이벤트는 이미 제거됨)
       // replace를 사용하여 뒤로가기 방지
-      router.replace('/used-payment/success2');
+      router.replace('/used-payment/success');
     } catch (error) {
       console.error("결제 완료 처리 오류:", error);
       console.error("에러 상세:", {

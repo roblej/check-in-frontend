@@ -8,6 +8,12 @@ export const hotelAPI = {
     return response.data;
   },
 
+  // 다수의 호텔 정보를 contentId 배열로 조회
+  getHotelsByContentIds: async (contentIds = []) => {
+    const response = await axiosInstance.post("/hotels/sharelist", contentIds);
+    return response.data;
+  },
+
   // 호텔 상세 정보 조회
   getHotelDetail: async (contentId) => {
     const response = await axiosInstance.get(`/hotels/${contentId}`);

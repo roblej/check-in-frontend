@@ -181,6 +181,8 @@ function MyPageContent() {
     expired: [],
   });
   const [couponsLoading, setCouponsLoading] = useState(false);
+  const [likedHotels, setLikedHotels] = useState([]);
+  const [recentHotels, setRecentHotels] = useState([]);
 
   // 사용자 데이터를 API로 직접 가져오는 함수
   const fetchUserData = async () => {
