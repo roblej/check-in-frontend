@@ -1,15 +1,18 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useCustomerStore } from '@/stores/customerStore';
 import { useAdminStore } from '@/stores/adminStore';
 import { deleteAdminIdxCookie } from '@/utils/cookieUtils';
+import axiosInstance from '@/lib/axios';
 
 const AdminHeader = ({ onMenuClick }) => {
   const pathname = usePathname();
   const router = useRouter();
   const { resetAccessToken, setInlogged } = useCustomerStore();
   const { resetAdminData } = useAdminStore();
+  const [hotelTitle, setHotelTitle] = useState('사업자');
   
   const handleLogout = () => {
     // 고객 스토어 초기화
@@ -41,6 +44,23 @@ const AdminHeader = ({ onMenuClick }) => {
   };
 
   const currentTitle = pageTitles[pathname] || '관리자';
+
+  // 호텔명 조회
+  useEffect(() => {
+    const fetchHotelTitle = async () => {
+      try {
+        const response = await axiosInstance.get('/admin/hotelTitle');
+        if (response.data.success && response.data.title) {
+          setHotelTitle(response.data.title);
+        }
+      } catch (error) {
+        console.error('호텔명 조회 오류:', error);
+        // 오류 발생 시 기본값 유지
+      }
+    };
+
+    fetchHotelTitle();
+  }, []);
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
@@ -84,7 +104,9 @@ const AdminHeader = ({ onMenuClick }) => {
             {/* 사용자 프로필 */}
             <div className="flex items-center gap-1 sm:gap-3">
               <div className="text-right hidden sm:block">
-                <p className="text-xs sm:text-sm font-medium text-gray-900">사업자</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-900 truncate max-w-[200px]" title={hotelTitle}>
+                  {hotelTitle}
+                </p>
               </div>
               
               {/* 프로필 아바타 */}

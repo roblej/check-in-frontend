@@ -67,27 +67,8 @@ const MasterHeader = ({ onMenuClick }) => {
 
           {/* 우측: 사용자 정보 및 액션 */}
           <div className="flex items-center gap-1 sm:gap-4">
-            {/* 알림 */}
-            <button className="relative p-0.5 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md">
-              <svg className="w-3 h-3 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5V3h5v14z" />
-              </svg>
-              {/* 알림 배지 */}
-              <span className="absolute top-0 right-0 sm:top-1 sm:right-1 h-1 w-1 sm:h-2 sm:w-2 bg-red-500 rounded-full"></span>
-            </button>
-
             {/* 사용자 프로필 */}
             <div className="flex items-center gap-1 sm:gap-3">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs sm:text-sm font-medium text-gray-900">사이트 관리자</p>
-                <p className="text-xs text-gray-500">master@checkin.com</p>
-              </div>
-              
-              {/* 프로필 아바타 */}
-              <div className="w-5 h-5 sm:w-8 sm:h-8 bg-[#7C3AED] rounded-full flex items-center justify-center">
-                <span className="text-white text-xs sm:text-sm font-medium">M</span>
-              </div>
-
               {/* 로그아웃 버튼 */}
               <button 
                 onClick={handleLogout}
