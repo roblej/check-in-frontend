@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import TossPaymentsWidget from "@/components/payment/TossPaymentsWidget";
@@ -14,6 +14,10 @@ const ReservationClient = ({ diningInfo: initialDiningInfo }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   const [diningInfo, setDiningInfo] = useState(initialDiningInfo);
+
+  // 타이머 관리 (10분 = 600초)
+  const [remainingSeconds, setRemainingSeconds] = useState(600);
+  const timerRef = useRef(null);
 
   const [reservationInfo, setReservationInfo] = useState({
     customerName: "",
@@ -86,19 +90,25 @@ const ReservationClient = ({ diningInfo: initialDiningInfo }) => {
             customerEmail: userData.email || "",
             customerPhone: userData.phone || "",
           }));
+        } else if (response.status === 401) {
+          // 로그인되지 않은 경우
+          alert("로그인이 필요합니다.");
+          router.push("/login");
+          return;
         }
       } catch (error) {
         console.error("사용자 정보 가져오기 실패:", error);
+        // 네트워크 오류 등도 로그인 페이지로 이동
+        alert("로그인이 필요합니다.");
+        router.push("/login");
       } finally {
         setLoading(false);
       }
     };
     
-    // 다이닝 정보가 로드된 후에만 사용자 정보 가져오기
-    if (diningInfo.diningIdx) {
+    // 페이지 진입 시 즉시 로그인 체크
     fetchUserInfo();
-    }
-  }, [diningInfo.diningIdx]);
+  }, [router]);
 
   useEffect(() => {
     if (!diningInfo.diningIdx || !diningInfo.diningDate) {
@@ -112,6 +122,56 @@ const ReservationClient = ({ diningInfo: initialDiningInfo }) => {
       router.push("/");
     }
   }, [diningInfo, router]);
+
+  /**
+   * 시간 만료 시 처리
+   */
+  const handleTimeExpired = useCallback(() => {
+    alert("결제 시간이 만료되었습니다. 다시 예약해주세요.");
+    router.push("/");
+  }, [router]);
+
+  /**
+   * 타이머 초기화 및 관리
+   * - 10분(600초)부터 시작
+   * - 1초마다 감소
+   */
+  useEffect(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    if (!diningInfo.diningIdx) {
+      setRemainingSeconds(0);
+      return;
+    }
+
+    let expiredHandled = false;
+
+    const updateRemaining = () => {
+      setRemainingSeconds((prev) => {
+        if (prev <= 1) {
+          if (!expiredHandled) {
+            expiredHandled = true;
+            handleTimeExpired();
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    };
+
+    timerRef.current = setInterval(updateRemaining, 1000);
+    setRemainingSeconds(600); // 10분 초기화
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [diningInfo.diningIdx, handleTimeExpired]);
 
   const availableTimeSlots = useMemo(() => {
     const slots = [];
@@ -138,6 +198,19 @@ const ReservationClient = ({ diningInfo: initialDiningInfo }) => {
   const pointDiscount = Math.min(reservationInfo.usePoint, totalAmount - cashDiscount);
   const finalAmount = totalAmount - cashDiscount - pointDiscount;
 
+  // 폼 유효성 검사 (약관 동의 포함)
+  const isFormValid = useMemo(() => {
+    if (!reservationInfo.customerName.trim()) return false;
+    if (!reservationInfo.customerEmail.trim()) return false;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reservationInfo.customerEmail)) return false;
+    if (!reservationInfo.customerPhone.trim()) return false;
+    if (!/^\d{10,11}$/.test(reservationInfo.customerPhone.replace(/-/g, ""))) return false;
+    if (!selectedTime) return false;
+    if (!reservationInfo.agreeTerms) return false;
+    if (!reservationInfo.agreePrivacy) return false;
+    return true;
+  }, [reservationInfo, selectedTime]);
+
   const handleInputChange = (field, value) => {
     setReservationInfo((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: "" }));
@@ -158,9 +231,25 @@ const ReservationClient = ({ diningInfo: initialDiningInfo }) => {
   };
 
   const handlePayment = async () => {
-    if (!validateForm()) { alert("입력 정보를 확인해주세요."); return; }
-    if (!customer) { alert("로그인이 필요합니다."); router.push("/login"); return; }
-    if (finalAmount <= 0) { alert("결제 금액이 올바르지 않습니다."); return; }
+    if (!isFormValid) {
+      validateForm();
+      alert("모든 필수 정보를 입력하고 약관에 동의해주세요.");
+      return;
+    }
+    if (!customer) {
+      alert("로그인이 필요합니다.");
+      router.push("/login");
+      return;
+    }
+    if (finalAmount <= 0) {
+      alert("결제 금액이 올바르지 않습니다.");
+      return;
+    }
+    if (remainingSeconds <= 0) {
+      alert("결제 시간이 만료되었습니다. 다시 예약해주세요.");
+      router.push("/");
+      return;
+    }
     setIsProcessing(true);
     setError("");
     try {
@@ -173,6 +262,12 @@ const ReservationClient = ({ diningInfo: initialDiningInfo }) => {
       console.error("결제 오류:", e);
       setError(e?.message || "결제 요청 중 오류가 발생했습니다.");
       setIsProcessing(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (confirm("예약을 취소하고 돌아가시겠습니까?")) {
+      router.push("/");
     }
   };
 
@@ -263,22 +358,43 @@ const ReservationClient = ({ diningInfo: initialDiningInfo }) => {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">약관 동의</h2>
           <div className="space-y-3">
-            <div className="flex items-start">
-              <input type="checkbox" checked={reservationInfo.agreeTerms} onChange={(e) => handleInputChange("agreeTerms", e.target.checked)} className="mt-1 mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-              <label className="text-sm text-gray-700">이용약관에 동의합니다 (필수){errors.agreeTerms && (<span className="text-red-600 ml-2">{errors.agreeTerms}</span>)}</label>
-            </div>
-            <div className="flex items-start">
-              <input type="checkbox" checked={reservationInfo.agreePrivacy} onChange={(e) => handleInputChange("agreePrivacy", e.target.checked)} className="mt-1 mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-              <label className="text-sm text-gray-700">개인정보 처리방침에 동의합니다 (필수){errors.agreePrivacy && (<span className="text-red-600 ml-2">{errors.agreePrivacy}</span>)}</label>
-            </div>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={reservationInfo.agreeTerms}
+                onChange={(e) => handleInputChange("agreeTerms", e.target.checked)}
+                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <span className="text-sm text-gray-700">
+                <span className="text-red-500">*</span> 이용약관에 동의합니다.
+              </span>
+            </label>
+            {errors.agreeTerms && (
+              <p className="text-red-500 text-sm ml-7">{errors.agreeTerms}</p>
+            )}
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={reservationInfo.agreePrivacy}
+                onChange={(e) => handleInputChange("agreePrivacy", e.target.checked)}
+                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <span className="text-sm text-gray-700">
+                <span className="text-red-500">*</span> 개인정보 처리방침에 동의합니다.
+              </span>
+            </label>
+            {errors.agreePrivacy && (
+              <p className="text-red-500 text-sm ml-7">{errors.agreePrivacy}</p>
+            )}
           </div>
         </div>
       </div>
 
       <div className="md:col-span-1">
-        <div className="bg-white rounded-lg shadow-sm p-6 sticky top-4">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">결제 정보</h2>
-          <div className="space-y-3 mb-4">
+        <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">가격 요약</h2>
+          <div className="space-y-3 mb-6">
             <div className="flex justify-between text-sm"><span className="text-gray-600">1인 가격</span><span className="font-medium">₩{KRW(diningInfo.basePrice)}</span></div>
             <div className="flex justify-between text-sm"><span className="text-gray-600">인원</span><span className="font-medium">{diningInfo.guests}명</span></div>
             <div className="flex justify-between text-sm pt-3 border-t"><span className="text-gray-600">소계</span><span className="font-medium">₩{KRW(totalAmount)}</span></div>
@@ -287,6 +403,19 @@ const ReservationClient = ({ diningInfo: initialDiningInfo }) => {
             <div className="flex justify-between text-lg font-bold pt-3 border-t"><span>최종 결제금액</span><span className="text-blue-600">₩{KRW(finalAmount)}</span></div>
           </div>
           {error && (<div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg"><p className="text-sm text-red-800">{error}</p></div>)}
+
+          {/* 결제 유효시간 */}
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-yellow-800">결제 유효시간</span>
+              <span className={`text-lg font-bold ${remainingSeconds <= 60 ? "text-red-600" : "text-yellow-700"}`}>
+                {Math.floor(remainingSeconds / 60)}:{(remainingSeconds % 60).toString().padStart(2, "0")}
+              </span>
+            </div>
+            {remainingSeconds <= 60 && (
+              <p className="text-xs text-red-600 mt-1">시간이 곧 만료됩니다. 빠르게 결제해주세요.</p>
+            )}
+          </div>
 
           {/* TossPayments 위젯 렌더링 (버튼 위에 배치) */}
           <div className="mb-4">
@@ -328,8 +457,38 @@ const ReservationClient = ({ diningInfo: initialDiningInfo }) => {
               );
             })()}
           </div>
-          <button onClick={handlePayment} disabled={isProcessing} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-3 rounded-lg font-semibold transition-colors">{isProcessing ? "결제 처리 중..." : "결제하기"}</button>
-          <button onClick={() => router.back()} className="w-full mt-3 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold transition-colors">취소</button>
+
+          {/* 결제 버튼 */}
+          <button
+            onClick={handlePayment}
+            disabled={isProcessing || remainingSeconds <= 0 || !isFormValid}
+            className={`w-full py-3 px-4 rounded-lg font-medium transition-colors mb-4 ${
+              isFormValid && remainingSeconds > 0 && !isProcessing
+                ? "bg-blue-500 hover:bg-blue-600 text-white"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            {isProcessing
+              ? "결제 처리 중..."
+              : remainingSeconds <= 0
+              ? "결제 시간 만료"
+              : `₩${finalAmount.toLocaleString()} 결제하기`}
+          </button>
+
+          <div className="text-xs text-gray-500 text-center mb-2">
+            결제 완료 후 다이닝 예약이 자동으로 확정됩니다.
+          </div>
+          <div className="text-xs text-gray-600 text-center mb-4">
+            예약 변경 및 취소는 마이페이지에서 가능합니다.
+          </div>
+
+          {/* 취소 버튼 */}
+          <button
+            onClick={handleCancel}
+            className="w-full py-2 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-300 rounded-lg transition-colors font-medium"
+          >
+            취소하고 돌아가기
+          </button>
         </div>
       </div>
     </div>
