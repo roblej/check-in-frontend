@@ -9,7 +9,7 @@ async function getInitialData(searchParams) {
   try {
     const { destination, checkIn, checkOut, adults } = searchParams;
     const page = parseInt(searchParams.page) || 0;
-    const size = parseInt(searchParams.size) || 10;
+    const size = parseInt(searchParams.size) || 9;
     
     // 검색 조건이 있으면 검색 API, 없으면 전체 목록 API 호출
     const hasSearchConditions = destination || checkIn || checkOut || adults !== 2;
@@ -174,7 +174,7 @@ const ResalePage = async ({ searchParams }) => {
     checkOut: params?.checkOut || '',
     adults: parseInt(params?.adults) || 2,
     page: parseInt(params?.page) || 0,
-    size: 10
+    size: 9
   };
 
   // 서버에서 초기 데이터 가져오기
