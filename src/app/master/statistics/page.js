@@ -264,7 +264,7 @@ const Statistics = () => {
       description: `${getDateRangeDescription()} 총 예약 건수`
     },
     {
-      title: '현재 운영중인 호텔',
+      title: '기간 중 승인된 호텔',
       value: statistics.activeHotels.toLocaleString(),
       icon: <Building2 size={40} />,
       description: `${getDateRangeDescription()} 승인된 호텔 수`
