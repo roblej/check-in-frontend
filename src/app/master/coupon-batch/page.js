@@ -21,7 +21,8 @@ const CouponBatchManagement = () => {
     const fetchTemplates = async () => {
       try {
         setTemplatesLoading(true);
-        const response = await axiosInstance.get('/master/couponTemplates');
+        // type=1인 템플릿만 조회 (단체 발급형식)
+        const response = await axiosInstance.get('/master/couponTemplates?type=1');
         if (response.data) {
           setTemplates(response.data);
         }
