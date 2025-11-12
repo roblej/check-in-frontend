@@ -32,10 +32,10 @@ export default function EditProfilePage() {
   const [securityInfo, setSecurityInfo] = useState({
     currentPassword: '',
     newPassword: '',
-    confirmPassword: '',
-    twoFactorEnabled: false,
-    twoFactorEmail: ''
+    confirmPassword: ''
   });
+  const [isSocialAccount, setIsSocialAccount] = useState(false);
+  const [initialBasicInfo, setInitialBasicInfo] = useState(null);
   
   // 패스워드 표시 상태
   const [showPasswords, setShowPasswords] = useState({
@@ -73,6 +73,13 @@ export default function EditProfilePage() {
         phone: data.phone || '',
         email: data.email || ''
       });
+      setInitialBasicInfo({
+        nickname: data.nickname || '',
+        phone: data.phone || '',
+        email: data.email || ''
+      });
+      
+      setIsSocialAccount(data?.provider !== null && data?.provider !== undefined);
       
     } catch (error) {
       console.error('❌ 프로필 로드 실패:', error);
@@ -93,6 +100,9 @@ export default function EditProfilePage() {
 
   // 기본정보 입력 핸들러
   const handleBasicInfoChange = (field, value) => {
+    if (field === 'email') {
+      return;
+    }
     setBasicInfo(prev => ({
       ...prev,
       [field]: value
@@ -187,14 +197,30 @@ export default function EditProfilePage() {
     setIsSaving(true);
     setSaveMessage({ type: '', text: '' });
     
+    const trimmedBasicInfo = {
+      nickname: basicInfo.nickname.trim(),
+      phone: basicInfo.phone.trim(),
+      email: basicInfo.email.trim()
+    };
+
+    if (
+      initialBasicInfo &&
+      trimmedBasicInfo.nickname === (initialBasicInfo.nickname || '') &&
+      trimmedBasicInfo.phone === (initialBasicInfo.phone || '') &&
+      trimmedBasicInfo.email === (initialBasicInfo.email || '')
+    ) {
+      setIsSaving(false);
+      return;
+    }
+
     // 유효성 검사
-    if (!basicInfo.nickname.trim()) {
+    if (!trimmedBasicInfo.nickname) {
       setSaveMessage({ type: 'error', text: '닉네임을 입력해주세요.' });
       setIsSaving(false);
       return;
     }
     
-    if (!basicInfo.phone.trim()) {
+    if (!trimmedBasicInfo.phone) {
       setSaveMessage({ type: 'error', text: '연락처를 입력해주세요.' });
       setIsSaving(false);
       return;
@@ -220,8 +246,10 @@ export default function EditProfilePage() {
       
       setSaveMessage({ 
         type: 'success', 
-        text: '기본정보가 성공적으로 DB에 저장되었습니다.' 
+        text: '기본정보가 성공적으로 수정되었습니다.'
       });
+      setBasicInfo(trimmedBasicInfo);
+      setInitialBasicInfo({ ...trimmedBasicInfo });
       
       // 3초 후 메시지 제거
       setTimeout(() => setSaveMessage({ type: '', text: '' }), 3000);
@@ -359,15 +387,6 @@ export default function EditProfilePage() {
       return; // 비밀번호 변경 처리 후 종료
     }
     
-    // 2단계 인증 검증 (아직 구현되지 않은 기능)
-    if (securityInfo.twoFactorEnabled && !securityInfo.twoFactorEmail.includes('@')) {
-      setSaveMessage({ type: 'error', text: '올바른 인증 이메일 주소를 입력해주세요.' });
-      setIsSaving(false);
-      return;
-    }
-    
-    // 비밀번호 변경이 없으면 2단계 인증 설정 저장 (향후 구현)
-    setSaveMessage({ type: 'info', text: '2단계 인증 기능은 준비 중입니다.' });
     setIsSaving(false);
   };
 
@@ -546,7 +565,9 @@ export default function EditProfilePage() {
                       type="email"
                       value={basicInfo.email}
                       onChange={(e) => handleBasicInfoChange('email', e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      disabled
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg text-gray-500 placeholder:text-gray-400 cursor-not-allowed transition-all"
+                      style={{ backgroundColor: 'rgba(229, 231, 235, 0.7)' }}
                       placeholder="example@email.com"
                     />
                   </div>
@@ -560,6 +581,7 @@ export default function EditProfilePage() {
                 {/* 비밀번호 변경 섹션 */}
                 <div className="pb-6 border-b border-gray-200">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">비밀번호 변경</h3>
+                  
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -574,7 +596,9 @@ export default function EditProfilePage() {
                           onCopy={handlePasswordCopy}
                           onCut={handlePasswordCut}
                           onPaste={handlePasswordPaste}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          disabled={isSocialAccount}
+                          className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg transition-all ${isSocialAccount ? 'text-gray-500 placeholder:text-gray-400 cursor-not-allowed border-gray-200' : 'focus:ring-2 focus:ring-blue-500 focus:border-transparent'}`}
+                          style={isSocialAccount ? { backgroundColor: 'rgba(229, 231, 235, 0.7)' } : undefined}
                           placeholder="현재 비밀번호를 입력하세요"
                           autoComplete="current-password"
                         />
@@ -594,7 +618,9 @@ export default function EditProfilePage() {
                           onCopy={handlePasswordCopy}
                           onCut={handlePasswordCut}
                           onPaste={handlePasswordPaste}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          disabled={isSocialAccount}
+                          className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg transition-all ${isSocialAccount ? 'text-gray-500 placeholder:text-gray-400 cursor-not-allowed border-gray-200' : 'focus:ring-2 focus:ring-blue-500 focus:border-transparent'}`}
+                          style={isSocialAccount ? { backgroundColor: 'rgba(229, 231, 235, 0.7)' } : undefined}
                           placeholder="새 비밀번호를 입력하세요 (8자 이상)"
                           autoComplete="new-password"
                         />
@@ -614,7 +640,9 @@ export default function EditProfilePage() {
                           onCopy={handlePasswordCopy}
                           onCut={handlePasswordCut}
                           onPaste={handlePasswordPaste}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          disabled={isSocialAccount}
+                          className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg transition-all ${isSocialAccount ? 'text-gray-500 placeholder:text-gray-400 cursor-not-allowed border-gray-200' : 'focus:ring-2 focus:ring-blue-500 focus:border-transparent'}`}
+                          style={isSocialAccount ? { backgroundColor: 'rgba(229, 231, 235, 0.7)' } : undefined}
                           placeholder="새 비밀번호를 다시 입력하세요"
                           autoComplete="new-password"
                         />
@@ -623,55 +651,7 @@ export default function EditProfilePage() {
                   </div>
                 </div>
 
-                {/* 2단계 인증 섹션 */}
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">2단계 인증</h3>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-blue-800">
-                      2단계 인증을 활성화하면 로그인 시 이메일로 전송되는 인증 코드를 추가로 입력해야 합니다.
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg mb-4">
-                    <div className="flex items-center gap-3">
-                      <Shield className="w-6 h-6 text-blue-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">2단계 인증 사용</p>
-                        <p className="text-sm text-gray-500">계정 보안을 강화합니다</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleSecurityInfoChange('twoFactorEnabled', !securityInfo.twoFactorEnabled)}
-                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                        securityInfo.twoFactorEnabled ? 'bg-blue-600' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                          securityInfo.twoFactorEnabled ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {securityInfo.twoFactorEnabled && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        인증 이메일 주소
-                      </label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input
-                          type="email"
-                          value={securityInfo.twoFactorEmail}
-                          onChange={(e) => handleSecurityInfoChange('twoFactorEmail', e.target.value)}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                          placeholder="인증 코드를 받을 이메일"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                
               </div>
             )}
 
@@ -785,7 +765,6 @@ export default function EditProfilePage() {
           <h3 className="font-bold text-yellow-900 mb-2">주의사항</h3>
           <ul className="text-sm text-yellow-800 space-y-1">
             <li>• 개인정보 변경 시 본인 확인을 위해 추가 인증이 필요할 수 있습니다.</li>
-            <li>• 이메일 주소 변경 시 인증 메일이 발송됩니다.</li>
             <li>• 비밀번호는 8자 이상으로 설정해주세요.</li>
           </ul>
         </div>

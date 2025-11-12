@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Building2, Hotel, MapPin, ChevronRight, Calendar, X, CheckSquare, Square, Copy } from 'lucide-react';
 import { bookmarkAPI } from '@/lib/api/bookmark';
 import { hotelAPI } from '@/lib/api/hotel';
+import Pagination from '@/components/Pagination';
 
 const ROOM_IMAGE_BASE_URL = (() => {
   const base = process.env.NEXT_PUBLIC_ROOM_IMAGE_BASE_URL || '';
@@ -30,6 +31,8 @@ const TABS = [
   { key: 'hotel', label: '호텔 찜목록' },
   { key: 'room', label: '객실 찜목록' },
 ];
+
+const PAGE_SIZE = 10;
 
 const SectionHeader = ({ title, description }) => (
   <div className="mb-8">
@@ -266,6 +269,8 @@ export default function MyBookmarkPage() {
   const [selectedHotelIds, setSelectedHotelIds] = useState(new Set());
   const shareSelectedIds = useMemo(() => Array.from(selectedHotelIds), [selectedHotelIds]);
   const [copiedToast, setCopiedToast] = useState(null);
+  const [hotelPage, setHotelPage] = useState(0);
+  const [roomPage, setRoomPage] = useState(0);
 
   useEffect(() => {
     if (!copiedToast) return;
@@ -294,6 +299,69 @@ export default function MyBookmarkPage() {
       setSelectedHotelIds(new Set());
     }
   }, [isShareMode, selectedHotelIds.size]);
+
+  const hotelTotalElements = hotelState.items.length;
+  const hotelTotalPages = Math.ceil(hotelTotalElements / PAGE_SIZE);
+  const hotelItemsForPage = useMemo(() => {
+    const start = hotelPage * PAGE_SIZE;
+    return hotelState.items.slice(start, start + PAGE_SIZE);
+  }, [hotelState.items, hotelPage]);
+
+  const roomTotalElements = roomState.items.length;
+  const roomTotalPages = Math.ceil(roomTotalElements / PAGE_SIZE);
+  const roomItemsForPage = useMemo(() => {
+    const start = roomPage * PAGE_SIZE;
+    return roomState.items.slice(start, start + PAGE_SIZE);
+  }, [roomState.items, roomPage]);
+
+  useEffect(() => {
+    if (hotelTotalPages === 0) {
+      if (hotelPage !== 0) {
+        setHotelPage(0);
+      }
+      return;
+    }
+    if (hotelPage > hotelTotalPages - 1) {
+      setHotelPage(hotelTotalPages - 1);
+    }
+  }, [hotelPage, hotelTotalPages]);
+
+  useEffect(() => {
+    if (roomTotalPages === 0) {
+      if (roomPage !== 0) {
+        setRoomPage(0);
+      }
+      return;
+    }
+    if (roomPage > roomTotalPages - 1) {
+      setRoomPage(roomTotalPages - 1);
+    }
+  }, [roomPage, roomTotalPages]);
+
+  const handleTabChange = useCallback((nextTab) => {
+    setActiveTab(nextTab);
+    if (nextTab === 'hotel') {
+      setHotelPage(0);
+    } else {
+      setRoomPage(0);
+    }
+  }, []);
+
+  const handleHotelPageChange = useCallback(
+    (nextPage) => {
+      if (nextPage < 0 || nextPage >= hotelTotalPages) return;
+      setHotelPage(nextPage);
+    },
+    [hotelTotalPages]
+  );
+
+  const handleRoomPageChange = useCallback(
+    (nextPage) => {
+      if (nextPage < 0 || nextPage >= roomTotalPages) return;
+      setRoomPage(nextPage);
+    },
+    [roomTotalPages]
+  );
 
   const handleToggleShareMode = useCallback(() => {
     if (hotelState.items.length === 0) return;
@@ -539,18 +607,29 @@ export default function MyBookmarkPage() {
     }
 
     return (
-      <div className="space-y-4">
-        {hotelState.items.map((item) => (
-          <HotelBookmarkCard
-            key={item.id}
-            item={item}
-            onDelete={handleHotelDelete}
-            shareMode={isShareMode}
-            selected={selectedHotelIds.has(item.contentId)}
-            onToggleSelect={handleToggleHotelSelect}
+      <>
+        <div className="space-y-4">
+          {hotelItemsForPage.map((item) => (
+            <HotelBookmarkCard
+              key={item.id}
+              item={item}
+              onDelete={handleHotelDelete}
+              shareMode={isShareMode}
+              selected={selectedHotelIds.has(item.contentId)}
+              onToggleSelect={handleToggleHotelSelect}
+            />
+          ))}
+        </div>
+        {hotelTotalPages > 0 && (
+          <Pagination
+            currentPage={hotelPage}
+            totalPages={hotelTotalPages}
+            totalElements={hotelTotalElements}
+            pageSize={PAGE_SIZE}
+            onPageChange={handleHotelPageChange}
           />
-        ))}
-      </div>
+        )}
+      </>
     );
   };
 
@@ -583,11 +662,22 @@ export default function MyBookmarkPage() {
     }
 
     return (
-      <div className="space-y-4">
-        {roomState.items.map((item) => (
-          <RoomBookmarkCard key={item.id} item={item} onDelete={handleRoomDelete} />
-        ))}
-      </div>
+      <>
+        <div className="space-y-4">
+          {roomItemsForPage.map((item) => (
+            <RoomBookmarkCard key={item.id} item={item} onDelete={handleRoomDelete} />
+          ))}
+        </div>
+        {roomTotalPages > 0 && (
+          <Pagination
+            currentPage={roomPage}
+            totalPages={roomTotalPages}
+            totalElements={roomTotalElements}
+            pageSize={PAGE_SIZE}
+            onPageChange={handleRoomPageChange}
+          />
+        )}
+      </>
     );
   };
 
@@ -614,7 +704,7 @@ export default function MyBookmarkPage() {
           마이페이지로 돌아가기
         </button>
         <SectionHeader title="내 찜 목록" description="관심 있게 담아둔 호텔과 객실을 한 곳에서 확인해보세요." />
-        <TabList activeTab={activeTab} counts={counts} onChange={setActiveTab} />
+        <TabList activeTab={activeTab} counts={counts} onChange={handleTabChange} />
         <div className="flex items-center gap-2 text-gray-500 text-sm mb-4">
           <span className="flex items-center gap-2 text-gray-500">
             <Calendar className="w-4 h-4" />
