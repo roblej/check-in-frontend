@@ -7,6 +7,7 @@ import { usePaymentStore } from "@/stores/paymentStore";
 import axios from "@/lib/axios";
 import { userAPI } from "@/lib/api/user";
 import { reservationLockAPI } from "@/lib/api/reservation";
+import { hotelAPI } from "@/lib/api/hotel";
 import {
   getReservationIdentifiers,
   logReservationIdentifiers,
@@ -32,6 +33,7 @@ const ReservationClient = () => {
 
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [resolvedHotelName, setResolvedHotelName] = useState("");
 
   // 결제 정보 상태
   const [paymentInfo, setPaymentInfo] = useState({
@@ -78,6 +80,59 @@ const ReservationClient = () => {
       router.push("/");
     }
   }, [draftReady, paymentDraft, router]);
+
+  useEffect(() => {
+    if (!paymentDraft?.meta?.contentId) {
+      setResolvedHotelName("");
+      return;
+    }
+
+    const existingName = paymentDraft.meta.hotelName?.trim() || "";
+    const fallbackPattern = /^호텔\s+\d+$/;
+
+    if (existingName && !fallbackPattern.test(existingName)) {
+      setResolvedHotelName(existingName);
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchHotelName = async () => {
+      try {
+        const response = await hotelAPI.getHotelDetail(
+          paymentDraft.meta.contentId
+        );
+        const data = response?.data ?? response ?? {};
+        const fetchedName =
+          data?.title ||
+          data?.name ||
+          data?.hotelName ||
+          data?.contentName ||
+          existingName ||
+          `호텔 ${paymentDraft.meta.contentId}`;
+
+        if (isMounted) {
+          setResolvedHotelName(fetchedName);
+        }
+      } catch {
+        if (isMounted) {
+          setResolvedHotelName(
+            existingName || `호텔 ${paymentDraft.meta.contentId}`
+          );
+        }
+      }
+    };
+
+    fetchHotelName();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    paymentDraft?.meta?.contentId,
+    paymentDraft?.meta?.hotelName,
+    draftReady,
+  ]);
 
   /**
    * 시간 만료 시 Lock 해제 처리
@@ -703,7 +758,11 @@ const ReservationClient = () => {
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              호텔 예약 결제
+              {paymentDraft
+                ? `${
+                    resolvedHotelName || paymentDraft.meta.hotelName || "호텔"
+                  }`
+                : "호텔 예약 결제"}
             </h1>
             <p className="text-gray-600">
               예약 정보를 확인하고 결제를 진행해주세요.
@@ -718,13 +777,13 @@ const ReservationClient = () => {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   예약 정보
                 </h2>
-                <div className="flex gap-6">
-                  <div className="relative h-36 w-40 flex-shrink-0 overflow-hidden rounded-lg">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+                  <div className="relative h-44 w-full overflow-hidden rounded-lg md:h-36 md:w-40 md:flex-shrink-0">
                     <Image
                       src={getRoomImageUrl()}
                       alt={paymentDraft.meta.roomName || "호텔 이미지"}
                       fill
-                      sizes="160px"
+                      sizes="(max-width: 768px) 100vw, 160px"
                       className="object-cover"
                       onError={(event) => {
                         event.currentTarget.src = `${ROOM_IMAGE_BASE_URL}default.jpg`;
@@ -732,37 +791,63 @@ const ReservationClient = () => {
                     />
                   </div>
 
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <div className="flex-1 space-y-3">
+                    <h3 className="text-xl font-semibold text-gray-900 md:text-lg">
                       {paymentDraft.meta.hotelName}
                     </h3>
-                    <p className="text-gray-600 mb-2">
+                    <p className="text-gray-600">
                       {paymentDraft.meta.roomName}
                     </p>
-                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                      <div>
-                        <span className="font-medium">체크인:</span>{" "}
-                        {paymentDraft.meta.checkIn}
+                    <div className="space-y-3 text-sm text-gray-600">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium whitespace-nowrap">
+                            체크인:
+                          </span>
+                          <span className="truncate">
+                            {paymentDraft.meta.checkIn}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-right md:text-left">
+                          <span className="font-medium whitespace-nowrap">
+                            체크아웃:
+                          </span>
+                          <span className="truncate">
+                            {paymentDraft.meta.checkOut}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-medium">체크아웃:</span>{" "}
-                        {paymentDraft.meta.checkOut}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium whitespace-nowrap">
+                            숙박 일수:
+                          </span>
+                          <span>{paymentDraft.meta.nights}박</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-right md:text-left">
+                          <span className="font-medium whitespace-nowrap">
+                            게스트:
+                          </span>
+                          <span>{paymentDraft.meta.guests}명</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-medium">숙박 일수:</span>{" "}
-                        {paymentDraft.meta.nights}박
-                      </div>
-                      <div>
-                        <span className="font-medium">게스트:</span>{" "}
-                        {paymentDraft.meta.guests}명
-                      </div>
-                      <div>
-                        <span className="font-medium">객실 가격:</span> ₩
-                        {paymentDraft.meta.roomPrice.toLocaleString()}/박
-                      </div>
-                      <div>
-                        <span className="font-medium">총 가격:</span> ₩
-                        {paymentDraft.meta.totalPrice.toLocaleString()}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium whitespace-nowrap">
+                            객실 가격:
+                          </span>
+                          <span className="truncate">
+                            ₩{paymentDraft.meta.roomPrice.toLocaleString()}/박
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-right md:text-left">
+                          <span className="font-medium whitespace-nowrap">
+                            총 가격:
+                          </span>
+                          <span className="truncate">
+                            ₩{paymentDraft.meta.totalPrice.toLocaleString()}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
