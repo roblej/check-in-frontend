@@ -1,8 +1,11 @@
 "use client";
 
-const STORAGE_KEY = "hotel:reservation:lockId";
+const SESSION_ID_KEY = "hotel:reservation:sessionId";
+const TAB_ID_KEY = "hotel:reservation:tabId";
+const LOCK_ID_KEY = "hotel:reservation:lockId";
+const LOCK_STARTED_AT_KEY = "hotel:reservation:lockStartedAt";
 
-const createLockId = () => {
+const createIdentifier = () => {
   if (typeof window === "undefined") return null;
   if (window.crypto?.randomUUID) {
     return window.crypto.randomUUID();
@@ -17,13 +20,86 @@ const createLockId = () => {
   );
 };
 
-export const getOrCreateTabLockId = () => {
+const getSessionStorage = () => {
   if (typeof window === "undefined") return null;
-  const storage = window.sessionStorage;
-  const existing = storage.getItem(STORAGE_KEY);
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+};
+
+const getOrCreateStorageValue = (storage, key) => {
+  if (!storage) return null;
+  const existing = storage.getItem(key);
   if (existing) return existing;
-  const newLockId = createLockId();
-  if (!newLockId) return null;
-  storage.setItem(STORAGE_KEY, newLockId);
-  return newLockId;
+  const generated = createIdentifier();
+  if (!generated) return null;
+  storage.setItem(key, generated);
+  return generated;
+};
+
+export const getOrCreateSessionId = () => {
+  const storage = getSessionStorage();
+  return getOrCreateStorageValue(storage, SESSION_ID_KEY);
+};
+
+export const getOrCreateTabId = () => {
+  const storage = getSessionStorage();
+  return getOrCreateStorageValue(storage, TAB_ID_KEY);
+};
+
+export const getOrCreateTabLockId = () => {
+  const storage = getSessionStorage();
+  return getOrCreateStorageValue(storage, LOCK_ID_KEY);
+};
+
+export const setLockStartedAt = (isoString) => {
+  const storage = getSessionStorage();
+  if (!storage || !isoString) return;
+  storage.setItem(LOCK_STARTED_AT_KEY, isoString);
+};
+
+export const getLockStartedAt = () => {
+  const storage = getSessionStorage();
+  if (!storage) return null;
+  return storage.getItem(LOCK_STARTED_AT_KEY);
+};
+
+export const clearLockState = () => {
+  const storage = getSessionStorage();
+  if (!storage) return;
+  storage.removeItem(LOCK_ID_KEY);
+  storage.removeItem(LOCK_STARTED_AT_KEY);
+};
+
+export const getReservationIdentifiers = (options = {}) => {
+  const { lockStartedAtOverride } = options;
+  const storage = getSessionStorage();
+
+  const sessionId = getOrCreateSessionId();
+  const tabId = getOrCreateTabId();
+  const lockId = getOrCreateTabLockId();
+
+  let lockStartedAt = getLockStartedAt();
+  if (lockStartedAtOverride) {
+    lockStartedAt = lockStartedAtOverride;
+    setLockStartedAt(lockStartedAtOverride);
+  } else if (!lockStartedAt && storage) {
+    const nowIso = new Date().toISOString();
+    storage.setItem(LOCK_STARTED_AT_KEY, nowIso);
+    lockStartedAt = nowIso;
+  }
+
+  return { sessionId, tabId, lockId, lockStartedAt };
+};
+
+export const logReservationIdentifiers = (label, identifiers) => {
+  if (typeof console === "undefined") return;
+  const payload =
+    identifiers ??
+    getReservationIdentifiers({
+      lockStartedAtOverride: getLockStartedAt(),
+    });
+  console.info(`[reservation-lock] ${label}`, payload);
 };
