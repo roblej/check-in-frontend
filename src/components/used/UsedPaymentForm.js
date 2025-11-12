@@ -578,12 +578,49 @@ const UsedPaymentForm = ({ initialData }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  /**
+   * 숫자 입력 처리 (0으로 시작 불가)
+   * @param {string} value - 입력값
+   * @returns {string} - 정제된 값
+   */
+  const handleNumericInput = (value) => {
+    // 숫자만 추출
+    const numericValue = value.replace(/[^0-9]/g, "");
+
+    // 빈 문자열이면 그대로 반환
+    if (numericValue === "") return "";
+
+    // 0으로 시작하는 경우 (예: "01000") 앞의 0 제거
+    return numericValue.replace(/^0+/, "") || "0";
+  };
+
   // 캐시 사용량 변경
   const handleCashChange = (value) => {
+    const totalAmount = paymentInfo.salePrice || 0;
+    const sanitized = handleNumericInput(value);
     const cashAmount = Math.max(
       0,
-      Math.min(parseInt(value) || 0, paymentInfo.customerCash)
+      Math.min(parseInt(sanitized) || 0, paymentInfo.customerCash)
     );
+
+    // 90% 제한 검증 (최소 10%는 카드 결제 필요)
+    const currentPoint = paymentInfo.usePoint || 0;
+    const totalUsage = cashAmount + currentPoint;
+    const maxAllowed = Math.floor(totalAmount * 0.9);
+
+    if (totalUsage > maxAllowed) {
+      alert(
+        "포인트와 캐시를 합쳐서 상품 금액의 90% 이상 사용할 수 없습니다. (최소 10%는 카드 결제 필요)"
+      );
+      // 최대 허용 금액으로 자동 조정
+      const adjustedCash = Math.max(0, maxAllowed - currentPoint);
+      setPaymentInfo((prev) => ({
+        ...prev,
+        useCash: Math.min(adjustedCash, paymentInfo.customerCash),
+      }));
+      return;
+    }
+
     setPaymentInfo((prev) => ({
       ...prev,
       useCash: cashAmount,
@@ -592,10 +629,31 @@ const UsedPaymentForm = ({ initialData }) => {
 
   // 포인트 사용량 변경
   const handlePointChange = (value) => {
+    const totalAmount = paymentInfo.salePrice || 0;
+    const sanitized = handleNumericInput(value);
     const pointAmount = Math.max(
       0,
-      Math.min(parseInt(value) || 0, paymentInfo.customerPoint)
+      Math.min(parseInt(sanitized) || 0, paymentInfo.customerPoint)
     );
+
+    // 90% 제한 검증 (최소 10%는 카드 결제 필요)
+    const currentCash = paymentInfo.useCash || 0;
+    const totalUsage = currentCash + pointAmount;
+    const maxAllowed = Math.floor(totalAmount * 0.9);
+
+    if (totalUsage > maxAllowed) {
+      alert(
+        "포인트와 캐시를 합쳐서 상품 금액의 90% 이상 사용할 수 없습니다. (최소 10%는 카드 결제 필요)"
+      );
+      // 최대 허용 금액으로 자동 조정
+      const adjustedPoint = Math.max(0, maxAllowed - currentCash);
+      setPaymentInfo((prev) => ({
+        ...prev,
+        usePoint: Math.min(adjustedPoint, paymentInfo.customerPoint),
+      }));
+      return;
+    }
+
     setPaymentInfo((prev) => ({
       ...prev,
       usePoint: pointAmount,
@@ -1128,13 +1186,13 @@ const UsedPaymentForm = ({ initialData }) => {
                     캐시 사용 (보유: {paymentInfo.customerCash.toLocaleString()}원)
                   </label>
                   <input
-                    type="number"
-                    value={paymentInfo.useCash}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={paymentInfo.useCash || ""}
                     onChange={(e) => handleCashChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="사용할 캐시 금액"
-                    min="0"
-                    max={paymentInfo.customerCash}
                   />
                 </div>
 
@@ -1144,13 +1202,13 @@ const UsedPaymentForm = ({ initialData }) => {
                     포인트 사용 (보유: {paymentInfo.customerPoint.toLocaleString()}P)
                   </label>
                   <input
-                    type="number"
-                    value={paymentInfo.usePoint}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={paymentInfo.usePoint || ""}
                     onChange={(e) => handlePointChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="사용할 포인트"
-                    min="0"
-                    max={paymentInfo.customerPoint}
                   />
                 </div>
 
