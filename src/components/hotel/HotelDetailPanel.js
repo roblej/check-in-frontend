@@ -220,12 +220,12 @@ const HotelDetailPanel = ({
         {/* 하단 고정 여백 영역 */}
         <div className="flex-shrink-0 bg-gray-50 rounded-b-xl px-2.5 pb-2.5"></div>
 
-        {/* 로딩 스피너 (fade-out 중 바로 표시됨) */}
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-10">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
-          </div>
-        )}
+        {/* 로딩 스피너 (fade-out 중 바로 표시됨) 겹치므로 주석처리 */}
+        {/*{isLoading && (*/}
+        {/*  <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-10">*/}
+        {/*    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />*/}
+        {/*  </div>*/}
+        {/*)}*/}
       </div>
     </>
   );
