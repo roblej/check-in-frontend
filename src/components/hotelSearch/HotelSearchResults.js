@@ -165,7 +165,9 @@ const HotelSearchResults = ({
             <div className="p-6">
               {/* 헤더 */}
               <div className="flex items-center justify-between mb-6 pb-4 border-b">
-                <h3 className="text-xl font-bold">필터</h3>
+                <h3 className="text-xl font-bold">
+                  필터 {totalElements > 0 && <span className="text-blue-500">({totalElements}개)</span>}
+                </h3>
                 <button
                   onClick={() => setShowFiltersPanel(false)}
                   className="text-2xl text-gray-400 hover:text-gray-600"
@@ -193,7 +195,7 @@ const HotelSearchResults = ({
                   onClick={() => setShowFiltersPanel(false)}
                   className="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors"
                 >
-                  {filteredHotels.length}개 호텔 보기
+                  {totalElements}개 호텔 보기
                 </button>
               </div>
             </div>
