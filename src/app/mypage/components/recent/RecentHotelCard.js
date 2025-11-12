@@ -5,8 +5,7 @@ import { MapPin, Clock, Trash2, ChevronRight } from 'lucide-react';
 import { formatRelativeTime } from '@/utils/formatRelativeTime';
 
 const ROOM_IMAGE_BASE =
-  process.env.NEXT_PUBLIC_ROOM_IMAGE_BASE_URL ||
-  "https://sist-checkin.s3.ap-northeast-2.amazonaws.com/hotelroom";
+  process.env.NEXT_PUBLIC_ROOM_IMAGE_BASE_URL
 
 const DEFAULT_THUMBNAIL = `${ROOM_IMAGE_BASE}/default-hotel-thumbnail.webp`;
 
