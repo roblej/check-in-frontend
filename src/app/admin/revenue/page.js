@@ -27,18 +27,18 @@ const RevenuePage = () => {
   const minYear = summary.minYear || 2000; // 최소 연도 (매출 데이터가 있는 가장 오래된 연도)
 
   const fetchSummary = async (year) => {
-    try {
-      setLoading(true);
+      try {
+        setLoading(true);
       const res = await axiosInstance.get('/admin/revenueSummary', {
         params: { year }
       });
       setSummary(res.data || { todayRevenue: 0, todayPayments: 0, monthlyRevenue: [], minYear: null });
-    } catch (e) {
-      console.error('매출 요약 조회 실패:', e);
-    } finally {
-      setLoading(false);
-    }
-  };
+      } catch (e) {
+        console.error('매출 요약 조회 실패:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
 
   const lastFetchedYear = useRef(null);
 

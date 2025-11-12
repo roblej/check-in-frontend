@@ -10,9 +10,10 @@ import axiosInstance from '@/lib/axios';
 const AdminHeader = ({ onMenuClick }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { resetAccessToken, setInlogged } = useCustomerStore();
+  const { resetAccessToken, setInlogged, isInlogged } = useCustomerStore();
   const { resetAdminData } = useAdminStore();
   const [hotelTitle, setHotelTitle] = useState('사업자');
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   
   const handleLogout = () => {
     // 고객 스토어 초기화
@@ -45,22 +46,50 @@ const AdminHeader = ({ onMenuClick }) => {
 
   const currentTitle = pageTitles[pathname] || '관리자';
 
-  // 호텔명 조회
+  // 인증 체크 및 호텔명 조회
   useEffect(() => {
-    const fetchHotelTitle = async () => {
+    const checkAuthAndFetchTitle = async () => {
+      // 1. 클라이언트 측 인증 체크
+      if (!isInlogged()) {
+        router.push('/admin-login');
+        return;
+      }
+
       try {
+        // 2. 서버 측 인증 체크 (API 호출)
         const response = await axiosInstance.get('/admin/hotelTitle');
         if (response.data.success && response.data.title) {
           setHotelTitle(response.data.title);
         }
+        setIsCheckingAuth(false);
       } catch (error) {
         console.error('호텔명 조회 오류:', error);
-        // 오류 발생 시 기본값 유지
+        
+        // 3. 401/403 에러 처리: 토큰 만료 또는 서버 측 인증 실패 시 로그인 페이지로 리다이렉트
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          router.push('/admin-login');
+          return;
+        }
+        
+        // 기타 오류 발생 시에도 인증 체크 완료로 처리
+        setIsCheckingAuth(false);
       }
     };
 
-    fetchHotelTitle();
-  }, []);
+    checkAuthAndFetchTitle();
+  }, [isInlogged, router]);
+
+  // 인증 체크 중일 때 전체 화면 로딩 UI 표시
+  if (isCheckingAuth) {
+    return (
+      <div className="fixed inset-0 bg-gray-50 flex items-center justify-center z-50">
+        <div className="flex flex-col items-center text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">인증 정보를 확인하는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-40">

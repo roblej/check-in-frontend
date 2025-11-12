@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Header from "@/components/Header";
 import axios from "@/lib/axios";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useAdminStore } from "@/stores/adminStore";
@@ -112,15 +111,20 @@ function AdminLoginForm() {
               } else {
                 // 관리자 (type=1): 관리자 페이지로 이동
                 // adminIdx로 contentId 가져오기
-                const contentId = await fetchContentIdByAdminIdx(adminIdx);
+                const result = await fetchContentIdByAdminIdx(adminIdx);
 
-                if (contentId) {
+                if (result.status === 'APPROVED' && result.contentId) {
+                  // 승인 완료된 호텔
                   setAdminLoggedIn(true);
-                  console.log('관리자 로그인 성공:', { adminIdx, contentId });
+                  console.log('관리자 로그인 성공:', { adminIdx, contentId: result.contentId });
                   router.push("/admin");
+                } else if (result.status === 'PENDING_APPROVAL') {
+                  // 승인 대기 중
+                  console.warn('호텔 등록 승인 대기 중입니다.');
+                  router.push("/admin/pending-approval");
                 } else {
+                  // 호텔 미등록
                   console.warn('contentId를 가져올 수 없습니다.');
-                  // 호텔 등록 페이지로 이동
                   alert("호텔 등록 페이지로 이동합니다.");
                   router.push("/hotel/register");
                 }
@@ -130,11 +134,16 @@ function AdminLoginForm() {
           } catch (error) {
             console.error('관리자 type 조회 실패:', error);
             // type 조회 실패 시 기본적으로 관리자 페이지로 이동
-            const contentId = await fetchContentIdByAdminIdx(adminIdx);
-            if (contentId) {
+            const result = await fetchContentIdByAdminIdx(adminIdx);
+            if (result.status === 'APPROVED' && result.contentId) {
+              // 승인 완료된 호텔
               setAdminLoggedIn(true);
               router.push("/admin");
+            } else if (result.status === 'PENDING_APPROVAL') {
+              // 승인 대기 중
+              router.push("/admin/pending-approval");
             } else {
+              // 호텔 미등록
               router.push("/hotel/register");
             }
           }
@@ -156,7 +165,6 @@ function AdminLoginForm() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Header />
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-lg shadow-lg p-8">

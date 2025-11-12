@@ -76,10 +76,9 @@ const AddressMapPreview = ({ baseAddress, detailAddress, latitude, longitude, fu
           
           markerRef.current = marker;
 
-          // 인포윈도우 생성
-          const fullAddress = baseAddress + (detailAddress ? ' ' + detailAddress : '');
+          // 인포윈도우 생성 (도로명주소만 표시 - 글자 길이에 맞춰 자동 크기 조정)
           const infowindow = new window.kakao.maps.InfoWindow({
-            content: `<div style="padding:10px; font-size:12px; min-width:150px;">${fullAddress || '호텔 위치'}</div>`
+            content: `<div style="padding:10px; font-size:12px; width:fit-content; max-width:500px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-sizing:border-box;">${baseAddress || '호텔 위치'}</div>`
           });
           
           infowindow.open(map, marker);
@@ -119,9 +118,10 @@ const AddressMapPreview = ({ baseAddress, detailAddress, latitude, longitude, fu
           
           markerRef.current = marker;
 
-          // 인포윈도우 생성
+          // 인포윈도우 생성 (도로명주소만 표시 - 글자 길이에 맞춰 자동 크기 조정)
+          const displayAddress = baseAddress || addressToUse || '호텔 위치';
           const infowindow = new window.kakao.maps.InfoWindow({
-            content: `<div style="padding:10px; font-size:12px; min-width:150px;">${addressToUse}</div>`
+            content: `<div style="padding:10px; font-size:12px; width:fit-content; max-width:500px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-sizing:border-box;">${displayAddress}</div>`
           });
           
           infowindow.open(map, marker);
@@ -195,7 +195,8 @@ const AddressMapPreview = ({ baseAddress, detailAddress, latitude, longitude, fu
 const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnly = false, isEditMode = false }) => {
   // 기본 주소(도로명주소)와 상세주소 분리 관리
   const [baseAddress, setBaseAddress] = useState(""); // 도로명 주소
-  const [detailAddress, setDetailAddress] = useState(""); // 상세 주소
+  const [detailAddress, setDetailAddress] = useState(""); // 상세 주소 (입력 중)
+  const [finalDetailAddress, setFinalDetailAddress] = useState(""); // 상세 주소 (최종 - 지도 업데이트용)
 
   // formData에서 주소가 변경될 때 기본 주소와 상세주소 분리
   useEffect(() => {
@@ -204,7 +205,9 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
       setBaseAddress(formData.hotelInfo.baseAddress || "");
     }
     if (formData.hotelInfo.detailAddress !== undefined) {
-      setDetailAddress(formData.hotelInfo.detailAddress || "");
+      const newDetailAddress = formData.hotelInfo.detailAddress || "";
+      setDetailAddress(newDetailAddress);
+      setFinalDetailAddress(newDetailAddress); // 최종 주소도 동기화
     }
     
     // 기존 adress 필드가 있고 baseAddress가 없으면 (하위 호환성)
@@ -213,6 +216,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
       // 기존 주소를 기본 주소로 설정하고 상세주소는 초기화
       setBaseAddress(currentAddress);
       setDetailAddress("");
+      setFinalDetailAddress("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.hotelInfo.baseAddress, formData.hotelInfo.detailAddress, formData.hotelInfo.adress]);
@@ -355,12 +359,16 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
               latitude: coords.latitude.toString(),
               longitude: coords.longitude.toString()
             });
+            // finalDetailAddress도 동기화 (지도 업데이트용)
+            setFinalDetailAddress(detailAddress);
           } else {
             // 좌표 변환 실패 시 주소만 저장 (분리해서)
             updateFormData("hotelInfo", { 
               baseAddress: fullAddress,
               detailAddress: detailAddress
             });
+            // finalDetailAddress도 동기화 (지도 업데이트용)
+            setFinalDetailAddress(detailAddress);
           }
         });
       },
@@ -371,11 +379,22 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
     }).open();
   };
 
-  // 상세주소 변경 핸들러
+  // 상세주소 변경 핸들러 (입력 중 - 지도 업데이트 안 함)
   const handleDetailAddressChange = (e) => {
     if (readOnly || isEditMode) return;
     const newDetailAddress = e.target.value;
-    setDetailAddress(newDetailAddress);
+    setDetailAddress(newDetailAddress); // 입력 중인 값만 업데이트
+  };
+
+  // 상세주소 포커스 해제 핸들러 (입력 완료 후 지도 업데이트)
+  const handleDetailAddressBlur = (e) => {
+    if (readOnly || isEditMode) return;
+    
+    // e.target.value를 직접 사용하여 최신 값 보장 (state 업데이트 지연 문제 해결)
+    const newDetailAddress = e.target.value;
+    setDetailAddress(newDetailAddress); // state도 업데이트
+    setFinalDetailAddress(newDetailAddress); // 최종 주소 업데이트 (지도 업데이트 트리거)
+    
     // 기본 주소 + 상세주소 조합하여 좌표 변환용 주소 생성
     const finalAddress = baseAddress + (newDetailAddress ? ' ' + newDetailAddress : '');
     
@@ -480,6 +499,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
                 type="text"
                 value={detailAddress || ""}
                 onChange={handleDetailAddressChange}
+                onBlur={handleDetailAddressBlur}
                 readOnly={readOnly || isEditMode}
                 disabled={readOnly || isEditMode}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -495,7 +515,7 @@ const HotelBasicInfo = ({ formData, updateFormData, errors, initialData, readOnl
               <div className="mt-4">
                 <AddressMapPreview 
                   baseAddress={baseAddress}
-                  detailAddress={detailAddress}
+                  detailAddress={finalDetailAddress} // 최종 주소 사용 (blur 후에만 업데이트)
                   latitude={formData.hotelInfo.latitude}
                   longitude={formData.hotelInfo.longitude}
                   fullAddress={formData.hotelInfo.adress} // readOnly 모드에서 전체 주소 사용
