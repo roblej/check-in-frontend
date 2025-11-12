@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axiosInstance from "@/lib/axios";
 
 const HotelImages = ({ images, events, updateFormData, errors, readOnly = false, formData, isEditMode = false }) => {
@@ -14,6 +14,13 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
   
   // 대표 이미지 URL
   const thumbnailImageUrl = formData?.hotelInfo?.imageUrl || "";
+  
+  // 디버깅: 대표 이미지 URL 확인
+  useEffect(() => {
+    if (thumbnailImageUrl) {
+      console.log('🔍 [대표 이미지 URL] 현재 값:', thumbnailImageUrl);
+    }
+  }, [thumbnailImageUrl]);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -97,8 +104,23 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
       if (response.data.success && response.data.images && response.data.images.length > 0) {
         // 첫 번째 이미지만 대표 이미지로 설정
         const uploadedImage = response.data.images[0];
-        updateFormData('hotelInfo', { imageUrl: uploadedImage.originUrl });
+        console.log('🔍 [대표 이미지 업로드 성공] 응답 데이터:', response.data);
+        console.log('🔍 [대표 이미지 업로드 성공] uploadedImage:', uploadedImage);
+        console.log('🔍 [대표 이미지 업로드 성공] originUrl:', uploadedImage.originUrl);
+        
+        // originUrl이 없으면 다른 필드 확인
+        const imageUrl = uploadedImage.originUrl || uploadedImage.imageUrl || uploadedImage.url;
+        console.log('🔍 [대표 이미지 업로드 성공] 최종 imageUrl:', imageUrl);
+        
+        if (imageUrl) {
+          updateFormData('hotelInfo', { imageUrl: imageUrl });
+          console.log('🔍 [대표 이미지 업로드 성공] formData 업데이트 완료');
+        } else {
+          console.error('❌ [대표 이미지 업로드 실패] imageUrl을 찾을 수 없습니다:', uploadedImage);
+          alert('대표 이미지 URL을 찾을 수 없습니다. 응답 데이터를 확인해주세요.');
+        }
       } else {
+        console.error('❌ [대표 이미지 업로드 실패] 응답 데이터:', response.data);
         alert('대표 이미지 업로드에 실패했습니다.');
       }
     } catch (error) {
@@ -308,7 +330,7 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
         
         {/* 대표 이미지 업로드 영역 */}
         <div
-          className={`border-2 border-dashed rounded-lg p-8 transition-colors ${
+          className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
             dragOverThumbnail 
               ? "border-purple-500 bg-purple-50" 
               : "border-gray-300 hover:border-gray-400"
@@ -326,7 +348,7 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
           {thumbnailImageUrl ? (
             <div className="flex justify-center">
               <div className="relative group">
-                <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden max-w-2xl w-full">
+                <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden max-w-xl w-full">
                   <img 
                     src={thumbnailImageUrl} 
                     alt="대표 이미지" 
@@ -336,7 +358,7 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
                 {!readOnly && (
                   <button 
                     onClick={removeThumbnail}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 z-10"
                   >
                     ×
                   </button>
@@ -347,7 +369,7 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
               </div>
             </div>
           ) : (
-            <div className="text-center">
+            <div className="text-center py-8">
               <div className="text-gray-400 text-6xl mb-4">🖼️</div>
               <h4 className="text-lg font-medium text-gray-900 mb-2">
                 대표 이미지를 드래그하여 업로드하세요
@@ -452,7 +474,7 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
             <div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {safeImages.map((image, index) => (
-                  <div key={image.id || index} className="relative group">
+                  <div key={image.id || index} className="relative group p-[5px]">
                     <div className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
                       {image.originUrl || image.smallUrl ? (
                         <img 
