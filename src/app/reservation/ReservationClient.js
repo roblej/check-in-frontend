@@ -7,6 +7,11 @@ import { usePaymentStore } from "@/stores/paymentStore";
 import axios from "@/lib/axios";
 import { userAPI } from "@/lib/api/user";
 import { reservationLockAPI } from "@/lib/api/reservation";
+import {
+  getReservationIdentifiers,
+  logReservationIdentifiers,
+  clearLockState,
+} from "@/utils/lockId";
 import TossPaymentsWidget from "@/components/payment/TossPaymentsWidget";
 import PaymentSummary from "@/components/payment/PaymentSummary";
 import ReservationLockWrapper from "./ReservationLockWrapper";
@@ -80,20 +85,35 @@ const ReservationClient = () => {
   const handleTimeExpired = useCallback(async () => {
     try {
       if (paymentDraft?.meta) {
-        await reservationLockAPI.releaseLock(
-          paymentDraft.meta.contentId || paymentDraft.meta.hotelId,
-          paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
-          paymentInfo.customerIdx,
-          paymentDraft.meta.checkIn,
-          paymentDraft.meta.checkOut,
-          paymentDraft.meta.lockId
-        );
+        const { sessionId, tabId } = getReservationIdentifiers({
+          lockStartedAtOverride: paymentDraft.meta.lockInitialAt,
+        });
+
+        logReservationIdentifiers("ReservationClient: handleTimeExpired", {
+          sessionId,
+          tabId,
+          lockId: paymentDraft.meta.lockId,
+          lockInitialAt: paymentDraft.meta.lockInitialAt,
+        });
+
+        await reservationLockAPI.releaseLock({
+          contentId: paymentDraft.meta.contentId || paymentDraft.meta.hotelId,
+          roomId: paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
+          customerIdx: paymentInfo.customerIdx,
+          checkIn: paymentDraft.meta.checkIn,
+          checkOut: paymentDraft.meta.checkOut,
+          lockId: paymentDraft.meta.lockId,
+          sessionId,
+          tabId,
+          initialLockAt: paymentDraft.meta.lockInitialAt,
+        });
       }
       alert("결제 시간이 만료되었습니다. 다시 예약해주세요.");
     } catch (error) {
       console.error("Lock 해제 실패:", error);
     } finally {
       clearPaymentDraft();
+      clearLockState();
     }
   }, [paymentDraft, paymentInfo.customerIdx, clearPaymentDraft]);
 
@@ -568,6 +588,17 @@ const ReservationClient = () => {
       setIsLoading(true);
 
       // 백엔드 DTO(PaymentRequestDto) 스펙에 맞춰 평탄화하여 전송
+      const identifiers = getReservationIdentifiers({
+        lockStartedAtOverride: paymentDraft.meta.lockInitialAt,
+      });
+      logReservationIdentifiers("ReservationClient: handlePaymentSuccess", {
+        sessionId: identifiers.sessionId,
+        tabId: identifiers.tabId,
+        lockId: paymentDraft.meta.lockId,
+        lockInitialAt:
+          paymentDraft.meta.lockInitialAt || identifiers.lockStartedAt,
+      });
+
       const payload = {
         paymentKey: paymentResult.paymentKey,
         orderId: paymentResult.orderId,
@@ -579,6 +610,10 @@ const ReservationClient = () => {
         checkIn: paymentDraft.meta.checkIn,
         checkOut: paymentDraft.meta.checkOut,
         lockId: paymentDraft.meta.lockId || null,
+        sessionId: identifiers.sessionId,
+        tabId: identifiers.tabId,
+        lockInitialAt:
+          paymentDraft.meta.lockInitialAt || identifiers.lockStartedAt,
         guests: paymentDraft.meta.guests,
         nights: paymentDraft.meta.nights,
         roomPrice: paymentDraft.meta.roomPrice,
