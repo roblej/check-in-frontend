@@ -1,10 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
 import axiosInstance from "@/lib/axios";
 import { hotelAPI } from "@/lib/api/hotel";
+import { getOrCreateTabLockId } from "@/utils/lockId";
 import RoomBookmarkButton from "./RoomBookmarkButton";
 import RoomGallery from "./RoomGallery";
 
@@ -16,9 +18,14 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
   const [galleryOpen, setGalleryOpen] = useState(false); // 갤러리 모달 열림 상태
   const [imageCount, setImageCount] = useState(0); // 이미지 개수
 
-  // S3 기본 경로 상수
-  const BASE_URL =
-    "https://sist-checkin.s3.ap-northeast-2.amazonaws.com/hotelroom/";
+  const roomImageBaseUrl = process.env.NEXT_PUBLIC_ROOM_IMAGE_BASE_URL;
+  if (!roomImageBaseUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_ROOM_IMAGE_BASE_URL 환경 변수가 설정되어 있지 않습니다."
+    );
+  }
+  const ensureTrailingSlash = (url) => (url.endsWith("/") ? url : `${url}/`);
+  const baseUrlWithSlash = ensureTrailingSlash(roomImageBaseUrl);
 
   /**
    * @function getImageUrl
@@ -26,8 +33,9 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
    * 이미지가 없을 경우 default.jpg 로 대체
    */
   const getImageUrl = (imageUrl) => {
-    if (!imageUrl) return `${BASE_URL}default.jpg`;
-    return `${BASE_URL}${imageUrl}`;
+    if (!imageUrl) return `${baseUrlWithSlash}default.jpg`;
+    if (imageUrl.startsWith("http")) return imageUrl;
+    return `${baseUrlWithSlash}${imageUrl}`;
   };
 
   // 숙박 일수에 따른 총 가격 계산 (추가 요금 포함)
@@ -71,8 +79,9 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
         searchParams?.contentId || searchParams?.hotelId || room?.contentId;
       const roomId = room.roomIdx || room.id;
       const checkIn = String(searchParams?.checkIn || "");
+      const checkOut = String(searchParams?.checkOut || "");
 
-      if (!contentId || !roomId || !checkIn) {
+      if (!contentId || !roomId || !checkIn || !checkOut) {
         alert("객실/날짜 정보가 올바르지 않습니다. 날짜를 다시 선택해주세요.");
         setIsLocking(false);
         return;
@@ -85,23 +94,47 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
             contentId: String(contentId),
             roomId: Number(roomId),
             checkIn,
+            checkOut,
           },
         });
       } catch (_) {}
 
-      const lockResult = await axiosInstance.post("/reservations/lock", {
+      const lockId = getOrCreateTabLockId();
+      const lockPayload = {
         contentId: String(contentId),
         roomId: Number(roomId),
         checkIn,
-      });
+        checkOut,
+      };
 
-      if (!lockResult.data.success) {
-        alert(
-          lockResult.data.message || "이미 다른 사용자가 예약 진행 중입니다."
-        );
+      if (lockId) {
+        lockPayload.lockId = lockId;
+      }
+
+      const lockResult = await axiosInstance.post(
+        "/reservations/lock",
+        lockPayload
+      );
+
+      const {
+        success: lockSuccess,
+        message: lockMessage,
+        expireTime,
+        lockId: responseLockId,
+      } = lockResult.data || {};
+
+      if (!lockSuccess) {
+        alert(lockMessage || "이미 다른 사용자가 예약 진행 중입니다.");
         setIsLocking(false);
         return;
       }
+
+      const resolvedLockId = responseLockId || lockId || getOrCreateTabLockId();
+      const parsedExpire = expireTime ? Date.parse(expireTime) : null;
+      const computedLockExpiresAt =
+        typeof parsedExpire === "number" && !Number.isNaN(parsedExpire)
+          ? parsedExpire
+          : Date.now() + 10 * 60 * 1000;
 
       // 2단계: 락 생성 성공 → 결제 정보 저장 후 이동
       const reservationData = {
@@ -120,12 +153,17 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
           roomIdx: roomId,
           roomName: room.name,
           checkIn,
-          checkOut: searchParams?.checkOut,
+          checkOut,
           guests: searchParams?.guests || searchParams?.adults || 2,
           nights: nights,
           roomPrice: room.basePrice || room.price,
           totalPrice: totalPrice,
           roomImage: room.imageUrl,
+          lockId: resolvedLockId,
+          lockExpireTime: expireTime || null,
+          lockExpiresAt: computedLockExpiresAt,
+          expiresAt: computedLockExpiresAt,
+          lockCheckOut: checkOut,
           amenities: room.amenities || [],
         },
       };
@@ -169,12 +207,14 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
         >
           {room.imageUrl ? (
             <>
-              <img
+              <Image
                 src={getImageUrl(room.imageUrl)}
                 alt={room.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                onError={(e) => {
-                  e.currentTarget.src = `${BASE_URL}default.jpg`;
+                fill
+                sizes="(max-width: 768px) 100vw, 256px"
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                onError={(event) => {
+                  event.currentTarget.src = `${baseUrlWithSlash}default.jpg`;
                 }}
               />
               {/* 이미지 개수 표시 */}

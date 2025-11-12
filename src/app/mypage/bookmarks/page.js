@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
-import { Building2, Hotel, MapPin, ChevronRight, Calendar, X } from 'lucide-react';
+import { Building2, Hotel, MapPin, ChevronRight, Calendar, X, CheckSquare, Square, Copy } from 'lucide-react';
 import { bookmarkAPI } from '@/lib/api/bookmark';
 import { hotelAPI } from '@/lib/api/hotel';
 
@@ -67,20 +67,42 @@ const TabList = ({ activeTab, counts, onChange }) => (
   </div>
 );
 
-const HotelBookmarkCard = ({ item, onDelete }) => (
-  <article className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition-all duration-200">
-    <button
-      type="button"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onDelete(item.contentId);
-      }}
-      className="absolute top-3 right-3 md:top-4 md:right-4 text-gray-400 hover:text-red-600 transition-colors z-10"
-      aria-label="호텔 찜 삭제"
-    >
-      <X className="w-5 h-5 md:w-6 md:h-6" />
-    </button>
+const HotelBookmarkCard = ({ item, onDelete, shareMode = false, selected = false, onToggleSelect }) => (
+  <article
+    className={`relative overflow-hidden rounded-3xl border bg-white shadow-sm transition-all duration-200 hover:shadow-lg ${
+      shareMode && selected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
+    }`}
+  >
+    {shareMode ? (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onToggleSelect?.(item.contentId);
+        }}
+        className={`absolute top-3 right-3 md:top-4 md:right-4 text-gray-400 hover:text-blue-600 transition-colors z-10 rounded-full bg-white/80 p-1.5 shadow ${
+          selected ? 'text-blue-600' : ''
+        }`}
+        aria-label="호텔 공유 대상 선택"
+        aria-pressed={selected}
+      >
+        {selected ? <CheckSquare className="w-5 h-5 md:w-6 md:h-6" /> : <Square className="w-5 h-5 md:w-6 md:h-6" />}
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onDelete(item.contentId);
+        }}
+        className="absolute top-3 right-3 md:top-4 md:right-4 text-gray-400 hover:text-red-600 transition-colors z-10"
+        aria-label="호텔 찜 삭제"
+      >
+        <X className="w-5 h-5 md:w-6 md:h-6" />
+      </button>
+    )}
     <Link
       href={`/hotel/${item.contentId}`}
       className="group flex flex-col md:flex-row h-full"
@@ -200,6 +222,18 @@ export default function MyBookmarkPage() {
     loading: false,
     error: null,
   });
+  const [isShareMode, setIsShareMode] = useState(false);
+  const [selectedHotelIds, setSelectedHotelIds] = useState(new Set());
+  const shareSelectedIds = useMemo(() => Array.from(selectedHotelIds), [selectedHotelIds]);
+  const [copiedToast, setCopiedToast] = useState(null);
+
+  useEffect(() => {
+    if (!copiedToast) return;
+    const timer = setTimeout(() => {
+      setCopiedToast(null);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [copiedToast]);
 
   const counts = useMemo(
     () => ({
@@ -208,6 +242,67 @@ export default function MyBookmarkPage() {
     }),
     [hotelState.items.length, roomState.items.length]
   );
+
+  useEffect(() => {
+    if (activeTab !== 'hotel' && isShareMode) {
+      setIsShareMode(false);
+    }
+  }, [activeTab, isShareMode]);
+
+  useEffect(() => {
+    if (!isShareMode && selectedHotelIds.size > 0) {
+      setSelectedHotelIds(new Set());
+    }
+  }, [isShareMode, selectedHotelIds.size]);
+
+  const handleToggleShareMode = useCallback(() => {
+    if (hotelState.items.length === 0) return;
+    setIsShareMode((prev) => !prev);
+  }, [hotelState.items.length]);
+
+  const handleToggleHotelSelect = useCallback((contentId) => {
+    if (!contentId) return;
+    setSelectedHotelIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(contentId)) {
+        next.delete(contentId);
+      } else {
+        next.add(contentId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleCopyShareUrl = useCallback(() => {
+    if (shareSelectedIds.length === 0) return;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://checkinn.store';
+    const shareUrl = `${origin}/share?idxs=${shareSelectedIds.join(',')}`;
+
+    const finalize = () => {
+      setSelectedHotelIds(new Set());
+      setIsShareMode(false);
+      setCopiedToast(shareUrl);
+    };
+
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(shareUrl)
+        .then(() => {
+          finalize();
+        })
+        .catch(() => {
+          const fallback = prompt('URL 복사에 실패했습니다. 아래 링크를 직접 복사해주세요.', shareUrl);
+          if (fallback !== null) {
+            finalize();
+          }
+        });
+    } else {
+      const fallback = prompt('URL 복사 기능을 지원하지 않습니다. 아래 링크를 직접 복사해주세요.', shareUrl);
+      if (fallback !== null) {
+        finalize();
+      }
+    }
+  }, [shareSelectedIds]);
 
   const loadHotelBookmarks = useCallback(async () => {
     setHotelState((prev) => ({ ...prev, loading: true, error: null }));
@@ -291,7 +386,6 @@ export default function MyBookmarkPage() {
               if (!roomDetail && rooms?.content && Array.isArray(rooms.content)) {
                 roomDetail = rooms.content.find((room) => room.roomIdx === roomIdx);
               }
-              // fallback: 별도 객실 이미지 API 호출
               if (!roomDetail || !roomDetail.imageUrl) {
                 try {
                   const imageRes = await hotelAPI.getRoomImages(contentId, roomIdx);
@@ -345,7 +439,7 @@ export default function MyBookmarkPage() {
   }, [loadHotelBookmarks, loadRoomBookmarks]);
 
   const handleHotelDelete = async (contentId) => {
-    if (!contentId) return;
+    if (!contentId || isShareMode) return;
     const confirmDelete = window.confirm('해당 호텔 찜을 삭제하시겠습니까?');
     if (!confirmDelete) return;
     try {
@@ -407,7 +501,14 @@ export default function MyBookmarkPage() {
     return (
       <div className="space-y-4">
         {hotelState.items.map((item) => (
-          <HotelBookmarkCard key={item.id} item={item} onDelete={handleHotelDelete} />
+          <HotelBookmarkCard
+            key={item.id}
+            item={item}
+            onDelete={handleHotelDelete}
+            shareMode={isShareMode}
+            selected={selectedHotelIds.has(item.contentId)}
+            onToggleSelect={handleToggleHotelSelect}
+          />
         ))}
       </div>
     );
@@ -457,6 +558,9 @@ export default function MyBookmarkPage() {
     return renderRoomSection();
   };
 
+  const shareButtonDisabled = hotelState.items.length === 0;
+  const copyDisabled = shareSelectedIds.length === 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -472,12 +576,53 @@ export default function MyBookmarkPage() {
         <SectionHeader title="내 찜 목록" description="관심 있게 담아둔 호텔과 객실을 한 곳에서 확인해보세요." />
         <TabList activeTab={activeTab} counts={counts} onChange={setActiveTab} />
         <div className="flex items-center gap-2 text-gray-500 text-sm mb-4">
-          <Calendar className="w-4 h-4" />
-          최근 저장한 순서로 정렬되어 표시됩니다.
+          <span className="flex items-center gap-2 text-gray-500">
+            <Calendar className="w-4 h-4" />
+            최근 저장한 순서로 정렬되어 표시됩니다.
+          </span>
+          {activeTab === 'hotel' && (
+            <div className="ml-auto flex items-center gap-2">
+              {isShareMode && (
+                <button
+                  type="button"
+                  onClick={handleCopyShareUrl}
+                  disabled={copyDisabled}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+                    copyDisabled
+                      ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'border-blue-200 text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  <Copy className="w-4 h-4" />
+                  URL 복사하기
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleToggleShareMode}
+                disabled={shareButtonDisabled}
+                className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+                  shareButtonDisabled
+                    ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                    : isShareMode
+                      ? 'border-blue-200 text-blue-600 bg-blue-50'
+                      : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600'
+                }`}
+              >
+                {isShareMode ? '선택 종료' : '공유 선택하기'}
+              </button>
+            </div>
+          )}
         </div>
         <div className="space-y-6">{renderContent()}</div>
       </main>
       <Footer />
+      {copiedToast && (
+        <div className="fixed inset-x-0 bottom-10 mx-auto w-fit max-w-[90vw] rounded-2xl bg-black/70 px-6 py-3 text-center text-sm text-white shadow-lg backdrop-blur">
+          <div className="font-semibold">URL 복사</div>
+          <div className="mt-1 break-all text-xs opacity-80">{copiedToast}</div>
+        </div>
+      )}
     </div>
   );
 }

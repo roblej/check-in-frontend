@@ -15,8 +15,11 @@ const UsedPaymentForm = ({ initialData }) => {
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState({});
   const [isPaymentCompleted, setIsPaymentCompleted] = useState(false); // 결제 완료 여부 추적
+  const isPaymentCompletedRef = useRef(false); // 결제 완료 여부 ref (동기적 접근용)
   const isUnloadingRef = useRef(false); // 새로고침 여부 추적
   const hasCancelledRef = useRef(false); // 이미 취소 요청을 보냈는지 추적
+  const beforeUnloadHandlerRef = useRef(null); // beforeunload 핸들러 참조
+  const visibilityChangeHandlerRef = useRef(null); // visibilitychange 핸들러 참조
 
   // 사용자 정보 로드
   useEffect(() => {
@@ -126,6 +129,8 @@ const UsedPaymentForm = ({ initialData }) => {
     customerPoint: 0,
     useCash: 0,
     usePoint: 0,
+    agreeTerms: false,
+    agreePrivacy: false,
   });
 
   // 초기 로드 및 세션 스토리지 변경 감지
@@ -193,8 +198,13 @@ const UsedPaymentForm = ({ initialData }) => {
 
   // 거래 취소 함수 (페이지 이탈 시 호출)
   const cancelTradeOnExit = useCallback(async (usedTradeIdx) => {
-    // 이미 취소 요청을 보냈거나 결제 완료된 경우 무시
-    if (hasCancelledRef.current || isPaymentCompleted) {
+    // 이미 취소 요청을 보냈거나 결제 완료된 경우 무시 (ref 사용으로 최신 값 보장)
+    if (hasCancelledRef.current || isPaymentCompletedRef.current) {
+      console.log('⏭️ 거래 취소 요청 무시:', {
+        hasCancelled: hasCancelledRef.current,
+        isPaymentCompleted: isPaymentCompletedRef.current,
+        usedTradeIdx
+      });
       return;
     }
 
@@ -229,12 +239,60 @@ const UsedPaymentForm = ({ initialData }) => {
     } catch (error) {
       console.warn('거래 취소 요청 실패 (무시):', error);
     }
-  }, [isPaymentCompleted]);
+  }, []); // ref를 사용하므로 dependency 불필요
 
   // 페이지 이탈 시 거래 취소 로직
   useEffect(() => {
-    // paymentInfo가 없거나 결제 완료된 경우 무시
-    if (!paymentInfo.usedTradeIdx || isPaymentCompleted) {
+    // paymentInfo가 없거나 결제 완료된 경우 무시 (ref 사용으로 최신 값 보장)
+    if (!paymentInfo.usedTradeIdx || isPaymentCompletedRef.current) {
+      return;
+    }
+
+    // 성공 페이지로 이동한 경우 확인 (sessionStorage에 결제 완료 플래그가 있는지 확인)
+    const checkPaymentCompleted = () => {
+      const usedTradeIdx = paymentInfo.usedTradeIdx;
+      
+      // 1. 결제 완료 플래그 확인 (가장 확실한 방법)
+      const completedFlag = sessionStorage.getItem(`used_payment_completed_${usedTradeIdx}`);
+      if (completedFlag === '1') {
+        console.log('✅ 결제 완료 플래그 확인:', {
+          usedTradeIdx,
+          flag: `used_payment_completed_${usedTradeIdx}`
+        });
+        isPaymentCompletedRef.current = true;
+        setIsPaymentCompleted(true);
+        hasCancelledRef.current = true;
+        return true;
+      }
+      
+      // 2. 성공 페이지 데이터 확인 (보조 방법)
+      const successData = sessionStorage.getItem('used_payment_success_data');
+      if (successData) {
+        try {
+          const parsed = JSON.parse(successData);
+          // 결제 성공 데이터가 있고, 현재 거래 ID와 일치하면 결제 완료로 간주
+          if (parsed.tradeIdx === usedTradeIdx || 
+              parsed.usedTradeIdx === usedTradeIdx) {
+            console.log('✅ 성공 페이지 데이터 확인:', {
+              tradeIdx: parsed.tradeIdx || parsed.usedTradeIdx,
+              currentTradeIdx: usedTradeIdx
+            });
+            isPaymentCompletedRef.current = true;
+            setIsPaymentCompleted(true);
+            hasCancelledRef.current = true;
+            // 플래그도 함께 설정
+            sessionStorage.setItem(`used_payment_completed_${usedTradeIdx}`, '1');
+            return true;
+          }
+        } catch (e) {
+          // 파싱 실패는 무시
+        }
+      }
+      return false;
+    };
+
+    // 초기 체크
+    if (checkPaymentCompleted()) {
       return;
     }
 
@@ -245,34 +303,60 @@ const UsedPaymentForm = ({ initialData }) => {
       // 새로고침으로 인한 이탈인지 확인
       isUnloadingRef.current = true;
       
-      // 결제 완료되지 않은 경우에만 취소 요청
-      if (!isPaymentCompleted && !hasCancelledRef.current) {
+      // 성공 페이지로 이동한 경우 확인
+      if (checkPaymentCompleted()) {
+        console.log('✅ beforeunload: 결제 완료 플래그 확인됨, 취소 요청 안 함');
+        return;
+      }
+      
+      // 결제 완료되지 않은 경우에만 취소 요청 (ref 사용으로 최신 값 보장)
+      if (!isPaymentCompletedRef.current && !hasCancelledRef.current) {
         cancelTradeOnExit(usedTradeIdx);
       }
     };
 
     // visibilitychange 이벤트 핸들러 (탭 전환 등)
     const handleVisibilityChange = () => {
+      // 성공 페이지로 이동한 경우 확인
+      if (checkPaymentCompleted()) {
+        console.log('✅ visibilitychange: 결제 완료 플래그 확인됨, 취소 요청 안 함');
+        return;
+      }
+      
       // 페이지가 숨겨질 때 (다른 탭으로 전환)
-      if (document.hidden && !isPaymentCompleted && !hasCancelledRef.current) {
+      if (document.hidden && !isPaymentCompletedRef.current && !hasCancelledRef.current) {
         cancelTradeOnExit(usedTradeIdx);
       }
     };
+
+    // 핸들러 참조 저장
+    beforeUnloadHandlerRef.current = handleBeforeUnload;
+    visibilityChangeHandlerRef.current = handleVisibilityChange;
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // 컴포넌트 언마운트 시 (뒤로가기 등)
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (beforeUnloadHandlerRef.current) {
+        window.removeEventListener('beforeunload', beforeUnloadHandlerRef.current);
+      }
+      if (visibilityChangeHandlerRef.current) {
+        document.removeEventListener('visibilitychange', visibilityChangeHandlerRef.current);
+      }
       
-      // 새로고침이 아닌 경우에만 취소 요청
-      if (!isUnloadingRef.current && !isPaymentCompleted && !hasCancelledRef.current) {
+      // 성공 페이지로 이동한 경우 확인
+      if (checkPaymentCompleted()) {
+        console.log('✅ cleanup: 결제 완료 플래그 확인됨, 취소 요청 안 함');
+        return;
+      }
+      
+      // 새로고침이 아닌 경우에만 취소 요청 (ref 사용으로 최신 값 보장)
+      if (!isUnloadingRef.current && !isPaymentCompletedRef.current && !hasCancelledRef.current) {
         cancelTradeOnExit(usedTradeIdx);
       }
     };
-  }, [paymentInfo.usedTradeIdx, isPaymentCompleted, cancelTradeOnExit]);
+  }, [paymentInfo.usedTradeIdx, cancelTradeOnExit]);
 
   // 사용자 정보가 로드되면 paymentInfo 업데이트
   useEffect(() => {
@@ -319,11 +403,15 @@ const UsedPaymentForm = ({ initialData }) => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentInfo.customerEmail)) return false;
     if (!paymentInfo.customerPhone) return false;
     if (!/^[0-9-+\s]+$/.test(paymentInfo.customerPhone)) return false;
+    if (!paymentInfo.agreeTerms) return false;
+    if (!paymentInfo.agreePrivacy) return false;
     return true;
   }, [
     paymentInfo.customerName,
     paymentInfo.customerEmail,
     paymentInfo.customerPhone,
+    paymentInfo.agreeTerms,
+    paymentInfo.agreePrivacy,
   ]);
 
   // 입력 필드 변경 핸들러
@@ -339,6 +427,38 @@ const UsedPaymentForm = ({ initialData }) => {
         [field]: "",
       }));
     }
+  };
+
+  // 폼 유효성 검사 (에러 메시지 포함)
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!paymentInfo.customerName.trim()) {
+      newErrors.customerName = "구매자 이름을 입력해주세요.";
+    }
+
+    if (!paymentInfo.customerEmail.trim()) {
+      newErrors.customerEmail = "이메일을 입력해주세요.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentInfo.customerEmail)) {
+      newErrors.customerEmail = "올바른 이메일 형식을 입력해주세요.";
+    }
+
+    if (!paymentInfo.customerPhone.trim()) {
+      newErrors.customerPhone = "전화번호를 입력해주세요.";
+    } else if (!/^[0-9-+\s]+$/.test(paymentInfo.customerPhone)) {
+      newErrors.customerPhone = "올바른 전화번호 형식을 입력해주세요.";
+    }
+
+    if (!paymentInfo.agreeTerms) {
+      newErrors.agreeTerms = "이용약관에 동의해주세요.";
+    }
+
+    if (!paymentInfo.agreePrivacy) {
+      newErrors.agreePrivacy = "개인정보처리방침에 동의해주세요.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   // 캐시 사용량 변경
@@ -370,8 +490,27 @@ const UsedPaymentForm = ({ initialData }) => {
     console.log("🟢 handlePaymentSuccess 호출됨:", paymentResult);
     
     // 결제 완료 플래그 설정 (페이지 이탈 시 취소하지 않도록)
+    // ref를 먼저 설정하여 동기적으로 접근 가능하도록 함
+    isPaymentCompletedRef.current = true;
     setIsPaymentCompleted(true);
     hasCancelledRef.current = true; // 취소 요청 방지
+    
+    console.log("✅ 결제 완료 플래그 설정 완료:", {
+      isPaymentCompletedRef: isPaymentCompletedRef.current,
+      hasCancelled: hasCancelledRef.current
+    });
+    
+    // 페이지 이탈 이벤트 리스너 제거 (결제 완료 후에는 취소하지 않음)
+    if (beforeUnloadHandlerRef.current) {
+      window.removeEventListener('beforeunload', beforeUnloadHandlerRef.current);
+      beforeUnloadHandlerRef.current = null;
+      console.log("✅ beforeunload 이벤트 리스너 제거 완료");
+    }
+    if (visibilityChangeHandlerRef.current) {
+      document.removeEventListener('visibilitychange', visibilityChangeHandlerRef.current);
+      visibilityChangeHandlerRef.current = null;
+      console.log("✅ visibilitychange 이벤트 리스너 제거 완료");
+    }
     
     let requestData = null;
     let usedTradeIdx = null;
@@ -435,7 +574,8 @@ const UsedPaymentForm = ({ initialData }) => {
         cash: latestMaxCash,
         point: latestMaxPoint,
         card: latestActualPaymentAmount,
-        tradeIdx: usedTradeIdx,
+        tradeIdx: usedTradeIdx, // 호환성을 위해 유지
+        usedTradeIdx: usedTradeIdx, // 백엔드 검증에 필수
         usedItemIdx: latestPaymentInfo.usedItemIdx,
         customerIdx: paymentInfo.customerIdx,
         customerName: paymentInfo.customerName,
@@ -457,9 +597,12 @@ const UsedPaymentForm = ({ initialData }) => {
       
       // 백엔드 검증 전에 먼저 저장 (검증 실패해도 성공 페이지에서 정보 확인 가능)
       sessionStorage.setItem('used_payment_success_data', JSON.stringify(successData));
+      // 결제 완료 플래그도 함께 저장 (모바일 리다이렉트 플로우 대비)
+      sessionStorage.setItem(`used_payment_completed_${usedTradeIdx}`, '1');
       console.log("세션 스토리지에 결제 정보 저장 완료:", successData);
 
-      // 백엔드 검증 API 호출 (/api/payments)
+      // 백엔드 검증 API 호출 (/api/payments/confirm)
+      // 백엔드 DTO에 맞춰 필수 필드만 전송 (hotelName, roomType, salePrice는 백엔드에서 사용하지 않음)
       requestData = {
         paymentKey: paymentResult.paymentKey,
         orderId: paymentResult.orderId,
@@ -469,9 +612,6 @@ const UsedPaymentForm = ({ initialData }) => {
         customerIdx: paymentInfo.customerIdx,
         usedTradeIdx: usedTradeIdx, // 최신 세션 스토리지에서 읽은 값 사용
         usedItemIdx: latestPaymentInfo.usedItemIdx,
-        hotelName: latestPaymentInfo.hotelName,
-        roomType: latestPaymentInfo.roomType,
-        salePrice: latestPaymentInfo.salePrice,
         customerName: paymentInfo.customerName,
         customerEmail: paymentInfo.customerEmail,
         customerPhone: paymentInfo.customerPhone,
@@ -492,23 +632,28 @@ const UsedPaymentForm = ({ initialData }) => {
         sessionStorageTradeValue: sessionStorage.getItem(`used_payment_${requestData.usedTradeIdx}`) ? 'exists' : 'not found',
       });
 
-      // 백엔드 검증 API 호출 (Next.js API 라우트를 통해 백엔드로 전달)
-      const response = await axios.post('/payments', requestData);
+      // rewrites를 통해 백엔드로 직접 전달 (일반 호텔 결제와 동일한 방식)
+      const response = await axios.post('/payments/confirm', requestData);
       
       if (!response.data.success) {
         console.error("백엔드 검증 실패:", response.data.message);
         // 검증 실패해도 세션 스토리지는 이미 저장되어 있음
         alert("결제 검증에 실패했습니다. 고객센터에 문의해주세요.");
         // 성공 페이지로 이동 (정보는 이미 세션 스토리지에 있음)
-        router.push('/used-payment/success');
+        router.replace('/used-payment/success');
         return;
       }
 
       console.log("결제 검증 및 저장 성공:", response.data);
       console.log("✅ DB 업데이트 완료:");
       console.log("  - UsedPay 저장 완료");
-      console.log("  - UsedTrade 상태 업데이트 완료 (ststus=1)");
+      console.log("  - UsedTrade 상태 업데이트 완료 (status=1)");
       console.log("  - UsedItem 상태 업데이트 완료 (status=2)");
+      
+      // 이미 처리된 결제로 표시 (성공 페이지에서 중복 검증 방지)
+      const processedKey = `used_payment_processed_${paymentResult.orderId}`;
+      sessionStorage.setItem(processedKey, '1');
+      console.log('✅ 결제 처리 완료 플래그 설정:', processedKey);
       
       // 기존 결제 페이지 데이터 정리 (최신 usedTradeIdx 사용)
       if (usedTradeIdx) {
@@ -516,8 +661,9 @@ const UsedPaymentForm = ({ initialData }) => {
         sessionStorage.removeItem('used_payment_current');
       }
 
-      // 성공 페이지로 이동
-      router.push('/used-payment/success2');
+      // 성공 페이지로 이동 (페이지 이탈 이벤트는 이미 제거됨)
+      // replace를 사용하여 뒤로가기 방지
+      router.replace('/used-payment/success');
     } catch (error) {
       console.error("결제 완료 처리 오류:", error);
       console.error("에러 상세:", {
@@ -535,7 +681,7 @@ const UsedPaymentForm = ({ initialData }) => {
         "결제 처리 중 오류가 발생했습니다. 고객센터에 문의해주세요."
       );
       // 성공 페이지로 이동 (정보는 이미 세션 스토리지에 있음)
-      router.push('/used-payment/success2');
+      router.replace('/used-payment/success2');
     }
   };
 
@@ -734,48 +880,93 @@ const UsedPaymentForm = ({ initialData }) => {
               </div>
             </div>
 
-            {/* 토스페이먼츠 결제 위젯 */}
-            {isFormValid && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  결제 정보
-                </h2>
-                <TossPaymentsWidget
-                  clientKey={process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY}
-                  customerKey={`customer_${paymentInfo.usedItemIdx || "default"}`}
-                  amount={paymentAmounts.actualPaymentAmount}
-                  orderId={`used_hotel_${paymentInfo.usedTradeIdx || paymentInfo.usedItemIdx || Date.now()}_${Math.random().toString(36).substr(2, 9)}`}
-                  orderName={`${paymentInfo.hotelName} - ${paymentInfo.roomType}`}
-                  customerName={paymentInfo.customerName}
-                  customerEmail={paymentInfo.customerEmail}
-                  customerMobilePhone={paymentInfo.customerPhone}
-                  paymentType="used_hotel"
-                  successUrl="/used-payment/success"
-                  failUrl="/used-payment/fail"
-                  hotelInfo={{
-                    usedItemIdx: paymentInfo.usedItemIdx,
-                    usedTradeIdx: paymentInfo.usedTradeIdx,
-                    hotelName: paymentInfo.hotelName,
-                    roomType: paymentInfo.roomType,
-                    checkIn: paymentInfo.checkIn,
-                    checkOut: paymentInfo.checkOut,
-                    guests: paymentInfo.guests,
-                    salePrice: paymentInfo.salePrice,
-                    totalPrice: paymentAmounts.totalAmount,
-                  }}
-                  customerInfo={{
-                    customerIdx: paymentInfo.customerIdx,
-                    name: paymentInfo.customerName,
-                    email: paymentInfo.customerEmail,
-                    phone: paymentInfo.customerPhone,
-                    useCash: paymentInfo.useCash,
-                    usePoint: paymentInfo.usePoint,
-                    actualPaymentAmount: paymentAmounts.actualPaymentAmount,
-                  }}
-                  onSuccess={handlePaymentSuccess}
-                  onFail={handlePaymentFail}
-                />
+            {/* 약관 동의 */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                약관 동의
+              </h2>
+              <div className="space-y-3">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={paymentInfo.agreeTerms}
+                    onChange={(e) =>
+                      handleInputChange("agreeTerms", e.target.checked)
+                    }
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-gray-700">
+                    <span className="text-red-500">*</span> 중고 호텔 이용약관에
+                    동의합니다.
+                  </span>
+                </label>
+                {errors.agreeTerms && (
+                  <p className="text-red-500 text-sm">{errors.agreeTerms}</p>
+                )}
+
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={paymentInfo.agreePrivacy}
+                    onChange={(e) =>
+                      handleInputChange("agreePrivacy", e.target.checked)
+                    }
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-gray-700">
+                    <span className="text-red-500">*</span> 개인정보처리방침에
+                    동의합니다.
+                  </span>
+                </label>
+                {errors.agreePrivacy && (
+                  <p className="text-red-500 text-sm">
+                    {errors.agreePrivacy}
+                  </p>
+                )}
               </div>
+              <p className="mt-4 text-xs text-gray-600">
+                포인트 악용 시 계정 정지 및 환불 불가합니다. 쿠폰은
+                환불 시 복구되지 않습니다.
+              </p>
+            </div>
+
+            {/* 토스페이먼츠 결제 위젯 */}
+            {isFormValid && paymentAmounts.actualPaymentAmount > 0 && (
+              <TossPaymentsWidget
+                clientKey={process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY}
+                customerKey={`customer_${paymentInfo.usedItemIdx || "default"}`}
+                amount={paymentAmounts.actualPaymentAmount}
+                orderId={`used_hotel_${paymentInfo.usedTradeIdx || paymentInfo.usedItemIdx || Date.now()}_${Math.random().toString(36).substr(2, 9)}`}
+                orderName={`${paymentInfo.hotelName} - ${paymentInfo.roomType}`}
+                customerName={paymentInfo.customerName}
+                customerEmail={paymentInfo.customerEmail}
+                customerMobilePhone={paymentInfo.customerPhone}
+                paymentType="used_hotel"
+                successUrl="/used-payment/success"
+                failUrl="/used-payment/fail"
+                hotelInfo={{
+                  usedItemIdx: paymentInfo.usedItemIdx,
+                  usedTradeIdx: paymentInfo.usedTradeIdx,
+                  hotelName: paymentInfo.hotelName,
+                  roomType: paymentInfo.roomType,
+                  checkIn: paymentInfo.checkIn,
+                  checkOut: paymentInfo.checkOut,
+                  guests: paymentInfo.guests,
+                  salePrice: paymentInfo.salePrice,
+                  totalPrice: paymentAmounts.totalAmount,
+                }}
+                customerInfo={{
+                  customerIdx: paymentInfo.customerIdx,
+                  name: paymentInfo.customerName,
+                  email: paymentInfo.customerEmail,
+                  phone: paymentInfo.customerPhone,
+                  useCash: paymentInfo.useCash,
+                  usePoint: paymentInfo.usePoint,
+                  actualPaymentAmount: paymentAmounts.actualPaymentAmount,
+                }}
+                onSuccess={handlePaymentSuccess}
+                onFail={handlePaymentFail}
+              />
             )}
           </div>
 
@@ -885,7 +1076,7 @@ const UsedPaymentForm = ({ initialData }) => {
               {/* 결제 버튼 */}
               <button
                 onClick={async () => {
-                  if (isFormValid) {
+                  if (isFormValid && paymentAmounts.actualPaymentAmount > 0) {
                     // 토스페이먼츠 결제 핸들러 직접 호출
                     if (window.tossPaymentHandler) {
                       try {
@@ -900,18 +1091,28 @@ const UsedPaymentForm = ({ initialData }) => {
                       );
                     }
                   } else {
-                    alert("구매자 정보를 모두 입력해주세요.");
+                    // 폼 유효성 검사 실행 (에러 메시지 표시)
+                    if (!validateForm()) {
+                      alert("입력 정보를 확인해주세요.");
+                      return;
+                    }
+                    if (paymentAmounts.actualPaymentAmount <= 0) {
+                      alert("카드 결제가 필요합니다. (최소 10%)");
+                      return;
+                    }
                   }
                 }}
                 className={`w-full py-3 px-4 rounded-lg font-medium transition-colors mb-4 ${
-                  isFormValid
+                  isFormValid && paymentAmounts.actualPaymentAmount > 0
                     ? "bg-blue-500 hover:bg-blue-600 text-white"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
-                disabled={!isFormValid}
+                disabled={!isFormValid || paymentAmounts.actualPaymentAmount <= 0}
               >
-                {isFormValid
+                {isFormValid && paymentAmounts.actualPaymentAmount > 0
                   ? `${paymentAmounts.actualPaymentAmount.toLocaleString()}원 카드 결제하기`
+                  : paymentAmounts.actualPaymentAmount <= 0
+                  ? "카드 결제 필요 (최소 10%)"
                   : "구매자 정보를 입력하세요"}
               </button>
 

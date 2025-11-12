@@ -18,7 +18,7 @@ import {
   createHotelDetailUrl,
   formatSearchParamsForUrl,
 } from "@/utils/urlUtils";
-import axios from "axios";
+import axios from "@/lib/axios";
 import { useSearchParams, useRouter } from "next/navigation";
 
 const HotelSearchPageContent = () => {
@@ -319,7 +319,7 @@ const HotelSearchPageContent = () => {
   }, [isDatePickerOpen]);
 
   const [searchHotels, setSearchHotels] = useState([]);
-  const hotel_url = "api/hotel/search";
+  const hotel_url = "/hotel/search";
 
   // 호텔 데이터 (임시)
   const [filteredHotels, setFilteredHotels] = useState([]);
@@ -901,25 +901,21 @@ const HotelSearchPageContent = () => {
 
       {/* 검색 조건 및 필터 바 */}
       <div className="bg-white border-b border-gray-200 flex-shrink-0 shadow-sm">
-        <div className="max-w-[1200px] mx-auto px-4 py-3">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-            {/* 왼쪽: 검색 폼 */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-3 lg:flex lg:flex-wrap lg:items-stretch flex-1 min-w-0">
-              {/* 다이닝 모드 토글 버튼 */}
-              <div className="flex items-center gap-2 border border-gray-200 md:border-r md:border-gray-200 md:pr-3 rounded-md px-2 py-1 bg-white w-full lg:w-auto">
-                <button
-                  onClick={handleDiningModeToggle}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
-                    isDiningMode
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  다이닝
-                </button>
-              </div>
+        <div className="max-w-[1020px] mx-auto px-4 py-2">
+          <div className="flex flex-col gap-2 lg:flex-row lg:flex-nowrap lg:items-center lg:gap-3">
+            {/* 줄 1: 다이닝 + 목적지 */}
+            <div className="flex w-full flex-wrap gap-2 sm:flex-nowrap lg:flex-1">
+              <button
+                onClick={handleDiningModeToggle}
+                className={`flex h-11 min-w-[88px] flex-none items-center justify-center rounded-md px-3 text-xs font-medium transition-colors whitespace-nowrap ${
+                  isDiningMode
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                다이닝
+              </button>
 
-              {/* 목적지 */}
               <input
                 type="text"
                 value={localDestination}
@@ -930,14 +926,16 @@ const HotelSearchPageContent = () => {
                   }
                 }}
                 placeholder={isDiningMode ? "호텔명을 입력하세요" : "목적지"}
-                className="px-3 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-700 min-w-[160px] w-full lg:flex-1"
+                className="h-11 min-w-[150px] flex-1 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
 
-              {/* 체크인/체크아웃 또는 다이닝 날짜 */}
-              <div className="relative date-picker-container col-span-2 sm:col-span-1 lg:flex-1 min-w-[160px] w-full">
+            {/* 줄 2: 날짜 + 인원 */}
+            <div className="flex w-full flex-wrap gap-2 sm:flex-nowrap lg:flex-[0.9]">
+              <div className="relative date-picker-container h-11 flex-1 min-w-[200px] sm:min-w-[220px] lg:min-w-[240px]">
                 {isDiningMode ? (
                   <div
-                    className="flex items-center justify-between sm:justify-start gap-2 px-3 py-1.5 border border-gray-200 rounded-md hover:border-gray-300 cursor-pointer bg-white"
+                    className="flex h-full items-center justify-between sm:justify-start gap-2 px-3 border border-gray-200 rounded-md bg-white hover:border-gray-300 cursor-pointer"
                     onClick={() => setIsDatePickerOpen(true)}
                   >
                     <div className="text-xs text-gray-500 min-w-[80px]">
@@ -950,7 +948,7 @@ const HotelSearchPageContent = () => {
                   </div>
                 ) : (
                   <div
-                    className="flex items-center justify-between sm:justify-start gap-2 px-3 py-1.5 border border-gray-200 rounded-md hover:border-gray-300 cursor-pointer bg-white"
+                    className="flex h-full items-center justify-between sm:justify-start gap-2 px-3 border border-gray-200 rounded-md bg-white hover:border-gray-300 cursor-pointer"
                     onClick={() => setIsDatePickerOpen(true)}
                   >
                     <div className="text-xs text-gray-500 min-w-[60px]">
@@ -990,7 +988,7 @@ const HotelSearchPageContent = () => {
               </div>
 
               {/* 성인 인원 */}
-              <div className="flex items-center gap-2 justify-between sm:justify-start border border-gray-200 rounded-md px-2 py-1 bg-white w-full lg:w-auto">
+              <div className="flex h-11 min-w-[160px] flex-1 items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 sm:flex-none sm:w-[170px] lg:w-[160px]">
                 <button
                   onClick={() => {
                     const newAdults = Math.max(
@@ -1006,11 +1004,11 @@ const HotelSearchPageContent = () => {
                       shallow: true,
                     });
                   }}
-                  className="w-8 h-8 rounded border border-gray-200 flex items-center justify-center hover:bg-gray-50 text-sm font-semibold flex-shrink-0"
+                  className="flex h-8 w-8 items-center justify-center rounded border border-gray-200 text-sm font-semibold hover:bg-gray-50"
                 >
                   -
                 </button>
-                <div className="px-3 py-1.5 border border-gray-200 rounded-md text-sm font-medium min-w-[40px] text-center bg-white flex-1 mx-1">
+                <div className="flex h-9 flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-3 text-sm font-medium text-center">
                   {localSearchParams.adults || 2}
                 </div>
                 <button
@@ -1025,58 +1023,54 @@ const HotelSearchPageContent = () => {
                       shallow: true,
                     });
                   }}
-                  className="w-8 h-8 rounded border border-gray-200 flex items-center justify-center hover:bg-gray-50 text-sm font-semibold flex-shrink-0"
+                  className="flex h-8 w-8 items-center justify-center rounded border border-gray-200 text-sm font-semibold hover:bg-gray-50"
                 >
                   +
                 </button>
               </div>
+            </div>
 
-              {/* 검색 버튼 */}
+            {/* 줄 3: 검색 + 정렬/필터 */}
+            <div className="flex w-full items-center gap-2 sm:gap-3 lg:ml-auto lg:w-auto lg:flex-nowrap">
               <button
                 onClick={handleFilterSearch}
-                className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium transition-colors w-full lg:w-auto flex-shrink-0"
+                className="flex h-11 flex-none items-center justify-center rounded-md bg-blue-500 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-600 w-[106px]"
               >
                 검색
               </button>
-            </div>
 
-            {/* 필터 (우측 정렬) */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:ml-auto w-full lg:w-auto">
-              {/* 정렬 */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-1 items-center gap-2 sm:gap-2 lg:w-auto lg:flex-none lg:justify-end">
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-700 font-medium hover:border-gray-300 transition-colors"
+                  className="h-11 flex-1 min-w-[110px] max-w-[200px] rounded-md border border-gray-200 px-3 text-sm font-medium text-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 bg-white sm:min-w-[120px]"
                 >
                   <option value="인기순">인기순</option>
                   <option value="낮은 가격순">낮은 가격순</option>
                   <option value="높은 가격순">높은 가격순</option>
                   <option value="평점순">평점순</option>
                 </select>
-              </div>
 
-              {/* 필터 버튼 */}
-              <button
-                onClick={() => setShowFiltersPanel(!showFiltersPanel)}
-                className="px-4 py-1.5 border border-gray-200 rounded-md hover:bg-gray-50 flex items-center gap-2 text-sm font-medium text-gray-700 hover:border-gray-300 transition-colors"
-              >
-                <span className="text-base">🔍</span>
-                <span>필터</span>
-              </button>
-
-              {/* 필터 초기화 (활성 필터가 있을 때만 표시) */}
-              {(filters.priceMin > 0 ||
-                filters.priceMax < 500000 ||
-                filters.starRatings.length > 0 ||
-                filters.amenities.length > 0) && (
                 <button
-                  onClick={handleFilterReset}
-                  className="px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors font-medium"
+                  onClick={() => setShowFiltersPanel(!showFiltersPanel)}
+                  className="flex h-11 min-w-[100px] flex-none items-center gap-2 rounded-md border border-gray-200 px-4 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50 lg:min-w-[110px]"
                 >
-                  초기화
+                  <span className="text-base">🔍</span>
+                  <span>필터</span>
                 </button>
-              )}
+
+                {(filters.priceMin > 0 ||
+                  filters.priceMax < 500000 ||
+                  filters.starRatings.length > 0 ||
+                  filters.amenities.length > 0) && (
+                  <button
+                    onClick={handleFilterReset}
+                    className="flex h-11 min-w-[90px] flex-none items-center rounded-md px-2.5 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700 lg:min-w-[100px]"
+                  >
+                    초기화
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

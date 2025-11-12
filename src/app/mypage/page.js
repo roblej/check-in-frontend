@@ -188,6 +188,8 @@ function MyPageContent() {
     expired: [],
   });
   const [couponsLoading, setCouponsLoading] = useState(false);
+  const [likedHotels, setLikedHotels] = useState([]);
+  const [recentHotels, setRecentHotels] = useState([]);
 
   // 사용자 데이터를 API로 직접 가져오는 함수
   const fetchUserData = async () => {
@@ -904,7 +906,7 @@ function MyPageContent() {
         <TabQueryHandler onTabChange={setReservationTab} />
       </Suspense>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <ProfileHeader
           userData={userData}
           onEditProfile={() => router.push('/mypage/edit')}
@@ -959,7 +961,7 @@ function MyPageContent() {
           onNavigateToReviews={() => router.push('/mypage/reviews')}
         />
 
-        <div className="grid md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
           <Suspense fallback={<FavoritesPreviewFallback />}>
             <FavoritesSection />
           </Suspense>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { usePaymentStore } from "@/stores/paymentStore";
@@ -10,9 +11,18 @@ import TossPaymentsWidget from "@/components/payment/TossPaymentsWidget";
 import PaymentSummary from "@/components/payment/PaymentSummary";
 import ReservationLockWrapper from "./ReservationLockWrapper";
 
+const roomImageBaseUrl = process.env.NEXT_PUBLIC_ROOM_IMAGE_BASE_URL;
+if (!roomImageBaseUrl) {
+  throw new Error(
+    "NEXT_PUBLIC_ROOM_IMAGE_BASE_URL 환경 변수가 설정되어 있지 않습니다."
+  );
+}
+const ensureTrailingSlash = (url) => (url.endsWith("/") ? url : `${url}/`);
+const ROOM_IMAGE_BASE_URL = ensureTrailingSlash(roomImageBaseUrl);
+
 const ReservationClient = () => {
   const router = useRouter();
-  const { paymentDraft, loadFromStorage, clearPaymentDraft, getRemainingMs } =
+  const { paymentDraft, expiresAt, loadFromStorage, clearPaymentDraft } =
     usePaymentStore();
 
   const [customer, setCustomer] = useState(null);
@@ -74,14 +84,18 @@ const ReservationClient = () => {
           paymentDraft.meta.contentId || paymentDraft.meta.hotelId,
           paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
           paymentInfo.customerIdx,
-          paymentDraft.meta.checkIn
+          paymentDraft.meta.checkIn,
+          paymentDraft.meta.checkOut,
+          paymentDraft.meta.lockId
         );
       }
       alert("결제 시간이 만료되었습니다. 다시 예약해주세요.");
     } catch (error) {
       console.error("Lock 해제 실패:", error);
+    } finally {
+      clearPaymentDraft();
     }
-  }, [paymentDraft, paymentInfo.customerIdx]);
+  }, [paymentDraft, paymentInfo.customerIdx, clearPaymentDraft]);
 
   /**
    * 타이머 초기화 및 관리
@@ -90,27 +104,53 @@ const ReservationClient = () => {
    * - 이벤트 발생 시 1초 추가 감소
    */
   useEffect(() => {
-    if (!paymentDraft) return;
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
 
-    // 타이머 시작
+    if (!paymentDraft) {
+      setRemainingSeconds(0);
+      return;
+    }
+
+    if (!expiresAt) {
+      setRemainingSeconds(0);
+      handleTimeExpired();
+      return;
+    }
+
+    let expiredHandled = false;
+
+    const updateRemaining = () => {
+      const diffMs = expiresAt - Date.now();
+      const seconds = Math.max(0, Math.floor(diffMs / 1000));
+      setRemainingSeconds(seconds);
+      if (seconds <= 0 && !expiredHandled) {
+        expiredHandled = true;
+        handleTimeExpired();
+        return false;
+      }
+      return seconds > 0;
+    };
+
+    updateRemaining();
+
     timerRef.current = setInterval(() => {
-      setRemainingSeconds((prev) => {
-        if (prev <= 1) {
-          // 시간 종료 - Lock 해제
-          clearInterval(timerRef.current);
-          handleTimeExpired();
-          return 0;
-        }
-        return prev - 1;
-      });
+      const stillActive = updateRemaining();
+      if (!stillActive && timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     }, 1000);
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
-  }, [paymentDraft, handleTimeExpired]);
+  }, [paymentDraft, expiresAt, handleTimeExpired]);
 
   // httpOnly 쿠키에서 사용자 정보 가져오기
   useEffect(() => {
@@ -538,6 +578,7 @@ const ReservationClient = () => {
         roomId: paymentDraft.meta.roomIdx || paymentDraft.meta.roomId,
         checkIn: paymentDraft.meta.checkIn,
         checkOut: paymentDraft.meta.checkOut,
+        lockId: paymentDraft.meta.lockId || null,
         guests: paymentDraft.meta.guests,
         nights: paymentDraft.meta.nights,
         roomPrice: paymentDraft.meta.roomPrice,
@@ -610,6 +651,17 @@ const ReservationClient = () => {
 
   if (gateContent) return gateContent;
 
+  const getRoomImageUrl = () => {
+    if (!paymentDraft?.meta) return `${ROOM_IMAGE_BASE_URL}default.jpg`;
+    const imagePath = paymentDraft.meta.roomImage;
+    if (!imagePath || imagePath.trim() === "") {
+      return `${ROOM_IMAGE_BASE_URL}default.jpg`;
+    }
+    return imagePath.startsWith("http")
+      ? imagePath
+      : `${ROOM_IMAGE_BASE_URL}${imagePath}`;
+  };
+
   return (
     <ReservationLockWrapper>
       {({ handleCancel }) => (
@@ -632,21 +684,18 @@ const ReservationClient = () => {
                   예약 정보
                 </h2>
                 <div className="flex gap-6">
-                  {(() => {
-                    const S3_BASE_URL =
-                      "https://sist-checkin.s3.ap-northeast-2.amazonaws.com/hotelroom/";
-                    const roomImageUrl = paymentDraft.meta.roomImage
-                      ? `${S3_BASE_URL}${paymentDraft.meta.roomImage}`
-                      : `${S3_BASE_URL}default.jpg`;
-
-                    return (
-                      <img
-                        src={roomImageUrl}
-                        alt={paymentDraft.meta.roomName || "호텔 이미지"}
-                        className="w-40 h-36 object-cover rounded-lg"
-                      />
-                    );
-                  })()}
+                  <div className="relative h-36 w-40 flex-shrink-0 overflow-hidden rounded-lg">
+                    <Image
+                      src={getRoomImageUrl()}
+                      alt={paymentDraft.meta.roomName || "호텔 이미지"}
+                      fill
+                      sizes="160px"
+                      className="object-cover"
+                      onError={(event) => {
+                        event.currentTarget.src = `${ROOM_IMAGE_BASE_URL}default.jpg`;
+                      }}
+                    />
+                  </div>
 
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -845,8 +894,8 @@ const ReservationClient = () => {
                   )}
                 </div>
                 <p className="mt-4 text-xs text-gray-600">
-                  포인트 악용 시 계정 정지 및 환불 불가합니다. 쿠폰은
-                  환불 시 복구되지 않습니다.
+                  포인트 악용 시 계정 정지 및 환불 불가합니다. 쿠폰은 환불 시
+                  복구되지 않습니다.
                 </p>
               </div>
 

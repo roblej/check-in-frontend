@@ -113,25 +113,25 @@ export default function InquirySection({ inquiries, onCreateInquiry, loading }) 
   };
 
   return (
-    <section className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <MessageSquare className="w-6 h-6 text-blue-600" />
+    <section className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-200">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+          <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
           1:1 문의 내역
         </h2>
         <button
           onClick={onCreateInquiry}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+          className="px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm sm:text-base w-full sm:w-auto"
         >
           새 문의하기
         </button>
       </div>
 
       {/* 탭 토글 */}
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
+      <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-200 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setActiveTab('site')}
-          className={`px-4 py-2 font-medium transition-colors ${
+          className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
             activeTab === 'site'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-500 hover:text-gray-700'
@@ -139,12 +139,12 @@ export default function InquirySection({ inquiries, onCreateInquiry, loading }) 
         >
           사이트문의
           {tabCounts.site > 0 && (
-            <span className="ml-2 text-xs text-gray-500">({tabCounts.site})</span>
+            <span className="ml-1 sm:ml-2 text-xs text-gray-500">({tabCounts.site})</span>
           )}
         </button>
         <button
           onClick={() => setActiveTab('room')}
-          className={`px-4 py-2 font-medium transition-colors ${
+          className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
             activeTab === 'room'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-500 hover:text-gray-700'
@@ -152,12 +152,12 @@ export default function InquirySection({ inquiries, onCreateInquiry, loading }) 
         >
           객실문의
           {tabCounts.room > 0 && (
-            <span className="ml-2 text-xs text-gray-500">({tabCounts.room})</span>
+            <span className="ml-1 sm:ml-2 text-xs text-gray-500">({tabCounts.room})</span>
           )}
         </button>
         <button
           onClick={() => setActiveTab('report')}
-          className={`px-4 py-2 font-medium transition-colors ${
+          className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
             activeTab === 'report'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-500 hover:text-gray-700'
@@ -165,7 +165,7 @@ export default function InquirySection({ inquiries, onCreateInquiry, loading }) 
         >
           객실신고
           {tabCounts.report > 0 && (
-            <span className="ml-2 text-xs text-gray-500">({tabCounts.report})</span>
+            <span className="ml-1 sm:ml-2 text-xs text-gray-500">({tabCounts.report})</span>
           )}
         </button>
       </div>
@@ -187,24 +187,24 @@ export default function InquirySection({ inquiries, onCreateInquiry, loading }) 
             {paginatedInquiries.map((inquiry) => (
               <div
                 key={inquiry.centerIdx || inquiry.id}
-                className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all"
+                className="border border-gray-200 rounded-lg sm:rounded-xl p-4 sm:p-5 hover:shadow-md transition-all"
               >
                 <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-bold text-gray-900">{inquiry.title}</h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <h3 className="font-bold text-gray-900 text-sm sm:text-base truncate">{inquiry.title}</h3>
                       <span
-                        className={`px-2 py-0.5 text-xs font-medium rounded ${getStatusColor(
+                        className={`px-2 py-0.5 text-xs font-medium rounded flex-shrink-0 ${getStatusColor(
                           inquiry.status
                         )}`}
                       >
                         {getStatusText(inquiry.status)}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mb-3">
+                    <p className="text-xs sm:text-sm text-gray-500 mb-2 sm:mb-3">
                       {formatDate(inquiry.createdAt || inquiry.date)}
                     </p>
-                    <p className="text-sm text-gray-700 mb-3 line-clamp-2">{inquiry.content}</p>
+                    <p className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-3 line-clamp-2">{inquiry.content}</p>
 
                     {/* 답변 토글 버튼 */}
                     {inquiry.status === 2 && (
