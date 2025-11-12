@@ -92,21 +92,21 @@ const AdminHeader = ({ onMenuClick }) => {
 
           {/* 우측: 사용자 정보 및 액션 */}
           <div className="flex items-center gap-1 sm:gap-4">
-            {/* 알림 */}
-            <button className="relative p-0.5 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md">
-              <svg className="w-3 h-3 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5V3h5v14z" />
-              </svg>
-              {/* 알림 배지 */}
-              <span className="absolute top-0 right-0 sm:top-1 sm:right-1 h-1 w-1 sm:h-2 sm:w-2 bg-red-500 rounded-full"></span>
-            </button>
 
             {/* 사용자 프로필 */}
             <div className="flex items-center gap-1 sm:gap-3">
+              {/* 호텔명 표시 */}
               <div className="text-right hidden sm:block">
-                <p className="text-xs sm:text-sm font-medium text-gray-900 truncate max-w-[200px]" title={hotelTitle}>
-                  {hotelTitle}
-                </p>
+                <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-50 rounded-lg border border-blue-200">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <div>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate max-w-[150px] sm:max-w-[200px]" title={hotelTitle}>
+                      {hotelTitle}
+                    </p>
+                  </div>
+                </div>
               </div>
               
               {/* 프로필 아바타 */}
