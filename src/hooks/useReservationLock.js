@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { reservationLockAPI } from "@/lib/api/reservation";
-import { getOrCreateTabLockId } from "@/utils/lockId";
+import {
+  getReservationIdentifiers,
+  setLockStartedAt,
+  logReservationIdentifiers,
+} from "@/utils/lockId";
 
 /**
  * 예약 락 관리 커스텀 훅
@@ -25,7 +29,14 @@ const useReservationLock = (
   enabled = true
 ) => {
   const lockCreatedRef = useRef(false);
-  const lockDataRef = useRef({ contentId: null, roomId: null, lockId: null });
+  const lockDataRef = useRef({
+    contentId: null,
+    roomId: null,
+    lockId: null,
+    sessionId: null,
+    tabId: null,
+    lockInitialAt: null,
+  });
 
   /**
    * 예약 락 생성
@@ -42,19 +53,38 @@ const useReservationLock = (
     }
 
     try {
-      const lockId = getOrCreateTabLockId();
-      const result = await reservationLockAPI.createLock(
+      const identifiers = getReservationIdentifiers();
+      logReservationIdentifiers("useReservationLock: createLock", identifiers);
+
+      const result = await reservationLockAPI.createLock({
         contentId,
         roomId,
         checkIn,
         checkOut,
-        lockId
-      );
+        lockId: identifiers.lockId,
+        sessionId: identifiers.sessionId,
+        tabId: identifiers.tabId,
+        initialLockAt: identifiers.lockStartedAt,
+      });
 
       if (result.success) {
+        const resolvedLockId = result.lockId || identifiers.lockId;
+        const resolvedInitialLockAt =
+          result.initialLockAt ||
+          identifiers.lockStartedAt ||
+          new Date().toISOString();
+        setLockStartedAt(resolvedInitialLockAt);
+
         lockCreatedRef.current = true;
-        lockDataRef.current = { contentId, roomId, lockId };
-        console.log("✅ 예약 락 생성 성공:", result);
+        lockDataRef.current = {
+          contentId,
+          roomId,
+          lockId: resolvedLockId,
+          sessionId: identifiers.sessionId,
+          tabId: identifiers.tabId,
+          lockInitialAt: resolvedInitialLockAt,
+        };
+        console.info("✅ 예약 락 생성 성공:", result);
       } else {
         console.warn("⚠️ 예약 락 생성 실패:", result.message);
       }
@@ -86,19 +116,36 @@ const useReservationLock = (
     }
 
     try {
-      const result = await reservationLockAPI.releaseLock(
-        lockContentId,
-        lockRoomId,
-        null,
+      logReservationIdentifiers("useReservationLock: releaseLock", {
+        sessionId: lockDataRef.current.sessionId,
+        tabId: lockDataRef.current.tabId,
+        lockId,
+        lockInitialAt: lockDataRef.current.lockInitialAt,
+      });
+
+      const result = await reservationLockAPI.releaseLock({
+        contentId: lockContentId,
+        roomId: lockRoomId,
+        customerIdx: null,
         checkIn,
         checkOut,
-        lockId
-      );
+        lockId,
+        sessionId: lockDataRef.current.sessionId,
+        tabId: lockDataRef.current.tabId,
+        initialLockAt: lockDataRef.current.lockInitialAt,
+      });
 
       if (result.success) {
         lockCreatedRef.current = false;
-        lockDataRef.current = { contentId: null, roomId: null, lockId: null };
-        console.log("✅ 예약 락 해제 성공:", result);
+        lockDataRef.current = {
+          contentId: null,
+          roomId: null,
+          lockId: null,
+          sessionId: null,
+          tabId: null,
+          lockInitialAt: null,
+        };
+        console.info("✅ 예약 락 해제 성공:", result);
       }
 
       return result;
@@ -123,6 +170,9 @@ const useReservationLock = (
         contentId: lockContentId,
         roomId: lockRoomId,
         lockId,
+        sessionId,
+        tabId,
+        lockInitialAt,
       } = lockDataRef.current;
 
       if (lockCreatedRef.current && lockContentId && lockRoomId) {
@@ -133,6 +183,9 @@ const useReservationLock = (
           checkIn,
           checkOut,
           lockId,
+          sessionId,
+          tabId,
+          initialLockAt: lockInitialAt,
         });
 
         const apiUrl = `${

@@ -18,6 +18,7 @@ import { useSearchStore } from "@/stores/searchStore";
 import { updateUrlParams, formatSearchParamsForUrl } from "@/utils/urlUtils";
 import { useHotelData } from "./hooks/useHotelData";
 import { useHotelNavigation } from "./hooks/useHotelNavigation";
+import { useRecordHotelView } from "@/hooks/useRecordHotelView";
 
 /**
  * 호텔 상세 정보 컴포넌트
@@ -117,6 +118,34 @@ const HotelDetail = ({
     const nights = Number(localSearchParams?.nights || 1);
     return minPrice * (Number.isNaN(nights) ? 1 : nights);
   }, [rooms, localSearchParams?.nights]);
+
+  const recordHotelView = useRecordHotelView();
+  const hasRecordedViewRef = useRef(null);
+
+  useEffect(() => {
+    hasRecordedViewRef.current = null;
+  }, [contentId]);
+
+  useEffect(() => {
+    if (!hotelData) {
+      return;
+    }
+
+    if (hasRecordedViewRef.current === contentId) {
+      return;
+    }
+
+    const payload = {
+      contentId,
+      hotelName: hotelData.name,
+      address: hotelData.location,
+      imageUrl: Array.isArray(hotelData.images) ? hotelData.images[0] : "",
+      minPrice: lowestPrice > 0 ? lowestPrice : null,
+    };
+
+    recordHotelView(payload);
+    hasRecordedViewRef.current = contentId;
+  }, [hotelData, contentId, lowestPrice, recordHotelView]);
 
   useEffect(() => {
     if (onHeaderPriceChange) {

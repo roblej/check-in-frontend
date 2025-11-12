@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import axiosInstance from "@/lib/axios";
 
@@ -563,17 +562,15 @@ const HotelRooms = ({
                       {room.imageUrl ? (
                         <div className="flex justify-center">
                           <div className="relative group">
-                            <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden max-w-xl w-full relative">
-                              <Image
+                            <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden max-w-xl w-full">
+                              <img
                                 src={
                                   room.imageUrl?.startsWith("http")
                                     ? room.imageUrl
                                     : `${baseUrlWithSlash}${room.imageUrl}`
                                 }
                                 alt="객실 대표 이미지"
-                                fill
-                                sizes="(max-width: 768px) 100vw, 640px"
-                                className="object-cover"
+                                className="w-full h-full object-cover"
                               />
                             </div>
                             {!readOnly && (
@@ -711,20 +708,18 @@ const HotelRooms = ({
                             {room.images.map((image, imgIndex) => (
                               <div
                                 key={image.id || imgIndex}
-                                className="relative group"
+                                className="relative group p-[5px]"
                               >
-                                <div className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden relative">
+                                <div className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
                                   {image.imageUrl ? (
-                                    <Image
+                                    <img
                                       src={
                                         image.imageUrl?.startsWith("http")
                                           ? image.imageUrl
                                           : `${baseUrlWithSlash}${image.imageUrl}`
                                       }
                                       alt="객실 이미지"
-                                      fill
-                                      sizes="120px"
-                                      className="object-cover"
+                                      className="w-full h-full object-cover"
                                     />
                                   ) : (
                                     <span className="text-gray-400 text-xl">
