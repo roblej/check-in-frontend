@@ -1231,6 +1231,7 @@ const HotelSearchPageContent = () => {
               onFilterChange={handleFilterChange}
               onFilterReset={handleFilterReset}
               isLoading={isSearching}
+              allSearchResults={allSearchResults}
             />
           </div>
         </div>

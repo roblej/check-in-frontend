@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import HotelFilters from "./HotelFilters";
 import Pagination from "../Pagination";
@@ -24,7 +25,82 @@ const HotelSearchResults = ({
   onFilterChange,
   onFilterReset,
   isLoading = false,
+  allSearchResults = [], // 로컬 필터 미리보기용 전체 검색 결과
 }) => {
+  // 로컬 필터 상태 (실제 적용 전까지 임시 저장)
+  const [localFilters, setLocalFilters] = useState(filters);
+
+  // 로컬 필터로 미리보기 개수 계산
+  const previewCount = useMemo(() => {
+    if (allSearchResults.length === 0) {
+      return totalElements;
+    }
+
+    const hasActiveFilters = 
+      localFilters.priceMin > 0 ||
+      localFilters.priceMax < 500000 ||
+      localFilters.starRatings.length > 0 ||
+      localFilters.amenities.length > 0;
+
+    if (!hasActiveFilters) {
+      return allSearchResults.length;
+    }
+
+    const filtered = allSearchResults.filter((hotel) => {
+      // 가격 필터링
+      const hotelPrice = hotel.minPrice || hotel.maxPrice || hotel.price || null;
+      if (hotelPrice !== null) {
+        const price = Number(hotelPrice);
+        if (price < localFilters.priceMin || price > localFilters.priceMax) {
+          return false;
+        }
+      }
+
+      // 별점 필터링
+      if (
+        localFilters.starRatings.length > 0 &&
+        hotel.starRating !== undefined &&
+        !localFilters.starRatings.includes(hotel.starRating)
+      ) {
+        return false;
+      }
+
+      // 편의시설 필터링
+      if (localFilters.amenities.length > 0) {
+        const hasParking = localFilters.amenities.includes("주차");
+        const hasRestaurant = localFilters.amenities.includes("식당");
+
+        if (hasParking) {
+          const parkinglodging = hotel.parkinglodging || "";
+          if (!parkinglodging.includes("가능")) {
+            return false;
+          }
+        }
+
+        if (hasRestaurant) {
+          const foodplace = hotel.foodplace || "";
+          if (!foodplace || foodplace.trim() === "") {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
+
+    return filtered.length;
+  }, [localFilters, allSearchResults, totalElements]);
+
+  // 로컬 필터 변경 핸들러
+  const handleLocalFilterChange = (newLocalFilters) => {
+    setLocalFilters(newLocalFilters);
+  };
+
+  // 필터 적용 핸들러 (n개 호텔 보기 버튼 클릭 시)
+  const handleApplyFilters = () => {
+    onFilterChange(localFilters);
+    setShowFiltersPanel(false);
+  };
   return (
     <>
       {/* 호텔 카드 그리드 */}
@@ -166,7 +242,7 @@ const HotelSearchResults = ({
               {/* 헤더 */}
               <div className="flex items-center justify-between mb-6 pb-4 border-b">
                 <h3 className="text-xl font-bold">
-                  필터 {totalElements > 0 && <span className="text-blue-500">({totalElements}개)</span>}
+                  필터 {previewCount > 0 && <span className="text-blue-500">({previewCount}개)</span>}
                 </h3>
                 <button
                   onClick={() => setShowFiltersPanel(false)}
@@ -181,21 +257,26 @@ const HotelSearchResults = ({
                 filters={filters}
                 onFilterChange={onFilterChange}
                 onReset={onFilterReset}
+                onLocalFilterChange={handleLocalFilterChange}
               />
 
               {/* 하단 버튼 */}
               <div className="sticky bottom-0 bg-white pt-4 border-t flex gap-3">
                 <button
-                  onClick={() => setShowFiltersPanel(false)}
+                  onClick={() => {
+                    // 취소 시 로컬 필터를 원래 필터로 복원
+                    setLocalFilters(filters);
+                    setShowFiltersPanel(false);
+                  }}
                   className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
                 >
                   취소
                 </button>
                 <button
-                  onClick={() => setShowFiltersPanel(false)}
+                  onClick={handleApplyFilters}
                   className="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors"
                 >
-                  {totalElements}개 호텔 보기
+                  {previewCount}개 호텔 보기
                 </button>
               </div>
             </div>
