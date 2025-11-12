@@ -234,8 +234,8 @@ const HotelDetail = ({
   // 로딩 상태
   if (isLoading) {
     return (
-      <div className="bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">
+      <div className="bg-gray-50 flex min-h-[420px] justify-center px-4">
+        <div className="flex flex-col items-center py-16 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">호텔 정보를 불러오는 중...</p>
         </div>
