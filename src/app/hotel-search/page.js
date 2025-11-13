@@ -62,6 +62,25 @@ const HotelSearchPageContent = () => {
   // 다이닝 모드 상태
   const [isDiningMode, setIsDiningMode] = useState(urlDiningMode || false);
 
+  // 다이닝 모드로 전환하기 전의 checkIn/checkOut 값 보존
+  const savedHotelDatesRef = useRef({
+    checkIn: null,
+    checkOut: null,
+  });
+
+  // 초기 마운트 시 URL에서 checkIn/checkOut 값이 있으면 보존
+  useEffect(() => {
+    if (!urlDiningMode && (urlCheckIn || urlCheckOut)) {
+      if (urlCheckIn) {
+        savedHotelDatesRef.current.checkIn = urlCheckIn;
+      }
+      if (urlCheckOut) {
+        savedHotelDatesRef.current.checkOut = urlCheckOut;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 초기 마운트 시에만 실행
+
   // URL 파라미터 변경 시에만 로그 출력
   const prevUrlParamsForLogRef = useRef(urlParams);
   useEffect(() => {
@@ -138,6 +157,16 @@ const HotelSearchPageContent = () => {
         urlParams.diningMode ||
         urlParams.diningDate)
     ) {
+      // 다이닝 모드가 아닐 때 URL의 checkIn/checkOut이 있으면 보존
+      if (!urlParams.diningMode && (urlParams.checkIn || urlParams.checkOut)) {
+        if (urlParams.checkIn) {
+          savedHotelDatesRef.current.checkIn = urlParams.checkIn;
+        }
+        if (urlParams.checkOut) {
+          savedHotelDatesRef.current.checkOut = urlParams.checkOut;
+        }
+      }
+
       console.log("URL 파라미터를 스토어에 동기화:", {
         destination: urlParams.destination,
         checkIn: urlParams.checkIn,
@@ -146,10 +175,31 @@ const HotelSearchPageContent = () => {
         diningMode: urlParams.diningMode,
         diningDate: urlParams.diningDate,
       });
-      updateFromUrlParams(searchParams);
+      
+      // 다이닝 모드일 때는 checkIn/checkOut을 업데이트하지 않도록 수동으로 처리
+      if (urlParams.diningMode) {
+        // 다이닝 모드일 때는 checkIn/checkOut을 제외하고 업데이트
+        // 스토어의 checkIn/checkOut은 유지 (빈 문자열로 덮어쓰지 않음)
+        const currentCheckIn = storeSearchParams.checkIn;
+        const currentCheckOut = storeSearchParams.checkOut;
+        
+        updateSearchParams({
+          destination: urlParams.destination || "",
+          diningDate: urlParams.diningDate || "",
+          adults: parseInt(urlParams.adults || "2"),
+          children: parseInt(urlParams.children || "0"),
+          // checkIn/checkOut은 현재 스토어 값 유지 (변경하지 않음)
+          checkIn: currentCheckIn,
+          checkOut: currentCheckOut,
+        });
+      } else {
+        // 호텔 모드일 때는 전체 업데이트
+        updateFromUrlParams(searchParams);
+      }
+      
       prevUrlParamsRef.current = urlParams;
     }
-  }, [urlParams, searchParams, updateFromUrlParams]);
+  }, [urlParams, searchParams, updateFromUrlParams, storeSearchParams, updateSearchParams]);
 
   // URL에서 checkIn과 checkOut이 있을 때 nights 자동 계산 및 추가
   useEffect(() => {
@@ -290,30 +340,41 @@ const HotelSearchPageContent = () => {
         urlParams.delete("checkOut");
         urlParams.delete("nights"); // 다이닝 모드일 때는 nights 제거
       } else {
-        // 호텔 모드: 체크인/체크아웃
+        // 호텔 모드: 체크인/체크아웃 (기본값 없음)
         const checkInDate =
           localSearchParams.checkIn ||
           urlParams.get("checkIn") ||
-          new Date().toISOString().split("T")[0];
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
+          "";
         const checkOutDate =
           localSearchParams.checkOut ||
           urlParams.get("checkOut") ||
-          tomorrow.toISOString().split("T")[0];
+          "";
 
-        urlParams.set("checkIn", checkInDate);
-        urlParams.set("checkOut", checkOutDate);
+        // 값이 있을 때만 URL에 설정
+        if (checkInDate) {
+          urlParams.set("checkIn", checkInDate);
+        } else {
+          urlParams.delete("checkIn");
+        }
+        
+        if (checkOutDate) {
+          urlParams.set("checkOut", checkOutDate);
+        } else {
+          urlParams.delete("checkOut");
+        }
+        
         urlParams.delete("diningDate");
         urlParams.delete("diningMode");
 
-        // nights 계산 및 추가
+        // nights 계산 및 추가 (값이 모두 있을 때만)
         if (checkInDate && checkOutDate) {
           const nights = Math.ceil(
             (new Date(checkOutDate) - new Date(checkInDate)) /
               (1000 * 60 * 60 * 24)
           );
           urlParams.set("nights", nights.toString());
+        } else {
+          urlParams.delete("nights");
         }
       }
 
@@ -1055,13 +1116,26 @@ const HotelSearchPageContent = () => {
 
     const urlParams = new URLSearchParams(searchParams.toString());
     if (newDiningMode) {
+      // 다이닝 모드로 전환하기 전에 현재 checkIn/checkOut 값을 보존
+      // 우선순위: URL > 스토어 > savedHotelDatesRef
+      const currentCheckIn = urlParams.get("checkIn") || localSearchParams.checkIn || savedHotelDatesRef.current.checkIn;
+      const currentCheckOut = urlParams.get("checkOut") || localSearchParams.checkOut || savedHotelDatesRef.current.checkOut;
+      
+      // 값이 실제로 있을 때만 보존 (빈 문자열이나 null이 아닐 때)
+      if (currentCheckIn && currentCheckIn.trim() !== "") {
+        savedHotelDatesRef.current.checkIn = currentCheckIn;
+      }
+      if (currentCheckOut && currentCheckOut.trim() !== "") {
+        savedHotelDatesRef.current.checkOut = currentCheckOut;
+      }
+
       urlParams.set("diningMode", "true");
       // 다이닝 모드로 변경 시 체크인 날짜를 다이닝 날짜로 설정
       // URL에 이미 diningDate가 있으면 유지, 없으면 체크인 날짜 사용, 둘 다 없으면 오늘 날짜
       const diningDate =
         urlParams.get("diningDate") ||
         localSearchParams.diningDate ||
-        localSearchParams.checkIn ||
+        currentCheckIn ||
         new Date().toISOString().split("T")[0];
       urlParams.set("diningDate", diningDate);
       urlParams.delete("checkIn");
@@ -1070,25 +1144,46 @@ const HotelSearchPageContent = () => {
       urlParams.delete("diningMode");
       urlParams.delete("diningDate");
       // 호텔 모드로 변경 시 체크인/체크아웃 설정
+      // 보존된 값 > 스토어 값 > URL 순서로 우선순위 적용 (기본값 없음)
       const checkInDate =
-        localSearchParams.checkIn ||
-        urlParams.get("checkIn") ||
-        new Date().toISOString().split("T")[0];
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
+        (savedHotelDatesRef.current.checkIn && savedHotelDatesRef.current.checkIn.trim() !== "") 
+          ? savedHotelDatesRef.current.checkIn
+          : (localSearchParams.checkIn && localSearchParams.checkIn.trim() !== "")
+          ? localSearchParams.checkIn
+          : urlParams.get("checkIn") || "";
+      
       const checkOutDate =
-        localSearchParams.checkOut ||
-        urlParams.get("checkOut") ||
-        tomorrow.toISOString().split("T")[0];
+        (savedHotelDatesRef.current.checkOut && savedHotelDatesRef.current.checkOut.trim() !== "")
+          ? savedHotelDatesRef.current.checkOut
+          : (localSearchParams.checkOut && localSearchParams.checkOut.trim() !== "")
+          ? localSearchParams.checkOut
+          : urlParams.get("checkOut") || "";
 
-      urlParams.set("checkIn", checkInDate);
-      urlParams.set("checkOut", checkOutDate);
+      // 값이 있을 때만 스토어와 URL에 설정
+      if (checkInDate && checkOutDate) {
+        // 스토어에 먼저 저장 (URL 업데이트 전에)
+        updateSearchParams({
+          checkIn: checkInDate,
+          checkOut: checkOutDate,
+        });
+
+        urlParams.set("checkIn", checkInDate);
+        urlParams.set("checkOut", checkOutDate);
+      } else {
+        // 값이 없으면 URL에서 삭제하고 스토어도 빈 값으로 설정
+        urlParams.delete("checkIn");
+        urlParams.delete("checkOut");
+        updateSearchParams({
+          checkIn: "",
+          checkOut: "",
+        });
+      }
     }
     router.replace(`?${urlParams.toString()}`, {
       scroll: false,
       shallow: true,
     });
-  }, [isDiningMode, searchParams, router, localSearchParams]);
+  }, [isDiningMode, searchParams, router, localSearchParams, updateSearchParams]);
 
   // URL에서 다이닝 모드 동기화
   useEffect(() => {
