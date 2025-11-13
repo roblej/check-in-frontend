@@ -216,6 +216,28 @@ export default function ReservationDetailPage() {
           </div>
         </div>
 
+        {/* QR 코드 */}
+        {reservation.qrUrl && reservation.status === "예약확정" && (
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-2xl">📱</span>
+              예약 확인 QR 코드
+            </h2>
+            <div className="flex flex-col items-center">
+              <p className="text-sm text-gray-600 mb-4 text-center">
+                체크인 시 아래 QR 코드를 제시해주세요
+              </p>
+              <div className="bg-gray-50 p-4 rounded-lg border-2 border-gray-200">
+                <img
+                  src={reservation.qrUrl}
+                  alt="예약 QR 코드"
+                  className="w-48 h-48 mx-auto"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 결제 정보 */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
