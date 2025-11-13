@@ -106,18 +106,28 @@ axiosInstance.interceptors.response.use(
       if (error.response.status === 401) {
         if (typeof window !== "undefined") {
           localStorage.removeItem("accessToken");
-          // window.location.href = '/login';
+          // 현재 페이지가 에러 페이지가 아닐 때만 리다이렉트
+          if (!window.location.pathname.startsWith('/error/')) {
+            window.location.href = '/error/401';
+          }
         }
       }
 
-      // 403 에러 처리 (권한 없음 - 호텔 미등록 관리자)
+      // 403 에러 처리 (권한 없음)
       if (error.response.status === 403) {
-        const data = error.response.data;
-        if (data && data.redirect) {
-          // 리다이렉트 플래그가 있으면 메인 화면으로 이동
-          if (typeof window !== "undefined") {
-            alert(data.message || "호텔이 등록되지 않은 관리자입니다. 메인 화면으로 이동합니다.");
-            window.location.href = '/';
+        if (typeof window !== "undefined") {
+          const data = error.response.data;
+          // 현재 페이지가 에러 페이지가 아닐 때만 리다이렉트
+          if (!window.location.pathname.startsWith('/error/')) {
+            // 특정 메시지가 있으면 alert로 표시
+            if (data && data.message) {
+              // alert는 리다이렉트 전에 표시되므로 setTimeout 사용
+              setTimeout(() => {
+                window.location.href = '/error/403';
+              }, 100);
+            } else {
+              window.location.href = '/error/403';
+            }
           }
         }
       }

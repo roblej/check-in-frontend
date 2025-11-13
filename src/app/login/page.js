@@ -8,8 +8,6 @@ import Header from "@/components/Header";
 import styles from "./login.module.css";
 import axios from "@/lib/axios";
 import { useCustomerStore } from "@/stores/customerStore";
-import { useAdminStore } from "@/stores/adminStore";
-import { setAdminIdxCookie } from "@/utils/cookieUtils";
 import naverLoginBtn from "@/images/login/btnG_완성형.png";
 import kakaoLoginBtn from "@/images/login/kakao_login_medium_narrow.png";
 
@@ -45,17 +43,9 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setAccessToken, setInlogged, isInlogged } = useCustomerStore();
-  const {
-    setAdminIdx,
-    setContentId,
-    setHotelInfo,
-    setAdminLoggedIn,
-    fetchContentIdByAdminIdx,
-  } = useAdminStore();
   const [formData, setFormData] = useState({
     id: "",
     password: "",
-    role: "customer", // 기본값: 회원
   });
 
   // returnUrl 파라미터 읽기 (이전 페이지로 돌아가기 위해)
@@ -63,7 +53,6 @@ function LoginForm() {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   let accessToken = "";
 
   const login_url = "/login";
@@ -95,7 +84,7 @@ function LoginForm() {
   };
 
   async function login() {
-    await axios.post(login_url, formData).then(function (res) {
+    await axios.post(login_url, { ...formData, role: "customer" }).then(function (res) {
       console.log("res.data");
       console.log(res.data);
       if (res.data) {
@@ -140,58 +129,25 @@ function LoginForm() {
       // });
 
       // 임시: 콘솔에 데이터 출력
-      console.log("로그인 데이터:", { ...formData, rememberMe });
+      console.log("로그인 데이터:", formData);
 
       //zustand에 사용자 정보 저장
 
       //로그인 버튼 로그아웃으로 변경
 
-      // 성공 시 사용자 타입에 따라 리다이렉트
+      // 성공 시 회원 로그인 처리
       alert("로그인 성공");
 
       setAccessToken(accessToken);
 
-      // returnUrl이 있으면 해당 페이지로 이동 (관리자는 제외)
-      if (returnUrl && formData.role !== "admin") {
-        // 관리자가 아닌 경우에만 returnUrl 사용
+      // returnUrl이 있으면 해당 페이지로 이동
+      if (returnUrl) {
         router.push(returnUrl);
         return;
       }
 
-      // 사업자(admin)인 경우 관리자 화면으로 이동
-      if (formData.role === "admin") {
-        try {
-          // 토큰에서 adminIdx 추출
-          const userInfo = JSON.parse(atob(accessToken.split(".")[1]));
-          const adminIdx = userInfo.adminIdx;
-
-          if (adminIdx) {
-            // adminIdx를 쿠키에 저장
-            setAdminIdxCookie(adminIdx, 7); // 7일
-
-            // adminIdx로 contentId 가져오기
-            const contentId = await fetchContentIdByAdminIdx(adminIdx);
-
-            if (contentId) {
-              setAdminLoggedIn(true);
-              console.log("관리자 로그인 성공:", { adminIdx, contentId });
-            } else {
-              console.warn("contentId를 가져올 수 없습니다.");
-              // 호텔 등록 페이지로 이동
-              alert("호텔 등록 페이지로 이동합니다.");
-              router.push("/hotel/register");
-              return;
-            }
-          }
-        } catch (error) {
-          console.error("관리자 정보 처리 실패:", error);
-        }
-
-        router.push("/admin");
-      } else {
-        // 일반 회원인 경우 메인 페이지로 이동
-        router.push("/");
-      }
+      // 일반 회원인 경우 메인 페이지로 이동
+      router.push("/");
     } else {
       setErrors({
         general: "아이디 또는 비밀번호가 올바르지 않습니다.",
@@ -265,46 +221,6 @@ function LoginForm() {
               {errors.password && (
                 <span className={styles.errorMessage}>{errors.password}</span>
               )}
-            </div>
-
-            {/* 로그인 유지 체크박스와 사용자 유형 선택 */}
-            <div className={styles.optionsGroup}>
-              <div className={styles.checkboxGroup}>
-                <label className={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className={styles.checkbox}
-                  />
-                  <span>로그인 상태 유지</span>
-                </label>
-              </div>
-
-              <div className={styles.userTypeGroup}>
-                <label className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="role"
-                    value="customer"
-                    checked={formData.role === "customer"}
-                    onChange={handleChange}
-                    className={styles.radioInput}
-                  />
-                  회원
-                </label>
-                <label className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="role"
-                    value="admin"
-                    checked={formData.role === "admin"}
-                    onChange={handleChange}
-                    className={styles.radioInput}
-                  />
-                  관리자
-                </label>
-              </div>
             </div>
 
             {/* 로그인 버튼 */}
