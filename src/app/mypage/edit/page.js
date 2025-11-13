@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { 
-  User, Mail, Phone, Lock, Shield, Camera, 
-  Save, ArrowLeft, Check, X, Eye, EyeOff
+  User, Mail, Phone, Lock, Shield, 
+  Camera, // 프로필 탭용 (현재 미구현 - 주석처리된 코드에서 사용)
+  Save, ArrowLeft, Check, X
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -16,7 +17,7 @@ export default function EditProfilePage() {
   const { resetAccessToken, setInlogged } = useCustomerStore();
   
   // 탭 상태
-  const [activeTab, setActiveTab] = useState('basic'); // basic, security, profile
+  const [activeTab, setActiveTab] = useState('basic'); // basic, security, profile (프로필 탭은 현재 미구현)
   
   // 로딩 상태
   const [isLoading, setIsLoading] = useState(true);
@@ -420,9 +421,11 @@ export default function EditProfilePage() {
       handleSaveBasicInfo();
     } else if (activeTab === 'security') {
       handleSaveSecurityInfo();
-    } else if (activeTab === 'profile') {
-      handleSaveProfileImage();
     }
+    // 프로필 탭 (현재 미구현)
+    // else if (activeTab === 'profile') {
+    //   handleSaveProfileImage();
+    // }
   };
 
   return (
@@ -503,7 +506,8 @@ export default function EditProfilePage() {
                 <span>보안</span>
               </div>
             </button>
-            <button
+            {/* 프로필 탭 (현재 미구현) */}
+            {/* <button
               onClick={() => setActiveTab('profile')}
               className={`flex-1 px-6 py-4 font-medium transition-all border-b-2 ${
                 activeTab === 'profile'
@@ -515,7 +519,7 @@ export default function EditProfilePage() {
                 <Camera className="w-5 h-5" />
                 <span>프로필사진</span>
               </div>
-            </button>
+            </button> */}
           </div>
 
           {/* 탭 컨텐츠 */}
@@ -655,11 +659,10 @@ export default function EditProfilePage() {
               </div>
             )}
 
-            {/* 프로필사진 탭 */}
-            {activeTab === 'profile' && (
+            {/* 프로필사진 탭 (현재 미구현) */}
+            {/* {activeTab === 'profile' && (
               <div className="space-y-6">
                 <div className="flex flex-col items-center">
-                  {/* 현재 프로필 이미지 또는 미리보기 */}
                   <div className="relative mb-6">
                     <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-gray-200 shadow-lg">
                       {profileImagePreview ? (
@@ -675,7 +678,6 @@ export default function EditProfilePage() {
                       )}
                     </div>
                     
-                    {/* 카메라 아이콘 버튼 */}
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="absolute bottom-2 right-2 p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-colors"
@@ -684,7 +686,6 @@ export default function EditProfilePage() {
                     </button>
                   </div>
 
-                  {/* 파일 입력 (숨김) */}
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -693,7 +694,6 @@ export default function EditProfilePage() {
                     className="hidden"
                   />
 
-                  {/* 안내 텍스트 */}
                   <div className="text-center mb-6">
                     <p className="text-sm text-gray-600 mb-2">
                       JPG, PNG, GIF 파일 (최대 5MB)
@@ -706,7 +706,6 @@ export default function EditProfilePage() {
                     </button>
                   </div>
 
-                  {/* 선택된 파일 정보 */}
                   {profileImage && (
                     <div className="w-full bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <div className="flex items-center justify-between">
@@ -736,7 +735,8 @@ export default function EditProfilePage() {
                   )}
                 </div>
               </div>
-            )}
+            )} */}
+
           </div>
 
           {/* 저장 버튼 */}
