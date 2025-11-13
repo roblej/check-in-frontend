@@ -241,41 +241,27 @@ const HotelSearchPageContent = () => {
     }`;
   }, []);
 
-  // 날짜 변경 핸들러
+  // 날짜 변경 핸들러 (스토어에만 저장, URL 업데이트는 검색 버튼 클릭 시)
   const handleDateChange = useCallback(
     (newCheckIn, newCheckOut) => {
-      const urlParams = new URLSearchParams(searchParams.toString());
+      // 스토어에만 저장 (URL은 검색 버튼 클릭 시 업데이트)
       if (isDiningMode) {
         // 다이닝 모드: 단일 날짜만
         if (newCheckIn) {
-          urlParams.set("diningDate", newCheckIn);
-          urlParams.set("diningMode", "true");
-          urlParams.delete("checkIn");
-          urlParams.delete("checkOut");
+          updateSearchParams({ diningDate: newCheckIn });
         } else {
-          urlParams.delete("diningDate");
+          updateSearchParams({ diningDate: null });
         }
       } else {
         // 호텔 모드: 체크인/체크아웃
-        urlParams.set("checkIn", newCheckIn);
-        urlParams.set("checkOut", newCheckOut);
-        urlParams.delete("diningDate");
-        urlParams.delete("diningMode");
-        if (newCheckIn && newCheckOut) {
-          const nights = Math.ceil(
-            (new Date(newCheckOut) - new Date(newCheckIn)) /
-              (1000 * 60 * 60 * 24)
-          );
-          urlParams.set("nights", nights.toString());
-        }
+        updateSearchParams({
+          checkIn: newCheckIn,
+          checkOut: newCheckOut,
+        });
       }
-      router.replace(`?${urlParams.toString()}`, {
-        scroll: false,
-        shallow: true,
-      });
       setIsDatePickerOpen(false);
     },
-    [searchParams, router, isDiningMode]
+    [isDiningMode, updateSearchParams]
   );
 
   // 검색 실행 핸들러
@@ -1181,7 +1167,7 @@ const HotelSearchPageContent = () => {
 
                 {/* 날짜 선택 컴포넌트 */}
                 {isDatePickerOpen && (
-                  <div className="absolute top-full left-0 z-50 mt-1 w-full">
+                  <div className="absolute top-full left-0 z-[9999] mt-1 w-full">
                     <SearchCondition
                       isOpen={isDatePickerOpen}
                       onClose={() => setIsDatePickerOpen(false)}
@@ -1236,9 +1222,38 @@ const HotelSearchPageContent = () => {
             <div className="flex w-full items-center gap-2 sm:gap-3 lg:ml-auto lg:w-auto lg:flex-nowrap">
               <button
                 onClick={handleFilterSearch}
-                className="flex h-11 flex-none items-center justify-center rounded-md bg-blue-500 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-600 w-[106px]"
+                disabled={isSearching}
+                className={`flex h-11 flex-none items-center justify-center gap-2 rounded-md bg-blue-500 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isSearching ? "min-w-[120px]" : "w-[106px]"
+                }`}
               >
-                검색
+                {isSearching ? (
+                  <>
+                    <svg
+                      className="animate-spin h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    <span>검색 중...</span>
+                  </>
+                ) : (
+                  "검색"
+                )}
               </button>
 
               <div className="flex flex-1 items-center gap-2 sm:gap-2 lg:w-auto lg:flex-none lg:justify-end">
@@ -1281,7 +1296,37 @@ const HotelSearchPageContent = () => {
       {/* 메인 컨텐츠 - 좌우 분할 */}
       <div className="flex flex-1 relative overflow-hidden">
         {/* 좌측: 호텔 검색 결과 (그리드) */}
-        <div className="flex-1 lg:w-[20%] overflow-y-auto">
+        <div className="flex-1 lg:w-[20%] overflow-y-auto relative">
+          {/* 검색 중 로딩 오버레이 */}
+          {isSearching && (
+            <div className="absolute inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <svg
+                  className="animate-spin h-12 w-12 text-blue-500"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                <p className="text-sm font-medium text-gray-700">
+                  호텔 검색 중...
+                </p>
+              </div>
+            </div>
+          )}
           <div className="p-4">
             <HotelSearchResults
               hotels={currentPageHotels}
