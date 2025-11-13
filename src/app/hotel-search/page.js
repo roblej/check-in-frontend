@@ -62,6 +62,25 @@ const HotelSearchPageContent = () => {
   // 다이닝 모드 상태
   const [isDiningMode, setIsDiningMode] = useState(urlDiningMode || false);
 
+  // 다이닝 모드로 전환하기 전의 checkIn/checkOut 값 보존
+  const savedHotelDatesRef = useRef({
+    checkIn: null,
+    checkOut: null,
+  });
+
+  // 초기 마운트 시 URL에서 checkIn/checkOut 값이 있으면 보존
+  useEffect(() => {
+    if (!urlDiningMode && (urlCheckIn || urlCheckOut)) {
+      if (urlCheckIn) {
+        savedHotelDatesRef.current.checkIn = urlCheckIn;
+      }
+      if (urlCheckOut) {
+        savedHotelDatesRef.current.checkOut = urlCheckOut;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 초기 마운트 시에만 실행
+
   // URL 파라미터 변경 시에만 로그 출력
   const prevUrlParamsForLogRef = useRef(urlParams);
   useEffect(() => {
@@ -138,6 +157,16 @@ const HotelSearchPageContent = () => {
         urlParams.diningMode ||
         urlParams.diningDate)
     ) {
+      // 다이닝 모드가 아닐 때 URL의 checkIn/checkOut이 있으면 보존
+      if (!urlParams.diningMode && (urlParams.checkIn || urlParams.checkOut)) {
+        if (urlParams.checkIn) {
+          savedHotelDatesRef.current.checkIn = urlParams.checkIn;
+        }
+        if (urlParams.checkOut) {
+          savedHotelDatesRef.current.checkOut = urlParams.checkOut;
+        }
+      }
+
       console.log("URL 파라미터를 스토어에 동기화:", {
         destination: urlParams.destination,
         checkIn: urlParams.checkIn,
@@ -146,10 +175,31 @@ const HotelSearchPageContent = () => {
         diningMode: urlParams.diningMode,
         diningDate: urlParams.diningDate,
       });
-      updateFromUrlParams(searchParams);
+      
+      // 다이닝 모드일 때는 checkIn/checkOut을 업데이트하지 않도록 수동으로 처리
+      if (urlParams.diningMode) {
+        // 다이닝 모드일 때는 checkIn/checkOut을 제외하고 업데이트
+        // 스토어의 checkIn/checkOut은 유지 (빈 문자열로 덮어쓰지 않음)
+        const currentCheckIn = storeSearchParams.checkIn;
+        const currentCheckOut = storeSearchParams.checkOut;
+        
+        updateSearchParams({
+          destination: urlParams.destination || "",
+          diningDate: urlParams.diningDate || "",
+          adults: parseInt(urlParams.adults || "2"),
+          children: parseInt(urlParams.children || "0"),
+          // checkIn/checkOut은 현재 스토어 값 유지 (변경하지 않음)
+          checkIn: currentCheckIn,
+          checkOut: currentCheckOut,
+        });
+      } else {
+        // 호텔 모드일 때는 전체 업데이트
+        updateFromUrlParams(searchParams);
+      }
+      
       prevUrlParamsRef.current = urlParams;
     }
-  }, [urlParams, searchParams, updateFromUrlParams]);
+  }, [urlParams, searchParams, updateFromUrlParams, storeSearchParams, updateSearchParams]);
 
   // URL에서 checkIn과 checkOut이 있을 때 nights 자동 계산 및 추가
   useEffect(() => {
@@ -241,41 +291,27 @@ const HotelSearchPageContent = () => {
     }`;
   }, []);
 
-  // 날짜 변경 핸들러
+  // 날짜 변경 핸들러 (스토어에만 저장, URL 업데이트는 검색 버튼 클릭 시)
   const handleDateChange = useCallback(
     (newCheckIn, newCheckOut) => {
-      const urlParams = new URLSearchParams(searchParams.toString());
+      // 스토어에만 저장 (URL은 검색 버튼 클릭 시 업데이트)
       if (isDiningMode) {
         // 다이닝 모드: 단일 날짜만
         if (newCheckIn) {
-          urlParams.set("diningDate", newCheckIn);
-          urlParams.set("diningMode", "true");
-          urlParams.delete("checkIn");
-          urlParams.delete("checkOut");
+          updateSearchParams({ diningDate: newCheckIn });
         } else {
-          urlParams.delete("diningDate");
+          updateSearchParams({ diningDate: null });
         }
       } else {
         // 호텔 모드: 체크인/체크아웃
-        urlParams.set("checkIn", newCheckIn);
-        urlParams.set("checkOut", newCheckOut);
-        urlParams.delete("diningDate");
-        urlParams.delete("diningMode");
-        if (newCheckIn && newCheckOut) {
-          const nights = Math.ceil(
-            (new Date(newCheckOut) - new Date(newCheckIn)) /
-              (1000 * 60 * 60 * 24)
-          );
-          urlParams.set("nights", nights.toString());
-        }
+        updateSearchParams({
+          checkIn: newCheckIn,
+          checkOut: newCheckOut,
+        });
       }
-      router.replace(`?${urlParams.toString()}`, {
-        scroll: false,
-        shallow: true,
-      });
       setIsDatePickerOpen(false);
     },
-    [searchParams, router, isDiningMode]
+    [isDiningMode, updateSearchParams]
   );
 
   // 검색 실행 핸들러
@@ -304,30 +340,41 @@ const HotelSearchPageContent = () => {
         urlParams.delete("checkOut");
         urlParams.delete("nights"); // 다이닝 모드일 때는 nights 제거
       } else {
-        // 호텔 모드: 체크인/체크아웃
+        // 호텔 모드: 체크인/체크아웃 (기본값 없음)
         const checkInDate =
           localSearchParams.checkIn ||
           urlParams.get("checkIn") ||
-          new Date().toISOString().split("T")[0];
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
+          "";
         const checkOutDate =
           localSearchParams.checkOut ||
           urlParams.get("checkOut") ||
-          tomorrow.toISOString().split("T")[0];
+          "";
 
-        urlParams.set("checkIn", checkInDate);
-        urlParams.set("checkOut", checkOutDate);
+        // 값이 있을 때만 URL에 설정
+        if (checkInDate) {
+          urlParams.set("checkIn", checkInDate);
+        } else {
+          urlParams.delete("checkIn");
+        }
+        
+        if (checkOutDate) {
+          urlParams.set("checkOut", checkOutDate);
+        } else {
+          urlParams.delete("checkOut");
+        }
+        
         urlParams.delete("diningDate");
         urlParams.delete("diningMode");
 
-        // nights 계산 및 추가
+        // nights 계산 및 추가 (값이 모두 있을 때만)
         if (checkInDate && checkOutDate) {
           const nights = Math.ceil(
             (new Date(checkOutDate) - new Date(checkInDate)) /
               (1000 * 60 * 60 * 24)
           );
           urlParams.set("nights", nights.toString());
+        } else {
+          urlParams.delete("nights");
         }
       }
 
@@ -1069,13 +1116,26 @@ const HotelSearchPageContent = () => {
 
     const urlParams = new URLSearchParams(searchParams.toString());
     if (newDiningMode) {
+      // 다이닝 모드로 전환하기 전에 현재 checkIn/checkOut 값을 보존
+      // 우선순위: URL > 스토어 > savedHotelDatesRef
+      const currentCheckIn = urlParams.get("checkIn") || localSearchParams.checkIn || savedHotelDatesRef.current.checkIn;
+      const currentCheckOut = urlParams.get("checkOut") || localSearchParams.checkOut || savedHotelDatesRef.current.checkOut;
+      
+      // 값이 실제로 있을 때만 보존 (빈 문자열이나 null이 아닐 때)
+      if (currentCheckIn && currentCheckIn.trim() !== "") {
+        savedHotelDatesRef.current.checkIn = currentCheckIn;
+      }
+      if (currentCheckOut && currentCheckOut.trim() !== "") {
+        savedHotelDatesRef.current.checkOut = currentCheckOut;
+      }
+
       urlParams.set("diningMode", "true");
       // 다이닝 모드로 변경 시 체크인 날짜를 다이닝 날짜로 설정
       // URL에 이미 diningDate가 있으면 유지, 없으면 체크인 날짜 사용, 둘 다 없으면 오늘 날짜
       const diningDate =
         urlParams.get("diningDate") ||
         localSearchParams.diningDate ||
-        localSearchParams.checkIn ||
+        currentCheckIn ||
         new Date().toISOString().split("T")[0];
       urlParams.set("diningDate", diningDate);
       urlParams.delete("checkIn");
@@ -1084,25 +1144,46 @@ const HotelSearchPageContent = () => {
       urlParams.delete("diningMode");
       urlParams.delete("diningDate");
       // 호텔 모드로 변경 시 체크인/체크아웃 설정
+      // 보존된 값 > 스토어 값 > URL 순서로 우선순위 적용 (기본값 없음)
       const checkInDate =
-        localSearchParams.checkIn ||
-        urlParams.get("checkIn") ||
-        new Date().toISOString().split("T")[0];
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
+        (savedHotelDatesRef.current.checkIn && savedHotelDatesRef.current.checkIn.trim() !== "") 
+          ? savedHotelDatesRef.current.checkIn
+          : (localSearchParams.checkIn && localSearchParams.checkIn.trim() !== "")
+          ? localSearchParams.checkIn
+          : urlParams.get("checkIn") || "";
+      
       const checkOutDate =
-        localSearchParams.checkOut ||
-        urlParams.get("checkOut") ||
-        tomorrow.toISOString().split("T")[0];
+        (savedHotelDatesRef.current.checkOut && savedHotelDatesRef.current.checkOut.trim() !== "")
+          ? savedHotelDatesRef.current.checkOut
+          : (localSearchParams.checkOut && localSearchParams.checkOut.trim() !== "")
+          ? localSearchParams.checkOut
+          : urlParams.get("checkOut") || "";
 
-      urlParams.set("checkIn", checkInDate);
-      urlParams.set("checkOut", checkOutDate);
+      // 값이 있을 때만 스토어와 URL에 설정
+      if (checkInDate && checkOutDate) {
+        // 스토어에 먼저 저장 (URL 업데이트 전에)
+        updateSearchParams({
+          checkIn: checkInDate,
+          checkOut: checkOutDate,
+        });
+
+        urlParams.set("checkIn", checkInDate);
+        urlParams.set("checkOut", checkOutDate);
+      } else {
+        // 값이 없으면 URL에서 삭제하고 스토어도 빈 값으로 설정
+        urlParams.delete("checkIn");
+        urlParams.delete("checkOut");
+        updateSearchParams({
+          checkIn: "",
+          checkOut: "",
+        });
+      }
     }
     router.replace(`?${urlParams.toString()}`, {
       scroll: false,
       shallow: true,
     });
-  }, [isDiningMode, searchParams, router, localSearchParams]);
+  }, [isDiningMode, searchParams, router, localSearchParams, updateSearchParams]);
 
   // URL에서 다이닝 모드 동기화
   useEffect(() => {
@@ -1181,7 +1262,7 @@ const HotelSearchPageContent = () => {
 
                 {/* 날짜 선택 컴포넌트 */}
                 {isDatePickerOpen && (
-                  <div className="absolute top-full left-0 z-50 mt-1 w-full">
+                  <div className="absolute top-full left-0 z-[9999] mt-1 w-full">
                     <SearchCondition
                       isOpen={isDatePickerOpen}
                       onClose={() => setIsDatePickerOpen(false)}
@@ -1236,9 +1317,38 @@ const HotelSearchPageContent = () => {
             <div className="flex w-full items-center gap-2 sm:gap-3 lg:ml-auto lg:w-auto lg:flex-nowrap">
               <button
                 onClick={handleFilterSearch}
-                className="flex h-11 flex-none items-center justify-center rounded-md bg-blue-500 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-600 w-[106px]"
+                disabled={isSearching}
+                className={`flex h-11 flex-none items-center justify-center gap-2 rounded-md bg-blue-500 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isSearching ? "min-w-[120px]" : "w-[106px]"
+                }`}
               >
-                검색
+                {isSearching ? (
+                  <>
+                    <svg
+                      className="animate-spin h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    <span>검색 중...</span>
+                  </>
+                ) : (
+                  "검색"
+                )}
               </button>
 
               <div className="flex flex-1 items-center gap-2 sm:gap-2 lg:w-auto lg:flex-none lg:justify-end">
@@ -1281,7 +1391,37 @@ const HotelSearchPageContent = () => {
       {/* 메인 컨텐츠 - 좌우 분할 */}
       <div className="flex flex-1 relative overflow-hidden">
         {/* 좌측: 호텔 검색 결과 (그리드) */}
-        <div className="flex-1 lg:w-[20%] overflow-y-auto">
+        <div className="flex-1 lg:w-[20%] overflow-y-auto relative">
+          {/* 검색 중 로딩 오버레이 */}
+          {isSearching && (
+            <div className="absolute inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <svg
+                  className="animate-spin h-12 w-12 text-blue-500"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                <p className="text-sm font-medium text-gray-700">
+                  호텔 검색 중...
+                </p>
+              </div>
+            </div>
+          )}
           <div className="p-4">
             <HotelSearchResults
               hotels={currentPageHotels}
