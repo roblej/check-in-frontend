@@ -16,6 +16,10 @@ const CustomerHistoryContent = () => {
     totalHistoryCount: 0
   });
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   
   // 필터 상태 - 초기값을 쿼리 파라미터에서 가져오기
   const [customerIdSearch, setCustomerIdSearch] = useState(() => {
@@ -29,8 +33,9 @@ const CustomerHistoryContent = () => {
 
   const didFetchStats = useRef(false);
   const hasInitialLoad = useRef(false);
+  const lastFetchedPageRef = useRef(null);
 
-  const fetchCustomerHistory = async () => {
+  const fetchCustomerHistory = async (page = currentPage) => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -47,10 +52,15 @@ const CustomerHistoryContent = () => {
         params.append('rating', ratingFilter);
       }
 
+      params.append('page', page);
+      params.append('size', pageSize);
+
       const response = await axiosInstance.get(`/admin/customerHistory?${params.toString()}`);
       if (response.data.success) {
-        setHistory(response.data.history || []);
-        setFilteredHistory(response.data.history || []);
+        setHistory(response.data.content || []);
+        setFilteredHistory(response.data.content || []);
+        setTotalPages(response.data.totalPages || 0);
+        setTotalElements(response.data.totalElements || 0);
       }
     } catch (error) {
       console.error('고객 이용 이력 조회 오류:', error);
@@ -60,7 +70,13 @@ const CustomerHistoryContent = () => {
   };
 
   const handleSearch = () => {
-    fetchCustomerHistory();
+    setCurrentPage(0);
+    fetchCustomerHistory(0);
+  };
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    fetchCustomerHistory(newPage);
   };
 
   const handleKeyDown = (e) => {
@@ -95,14 +111,23 @@ const CustomerHistoryContent = () => {
       const initialCustomerId = searchParams.get('customerId');
       if (initialCustomerId) {
         // 쿼리 파라미터가 있으면 초기 검색 실행
-        fetchCustomerHistory();
+        fetchCustomerHistory(0);
       } else {
         // 쿼리 파라미터가 없으면 전체 데이터 조회
-        fetchCustomerHistory();
+        fetchCustomerHistory(0);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 페이지 변경 시 데이터 다시 로드
+  useEffect(() => {
+    if (hasInitialLoad.current && lastFetchedPageRef.current !== currentPage) {
+      lastFetchedPageRef.current = currentPage;
+      fetchCustomerHistory(currentPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
 
   useEffect(() => {
     fetchCustomerHistoryStats();
@@ -450,10 +475,60 @@ const CustomerHistoryContent = () => {
           )}
         </div>
 
+        {/* 페이지네이션 */}
+        {totalPages > 1 && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                총 {totalElements}개 중 {currentPage * pageSize + 1}-{Math.min((currentPage + 1) * pageSize, totalElements)}개 표시
+              </div>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 0}
+                  className={`px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 ${currentPage === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  이전
+                </button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i;
+                  } else if (currentPage < 3) {
+                    pageNum = i;
+                  } else if (currentPage > totalPages - 4) {
+                    pageNum = totalPages - 5 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <button 
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-1 text-sm border border-gray-300 rounded ${
+                        currentPage === pageNum ? 'bg-[#3B82F6] text-white' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum + 1}
+                    </button>
+                  );
+                })}
+                <button 
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages - 1}
+                  className={`px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 ${currentPage >= totalPages - 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  다음
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 결과 개수 표시 */}
-        {filteredHistory.length > 0 && (
+        {filteredHistory.length > 0 && totalPages <= 1 && (
           <div className="text-center text-sm text-gray-500">
-            총 {filteredHistory.length}개의 이용 이력이 있습니다.
+            총 {totalElements}개의 이용 이력이 있습니다.
           </div>
         )}
       </div>
