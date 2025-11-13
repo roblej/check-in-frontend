@@ -30,7 +30,7 @@ const LiveViewerPanel = ({ contentId }) => {
         const response = await hotelAPI.getHotelViews(contentId, sessionId);
         return response?.data?.views ?? response ?? 0;
       } catch (err) {
-        console.warn("조회수 조회 실패 (무시됨):", err.message);
+        //조회수 조회 실패 무시됨
         return 0;
       }
     },

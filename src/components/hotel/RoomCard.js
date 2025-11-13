@@ -197,7 +197,7 @@ const RoomCard = ({ room, searchParams, formatPrice, isModal = false }) => {
       setPaymentDraft(reservationData);
       router.push("/reservation");
     } catch (error) {
-      console.error("예약 락 생성 실패:", error);
+      //예약 락 실패
       if (error?.response?.status === 401) {
         const shouldLogin = confirm(
           "로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?"

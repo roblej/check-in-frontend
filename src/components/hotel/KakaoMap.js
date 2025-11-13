@@ -43,8 +43,8 @@ const KakaoMap = ({ address, width = "100%", height = "300px" }) => {
           });
         };
 
-        script.onerror = (error) => {
-          console.error("카카오 지도 스크립트 로드 실패:", error);
+        script.onerror = (e) => {
+          //카카오 지도 스크립트 로드 실패
           setError("카카오 지도 API를 불러올 수 없습니다.");
         };
 
@@ -154,7 +154,7 @@ const KakaoMap = ({ address, width = "100%", height = "300px" }) => {
           }
         });
       } catch (err) {
-        console.error("지도 초기화 오류:", err);
+        //지도 초기화 오류
         setError("지도를 불러올 수 없습니다.");
       }
     };
