@@ -2,16 +2,24 @@
 
 import { useState, useEffect } from 'react';
 
-const HotelFilters = ({ filters, onFilterChange, onReset }) => {
-  const [localPriceMin, setLocalPriceMin] = useState(filters.priceMin);
-  const [localPriceMax, setLocalPriceMax] = useState(filters.priceMax);
-  const [priceRange, setPriceRange] = useState([filters.priceMin, filters.priceMax]);
+const HotelFilters = ({ filters, onFilterChange, onReset, onLocalFilterChange }) => {
+  // 로컬 필터 상태 (실제 적용 전까지 임시 저장)
+  const [localFilters, setLocalFilters] = useState({
+    priceMin: filters.priceMin,
+    priceMax: filters.priceMax,
+    starRatings: [...filters.starRatings],
+    amenities: [...filters.amenities],
+  });
 
+  // 외부 필터가 변경되면 로컬 필터도 동기화
   useEffect(() => {
-    setLocalPriceMin(filters.priceMin);
-    setLocalPriceMax(filters.priceMax);
-    setPriceRange([filters.priceMin, filters.priceMax]);
-  }, [filters.priceMin, filters.priceMax]);
+    setLocalFilters({
+      priceMin: filters.priceMin,
+      priceMax: filters.priceMax,
+      starRatings: [...filters.starRatings],
+      amenities: [...filters.amenities],
+    });
+  }, [filters.priceMin, filters.priceMax, filters.starRatings, filters.amenities]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("ko-KR").format(price);
@@ -19,46 +27,65 @@ const HotelFilters = ({ filters, onFilterChange, onReset }) => {
 
   const handlePriceMinChange = (value) => {
     const numValue = parseInt(value) || 0;
-    const newMin = Math.min(numValue, filters.priceMax);
-    setLocalPriceMin(newMin);
-    setPriceRange([newMin, filters.priceMax]);
-    onFilterChange({ priceMin: newMin });
+    const newMin = Math.min(numValue, localFilters.priceMax);
+    const newFilters = { ...localFilters, priceMin: newMin };
+    setLocalFilters(newFilters);
+    // 로컬 필터 변경만 알림 (실제 적용은 아님)
+    if (onLocalFilterChange) {
+      onLocalFilterChange(newFilters);
+    }
   };
 
   const handlePriceMaxChange = (value) => {
     const numValue = parseInt(value) || 500000;
-    const newMax = Math.max(numValue, filters.priceMin);
-    setLocalPriceMax(newMax);
-    setPriceRange([filters.priceMin, newMax]);
-    onFilterChange({ priceMax: newMax });
+    const newMax = Math.max(numValue, localFilters.priceMin);
+    const newFilters = { ...localFilters, priceMax: newMax };
+    setLocalFilters(newFilters);
+    // 로컬 필터 변경만 알림 (실제 적용은 아님)
+    if (onLocalFilterChange) {
+      onLocalFilterChange(newFilters);
+    }
   };
 
   const handleRangeChange = (e) => {
     const value = parseInt(e.target.value);
-    setPriceRange([filters.priceMin, value]);
-    setLocalPriceMax(value);
-    onFilterChange({ priceMax: value });
+    const newFilters = { ...localFilters, priceMax: value };
+    setLocalFilters(newFilters);
+    // 로컬 필터 변경만 알림 (실제 적용은 아님)
+    if (onLocalFilterChange) {
+      onLocalFilterChange(newFilters);
+    }
   };
 
   const handleStarRatingToggle = (rating) => {
-    const newRatings = filters.starRatings.includes(rating)
-      ? filters.starRatings.filter((r) => r !== rating)
-      : [...filters.starRatings, rating];
-    onFilterChange({ starRatings: newRatings });
+    const newRatings = localFilters.starRatings.includes(rating)
+      ? localFilters.starRatings.filter((r) => r !== rating)
+      : [...localFilters.starRatings, rating];
+    const newFilters = { ...localFilters, starRatings: newRatings };
+    setLocalFilters(newFilters);
+    // 로컬 필터 변경만 알림 (실제 적용은 아님)
+    if (onLocalFilterChange) {
+      onLocalFilterChange(newFilters);
+    }
   };
 
   const handleAmenityToggle = (amenity) => {
-    const newAmenities = filters.amenities.includes(amenity)
-      ? filters.amenities.filter((a) => a !== amenity)
-      : [...filters.amenities, amenity];
-    onFilterChange({ amenities: newAmenities });
+    const newAmenities = localFilters.amenities.includes(amenity)
+      ? localFilters.amenities.filter((a) => a !== amenity)
+      : [...localFilters.amenities, amenity];
+    const newFilters = { ...localFilters, amenities: newAmenities };
+    setLocalFilters(newFilters);
+    // 로컬 필터 변경만 알림 (실제 적용은 아님)
+    if (onLocalFilterChange) {
+      onLocalFilterChange(newFilters);
+    }
   };
 
   const hasActiveFilters = 
-    filters.priceMin > 0 || 
-    filters.priceMax < 500000 || 
-    filters.starRatings.length > 0 || 
-    filters.amenities.length > 0;
+    localFilters.priceMin > 0 || 
+    localFilters.priceMax < 500000 || 
+    localFilters.starRatings.length > 0 || 
+    localFilters.amenities.length > 0;
 
   return (
     <>
@@ -80,19 +107,19 @@ const HotelFilters = ({ filters, onFilterChange, onReset }) => {
             type="number"
             className="w-28 px-3 py-2 border rounded text-sm"
             placeholder="최소"
-            value={localPriceMin}
+            value={localFilters.priceMin}
             onChange={(e) => handlePriceMinChange(e.target.value)}
             min="0"
-            max={filters.priceMax}
+            max={localFilters.priceMax}
           />
           <span>~</span>
           <input
             type="number"
             className="w-28 px-3 py-2 border rounded text-sm"
             placeholder="최대"
-            value={localPriceMax}
+            value={localFilters.priceMax}
             onChange={(e) => handlePriceMaxChange(e.target.value)}
-            min={filters.priceMin}
+            min={localFilters.priceMin}
             max="500000"
           />
         </div>
@@ -101,13 +128,13 @@ const HotelFilters = ({ filters, onFilterChange, onReset }) => {
           min="0"
           max="500000"
           step="10000"
-          value={priceRange[1]}
+          value={localFilters.priceMax}
           onChange={handleRangeChange}
           className="w-full slider accent-blue-500"
         />
         <div className="flex justify-between text-xs text-gray-500 mt-1">
-          <span>₩{formatPrice(priceRange[0])}</span>
-          <span>₩{formatPrice(priceRange[1])}</span>
+          <span>₩{formatPrice(localFilters.priceMin)}</span>
+          <span>₩{formatPrice(localFilters.priceMax)}</span>
         </div>
       </div>
 
@@ -123,7 +150,7 @@ const HotelFilters = ({ filters, onFilterChange, onReset }) => {
               <input
                 type="checkbox"
                 className="rounded w-4 h-4 accent-blue-500"
-                checked={filters.starRatings.includes(rating)}
+                checked={localFilters.starRatings.includes(rating)}
                 onChange={() => handleStarRatingToggle(rating)}
               />
               <span className="flex items-center">
@@ -149,7 +176,7 @@ const HotelFilters = ({ filters, onFilterChange, onReset }) => {
               <input
                 type="checkbox"
                 className="rounded w-4 h-4 accent-blue-500"
-                checked={filters.amenities.includes(amenity)}
+                checked={localFilters.amenities.includes(amenity)}
                 onChange={() => handleAmenityToggle(amenity)}
               />
               <span className="text-sm">{amenity}</span>

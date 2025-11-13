@@ -14,14 +14,15 @@ const CouponBatchManagement = () => {
   const [rankCounts, setRankCounts] = useState({});
   const [rankCountsLoading, setRankCountsLoading] = useState(true);
 
-  const ranks = ['Explorer', 'First Class', 'Sky Suite', 'Traveler', 'VIP'];
+  const ranks = ['Traveler', 'Explorer', 'VIP', 'First Class', 'Sky Suite'];
 
   // 템플릿 목록 조회
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
         setTemplatesLoading(true);
-        const response = await axiosInstance.get('/master/couponTemplates');
+        // type=1인 템플릿만 조회 (단체 발급형식)
+        const response = await axiosInstance.get('/master/couponTemplates?type=1');
         if (response.data) {
           setTemplates(response.data);
         }

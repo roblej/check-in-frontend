@@ -32,10 +32,18 @@ const AdminDashboard = () => {
       // 쿠키가 자동으로 전송됨 (withCredentials: true)
       const response = await axiosInstance.get(api_url);
       
-      // 403 Forbidden 응답이고 redirect 플래그가 있으면 메인 화면으로 리다이렉트
+      // 403 Forbidden 응답이고 redirect 플래그가 있으면 리다이렉트 타입에 따라 이동
       if (response.status === 403 || (response.data && response.data.redirect)) {
-        alert(response.data?.message || '호텔이 등록되지 않은 관리자입니다.');
-        router.push('/');
+        const redirectType = response.data?.redirectType;
+        
+        if (redirectType === 'PENDING_APPROVAL') {
+          // 승인 대기 중인 경우
+          router.push('/admin/pending-approval');
+        } else {
+          // 호텔 미등록인 경우
+          alert(response.data?.message || '호텔이 등록되지 않은 관리자입니다.');
+          router.push('/');
+        }
         return;
       }
       
@@ -49,10 +57,18 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('대시보드 데이터 로드 실패:', error);
       
-      // 403 Forbidden 에러인 경우 메인 화면으로 리다이렉트
+      // 403 Forbidden 에러인 경우 리다이렉트 타입에 따라 이동
       if (error.response?.status === 403 || error.response?.data?.redirect) {
-        alert(error.response?.data?.message || '호텔이 등록되지 않은 관리자입니다.');
-        router.push('/');
+        const redirectType = error.response?.data?.redirectType;
+        
+        if (redirectType === 'PENDING_APPROVAL') {
+          // 승인 대기 중인 경우
+          router.push('/admin/pending-approval');
+        } else {
+          // 호텔 미등록인 경우
+          alert(error.response?.data?.message || '호텔이 등록되지 않은 관리자입니다.');
+          router.push('/');
+        }
         return;
       }
     }

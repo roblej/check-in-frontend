@@ -15,7 +15,7 @@ import {
 import RecentHotelListCard from '../components/recent/RecentHotelListCard';
 
 const FETCH_SIZE = 100;
-const PAGE_SIZE = 3;
+const PAGE_SIZE = 10;
 
 const SectionHeader = ({ totalCount }) => (
   <div className="space-y-3">
@@ -166,18 +166,7 @@ function RecentHotelsContent() {
   return (
     <main className="bg-gray-50 min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-4 py-12 space-y-4">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <SectionHeader totalCount={totalElements} />
-          {totalElements > 0 && (
-            <button
-              type="button"
-              onClick={handleClearAll}
-              className="self-start rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100 md:self-auto"
-            >
-              전체 삭제
-            </button>
-          )}
-        </div>
+        <SectionHeader totalCount={totalElements} />
 
         {isLoading ? (
           <div className="rounded-3xl border border-gray-200 bg-white py-16 text-center text-gray-500">
@@ -187,14 +176,27 @@ function RecentHotelsContent() {
           <EmptyState />
         ) : (
           <>
-            <div className="space-y-4 pt-2">
-              {paginatedHotels.map((hotel) => (
-                <RecentHotelListCard
-                  key={hotel?.recentViewedIdx || hotel?.contentId}
-                  item={hotel}
-                  onDelete={handleDelete}
-                />
-              ))}
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                {totalElements > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100"
+                  >
+                    전체 삭제
+                  </button>
+                )}
+              </div>
+              <div className="space-y-4">
+                {paginatedHotels.map((hotel) => (
+                  <RecentHotelListCard
+                    key={hotel?.recentViewedIdx || hotel?.contentId}
+                    item={hotel}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
             </div>
             <div className="flex justify-center pt-6">
             <Pagination

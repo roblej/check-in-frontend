@@ -14,7 +14,9 @@ const HotelRegistrationClient = ({ initialData }) => {
     // 기본 정보
     hotelInfo: {
       title: "",
-      adress: "",
+      adress: "", // 하위 호환성 유지
+      baseAddress: "", // 도로명 주소
+      detailAddress: "", // 상세 주소
       phone: "",
       imageUrl: "", // 대표 이미지 URL
       latitude: "", // 위도 (mapY)
@@ -49,11 +51,13 @@ const HotelRegistrationClient = ({ initialData }) => {
     let totalFields = 0;
 
     // 기본 정보 체크
-    const basicFields = ['title', 'adress', 'phone'];
-    basicFields.forEach(field => {
-      totalFields++;
-      if (formData.hotelInfo[field]) completedFields++;
-    });
+    // 주소는 baseAddress 또는 adress로 확인 (하위 호환성)
+    totalFields++;
+    if (formData.hotelInfo.title) completedFields++;
+    totalFields++;
+    if (formData.hotelInfo.baseAddress || formData.hotelInfo.adress) completedFields++;
+    totalFields++;
+    if (formData.hotelInfo.phone) completedFields++;
 
     // 객실 정보 체크
     if (formData.rooms.length > 0) {
@@ -256,7 +260,8 @@ const HotelRegistrationClient = ({ initialData }) => {
     if (!formData.hotelInfo.title) {
       newErrors.title = "호텔명을 입력해주세요";
     }
-    if (!formData.hotelInfo.adress) {
+    // 주소 검증: baseAddress가 있으면 주소가 입력된 것으로 간주 (하위 호환성을 위해 adress도 확인)
+    if (!formData.hotelInfo.baseAddress && !formData.hotelInfo.adress) {
       newErrors.adress = "주소를 입력해주세요";
     }
     if (!formData.hotelInfo.phone) {

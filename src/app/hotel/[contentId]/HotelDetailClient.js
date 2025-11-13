@@ -31,6 +31,7 @@ const HotelDetailClient = ({ contentId, searchParams: serverSearchParams }) => {
           checkOut: serverSearchParams.checkOut || "",
           nights: parseInt(serverSearchParams.nights || "1"),
           adults: parseInt(serverSearchParams.adults || "2"),
+          roomIdx: serverSearchParams.roomIdx ? parseInt(serverSearchParams.roomIdx) : undefined,
         };
       }
     }
@@ -110,12 +111,14 @@ const HotelDetailClient = ({ contentId, searchParams: serverSearchParams }) => {
 
     // URL에 날짜가 있으면 사용
     if (!hasLocalDates && hasUrlDates) {
+      const urlRoomIdx = clientSearchParams?.get("roomIdx");
       const urlParams = {
         destination: clientSearchParams?.get("destination") || "",
         checkIn: urlCheckIn || "",
         checkOut: urlCheckOut || "",
         nights: parseInt(clientSearchParams?.get("nights") || "1"),
         adults: parseInt(clientSearchParams?.get("adults") || "2"),
+        roomIdx: urlRoomIdx ? parseInt(urlRoomIdx) : undefined,
       };
       setLocalSearchParams(urlParams);
       setHasInitializedFromStore(true);
@@ -153,13 +156,15 @@ const HotelDetailClient = ({ contentId, searchParams: serverSearchParams }) => {
     (newParams) => {
       setLocalSearchParams(newParams);
 
-      // 호텔별 로컬스토리지에 저장
+      // 호텔별 로컬스토리지에 저장 (roomIdx는 제외 - 중고거래 전용)
       if (
         typeof window !== "undefined" &&
         (newParams.checkIn || newParams.checkOut)
       ) {
         try {
-          localStorage.setItem(hotelStorageKey, JSON.stringify(newParams));
+          // roomIdx를 제외한 검색 조건만 저장
+          const { roomIdx, ...paramsToSave } = newParams;
+          localStorage.setItem(hotelStorageKey, JSON.stringify(paramsToSave));
         } catch (e) {
           //호텔별 검색 조건 저장 실패시
         }
@@ -177,25 +182,30 @@ const HotelDetailClient = ({ contentId, searchParams: serverSearchParams }) => {
 
     // URL에 날짜가 있고, 현재 로컬 값과 다르면 업데이트
     if (hasUrlDates) {
+      const urlRoomIdx = clientSearchParams?.get("roomIdx");
       const newParams = {
         destination: clientSearchParams?.get("destination") || "",
         checkIn: urlCheckIn || "",
         checkOut: urlCheckOut || "",
         nights: parseInt(clientSearchParams?.get("nights") || "1"),
         adults: parseInt(clientSearchParams?.get("adults") || "2"),
+        roomIdx: urlRoomIdx ? parseInt(urlRoomIdx) : undefined,
       };
 
       // 값이 변경된 경우에만 업데이트
       if (
         localSearchParams.checkIn !== newParams.checkIn ||
-        localSearchParams.checkOut !== newParams.checkOut
+        localSearchParams.checkOut !== newParams.checkOut ||
+        localSearchParams.roomIdx !== newParams.roomIdx
       ) {
         setLocalSearchParams(newParams);
         setHasInitializedFromStore(true);
-        // URL에서 온 경우에도 로컬스토리지에 저장
+        // URL에서 온 경우에도 로컬스토리지에 저장 (roomIdx는 제외 - 중고거래 전용)
         if (typeof window !== "undefined") {
           try {
-            localStorage.setItem(hotelStorageKey, JSON.stringify(newParams));
+            // roomIdx를 제외한 검색 조건만 저장
+            const { roomIdx, ...paramsToSave } = newParams;
+            localStorage.setItem(hotelStorageKey, JSON.stringify(paramsToSave));
           } catch (e) {
             //호텔별 검색 조건 저장 실패시
           }
@@ -207,6 +217,7 @@ const HotelDetailClient = ({ contentId, searchParams: serverSearchParams }) => {
     hotelStorageKey,
     localSearchParams.checkIn,
     localSearchParams.checkOut,
+    localSearchParams.roomIdx,
   ]);
 
   return (

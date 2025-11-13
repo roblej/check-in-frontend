@@ -394,10 +394,6 @@ const UsedPaymentSuccessContent = () => {
                 <span className="font-medium text-blue-600">{successData.orderId || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">거래번호:</span>
-                <span className="font-medium text-blue-600">{successData.tradeIdx || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-gray-600">총 결제금액:</span>
                 <span className="font-bold text-lg text-blue-600">{successData.amount.toLocaleString()}원</span>
               </div>

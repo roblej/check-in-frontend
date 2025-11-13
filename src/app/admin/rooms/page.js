@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useState, Suspense, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { CheckCircle, Building2, Sparkles, X, Calendar, ToggleLeft, ToggleRight, AlertCircle } from 'lucide-react';
+import { CheckCircle, Building2, Sparkles, X, Calendar, AlertCircle } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
 const RoomsInner = () => {
   const roomList_url = "/admin/roomList";
   const searchParams = useSearchParams();
+  const router = useRouter();
   const selectedDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
   const [roomStatusList, setRoomStatusList] = useState([]);
@@ -73,29 +74,16 @@ const RoomsInner = () => {
     setShowDetailModal(true);
   };
 
-  const handleStatusToggle = async (room, newStatus) => {
-    const statusText = newStatus === 1 ? '사용 가능' : '사용 불가';
-    if (!confirm(`${room.name}(${room.roomIdx}호)을(를) ${statusText}로 변경하시겠습니까?`)) {
-      return;
-    }
 
-    try {
-      const response = await axiosInstance.post('/admin/roomStatus', {
-        roomIdx: room.roomIdx,
-        status: newStatus
-      });
-
-      if (response.data.success) {
-        alert(`${room.name}의 상태가 ${statusText}로 변경되었습니다.`);
-        // 상태 변경 후 목록 새로고침
-        fetchRoomStatus();
-      } else {
-        alert('상태 변경에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('상태 변경 오류:', error);
-      alert('상태 변경 중 오류가 발생했습니다.');
-    }
+  const handleDateChange = (newDate) => {
+    // URL 쿼리 파라미터 업데이트
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('date', newDate);
+    router.push(`/admin/rooms?${params.toString()}`);
+    
+    // 날짜 변경 시 데이터 다시 조회를 위해 ref 초기화
+    didFetch.current = false;
+    lastFetchedDateRef.current = null;
   };
 
   return (
@@ -103,12 +91,27 @@ const RoomsInner = () => {
       <div className="space-y-6 p-6">
         {/* 페이지 헤더 */}
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <h2 className="text-2xl font-bold text-gray-900">객실 현황</h2>
-            <span className="inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800">
-              <Calendar className="w-4 h-4 mr-1" />
-              {selectedDate}
-            </span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-gray-900">객실 현황</h2>
+              <span className="inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800">
+                <Calendar className="w-4 h-4 mr-1" />
+                {selectedDate}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="date-select" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                날짜 선택:
+              </label>
+              <input
+                id="date-select"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => handleDateChange(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              />
+            </div>
           </div>
           <p className="text-gray-600">해당 날짜 기준 객실 현황을 확인하세요</p>
         </div>
@@ -152,7 +155,7 @@ const RoomsInner = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {roomStatusList.map((room) => (
-              <div key={`${room.roomIdx}-${room.contentId}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+              <div key={`${room.roomIdx}-${room.contentId}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow flex flex-col">
                 {/* 객실 번호 및 상태 */}
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-gray-900">{room.name}</h3>
@@ -173,10 +176,6 @@ const RoomsInner = () => {
                 {/* 객실 정보 */}
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">객실 번호:</span>
-                    <span className="text-sm font-medium text-gray-900">{room.roomIdx}호</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-sm text-gray-600">수용인원:</span>
                     <span className="text-sm font-medium text-gray-900">{room.capacity}명</span>
                   </div>
@@ -187,50 +186,30 @@ const RoomsInner = () => {
                 </div>
 
                 {/* 예약 정보 */}
-                {room.hasReservation && room.customerName && (
-                  <div className="border-t border-gray-200 pt-3 mb-4">
-                    <div className="text-sm text-gray-600 mb-1">예약 고객</div>
-                    <div className="text-sm font-medium text-gray-900 mb-2">{room.customerName}</div>
-                    {room.guest && (
-                      <div className="text-sm text-gray-600">
-                        예약 인원: <span className="font-medium text-gray-900">{room.guest}명</span>
-                      </div>
-                    )}
+                <div className="border-t border-gray-200 pt-3 mb-4">
+                  <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg mb-2">
+                    <div className="text-sm text-gray-600">
+                      예약 고객: <span className="font-medium text-gray-900">
+                        {room.hasReservation && room.customerName ? room.customerName : '예약없음'}
+                      </span>
+                    </div>
                   </div>
-                )}
-
-                {/* 빠른 상태 변경 */}
-                <div className="mb-3 p-2 bg-gray-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-gray-600">객실 상태</span>
-                    <button
-                      onClick={() => handleStatusToggle(room, room.status === 1 ? 0 : 1)}
-                      className="flex items-center gap-1 text-xs font-medium transition-colors"
-                      title={room.status === 1 ? '사용 불가로 변경' : '사용 가능으로 변경'}
-                    >
-                      {room.status === 1 ? (
-                        <>
-                          <ToggleRight className="w-4 h-4 text-green-600" />
-                          <span className="text-green-600">사용 가능</span>
-                        </>
-                      ) : (
-                        <>
-                          <ToggleLeft className="w-4 h-4 text-red-600" />
-                          <span className="text-red-600">사용 불가</span>
-                        </>
-                      )}
-                    </button>
+                  <div className="text-sm text-gray-600">
+                    예약 인원: <span className="font-medium text-gray-900">
+                      {room.hasReservation && room.guest ? `${room.guest}명` : '-'}
+                    </span>
                   </div>
-                  <p className="text-xs text-gray-500">클릭하여 상태 변경</p>
                 </div>
 
-                {/* 액션 버튼 */}
-                <button 
-                  onClick={() => handleDetailClick(room)}
-                  className="w-full bg-[#3B82F6] text-white py-2 px-3 rounded text-sm hover:bg-blue-600 transition-colors"
-                >
-                  상세보기
-                </button>
+                {/* 하단 고정 영역 (상세보기) */}
+                <div className="mt-auto">
+                  <button 
+                    onClick={() => handleDetailClick(room)}
+                    className="w-full bg-[#3B82F6] text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                  >
+                    상세보기
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -274,7 +253,11 @@ const RoomDetailModal = ({ room, onClose, onStatusChanged }) => {
 
   const handleStatusToggle = async (newStatus) => {
     const statusText = newStatus === 1 ? '사용 가능' : '사용 불가';
-    if (!confirm(`${room.name}(${room.roomIdx}호)을(를) ${statusText}로 변경하시겠습니까?`)) {
+    const confirmMessage = newStatus === 0 
+      ? `${room.name}(${room.roomIdx}호)을(를) 영구적으로 사용 불가로 설정하시겠습니까?\n\n※ 이 설정은 모든 날짜에 적용되며, 객실 운영 상태가 변경됩니다.`
+      : `${room.name}(${room.roomIdx}호)을(를) 사용 가능으로 변경하시겠습니까?`;
+    
+    if (!confirm(confirmMessage)) {
       return;
     }
 
@@ -374,7 +357,9 @@ const RoomDetailModal = ({ room, onClose, onStatusChanged }) => {
                   {isUpdating ? '변경 중...' : currentStatus === 1 ? '사용 불가로 변경' : '사용 가능으로 변경'}
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-2">객실의 사용 가능 여부를 변경할 수 있습니다.</p>
+              <p className="text-xs text-gray-500 mt-2">
+                객실의 영구적인 사용 가능 여부를 변경할 수 있습니다. 이 설정은 모든 날짜에 적용됩니다.
+              </p>
             </div>
 
             {/* 예약 정보 섹션 */}

@@ -73,7 +73,7 @@ const Pagination = ({
           className={`px-2 py-1 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
             currentPage === 0
               ? 'text-gray-400 cursor-not-allowed'
-              : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50'
+              : 'text-gray-600 hover:text-[#3B82F6] hover:bg-blue-50'
           }`}
         >
           이전
@@ -86,8 +86,8 @@ const Pagination = ({
             onClick={() => onPageChange(pageNum)}
             className={`px-2 py-1 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
               pageNum === currentPage
-                ? 'bg-orange-600 text-white'
-                : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50'
+                ? 'bg-[#3B82F6] text-white'
+                : 'text-gray-600 hover:text-[#3B82F6] hover:bg-blue-50'
             }`}
           >
             {pageNum + 1}
@@ -101,7 +101,7 @@ const Pagination = ({
           className={`px-2 py-1 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
             currentPage === totalPages - 1
               ? 'text-gray-400 cursor-not-allowed'
-              : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50'
+              : 'text-gray-600 hover:text-[#3B82F6] hover:bg-blue-50'
           }`}
         >
           다음
@@ -117,7 +117,7 @@ const Pagination = ({
           className={`px-2 py-1 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
             currentPage === 0
               ? 'text-gray-400 cursor-not-allowed'
-              : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50'
+              : 'text-gray-600 hover:text-[#3B82F6] hover:bg-blue-50'
           }`}
         >
           처음
@@ -148,7 +148,7 @@ const Pagination = ({
           className={`px-2 py-1 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
             currentPage === totalPages - 1
               ? 'text-gray-400 cursor-not-allowed'
-              : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50'
+              : 'text-gray-600 hover:text-[#3B82F6] hover:bg-blue-50'
           }`}
         >
           마지막

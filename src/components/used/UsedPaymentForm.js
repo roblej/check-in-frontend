@@ -18,8 +18,13 @@ const UsedPaymentForm = ({ initialData }) => {
   const isPaymentCompletedRef = useRef(false); // 결제 완료 여부 ref (동기적 접근용)
   const isUnloadingRef = useRef(false); // 새로고침 여부 추적
   const hasCancelledRef = useRef(false); // 이미 취소 요청을 보냈는지 추적
+  const hasUnlockedRef = useRef(false); // 이미 unlock 요청을 보냈는지 추적 (중복 방지)
+  const isMountedRef = useRef(false); // 마운트 완료 여부 (StrictMode 구분용)
+  const lockCreatedRef = useRef(false); // 락 생성 완료 여부 (cleanup에서 unlock 방지용)
   const beforeUnloadHandlerRef = useRef(null); // beforeunload 핸들러 참조
   const visibilityChangeHandlerRef = useRef(null); // visibilitychange 핸들러 참조
+  const lockKeyRef = useRef(null); // 락 키 저장 (unlock용)
+  const isBackButtonRef = useRef(false); // 뒤로가기 감지용 ref
 
   // 사용자 정보 로드
   useEffect(() => {
@@ -241,11 +246,47 @@ const UsedPaymentForm = ({ initialData }) => {
     }
   }, []); // ref를 사용하므로 dependency 불필요
 
-  // 페이지 이탈 시 거래 취소 로직
+  // 락 해제 함수 (sendBeacon 사용 - 새로고침 시에도 전송 보장)
+  const sendUnlockBeacon = useCallback((usedTradeIdx, buyerIdx = null) => {
+    if (!usedTradeIdx) return;
+
+    const payload = JSON.stringify({
+      usedTradeIdx: usedTradeIdx,
+      buyerIdx: buyerIdx || customer?.customerIdx || null,
+    });
+
+    const baseUrl =
+      process.env.NEXT_PUBLIC_FRONT_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      (typeof window !== "undefined"
+        ? window.location.origin
+        : "http://localhost:8888");
+    const apiUrl = `${baseUrl}/api/used/trade/${usedTradeIdx}/unlock`;
+
+    if (navigator.sendBeacon) {
+      const blob = new Blob([payload], { type: "application/json" });
+      navigator.sendBeacon(apiUrl, blob);
+      console.log("📡 sendBeacon으로 unlock 전송:", { usedTradeIdx, buyerIdx });
+    } else {
+      // Beacon 미지원 브라우저는 동기 XHR
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", apiUrl, false);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send(payload);
+      console.log("📡 XHR로 unlock 전송:", { usedTradeIdx, buyerIdx });
+    }
+  }, [customer?.customerIdx]);
+
+  // 페이지 이탈 시 거래 취소 및 락 해제 로직 (새로고침 제외)
   useEffect(() => {
+    // 마운트 완료 표시 (비동기로 설정하여 StrictMode 초기 cleanup 구분)
+    const timer = setTimeout(() => {
+      isMountedRef.current = true;
+    }, 0);
+
     // paymentInfo가 없거나 결제 완료된 경우 무시 (ref 사용으로 최신 값 보장)
     if (!paymentInfo.usedTradeIdx || isPaymentCompletedRef.current) {
-      return;
+      return () => clearTimeout(timer);
     }
 
     // 성공 페이지로 이동한 경우 확인 (sessionStorage에 결제 완료 플래그가 있는지 확인)
@@ -262,6 +303,7 @@ const UsedPaymentForm = ({ initialData }) => {
         isPaymentCompletedRef.current = true;
         setIsPaymentCompleted(true);
         hasCancelledRef.current = true;
+        hasUnlockedRef.current = true;
         return true;
       }
       
@@ -280,6 +322,7 @@ const UsedPaymentForm = ({ initialData }) => {
             isPaymentCompletedRef.current = true;
             setIsPaymentCompleted(true);
             hasCancelledRef.current = true;
+            hasUnlockedRef.current = true;
             // 플래그도 함께 설정
             sessionStorage.setItem(`used_payment_completed_${usedTradeIdx}`, '1');
             return true;
@@ -293,70 +336,118 @@ const UsedPaymentForm = ({ initialData }) => {
 
     // 초기 체크
     if (checkPaymentCompleted()) {
-      return;
+      return () => clearTimeout(timer);
     }
 
     const usedTradeIdx = paymentInfo.usedTradeIdx;
+    const buyerIdx = customer?.customerIdx || null;
 
-    // beforeunload 이벤트 핸들러 (브라우저 탭/창 닫기)
-    const handleBeforeUnload = (e) => {
-      // 새로고침으로 인한 이탈인지 확인
-      isUnloadingRef.current = true;
-      
-      // 성공 페이지로 이동한 경우 확인
-      if (checkPaymentCompleted()) {
-        console.log('✅ beforeunload: 결제 완료 플래그 확인됨, 취소 요청 안 함');
-        return;
-      }
-      
-      // 결제 완료되지 않은 경우에만 취소 요청 (ref 사용으로 최신 값 보장)
-      if (!isPaymentCompletedRef.current && !hasCancelledRef.current) {
-        cancelTradeOnExit(usedTradeIdx);
+    // 뒤로가기 감지 플래그 초기화
+    isBackButtonRef.current = false;
+
+    // popstate 이벤트 핸들러 (뒤로가기/앞으로가기 감지)
+    const handlePopState = () => {
+      console.log("🔙 뒤로가기 감지");
+      isBackButtonRef.current = true;
+      // 뒤로가기 시 즉시 unlock 처리
+      if (!hasUnlockedRef.current && lockCreatedRef.current && !checkPaymentCompleted()) {
+        hasUnlockedRef.current = true;
+        sendUnlockBeacon(usedTradeIdx, buyerIdx);
+        if (!isPaymentCompletedRef.current && !hasCancelledRef.current) {
+          cancelTradeOnExit(usedTradeIdx);
+        }
       }
     };
 
-    // visibilitychange 이벤트 핸들러 (탭 전환 등)
-    const handleVisibilityChange = () => {
+    // beforeunload 이벤트 핸들러 (브라우저 탭/창 닫기 또는 새로고침)
+    const handleBeforeUnload = () => {
+      if (hasUnlockedRef.current) return;
+      
       // 성공 페이지로 이동한 경우 확인
       if (checkPaymentCompleted()) {
-        console.log('✅ visibilitychange: 결제 완료 플래그 확인됨, 취소 요청 안 함');
+        console.log('✅ beforeunload: 결제 완료 플래그 확인됨, unlock 요청 안 함');
         return;
       }
       
-      // 페이지가 숨겨질 때 (다른 탭으로 전환)
-      if (document.hidden && !isPaymentCompletedRef.current && !hasCancelledRef.current) {
-        cancelTradeOnExit(usedTradeIdx);
+      // 뒤로가기가 아닌 경우에만 unlock 시도
+      // 새로고침의 경우 페이지가 다시 로드되므로 락이 유지됨 (백엔드에서 같은 사용자면 락 유지)
+      // 다른 이탈(탭 닫기, 다른 페이지 이동)의 경우 unlock 실행
+      if (!isBackButtonRef.current && lockCreatedRef.current) {
+        console.log("🔓 beforeunload: unlock 시도");
+        hasUnlockedRef.current = true;
+        isUnloadingRef.current = true;
+        sendUnlockBeacon(usedTradeIdx, buyerIdx);
+        if (!isPaymentCompletedRef.current && !hasCancelledRef.current) {
+          cancelTradeOnExit(usedTradeIdx);
+        }
+      } else {
+        console.log("⏭️ beforeunload: unlock 건너뜀", {
+          isBackButton: isBackButtonRef.current,
+          lockCreated: lockCreatedRef.current
+        });
       }
     };
 
     // 핸들러 참조 저장
     beforeUnloadHandlerRef.current = handleBeforeUnload;
-    visibilityChangeHandlerRef.current = handleVisibilityChange;
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('popstate', handlePopState);
 
-    // 컴포넌트 언마운트 시 (뒤로가기 등)
+    // 컴포넌트 언마운트 시 (뒤로가기 등 - 새로고침 제외)
     return () => {
+      clearTimeout(timer);
+      
       if (beforeUnloadHandlerRef.current) {
         window.removeEventListener('beforeunload', beforeUnloadHandlerRef.current);
       }
-      if (visibilityChangeHandlerRef.current) {
-        document.removeEventListener('visibilitychange', visibilityChangeHandlerRef.current);
+      window.removeEventListener('popstate', handlePopState);
+      
+      if (!isMountedRef.current) {
+        console.log("⏭️ StrictMode 초기 cleanup: unlock 무시");
+        return;
+      }
+
+      // 뒤로가기인 경우 이미 unlock 처리했으므로 중복 방지
+      if (isBackButtonRef.current) {
+        console.log("⏭️ 뒤로가기: 이미 unlock 처리 완료");
+        return;
+      }
+      // 락이 생성되지 않았으면 unlock 하지 않음 (초기 마운트 시 cleanup 방지)
+      if (!lockCreatedRef.current) {
+        console.log("⏭️ 락이 생성되지 않음: unlock 무시 (초기 마운트 또는 락 생성 실패)");
+        return;
+      }
+
+      if (hasUnlockedRef.current) {
+        console.log("⏭️ 이미 unlock 완료: 중복 방지");
+        return;
       }
       
       // 성공 페이지로 이동한 경우 확인
       if (checkPaymentCompleted()) {
-        console.log('✅ cleanup: 결제 완료 플래그 확인됨, 취소 요청 안 함');
+        console.log('✅ cleanup: 결제 완료 플래그 확인됨, unlock 요청 안 함');
+        return;
+      }
+
+      // beforeunload에서 이미 unlock을 시도한 경우 (새로고침 또는 탭 닫기)
+      if (isUnloadingRef.current) {
+        console.log("⏭️ beforeunload에서 이미 unlock 시도: cleanup에서 중복 방지");
+        isUnloadingRef.current = false;
         return;
       }
       
-      // 새로고침이 아닌 경우에만 취소 요청 (ref 사용으로 최신 값 보장)
-      if (!isUnloadingRef.current && !isPaymentCompletedRef.current && !hasCancelledRef.current) {
+      // 다른 페이지 이동 등 (beforeunload가 발생하지 않은 경우)
+      console.log("🔓 cleanup: 다른 페이지 이동 등으로 인한 unlock 시도");
+      hasUnlockedRef.current = true;
+      sendUnlockBeacon(usedTradeIdx, buyerIdx);
+      
+      // 거래 취소도 함께 처리
+      if (!isPaymentCompletedRef.current && !hasCancelledRef.current) {
         cancelTradeOnExit(usedTradeIdx);
       }
     };
-  }, [paymentInfo.usedTradeIdx, cancelTradeOnExit]);
+  }, [paymentInfo.usedTradeIdx, customer?.customerIdx, sendUnlockBeacon, cancelTradeOnExit]);
 
   // 사용자 정보가 로드되면 paymentInfo 업데이트
   useEffect(() => {
@@ -373,9 +464,69 @@ const UsedPaymentForm = ({ initialData }) => {
     }
   }, [customer]);
 
+  // 결제 페이지 진입 시 락 생성
+  useEffect(() => {
+    const createLock = async () => {
+      // paymentInfo와 customer가 모두 준비되어야 락 생성
+      if (!paymentInfo.usedTradeIdx || !customer?.customerIdx || lockCreatedRef.current) {
+        return;
+      }
+
+      // 결제 완료된 경우 락 생성하지 않음
+      if (isPaymentCompletedRef.current) {
+        return;
+      }
+
+      try {
+        console.log('🔒 결제 페이지 진입: 락 생성 시작', {
+          usedTradeIdx: paymentInfo.usedTradeIdx,
+          buyerIdx: customer.customerIdx
+        });
+
+        const lockResult = await usedAPI.createPaymentPageLock(
+          paymentInfo.usedTradeIdx,
+          customer.customerIdx
+        );
+
+        if (lockResult.lockKey) {
+          lockKeyRef.current = lockResult.lockKey;
+          lockCreatedRef.current = true;
+          console.log('✅ 결제 페이지 락 생성 완료:', {
+            lockKey: lockResult.lockKey,
+            usedTradeIdx: paymentInfo.usedTradeIdx
+          });
+        } else {
+          console.warn('⚠️ 락 생성 실패:', lockResult.message);
+        }
+      } catch (error) {
+        // 400 에러인 경우 락이 이미 존재할 수 있음 (새로고침 시)
+        if (error.response?.status === 400) {
+          const errorMessage = error.response?.data?.message || error.message || '';
+          // 락이 이미 존재하는 경우 성공으로 처리 (새로고침 시)
+          if (errorMessage.includes('이미') || errorMessage.includes('처리 중')) {
+            console.log('✅ 락이 이미 존재함 (새로고침으로 추정):', {
+              usedTradeIdx: paymentInfo.usedTradeIdx,
+              message: errorMessage
+            });
+            // 락 키는 모르지만 락이 존재한다는 것을 표시
+            lockKeyRef.current = `lock:payment:trade:${paymentInfo.usedTradeIdx}`;
+            lockCreatedRef.current = true;
+          } else {
+            console.error('❌ 락 생성 실패 (400):', errorMessage);
+          }
+        } else {
+          console.error('❌ 락 생성 중 오류:', error);
+          // 락 생성 실패해도 계속 진행 (백엔드에서 재시도 가능)
+        }
+      }
+    };
+
+    createLock();
+  }, [paymentInfo.usedTradeIdx, customer?.customerIdx]);
+
   // 결제 금액 계산
   const paymentAmounts = useMemo(() => {
-    const totalAmount = paymentInfo.salePrice + Math.round(paymentInfo.salePrice * 0.1);
+    const totalAmount = paymentInfo.salePrice; // 수수료 제거
     const maxCash = Math.min(paymentInfo.useCash, paymentInfo.customerCash);
     const maxPoint = Math.min(paymentInfo.usePoint, paymentInfo.customerPoint);
     const availableCashPoint = maxCash + maxPoint;
@@ -461,12 +612,49 @@ const UsedPaymentForm = ({ initialData }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  /**
+   * 숫자 입력 처리 (0으로 시작 불가)
+   * @param {string} value - 입력값
+   * @returns {string} - 정제된 값
+   */
+  const handleNumericInput = (value) => {
+    // 숫자만 추출
+    const numericValue = value.replace(/[^0-9]/g, "");
+
+    // 빈 문자열이면 그대로 반환
+    if (numericValue === "") return "";
+
+    // 0으로 시작하는 경우 (예: "01000") 앞의 0 제거
+    return numericValue.replace(/^0+/, "") || "0";
+  };
+
   // 캐시 사용량 변경
   const handleCashChange = (value) => {
+    const totalAmount = paymentInfo.salePrice || 0;
+    const sanitized = handleNumericInput(value);
     const cashAmount = Math.max(
       0,
-      Math.min(parseInt(value) || 0, paymentInfo.customerCash)
+      Math.min(parseInt(sanitized) || 0, paymentInfo.customerCash)
     );
+
+    // 90% 제한 검증 (최소 10%는 카드 결제 필요)
+    const currentPoint = paymentInfo.usePoint || 0;
+    const totalUsage = cashAmount + currentPoint;
+    const maxAllowed = Math.floor(totalAmount * 0.9);
+
+    if (totalUsage > maxAllowed) {
+      alert(
+        "포인트와 캐시를 합쳐서 상품 금액의 90% 이상 사용할 수 없습니다. (최소 10%는 카드 결제 필요)"
+      );
+      // 최대 허용 금액으로 자동 조정
+      const adjustedCash = Math.max(0, maxAllowed - currentPoint);
+      setPaymentInfo((prev) => ({
+        ...prev,
+        useCash: Math.min(adjustedCash, paymentInfo.customerCash),
+      }));
+      return;
+    }
+
     setPaymentInfo((prev) => ({
       ...prev,
       useCash: cashAmount,
@@ -475,10 +663,31 @@ const UsedPaymentForm = ({ initialData }) => {
 
   // 포인트 사용량 변경
   const handlePointChange = (value) => {
+    const totalAmount = paymentInfo.salePrice || 0;
+    const sanitized = handleNumericInput(value);
     const pointAmount = Math.max(
       0,
-      Math.min(parseInt(value) || 0, paymentInfo.customerPoint)
+      Math.min(parseInt(sanitized) || 0, paymentInfo.customerPoint)
     );
+
+    // 90% 제한 검증 (최소 10%는 카드 결제 필요)
+    const currentCash = paymentInfo.useCash || 0;
+    const totalUsage = currentCash + pointAmount;
+    const maxAllowed = Math.floor(totalAmount * 0.9);
+
+    if (totalUsage > maxAllowed) {
+      alert(
+        "포인트와 캐시를 합쳐서 상품 금액의 90% 이상 사용할 수 없습니다. (최소 10%는 카드 결제 필요)"
+      );
+      // 최대 허용 금액으로 자동 조정
+      const adjustedPoint = Math.max(0, maxAllowed - currentCash);
+      setPaymentInfo((prev) => ({
+        ...prev,
+        usePoint: Math.min(adjustedPoint, paymentInfo.customerPoint),
+      }));
+      return;
+    }
+
     setPaymentInfo((prev) => ({
       ...prev,
       usePoint: pointAmount,
@@ -560,7 +769,7 @@ const UsedPaymentForm = ({ initialData }) => {
       });
 
       // 최신 정보로 결제 금액 재계산
-      const latestTotalAmount = latestPaymentInfo.salePrice + Math.round((latestPaymentInfo.salePrice || 0) * 0.1);
+      const latestTotalAmount = latestPaymentInfo.salePrice; // 수수료 제거
       const latestMaxCash = Math.min(paymentInfo.useCash || 0, paymentInfo.customerCash || 0);
       const latestMaxPoint = Math.min(paymentInfo.usePoint || 0, paymentInfo.customerPoint || 0);
       const latestActualPaymentAmount = Math.max(0, latestTotalAmount - latestMaxCash - latestMaxPoint);
@@ -990,12 +1199,6 @@ const UsedPaymentForm = ({ initialData }) => {
                     -{paymentInfo.discountAmount?.toLocaleString()}원
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">세금 및 수수료</span>
-                  <span>
-                    {Math.round(paymentInfo.salePrice * 0.1).toLocaleString()}원
-                  </span>
-                </div>
                 <hr className="my-3" />
                 <div className="flex justify-between text-lg font-semibold">
                   <span>총 결제 금액</span>
@@ -1017,13 +1220,13 @@ const UsedPaymentForm = ({ initialData }) => {
                     캐시 사용 (보유: {paymentInfo.customerCash.toLocaleString()}원)
                   </label>
                   <input
-                    type="number"
-                    value={paymentInfo.useCash}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={paymentInfo.useCash || ""}
                     onChange={(e) => handleCashChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="사용할 캐시 금액"
-                    min="0"
-                    max={paymentInfo.customerCash}
                   />
                 </div>
 
@@ -1033,13 +1236,13 @@ const UsedPaymentForm = ({ initialData }) => {
                     포인트 사용 (보유: {paymentInfo.customerPoint.toLocaleString()}P)
                   </label>
                   <input
-                    type="number"
-                    value={paymentInfo.usePoint}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={paymentInfo.usePoint || ""}
                     onChange={(e) => handlePointChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="사용할 포인트"
-                    min="0"
-                    max={paymentInfo.customerPoint}
                   />
                 </div>
 

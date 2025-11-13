@@ -88,16 +88,21 @@ const Header = () => {
                 고객센터
               </Link>
             </button>
-            <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
-              공유하기
-            </button>
             {isClient && isInlogged() && (
-              <button
-                onClick={handleMyPageClick}
-                className="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
-              >
-                MY
-              </button>
+              <>
+                <button
+                  onClick={() => router.push('/mypage/recent-hotels')}
+                  className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors"
+                >
+                  최근 본 호텔
+                </button>
+                <button
+                  onClick={handleMyPageClick}
+                  className="bg-[#3B82F6] hover:bg-blue-600 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+                >
+                  MY
+                </button>
+              </>
             )}
             <Link href= {isClient && isInlogged() ? "/" : "/login"} onClick={isClient && isInlogged() ? handleLogout : ""} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">
               {isClient && isInlogged() ? "로그아웃" : "로그인"}

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Button from '../Button';
 import { usedAPI } from '@/lib/api/used';
 
-const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail, customer, customerLoading }) => {
+const UsedItemCard = ({ item, onInquire, customer, customerLoading }) => {
   const router = useRouter();
   
   const formatPrice = (price) => {
@@ -113,15 +113,29 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail, customer, cu
     }
   };
 
-  const handleBookmark = () => {
-    if (onBookmark) {
-      onBookmark(item);
-    }
-  };
-
   const handleHotelDetail = () => {
-    if (onHotelDetail) {
-      onHotelDetail(item);
+    if (item.contentId) {
+      // roomIdx 추출
+      const roomIdx = item.originalData?.roomIdx || item.originalData?.reservation?.roomIdx || item.roomIdx || null;
+      
+      // URL 파라미터 생성
+      const params = new URLSearchParams();
+      if (roomIdx) {
+        params.set('roomIdx', roomIdx.toString());
+      }
+      if (item.checkIn) {
+        params.set('checkIn', item.checkIn);
+      }
+      if (item.checkOut) {
+        params.set('checkOut', item.checkOut);
+      }
+      if (item.guests) {
+        params.set('adults', item.guests.toString());
+      }
+      
+      // 새 창에서 호텔 상세 페이지 열기
+      const url = `/hotel/${item.contentId}${params.toString() ? `?${params.toString()}` : ''}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -246,14 +260,6 @@ const UsedItemCard = ({ item, onInquire, onBookmark, onHotelDetail, customer, cu
             disabled={customerLoading || (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx)}
           >
             {customerLoading ? '로딩중...' : (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx ? '본인 매물' : '결제하기')}
-          </Button>
-          <Button
-            variant="outline"
-            className="px-4"
-            onClick={handleBookmark}
-            disabled={customerLoading || (customer && item.sellerIdx && customer.customerIdx === item.sellerIdx)}
-          >
-            찜하기
           </Button>
         </div>
       </div>
