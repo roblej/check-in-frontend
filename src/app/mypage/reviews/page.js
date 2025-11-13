@@ -264,7 +264,7 @@ export default function MyReviewsPage() {
         </div>
 
         {/* 정렬/필터 바 (UI 전용) */}
-        <div className="bg-white border border-gray-200 rounded-xl p-3 mb-4">
+        {/* <div className="bg-white border border-gray-200 rounded-xl p-3 mb-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 text-sm">
               <button className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 font-medium">최근 방문순</button>
@@ -281,7 +281,7 @@ export default function MyReviewsPage() {
             <button className="px-3 py-1 rounded-full bg-blue-600 text-white">호텔 {writtenReviews.length}</button>
             <button className="px-3 py-1 rounded-full bg-gray-100 text-gray-700">모텔 0</button>
           </div>
-        </div>
+        </div> */}
 
         {/* 탭 */}
         <div className="bg-white border border-gray-200 rounded-xl p-0 mb-4">
