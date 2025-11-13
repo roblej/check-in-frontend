@@ -173,10 +173,6 @@ const RoomsInner = () => {
                 {/* 객실 정보 */}
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">객실 번호:</span>
-                    <span className="text-sm font-medium text-gray-900">{room.roomIdx}호</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-sm text-gray-600">수용인원:</span>
                     <span className="text-sm font-medium text-gray-900">{room.capacity}명</span>
                   </div>
@@ -187,17 +183,20 @@ const RoomsInner = () => {
                 </div>
 
                 {/* 예약 정보 */}
-                {room.hasReservation && room.customerName && (
-                  <div className="border-t border-gray-200 pt-3 mb-4">
-                    <div className="text-sm text-gray-600 mb-1">예약 고객</div>
-                    <div className="text-sm font-medium text-gray-900 mb-2">{room.customerName}</div>
-                    {room.guest && (
-                      <div className="text-sm text-gray-600">
-                        예약 인원: <span className="font-medium text-gray-900">{room.guest}명</span>
-                      </div>
-                    )}
+                <div className="border-t border-gray-200 pt-3 mb-4">
+                  <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg mb-2">
+                    <div className="text-sm text-gray-600">
+                      예약 고객: <span className="font-medium text-gray-900">
+                        {room.hasReservation && room.customerName ? room.customerName : '예약없음'}
+                      </span>
+                    </div>
                   </div>
-                )}
+                  {room.hasReservation && room.guest && (
+                    <div className="text-sm text-gray-600">
+                      예약 인원: <span className="font-medium text-gray-900">{room.guest}명</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* 빠른 상태 변경 */}
                 <div className="mb-3 p-2 bg-gray-50 rounded-lg">

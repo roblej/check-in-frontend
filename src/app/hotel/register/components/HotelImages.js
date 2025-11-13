@@ -83,6 +83,13 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
   const handleThumbnailFile = async (file) => {
     if (readOnly) return;
     
+    // 파일 크기 검증 (10MB = 10 * 1024 * 1024 bytes)
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxFileSize) {
+      alert(`이미지 파일의 크기가 너무 큽니다 (최대 10MB).\n현재 파일 크기: ${(file.size / 1024 / 1024).toFixed(2)}MB\n\n파일 크기를 줄이거나 다른 이미지를 선택해주세요.`);
+      return;
+    }
+    
     try {
       setUploadingThumbnail(true);
       
@@ -186,6 +193,16 @@ const HotelImages = ({ images, events, updateFormData, errors, readOnly = false,
     
     if (files.length > remainingSlots) {
       alert(`이미지가 너무 많습니다. ${remainingSlots}개만 업로드됩니다. (최대 ${maxCount}개)`);
+    }
+    
+    // 파일 크기 검증 (10MB = 10 * 1024 * 1024 bytes)
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
+    const oversizedFiles = filesToUpload.filter(file => file.size > maxFileSize);
+    
+    if (oversizedFiles.length > 0) {
+      const oversizedFileNames = oversizedFiles.map(f => f.name).join(', ');
+      alert(`다음 이미지 파일의 크기가 너무 큽니다 (최대 10MB):\n${oversizedFileNames}\n\n파일 크기를 줄이거나 다른 이미지를 선택해주세요.`);
+      return;
     }
     
     try {

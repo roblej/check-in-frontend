@@ -15,7 +15,7 @@ import {
 import RecentHotelListCard from '../components/recent/RecentHotelListCard';
 
 const FETCH_SIZE = 100;
-const PAGE_SIZE = 3;
+const PAGE_SIZE = 10;
 
 const SectionHeader = ({ totalCount }) => (
   <div className="space-y-3">

@@ -333,7 +333,7 @@ export default function SignupPage() {
       
       // 사업자(admin)인 경우 관리자 화면으로 이동
       if (formData.role === "admin") {
-        router.push("/admin");
+        router.push("/admin-login");
       } else {
         // 일반 회원인 경우 로그인 페이지로 이동
         router.push("/login");

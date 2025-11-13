@@ -407,10 +407,6 @@ const HotelManagement = () => {
                     </td>
                     <td className="px-6 py-4 text-sm font-medium w-64">
                       <div className="flex flex-wrap gap-2">
-                        <button className="text-[#7C3AED] hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-50 transition-colors">
-                          상세보기
-                        </button>
-                      
                         <button 
                           onClick={() => handleSuspendClick(hotel)}
                           className="text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50 transition-colors"
@@ -453,9 +449,6 @@ const HotelManagement = () => {
                   객실 {hotel.rooms}개
                 </div>
                 <div className="flex gap-1">
-                  <button className="text-[#7C3AED] hover:text-purple-800 text-xs">
-                    상세
-                  </button>
                   <button 
                     onClick={() => handleSuspendClick(hotel)}
                     className="text-red-600 hover:text-red-800 text-xs"
