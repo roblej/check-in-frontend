@@ -165,7 +165,7 @@ const ReservationClient = () => {
       }
       alert("결제 시간이 만료되었습니다. 다시 예약해주세요.");
     } catch (error) {
-      console.error("Lock 해제 실패:", error);
+      //락 해제 실패
     } finally {
       clearPaymentDraft();
       clearLockState();
@@ -247,11 +247,11 @@ const ReservationClient = () => {
             customerPoint: parseInt(userData.point) || 0,
           }));
         } else if (response.status === 401) {
-          console.log("인증이 필요합니다 (백엔드에서 처리)");
+          //인증 필요 백엔드에서 처리
           return;
         }
       } catch (error) {
-        console.error("사용자 정보 가져오기 실패:", error);
+        //사용자 정보 불러오기 실패시
         return;
       } finally {
         setLoading(false);
@@ -685,21 +685,7 @@ const ReservationClient = () => {
         couponIdx: appliedCoupon?.couponIdx || null,
         couponDiscount: appliedCoupon?.discountAmount || 0,
       };
-      // 디버깅을 위한 콘솔 출력 (민감정보 제외)
-      console.log("[CONFIRM] payload:", {
-        orderId: payload.orderId,
-        amount: payload.amount,
-        type: payload.type,
-        customerIdx: payload.customerIdx,
-        contentId: payload.contentId,
-        roomId: payload.roomId,
-        totalPrice: payload.totalPrice,
-        pointsUsed: payload.pointsUsed,
-        cashUsed: payload.cashUsed,
-        couponIdx: payload.couponIdx,
-        couponDiscount: payload.couponDiscount,
-        specialRequestsLen: payload.specialRequests?.length || 0,
-      });
+
       try {
         if (typeof window !== "undefined") {
           sessionStorage.setItem("lastPaymentPayload", JSON.stringify(payload));
@@ -717,7 +703,7 @@ const ReservationClient = () => {
       });
       router.push(`/checkout/success?${params.toString()}`);
     } catch (error) {
-      console.error("결제 완료 처리 오류:", error);
+      //결제 완료지만 오류
       alert(
         "결제는 완료되었지만 처리 중 오류가 발생했습니다. 고객센터에 문의해주세요."
       );
@@ -728,7 +714,7 @@ const ReservationClient = () => {
 
   // 토스페이먼츠 결제 실패 처리
   const handlePaymentFail = (error) => {
-    console.error("결제 실패:", error);
+    //결제 실패
     router.push(
       `/checkout/fail?error=${encodeURIComponent(
         error.message || "결제가 취소되었습니다."
@@ -1136,23 +1122,14 @@ const ReservationClient = () => {
                         JSON.stringify(lastPayload)
                       );
                     }
-                    console.log("[PAY] lastPaymentPayload 저장:", {
-                      pointsUsed: lastPayload.pointsUsed,
-                      cashUsed: lastPayload.cashUsed,
-                      specialRequestsLen:
-                        lastPayload.specialRequests?.length || 0,
-                      couponIdx: lastPayload.couponIdx,
-                      couponDiscount: lastPayload.couponDiscount,
-                    });
                   } catch (e) {
-                    console.warn("lastPaymentPayload 저장 실패(무시):", e);
                   }
 
                   if (window.tossPaymentHandler) {
                     try {
                       await window.tossPaymentHandler();
-                    } catch (error) {
-                      console.error("결제 요청 실패:", error);
+                    } catch (e) {
+                      //결제 실패
                       alert("결제 요청 중 오류가 발생했습니다.");
                     }
                   } else {

@@ -24,8 +24,11 @@ import { useSearchParams, useRouter } from "next/navigation";
 const HotelSearchPageContent = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { updateFromUrlParams, updateSearchParams, searchParams: storeSearchParams } =
-    useSearchStore();
+  const {
+    updateFromUrlParams,
+    updateSearchParams,
+    searchParams: storeSearchParams,
+  } = useSearchStore();
 
   // URL에서 파라미터 추출 (메모이제이션으로 불필요한 재계산 방지)
   const urlDestination = searchParams.get("destination");
@@ -148,6 +151,41 @@ const HotelSearchPageContent = () => {
     }
   }, [urlParams, searchParams, updateFromUrlParams]);
 
+  // URL에서 checkIn과 checkOut이 있을 때 nights 자동 계산 및 추가
+  useEffect(() => {
+    const urlCheckIn = searchParams.get("checkIn");
+    const urlCheckOut = searchParams.get("checkOut");
+    const urlNights = searchParams.get("nights");
+    const urlDiningMode = searchParams.get("diningMode") === "true";
+
+    // 다이닝 모드가 아니고, checkIn과 checkOut이 모두 있을 때만 계산
+    if (!urlDiningMode && urlCheckIn && urlCheckOut) {
+      const checkInDate = new Date(urlCheckIn);
+      const checkOutDate = new Date(urlCheckOut);
+      const calculatedNights = Math.ceil(
+        (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)
+      );
+
+      // 계산된 nights와 URL의 nights가 다르면 업데이트
+      if (calculatedNights > 0 && calculatedNights.toString() !== urlNights) {
+        const urlParams = new URLSearchParams(searchParams.toString());
+        urlParams.set("nights", calculatedNights.toString());
+        router.replace(`?${urlParams.toString()}`, {
+          scroll: false,
+          shallow: true,
+        });
+      }
+    } else if (urlDiningMode && urlNights) {
+      // 다이닝 모드일 때는 nights 파라미터 제거
+      const urlParams = new URLSearchParams(searchParams.toString());
+      urlParams.delete("nights");
+      router.replace(`?${urlParams.toString()}`, {
+        scroll: false,
+        shallow: true,
+      });
+    }
+  }, [searchParams, router]);
+
   // URL에서 선택된 호텔 ID 동기화 (뒤로가기/앞으로가기 지원)
   useEffect(() => {
     // popstate 이벤트로 처리 중이면 건너뛰기
@@ -264,6 +302,7 @@ const HotelSearchPageContent = () => {
         urlParams.set("diningDate", diningDate);
         urlParams.delete("checkIn");
         urlParams.delete("checkOut");
+        urlParams.delete("nights"); // 다이닝 모드일 때는 nights 제거
       } else {
         // 호텔 모드: 체크인/체크아웃
         const checkInDate =
@@ -281,6 +320,15 @@ const HotelSearchPageContent = () => {
         urlParams.set("checkOut", checkOutDate);
         urlParams.delete("diningDate");
         urlParams.delete("diningMode");
+
+        // nights 계산 및 추가
+        if (checkInDate && checkOutDate) {
+          const nights = Math.ceil(
+            (new Date(checkOutDate) - new Date(checkInDate)) /
+              (1000 * 60 * 60 * 24)
+          );
+          urlParams.set("nights", nights.toString());
+        }
       }
 
       if (localSearchParams.adults) {
@@ -394,10 +442,10 @@ const HotelSearchPageContent = () => {
         if (res.data) {
           const hotels = res.data.content || res.data;
           const allHotels = Array.isArray(hotels) ? hotels : [];
-          
+
           // 전체 검색 결과 저장 (필터링용)
           setAllSearchResults(allHotels);
-          
+
           return allHotels;
         }
       } catch (error) {
@@ -488,10 +536,10 @@ const HotelSearchPageContent = () => {
           setSearchResults(Array.isArray(hotels) ? hotels : []);
           setTotalPages(totalPagesValue);
           // totalElements는 필터링 로직에서 설정하므로 여기서는 설정하지 않음
-          
+
           // 전체 데이터도 함께 가져오기 (필터링용)
           await getAllHotels(destinationParam);
-          
+
           return hotels;
         }
       } catch (error) {
@@ -582,23 +630,31 @@ const HotelSearchPageContent = () => {
   // 필터링 - 전체 검색 결과에 대해 필터링 적용
   useEffect(() => {
     // 필터가 적용되어 있으면 전체 검색 결과 사용, 없으면 현재 페이지 결과 사용
-    const hasActiveFilters = 
+    const hasActiveFilters =
       filters.priceMin > 0 ||
       filters.priceMax < 500000 ||
       filters.starRatings.length > 0 ||
       filters.amenities.length > 0;
-    
+
     // 전체 검색 결과가 없으면 필터링하지 않음 (getAllHotels가 완료될 때까지 대기)
     if (allSearchResults.length === 0 && searchResults.length > 0) {
       // 전체 검색 결과가 아직 로드되지 않았으면 현재 페이지 결과만 표시
       setFilteredHotels(searchResults);
       return;
     }
-    
+
     // 필터가 없을 때도 전체 검색 결과가 있으면 사용 (전체 개수 표시를 위해)
-    const hotels = allSearchResults.length > 0 ? allSearchResults : searchResults;
-    console.log("필터링 대상 호텔:", hotels.length, "전체 검색 결과:", allSearchResults.length, "현재 페이지:", searchResults.length);
-    
+    const hotels =
+      allSearchResults.length > 0 ? allSearchResults : searchResults;
+    console.log(
+      "필터링 대상 호텔:",
+      hotels.length,
+      "전체 검색 결과:",
+      allSearchResults.length,
+      "현재 페이지:",
+      searchResults.length
+    );
+
     if (!Array.isArray(hotels) || hotels.length === 0) {
       setFilteredHotels([]);
       setTotalPages(0);
@@ -610,51 +666,53 @@ const HotelSearchPageContent = () => {
     }
 
     // 필터가 없을 때는 필터링 없이 전체 데이터 사용
-    let filtered = hasActiveFilters ? hotels.filter((hotel) => {
-      // 가격 필터링 (가격 정보가 있는 경우에만 필터링)
-      // minPrice, maxPrice, price 중 하나라도 있으면 필터링 적용
-      const hotelPrice =
-        hotel.minPrice || hotel.maxPrice || hotel.price || null;
-      if (hotelPrice !== null) {
-        const price = Number(hotelPrice);
-        if (price < filters.priceMin || price > filters.priceMax) {
-          return false;
-        }
-      }
+    let filtered = hasActiveFilters
+      ? hotels.filter((hotel) => {
+          // 가격 필터링 (가격 정보가 있는 경우에만 필터링)
+          // minPrice, maxPrice, price 중 하나라도 있으면 필터링 적용
+          const hotelPrice =
+            hotel.minPrice || hotel.maxPrice || hotel.price || null;
+          if (hotelPrice !== null) {
+            const price = Number(hotelPrice);
+            if (price < filters.priceMin || price > filters.priceMax) {
+              return false;
+            }
+          }
 
-      // 별점 필터링
-      if (
-        filters.starRatings.length > 0 &&
-        hotel.starRating !== undefined &&
-        !filters.starRatings.includes(hotel.starRating)
-      ) {
-        return false;
-      }
-
-      // 편의시설 필터링 (주차, 식당)
-      if (filters.amenities.length > 0) {
-        const hasParking = filters.amenities.includes("주차");
-        const hasRestaurant = filters.amenities.includes("식당");
-
-        // 주차 필터 체크
-        if (hasParking) {
-          const parkinglodging = hotel.parkinglodging || "";
-          if (!parkinglodging.includes("가능")) {
+          // 별점 필터링
+          if (
+            filters.starRatings.length > 0 &&
+            hotel.starRating !== undefined &&
+            !filters.starRatings.includes(hotel.starRating)
+          ) {
             return false;
           }
-        }
 
-        // 식당 필터 체크
-        if (hasRestaurant) {
-          const foodplace = hotel.foodplace || "";
-          if (!foodplace || foodplace.trim() === "") {
-            return false;
+          // 편의시설 필터링 (주차, 식당)
+          if (filters.amenities.length > 0) {
+            const hasParking = filters.amenities.includes("주차");
+            const hasRestaurant = filters.amenities.includes("식당");
+
+            // 주차 필터 체크
+            if (hasParking) {
+              const parkinglodging = hotel.parkinglodging || "";
+              if (!parkinglodging.includes("가능")) {
+                return false;
+              }
+            }
+
+            // 식당 필터 체크
+            if (hasRestaurant) {
+              const foodplace = hotel.foodplace || "";
+              if (!foodplace || foodplace.trim() === "") {
+                return false;
+              }
+            }
           }
-        }
-      }
 
-      return true;
-    }) : hotels; // 필터가 없으면 필터링 없이 전체 데이터 사용
+          return true;
+        })
+      : hotels; // 필터가 없으면 필터링 없이 전체 데이터 사용
 
     // 중복 제거 (contentId 기준)
     const uniqueFiltered = [];
@@ -705,14 +763,17 @@ const HotelSearchPageContent = () => {
     // 필터링된 결과를 페이지네이션
     const filteredTotalElements = filtered.length;
     const filteredTotalPages = Math.ceil(filteredTotalElements / pageSize);
-    
+
     // 현재 페이지가 총 페이지 수를 초과하면 마지막 페이지로 조정
-    const validCurrentPage = currentPage >= filteredTotalPages ? Math.max(0, filteredTotalPages - 1) : currentPage;
-    
+    const validCurrentPage =
+      currentPage >= filteredTotalPages
+        ? Math.max(0, filteredTotalPages - 1)
+        : currentPage;
+
     const startIndex = validCurrentPage * pageSize;
     const endIndex = startIndex + pageSize;
     const paginatedFiltered = filtered.slice(startIndex, endIndex);
-    
+
     console.log("=== 필터링 결과 디버깅 ===");
     console.log("필터링된 전체 개수:", filteredTotalElements);
     console.log("계산된 총 페이지 수:", filteredTotalPages);
@@ -721,10 +782,10 @@ const HotelSearchPageContent = () => {
     console.log("페이지 크기:", pageSize);
     console.log("현재 페이지에 표시될 항목 수:", paginatedFiltered.length);
     console.log("필터 적용 여부:", hasActiveFilters);
-    
+
     setFilteredHotels(paginatedFiltered);
     setTotalPages(filteredTotalPages);
-    
+
     // 현재 페이지가 조정되었으면 URL도 업데이트
     if (validCurrentPage !== currentPage) {
       setCurrentPage(validCurrentPage);
@@ -739,13 +800,16 @@ const HotelSearchPageContent = () => {
         shallow: true,
       });
     }
-    
+
     // 필터가 없을 때는 전체 검색 결과 개수 사용, 필터가 있을 때는 필터링된 개수 사용
     if (hasActiveFilters) {
       setTotalElements(filteredTotalElements);
     } else {
       // 필터가 없을 때는 전체 검색 결과 개수 사용
-      const totalCount = allSearchResults.length > 0 ? allSearchResults.length : filteredTotalElements;
+      const totalCount =
+        allSearchResults.length > 0
+          ? allSearchResults.length
+          : filteredTotalElements;
       setTotalElements(totalCount);
     }
 
@@ -783,7 +847,15 @@ const HotelSearchPageContent = () => {
 
     // 현재 값 저장 (searchResults는 저장하되, 변경 감지에는 사용하지 않음)
     prevFiltersRef.current = { sortBy, filters, searchResults };
-  }, [sortBy, filters, searchResults, allSearchResults, currentPage, pageSize, router]); // allSearchResults와 currentPage, pageSize 추가
+  }, [
+    sortBy,
+    filters,
+    searchResults,
+    allSearchResults,
+    currentPage,
+    pageSize,
+    router,
+  ]); // allSearchResults와 currentPage, pageSize 추가
 
   // 현재 페이지에 해당하는 호텔 (필터링 후 페이지네이션된 데이터)
   const currentPageHotels = useMemo(() => {

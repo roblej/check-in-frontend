@@ -53,11 +53,8 @@ const BookmarkButton = ({ contentId, size = "small", className = "" }) => {
           cachedBookmarkedIds = [];
           setBookmarkedHotels(new Set());
         }
-      } catch (err) {
-        console.error(
-          "북마크 목록 API 에러:",
-          err.response?.data?.message || err.message
-        );
+      } catch (e) {
+        //북마크 에러
         cachedBookmarkedIds = [];
         setBookmarkedHotels(new Set());
       } finally {
@@ -133,18 +130,15 @@ const BookmarkButton = ({ contentId, size = "small", className = "" }) => {
             }
           }
         })
-        .catch((err) => {
-          console.error(
-            "북마크 삭제 에러:",
-            err.response?.data?.message || err.message
-          );
+        .catch((e) => {
+
         });
     } else {
       // 빈 하트일 때: 북마크 추가
       axiosInstance
         .get(hotelsave_url, { params: { contentId: contentId } })
         .then((res) => {
-          console.log("찜하기 클릭:", res.data);
+          //찜하기 클릭시
           // res.data에 success가 포함되어 있으면 찜하기 상태 업데이트
           if (res.data && res.data.includes("success")) {
             setBookmarkedHotels((prev) => {
@@ -159,11 +153,8 @@ const BookmarkButton = ({ contentId, size = "small", className = "" }) => {
             }
           }
         })
-        .catch((err) => {
-          console.error(
-            "찜하기 기능 에러:",
-            err.response?.data?.message || err.message
-          );
+        .catch((e) => {
+          //찜 에러
         });
     }
   };
