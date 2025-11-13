@@ -17,7 +17,7 @@ const AdminHeader = ({ onMenuClick }) => {
   
   const handleLogout = () => {
     // 고객 스토어 초기화
-    axios.get('/login/logout');
+    axiosInstance.get('/login/logout');
     resetAccessToken("");
     setInlogged(false);
     
