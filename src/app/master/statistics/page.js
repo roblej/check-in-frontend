@@ -19,7 +19,7 @@ import axiosInstance from '@/lib/axios';
 
 const Statistics = () => {
   const [dateRange, setDateRange] = useState('month');
-  const [loading, setLoading] = useState(true);
+  const [topStatsLoading, setTopStatsLoading] = useState(false); // 상단 통계만 별도 로딩 상태
   const [statistics, setStatistics] = useState({
     totalRevenue: 0,
     totalReservationCount: 0,
@@ -38,32 +38,33 @@ const Statistics = () => {
   const [hotelRankings, setHotelRankings] = useState([]);
   const [hotelRankingsLoading, setHotelRankingsLoading] = useState(true);
 
-  // 통계 데이터 조회
+  // dateRange 변경 시 상단 통계만 업데이트
   useEffect(() => {
-    const fetchStatistics = async () => {
+    const fetchTopStatistics = async () => {
       try {
-        setLoading(true);
+        setTopStatsLoading(true);
         const response = await axiosInstance.get('/master/statistics', {
           params: { dateRange }
         });
         
         if (response.data) {
-          setStatistics({
+          // 상단 4개 값만 업데이트 (나머지는 유지)
+          setStatistics(prev => ({
+            ...prev,
             totalRevenue: response.data.totalRevenue || 0,
             totalReservationCount: response.data.totalReservationCount || 0,
             activeHotels: response.data.activeHotels || 0,
-            newHotels: response.data.newHotels || 0,
             newCustomers: response.data.newCustomers || 0
-          });
+          }));
         }
       } catch (error) {
         console.error('통계 데이터 조회 오류:', error);
       } finally {
-        setLoading(false);
+        setTopStatsLoading(false);
       }
     };
 
-    fetchStatistics();
+    fetchTopStatistics();
   }, [dateRange]);
 
   // 월별 수수료 수익 데이터 조회
@@ -308,8 +309,8 @@ const Statistics = () => {
 
         {/* 전체 통계 카드 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {loading ? (
-            // 로딩 상태
+          {topStatsLoading ? (
+            // 상단 통계만 로딩 상태
             Array.from({ length: 4 }).map((_, index) => (
               <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="animate-pulse">
@@ -358,11 +359,7 @@ const Statistics = () => {
           </div>
           
           <div className="h-96 focus:outline-none outline-none" tabIndex={-1}>
-            {loading ? (
-              <div className="h-full flex items-center justify-center">
-                <div className="animate-pulse text-gray-400">데이터를 불러오는 중...</div>
-              </div>
-            ) : chartData.length === 0 ? (
+            {chartData.length === 0 ? (
               <div className="h-full flex items-center justify-center">
                 <div className="text-gray-400">데이터가 없습니다.</div>
               </div>
