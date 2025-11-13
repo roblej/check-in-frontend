@@ -28,8 +28,8 @@ const buildRoomImageUrl = (imagePath) => {
 };
 
 const TABS = [
-  { key: 'hotel', label: '호텔 찜목록' },
-  { key: 'room', label: '객실 찜목록' },
+  { key: 'hotel', label: '호텔' },
+  { key: 'room', label: '객실' },
 ];
 
 const PAGE_SIZE = 10;
