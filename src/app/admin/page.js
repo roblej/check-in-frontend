@@ -198,7 +198,7 @@ const AdminDashboard = () => {
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">최근 예약 현황</h3>
-                <p className="text-sm text-gray-600">오늘의 예약 및 체크인 현황</p>
+                <p className="text-sm text-gray-600">가장 최근 예약한 사용자 5명만 보여집니다</p>
               </div>
               <button 
                 onClick={() => router.push('/admin/reservations')}

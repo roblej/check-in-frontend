@@ -70,10 +70,10 @@ const CouponIssueManagement = () => {
         if (res.data.success && res.data.customers) {
           const recentCustomers = res.data.customers.map(reservation => ({
             customerIdx: reservation.customer?.customerIdx,
-            name: reservation.customer?.name,
-            email: reservation.customer?.email,
-            nickname: reservation.customer?.nickname || '닉네임 미설정',
-            rank: reservation.customer?.rank || '일반',
+            name: reservation.customer?.name || '',
+            email: reservation.customer?.email || '',
+            nickname: reservation.customer?.nickname || '',
+            rank: reservation.customer?.rank || '',
             recentRoomName: reservation.room?.name || '정보 없음'
           }));
           setCustomers(recentCustomers);
@@ -102,10 +102,10 @@ const CouponIssueManagement = () => {
           // Customer 엔티티를 프론트엔드 형식으로 변환
           const customersList = res.data.customers.map(customer => ({
             customerIdx: customer.customerIdx,
-            name: customer.name,
-            email: customer.email,
-            nickname: customer.nickname || '닉네임 미설정',
-            rank: customer.rankEntity?.rankName || '일반',
+            name: customer.name || '',
+            email: customer.email || '',
+            nickname: customer.nickname || '',
+            rank: customer.rank || '',
             recentRoomName: '' // 검색 결과에는 최근 이용 정보 없음
           }));
           setCustomers(customersList);
@@ -378,17 +378,19 @@ const CouponIssueManagement = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <div className="font-medium text-gray-900">{customer.name}</div>
+                          <div className="font-medium text-gray-900">
+                            이름: {customer.name || '-'}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            닉네임: {customer.nickname || '-'}
+                          </div>
                           <div className="text-xs text-blue-600 mt-1">
                             {customer.recentRoomName ? `최근 이용: ${customer.recentRoomName}` : ''}
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="text-xs text-gray-500">
-                            {customer.nickname || '닉네임 미설정'}
-                          </div>
-                          <div className="text-xs text-blue-600">
-                            {customer.rank || '일반'} 등급
+                            등급: {customer.rank || '-'}
                           </div>
                         </div>
                       </div>
@@ -413,10 +415,12 @@ const CouponIssueManagement = () => {
                     <div className="font-medium">{selectedTemplate.templateName}</div>
                     <div className="text-gray-600">할인액:</div>
                     <div className="font-medium text-blue-600">{selectedTemplate.discount.toLocaleString()}원</div>
-                    <div className="text-gray-600">고객:</div>
-                    <div className="font-medium">{selectedCustomer.name} ({selectedCustomer.nickname || '닉네임 미설정'})</div>
+                    <div className="text-gray-600">이름:</div>
+                    <div className="font-medium">{selectedCustomer.name || '-'}</div>
+                    <div className="text-gray-600">닉네임:</div>
+                    <div className="font-medium">{selectedCustomer.nickname || '-'}</div>
                     <div className="text-gray-600">등급:</div>
-                    <div className="font-medium">{selectedCustomer.rank}</div>
+                    <div className="font-medium">{selectedCustomer.rank || '-'}</div>
                     <div className="text-gray-600">유효기간:</div>
                     <div className="font-medium">{selectedTemplate.validDays}일</div>
                   </div>
