@@ -75,11 +75,11 @@ export default function ReservationLockWrapper({ children }) {
             initialLockAt:
               paymentDraft.meta.lockInitialAt || identifiers.lockStartedAt,
           });
-          console.log("✅ 취소: 락 해제 완료");
+          //락 해제 완료
         }
       }
     } catch (error) {
-      console.warn("취소 시 락 해제 실패 (무시):", error);
+      //락 해제 실패
     } finally {
       clearPaymentDraft();
       clearLockState();
@@ -200,7 +200,7 @@ export default function ReservationLockWrapper({ children }) {
               return;
             }
           } catch (error) {
-            console.warn("락 상태 조회 실패:", error);
+            //락 상태 조회 실패
           }
 
           if (!cancelled) {
@@ -320,7 +320,7 @@ export default function ReservationLockWrapper({ children }) {
       if (navigator.sendBeacon) {
         const blob = new Blob([payload], { type: "application/json" });
         navigator.sendBeacon(apiUrl, blob);
-        console.log("📡 sendBeacon으로 unlock 전송");
+        //sendBeacon으로 unlock 전송
       }
     };
 
@@ -337,7 +337,7 @@ export default function ReservationLockWrapper({ children }) {
       window.removeEventListener("beforeunload", handleBeforeUnloadFlag);
 
       if (!isMountedRef.current) {
-        console.log("⏭️ StrictMode 초기 cleanup: unlock 무시");
+        //초기 unlock무시
         return;
       }
 
@@ -347,7 +347,7 @@ export default function ReservationLockWrapper({ children }) {
       }
 
       if (hasUnlockedRef.current) {
-        console.log("⏭️ 이미 unlock 완료: 중복 방지");
+        //이미 unlock 완료
         return;
       }
 

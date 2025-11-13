@@ -25,8 +25,8 @@ const HotelGallery = ({ contentId, isModal = false }) => {
         setLoading(true);
         const data = await hotelAPI.getHotelImages(contentId);
         setImages(data || []);
-      } catch (err) {
-        console.error("이미지 로딩 오류:", err);
+      } catch (e) {
+        //이미지 로딩 오류
         setError("이미지를 불러올 수 없습니다.");
       } finally {
         setLoading(false);

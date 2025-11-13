@@ -41,10 +41,7 @@ const RoomBookmarkButton = ({
           }
         })
         .catch((err) => {
-          console.error(
-            "방 북마크 목록 API 에러:",
-            err.response?.data?.message || err.message
-          );
+          //방 북마크 에러
         });
     } else {
       // 로그아웃 상태일 때: 북마크 목록 초기화
@@ -101,10 +98,7 @@ const RoomBookmarkButton = ({
           }
         })
         .catch((err) => {
-          console.error(
-            "방 북마크 삭제 에러:",
-            err.response?.data?.message || err.message
-          );
+          //북마크 삭제 에러
         });
     } else {
       // 빈 하트일 때: 북마크 추가
@@ -113,7 +107,7 @@ const RoomBookmarkButton = ({
           params: { roomIdx: roomIdx, contentId: contentId },
         })
         .then((res) => {
-          console.log("방 찜하기 클릭:", res.data);
+          //방 찜하기 클릭
           // res.data에 success가 포함되어 있으면 찜하기 상태 업데이트
           if (res.data && res.data.includes("success")) {
             setBookmarkedRooms((prev) => {
@@ -124,10 +118,7 @@ const RoomBookmarkButton = ({
           }
         })
         .catch((err) => {
-          console.error(
-            "방 찜하기 기능 에러:",
-            err.response?.data?.message || err.message
-          );
+          //방찜 에러
         });
     }
   };
