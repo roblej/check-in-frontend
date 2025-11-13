@@ -18,6 +18,11 @@ const HotelManagement = () => {
   const [hotelCount, setHotelCount] = useState(0);
   const [loading, setLoading] = useState(true);
   
+  // 통계 상태 추가
+  const [operatingHotelsCount, setOperatingHotelsCount] = useState(0);
+  const [suspendedHotelsCount, setSuspendedHotelsCount] = useState(0);
+  const [totalHotelsCount, setTotalHotelsCount] = useState(0);
+  
   // Pagination 상태 추가
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -60,6 +65,17 @@ const HotelManagement = () => {
         console.log('전체 페이지 수:', data.totalPages || 'totalPages 없음');
         
         if (data.content) {
+          // 객실 수에서 숫자만 추출하는 함수
+          const extractRoomCount = (roomcount) => {
+            if (!roomcount) return '0개';
+            // 숫자만 추출
+            const numbers = roomcount.match(/\d+/);
+            if (numbers) {
+              return `${numbers[0]}개`;
+            }
+            return '0개';
+          };
+
           // DTO 데이터를 프론트엔드 형식으로 변환
           const transformedHotels = data.content.map(hotel => ({
             contentId: hotel.contentId,
@@ -68,8 +84,8 @@ const HotelManagement = () => {
             tel: hotel.tel,
             status: hotel.status,
             imageUrl: hotel.imageUrl,
-            rooms: hotel.hotelDetail?.roomcount || '0',
-            adminName: hotel.admin?.adminName || '',
+            rooms: extractRoomCount(hotel.hotelDetail?.roomcount),
+            adminName: hotel.admin?.adminName || '관리자 없음',
             adminEmail: hotel.admin?.adminEmail || '',
             adminPhone: hotel.admin?.adminPhone || '',
             originalData: hotel
@@ -82,6 +98,13 @@ const HotelManagement = () => {
           setHotelCount(data.totalElements || 0);
           setTotalPages(data.totalPages || 0);
           setCurrentPage(data.number || 0);
+          
+          // 통계 정보 설정
+          if (data.statistics) {
+            setOperatingHotelsCount(data.statistics.operatingCount || 0);
+            setSuspendedHotelsCount(data.statistics.suspendedCount || 0);
+            setTotalHotelsCount(data.statistics.totalCount || 0);
+          }
         } else {
           console.log('content가 없습니다. 원본 데이터 사용');
           setHotels(data.hotelList || []);
@@ -345,22 +368,16 @@ const HotelManagement = () => {
                       className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     />
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-96">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     호텔 정보
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-80">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     사업자 정보
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
-                    운영 현황
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-56">
-                    수익 정보
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     상태
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     액션
                   </th>
                 </tr>
@@ -376,36 +393,27 @@ const HotelManagement = () => {
                         className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                       />
                     </td>
-                    <td className="px-6 py-4 w-120">
+                    <td className="px-6 py-4">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{hotel.title}</div>
                         <div className="text-sm text-gray-500">{hotel.adress}</div>
-                        <div className="text-sm text-gray-500">객실 {hotel.rooms}개</div>
+                        <div className="text-sm text-gray-500">객실 {hotel.rooms}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 w-80">
+                    <td className="px-6 py-4">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{hotel.adminName}</div>
-                        <div className="text-sm text-gray-500">{hotel.adminEmail}</div>
-                        <div className="text-sm text-gray-500">{hotel.adminPhone}</div>
+                        {hotel.tel && (
+                          <div className="text-sm text-gray-500 mt-1">전화: {hotel.tel}</div>
+                        )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 w-64">
-                      <div>
-                        <div className="text-sm text-gray-900">예약 정보 없음</div>
-                        <div className="text-sm text-gray-500">등록일: 정보 없음</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 w-56">
-                      <div className="text-sm font-medium text-gray-900">정보 없음</div>
-                      <div className="text-sm text-gray-500">월 매출</div>
-                    </td>
-                    <td className="px-6 py-4 w-40">
+                    <td className="px-6 py-4">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(hotel.status)}`}>
                         {getStatusText(hotel.status)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium w-64">
+                    <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex flex-wrap gap-2">
                         <button 
                           onClick={() => handleSuspendClick(hotel)}
@@ -446,7 +454,7 @@ const HotelManagement = () => {
               
               <div className="flex justify-between items-center">
                 <div className="text-xs text-gray-500">
-                  객실 {hotel.rooms}개
+                  객실 {hotel.rooms}
                 </div>
                 <div className="flex gap-1">
                   <button 
@@ -468,7 +476,7 @@ const HotelManagement = () => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-xl lg:text-2xl font-bold text-purple-900">
-                  {hotels && hotels.length > 0 ? hotels.filter(h => h && h.status === 1).length : 0}
+                  {operatingHotelsCount}
                 </div>
                 <div className="text-sm text-purple-700">운영중인 호텔</div>
               </div>
@@ -480,7 +488,7 @@ const HotelManagement = () => {
           <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 lg:p-6 rounded-lg shadow-sm border border-green-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xl lg:text-2xl font-bold text-green-900">{hotelCount || 0}</div>
+                <div className="text-xl lg:text-2xl font-bold text-green-900">{totalHotelsCount}</div>
                 <div className="text-sm text-green-700">총 호텔 수</div>
               </div>
               <div className="w-8 h-8 lg:w-12 lg:h-12 bg-green-500 rounded-full flex items-center justify-center">
@@ -492,9 +500,9 @@ const HotelManagement = () => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-xl lg:text-2xl font-bold text-orange-900">
-                  {hotels && hotels.length > 0 ? hotels.filter(h => h && h.status === 0).length : 0}
+                  {suspendedHotelsCount}
                 </div>
-                <div className="text-sm text-orange-700">비활성 호텔</div>
+                <div className="text-sm text-orange-700">정지 호텔</div>
               </div>
               <div className="w-8 h-8 lg:w-12 lg:h-12 bg-orange-500 rounded-full flex items-center justify-center">
                 <DollarSign className="text-white w-4 h-4 lg:w-6 lg:h-6" />
