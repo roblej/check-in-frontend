@@ -346,9 +346,9 @@ export default function MyReviewsPage() {
                           {r.hotelName}
                         </p>
                       </div>
-                          <button className="p-1.5 rounded hover:bg-gray-50">
+                          {/* <button className="p-1.5 rounded hover:bg-gray-50">
                             <ChevronRight className="w-4 h-4 text-gray-400" />
-                          </button>
+                          </button> */}
                         </div>
                     <div className="flex items-center gap-1 text-xs text-gray-500 mb-0.5">
                       <MapPin className="w-3 h-3" />
@@ -444,7 +444,7 @@ export default function MyReviewsPage() {
                               >
                                 <Trash2 className="w-4 h-4 text-gray-500" />
                               </button>
-                              <ChevronRight className="w-4 h-4 text-gray-400" />
+                              {/* <ChevronRight className="w-4 h-4 text-gray-400" /> */}
                             </div>
                           </div>
                           {/* 지역 */}
