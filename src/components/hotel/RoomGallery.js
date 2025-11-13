@@ -48,7 +48,7 @@ const RoomGallery = ({
           : data;
         setImages(allImages || []);
       } catch (err) {
-        console.error("객실 이미지 로딩 오류:", err);
+        //객실 이미지 로딩 오류
         setError("이미지를 불러올 수 없습니다.");
         // 에러 시 대표 이미지만 표시
         if (mainImageUrl) {

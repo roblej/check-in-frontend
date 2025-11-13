@@ -53,7 +53,7 @@ const HotelDetailClient = ({ contentId, searchParams: serverSearchParams }) => {
           }
         }
       } catch (e) {
-        console.warn("호텔별 검색 조건 복원 실패:", e);
+        //복원 실패 로그
       }
     }
 
@@ -78,7 +78,7 @@ const HotelDetailClient = ({ contentId, searchParams: serverSearchParams }) => {
           }
         }
       } catch (e) {
-        console.warn("전역 검색 조건 복원 실패:", e);
+        //검색 조건 복원 실패 로그
       }
     }
 
@@ -166,7 +166,7 @@ const HotelDetailClient = ({ contentId, searchParams: serverSearchParams }) => {
           const { roomIdx, ...paramsToSave } = newParams;
           localStorage.setItem(hotelStorageKey, JSON.stringify(paramsToSave));
         } catch (e) {
-          console.warn("호텔별 검색 조건 저장 실패:", e);
+          //호텔별 검색 조건 저장 실패시
         }
       }
     },
@@ -207,7 +207,7 @@ const HotelDetailClient = ({ contentId, searchParams: serverSearchParams }) => {
             const { roomIdx, ...paramsToSave } = newParams;
             localStorage.setItem(hotelStorageKey, JSON.stringify(paramsToSave));
           } catch (e) {
-            console.warn("호텔별 검색 조건 저장 실패:", e);
+            //호텔별 검색 조건 저장 실패시
           }
         }
       }

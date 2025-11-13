@@ -115,8 +115,8 @@ const HotelReviews = ({
           rating: summary.rating || 0,
           reviewCount: summary.reviewCount || 0,
         };
-      } catch (error) {
-        console.error("리뷰 로드 실패:", error);
+      } catch (e) {
+        //리뷰 로드 실패
       } finally {
         setIsLoading(false);
       }

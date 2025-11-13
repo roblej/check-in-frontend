@@ -46,7 +46,6 @@ const LiveViewerCount = ({ contentId, showAlways = true, priceLabel }) => {
         );
       } catch (err) {
         // 타임아웃이나 네트워크 오류는 무시 (조회수는 선택적 기능)
-        console.warn("조회자 초기화 실패 (무시됨):", err.message);
       }
     };
 
@@ -61,7 +60,7 @@ const LiveViewerCount = ({ contentId, showAlways = true, priceLabel }) => {
         const response = await hotelAPI.getHotelViews(contentId, sessionId);
         return response?.data?.views ?? response ?? 0;
       } catch (err) {
-        console.warn("조회수 조회 실패 (무시됨):", err.message);
+        //조회수 조회 실패 무시
         return 0;
       }
     },
