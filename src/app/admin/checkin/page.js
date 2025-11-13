@@ -193,10 +193,18 @@ const CheckinPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredList.map((reservation, index) => (
+                  filteredList.map((reservation, index) => {
+                    // orderNum에서 마지막 부분만 추출 (예: hotel_142851-3490_98k9sa6d4 -> 98k9sa6d4)
+                    const getOrderNumber = (orderNum) => {
+                      if (!orderNum) return '-';
+                      const parts = orderNum.split('_');
+                      return parts.length > 1 ? parts[parts.length - 1] : orderNum;
+                    };
+
+                    return (
                     <tr key={reservation.orderIdx} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {index+1}
+                        {getOrderNumber(reservation.roomReservation?.orderNum)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {reservation.customer?.name || '정보 없음'}
@@ -222,7 +230,8 @@ const CheckinPage = () => {
                         </button>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
