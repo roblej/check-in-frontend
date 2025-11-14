@@ -291,10 +291,10 @@ const HotelSearchPageContent = () => {
     }`;
   }, []);
 
-  // 날짜 변경 핸들러 (스토어에만 저장, URL 업데이트는 검색 버튼 클릭 시)
+  // 날짜 변경 핸들러 (적용 버튼 클릭 시 localStorage에 즉시 저장)
   const handleDateChange = useCallback(
     (newCheckIn, newCheckOut) => {
-      // 스토어에만 저장 (URL은 검색 버튼 클릭 시 업데이트)
+      // 적용 버튼 클릭 시 즉시 localStorage에 저장 (Zustand persist가 자동으로 저장)
       if (isDiningMode) {
         // 다이닝 모드: 단일 날짜만
         if (newCheckIn) {
@@ -305,10 +305,12 @@ const HotelSearchPageContent = () => {
       } else {
         // 호텔 모드: 체크인/체크아웃
         updateSearchParams({
-          checkIn: newCheckIn,
-          checkOut: newCheckOut,
+          checkIn: newCheckIn || "",
+          checkOut: newCheckOut || "",
         });
       }
+      // updateSearchParams가 Zustand store를 업데이트하고 persist가 자동으로 localStorage에 저장
+      // localSearchParams는 storeSearchParams에서 가져온 값이므로 자동으로 반영됨
       setIsDatePickerOpen(false);
     },
     [isDiningMode, updateSearchParams]
