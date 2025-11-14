@@ -453,9 +453,9 @@ const HotelSearchPageContent = () => {
   const lastAllHotelsKeyRef = useRef(null); // getAllHotels 캐시 키
   const isFetchingAllHotelsRef = useRef(false); // getAllHotels 중복 호출 방지
 
-  // 전체 호텔 데이터 가져오기 (필터링용) - 필터가 활성화되어 있을 때만 호출
+  // 전체 호텔 데이터 가져오기 (필터링용) - 필터 체크 없이 항상 호출 가능
   const getAllHotels = useCallback(
-    async (destinationParam, force = false, totalElementsParam = null) => {
+    async (destinationParam, totalElementsParam = null) => {
       const currentDestination =
         destinationParam || localSearchParams.destination;
 
@@ -469,23 +469,11 @@ const HotelSearchPageContent = () => {
         return null;
       }
 
-      // 필터가 활성화되어 있는지 확인
-      const hasActiveFilters =
-        filters.priceMin > 0 ||
-        filters.priceMax < 500000 ||
-        filters.starRatings.length > 0 ||
-        filters.amenities.length > 0;
-
-      // 필터가 없고 강제 호출이 아니면 스킵
-      if (!hasActiveFilters && !force) {
-        return null;
-      }
-
       // 캐시 키: destination + hasDining
       const cacheKey = `${trimmedDestination}_${isDiningMode}`;
       
       // 이미 같은 검색어로 전체 데이터를 가져왔으면 스킵
-      if (!force && lastAllHotelsKeyRef.current === cacheKey) {
+      if (lastAllHotelsKeyRef.current === cacheKey) {
         return null;
       }
 
@@ -539,7 +527,7 @@ const HotelSearchPageContent = () => {
         isFetchingAllHotelsRef.current = false;
       }
     },
-    [localSearchParams, isDiningMode, filters, lastTotalElements]
+    [localSearchParams, isDiningMode, lastTotalElements]
   );
 
   const getHotels = useCallback(
@@ -589,7 +577,8 @@ const HotelSearchPageContent = () => {
           requestParams.hasDining = true;
         }
 
-        const res = await axios.post(
+        // 페이지 데이터 가져오기
+        const pageResponse = await axios.post(
           hotel_url,
           {
             title: trimmedDestination,
@@ -599,15 +588,15 @@ const HotelSearchPageContent = () => {
           }
         );
 
-        if (res.data) {
+        if (pageResponse.data) {
           console.log("=== 호텔 검색 결과 ===");
-          console.log("API 응답:", res.data);
+          console.log("API 응답:", pageResponse.data);
 
           // Page 형식 응답 처리
-          const hotels = res.data.content || res.data;
-          const totalPagesValue = res.data.totalPages || 0;
+          const hotels = pageResponse.data.content || pageResponse.data;
+          const totalPagesValue = pageResponse.data.totalPages || 0;
           const totalElementsValue =
-            res.data.totalElements ||
+            pageResponse.data.totalElements ||
             (Array.isArray(hotels) ? hotels.length : 0);
 
           console.log(
@@ -626,14 +615,10 @@ const HotelSearchPageContent = () => {
             setLastTotalElements(totalElementsValue);
           }
 
-          // getAllHotels는 필터가 활성화되어 있을 때만 호출되도록 getAllHotels 내부에서 체크
-          // 비동기로 호출하되 await하지 않아서 페이지 로딩을 블로킹하지 않음
-          // totalElementsValue를 전달하여 정확한 크기로 요청
-          getAllHotels(destinationParam, false, totalElementsValue).catch((error) => {
-            // getAllHotels 내부에서 필터 체크를 하므로 에러는 무시해도 됨
-            if (error) {
-              console.error("전체 호텔 데이터 가져오기 실패:", error);
-            }
+          // 페이지 데이터를 받은 후, 필터용 전체 데이터를 비동기로 가져오기
+          // await하지 않아서 페이지 로딩을 블로킹하지 않음
+          getAllHotels(destinationParam, totalElementsValue).catch((error) => {
+            console.error("전체 호텔 데이터 가져오기 실패:", error);
           });
 
           return hotels;
@@ -723,13 +708,14 @@ const HotelSearchPageContent = () => {
   }, [isDiningMode, localSearchParams.destination, getHotels]);
 
   // 필터 모달이 열릴 때 전체 데이터 가져오기 (갯수 카운트를 위해)
+  // 이미 getHotels에서 가져오므로 여기서는 필요시에만 재요청
   useEffect(() => {
     if (showFiltersPanel && localSearchParams.destination) {
       const trimmedDestination = localSearchParams.destination.trim();
       if (trimmedDestination.length >= 2 && allSearchResults.length === 0) {
         // 필터 모달이 열렸고 전체 데이터가 없으면 가져오기
         // lastTotalElements를 사용하여 정확한 크기로 요청
-        getAllHotels(localSearchParams.destination, true, lastTotalElements).catch((error) => {
+        getAllHotels(localSearchParams.destination, lastTotalElements).catch((error) => {
           console.error("필터 모달용 전체 호텔 데이터 가져오기 실패:", error);
         });
       }
@@ -748,11 +734,12 @@ const HotelSearchPageContent = () => {
       filters.amenities.length > 0;
 
     // 필터가 활성화되어 있고 전체 검색 결과가 없으면 가져오기
+    // (일반적으로 getHotels에서 이미 가져왔지만, 혹시 모를 경우를 대비)
     if (hasActiveFilters && allSearchResults.length === 0 && localSearchParams.destination) {
       const trimmedDestination = localSearchParams.destination.trim();
       if (trimmedDestination.length >= 2) {
         // lastTotalElements를 사용하여 정확한 크기로 요청
-        getAllHotels(localSearchParams.destination, true, lastTotalElements).catch((error) => {
+        getAllHotels(localSearchParams.destination, lastTotalElements).catch((error) => {
           console.error("필터링을 위한 전체 호텔 데이터 가져오기 실패:", error);
         });
         // 전체 데이터를 가져오는 동안 현재 페이지 결과만 표시
