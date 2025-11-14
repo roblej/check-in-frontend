@@ -240,10 +240,18 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {roomReservationList.map((reservation) => (
+                {roomReservationList.map((reservation) => {
+                  // orderNum에서 마지막 부분만 추출 (예: hotel_142851-3490_98k9sa6d4 -> 98k9sa6d4)
+                  const getOrderNumber = (orderNum) => {
+                    if (!orderNum) return reservation.reservIdx || '-';
+                    const parts = orderNum.split('_');
+                    return parts.length > 1 ? parts[parts.length - 1] : orderNum;
+                  };
+
+                  return (
                   <tr key={reservation.reservIdx} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {reservation.reservIdx}
+                      {getOrderNumber(reservation.orderNum)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {reservation.customer.name}
@@ -255,7 +263,7 @@ const AdminDashboard = () => {
                       {reservation.checkinDate}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {reservation.checkOut}
+                      {reservation.checkoutDate}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(reservation.status)}`}>
@@ -277,7 +285,8 @@ const AdminDashboard = () => {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
