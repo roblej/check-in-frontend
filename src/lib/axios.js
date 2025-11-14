@@ -24,7 +24,7 @@ const getAxiosInstance = () => {
       
     return axios.create({
         baseURL: `${apiUrl}/api`,
-      timeout: 10000,
+      timeout: 15000,
       headers: {
         "Content-Type": "application/json",
       },
@@ -35,7 +35,7 @@ const getAxiosInstance = () => {
   // 클라이언트 사이드
   return axios.create({
     baseURL: "/api",
-    timeout: 10000,
+    timeout: 15000,
     headers: {
       "Content-Type": "application/json",
     },
@@ -46,7 +46,7 @@ const getAxiosInstance = () => {
     console.error('Axios 인스턴스 생성 실패:', error);
     return axios.create({
       baseURL: "/api",
-      timeout: 10000,
+      timeout: 15000,
       headers: {
         "Content-Type": "application/json",
       },
@@ -68,7 +68,7 @@ try {
   // 기본 인스턴스로 폴백
   axiosInstance = axios.create({
     baseURL: "/api",
-    timeout: 10000,
+    timeout: 15000,
     headers: {
       "Content-Type": "application/json",
     },
