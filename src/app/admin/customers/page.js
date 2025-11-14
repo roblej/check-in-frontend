@@ -14,16 +14,22 @@ const CustomerManagementPage = () => {
   });
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const didFetch = useRef(false);
+  const lastFetchedPageRef = useRef(null);
 
   useEffect(() => {
-    if (didFetch.current) return;
+    if (didFetch.current && lastFetchedPageRef.current === currentPage) return;
     didFetch.current = true;
+    lastFetchedPageRef.current = currentPage;
     
     fetchCustomerStats();
     fetchCustomers();
-  }, []);
+  }, [currentPage]);
 
   const fetchCustomerStats = async () => {
     try {
@@ -44,13 +50,24 @@ const CustomerManagementPage = () => {
 
   const fetchCustomers = async () => {
     try {
-      const response = await axiosInstance.get('/admin/customers');
-      if (response.data.success && response.data.customers) {
-        setCustomers(response.data.customers || []);
+      const response = await axiosInstance.get('/admin/customers', {
+        params: {
+          page: currentPage,
+          size: pageSize
+        }
+      });
+      if (response.data.success) {
+        setCustomers(response.data.content || []);
+        setTotalPages(response.data.totalPages || 0);
+        setTotalElements(response.data.totalElements || 0);
       }
     } catch (error) {
       console.error('고객 목록 조회 오류:', error);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
   };
 
   const formatCurrency = (value) => {
@@ -143,7 +160,14 @@ const CustomerManagementPage = () => {
         {/* 고객 목록 */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">고객 목록</h3>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">고객 목록</h3>
+                <p className="text-sm text-gray-600">
+                  총 {totalElements}명의 고객이 있습니다.
+                </p>
+              </div>
+            </div>
           </div>
           
           <div className="overflow-x-auto">
@@ -221,6 +245,56 @@ const CustomerManagementPage = () => {
               </tbody>
             </table>
           </div>
+
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  총 {totalElements}명 중 {currentPage * pageSize + 1}-{Math.min((currentPage + 1) * pageSize, totalElements)}명 표시
+                </div>
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 0}
+                    className={`px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 ${currentPage === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    이전
+                  </button>
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i;
+                    } else if (currentPage < 3) {
+                      pageNum = i;
+                    } else if (currentPage > totalPages - 4) {
+                      pageNum = totalPages - 5 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <button 
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-3 py-1 text-sm border border-gray-300 rounded ${
+                          currentPage === pageNum ? 'bg-[#3B82F6] text-white' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        {pageNum + 1}
+                      </button>
+                    );
+                  })}
+                  <button 
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages - 1}
+                    className={`px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 ${currentPage >= totalPages - 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    다음
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </AdminLayout>
