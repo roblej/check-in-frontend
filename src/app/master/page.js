@@ -86,7 +86,7 @@ const MasterDashboard = () => {
       icon: <CalendarCheck size={40} />
     },
     {
-      title: '총 매출',
+      title: '이번달 총 매출',
       value: `₩${formatCurrency(paymentAmount)}`,
       icon: <CircleDollarSign size={40} />
     }
