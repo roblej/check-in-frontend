@@ -291,10 +291,10 @@ const HotelSearchPageContent = () => {
     }`;
   }, []);
 
-  // 날짜 변경 핸들러 (스토어에만 저장, URL 업데이트는 검색 버튼 클릭 시)
+  // 날짜 변경 핸들러 (적용 버튼 클릭 시 localStorage에 즉시 저장)
   const handleDateChange = useCallback(
     (newCheckIn, newCheckOut) => {
-      // 스토어에만 저장 (URL은 검색 버튼 클릭 시 업데이트)
+      // 적용 버튼 클릭 시 즉시 localStorage에 저장 (Zustand persist가 자동으로 저장)
       if (isDiningMode) {
         // 다이닝 모드: 단일 날짜만
         if (newCheckIn) {
@@ -305,10 +305,12 @@ const HotelSearchPageContent = () => {
       } else {
         // 호텔 모드: 체크인/체크아웃
         updateSearchParams({
-          checkIn: newCheckIn,
-          checkOut: newCheckOut,
+          checkIn: newCheckIn || "",
+          checkOut: newCheckOut || "",
         });
       }
+      // updateSearchParams가 Zustand store를 업데이트하고 persist가 자동으로 localStorage에 저장
+      // localSearchParams는 storeSearchParams에서 가져온 값이므로 자동으로 반영됨
       setIsDatePickerOpen(false);
     },
     [isDiningMode, updateSearchParams]
@@ -447,10 +449,12 @@ const HotelSearchPageContent = () => {
   // API 호출 중복 방지 플래그
   const isFetchingRef = useRef(false);
   const lastFetchedKeyRef = useRef(null);
+  const lastAllHotelsKeyRef = useRef(null); // getAllHotels 캐시 키
+  const isFetchingAllHotelsRef = useRef(false); // getAllHotels 중복 호출 방지
 
-  // 전체 호텔 데이터 가져오기 (필터링용)
+  // 전체 호텔 데이터 가져오기 (필터링용) - 필터가 활성화되어 있을 때만 호출
   const getAllHotels = useCallback(
-    async (destinationParam) => {
+    async (destinationParam, force = false) => {
       const currentDestination =
         destinationParam || localSearchParams.destination;
 
@@ -464,8 +468,34 @@ const HotelSearchPageContent = () => {
         return null;
       }
 
+      // 필터가 활성화되어 있는지 확인
+      const hasActiveFilters =
+        filters.priceMin > 0 ||
+        filters.priceMax < 500000 ||
+        filters.starRatings.length > 0 ||
+        filters.amenities.length > 0;
+
+      // 필터가 없고 강제 호출이 아니면 스킵
+      if (!hasActiveFilters && !force) {
+        return null;
+      }
+
+      // 캐시 키: destination + hasDining
+      const cacheKey = `${trimmedDestination}_${isDiningMode}`;
+      
+      // 이미 같은 검색어로 전체 데이터를 가져왔으면 스킵
+      if (!force && lastAllHotelsKeyRef.current === cacheKey) {
+        return null;
+      }
+
+      // 이미 호출 중이면 스킵
+      if (isFetchingAllHotelsRef.current) {
+        return null;
+      }
+
       try {
-        setIsSearching(true);
+        isFetchingAllHotelsRef.current = true;
+        lastAllHotelsKeyRef.current = cacheKey;
 
         // 전체 데이터를 가져오기 위해 큰 size 설정 (예: 1000)
         const requestParams = {
@@ -497,12 +527,13 @@ const HotelSearchPageContent = () => {
         }
       } catch (error) {
         console.error("전체 호텔 데이터 가져오기 실패:", error);
+        lastAllHotelsKeyRef.current = null; // 실패 시 재시도 가능하도록
         return null;
       } finally {
-        setIsSearching(false);
+        isFetchingAllHotelsRef.current = false;
       }
     },
-    [localSearchParams, isDiningMode]
+    [localSearchParams, isDiningMode, filters]
   );
 
   const getHotels = useCallback(
@@ -584,8 +615,14 @@ const HotelSearchPageContent = () => {
           setTotalPages(totalPagesValue);
           // totalElements는 필터링 로직에서 설정하므로 여기서는 설정하지 않음
 
-          // 전체 데이터도 함께 가져오기 (필터링용)
-          await getAllHotels(destinationParam);
+          // getAllHotels는 필터가 활성화되어 있을 때만 호출되도록 getAllHotels 내부에서 체크
+          // 비동기로 호출하되 await하지 않아서 페이지 로딩을 블로킹하지 않음
+          getAllHotels(destinationParam).catch((error) => {
+            // getAllHotels 내부에서 필터 체크를 하므로 에러는 무시해도 됨
+            if (error) {
+              console.error("전체 호텔 데이터 가져오기 실패:", error);
+            }
+          });
 
           return hotels;
         }
@@ -644,16 +681,17 @@ const HotelSearchPageContent = () => {
     currentPage,
   ]);
 
-  // 페이지 변경 시 API 재호출
+  // 페이지 변경 시 API 재호출 (전체 데이터는 가져오지 않음)
   useEffect(() => {
     if (localSearchParams.destination) {
       const trimmedDestination = localSearchParams.destination.trim();
       if (trimmedDestination.length >= 2) {
         lastFetchedKeyRef.current = null; // 페이지 변경 시 캐시 무효화
         getHotels(localSearchParams.destination, currentPage);
+        // 페이지 변경 시에는 getAllHotels를 호출하지 않음 (이미 가져온 전체 데이터 사용)
       }
     }
-  }, [currentPage, localSearchParams.destination]); // currentPage 변경 시에만 실행
+  }, [currentPage, localSearchParams.destination, getHotels]); // currentPage 변경 시에만 실행
 
   // 다이닝 모드 변경 시 검색 다시 실행
   const prevDiningModeRef = useRef(isDiningMode);
@@ -671,6 +709,19 @@ const HotelSearchPageContent = () => {
     }
     prevDiningModeRef.current = isDiningMode;
   }, [isDiningMode, localSearchParams.destination, getHotels]);
+
+  // 필터 모달이 열릴 때 전체 데이터 가져오기 (갯수 카운트를 위해)
+  useEffect(() => {
+    if (showFiltersPanel && localSearchParams.destination) {
+      const trimmedDestination = localSearchParams.destination.trim();
+      if (trimmedDestination.length >= 2 && allSearchResults.length === 0) {
+        // 필터 모달이 열렸고 전체 데이터가 없으면 가져오기
+        getAllHotels(localSearchParams.destination, true).catch((error) => {
+          console.error("필터 모달용 전체 호텔 데이터 가져오기 실패:", error);
+        });
+      }
+    }
+  }, [showFiltersPanel, localSearchParams.destination, allSearchResults.length, getAllHotels]);
   // 이전 필터/정렬 값 추적 (실제 변경 감지용)
   const prevFiltersRef = useRef(null);
 
@@ -683,8 +734,21 @@ const HotelSearchPageContent = () => {
       filters.starRatings.length > 0 ||
       filters.amenities.length > 0;
 
+    // 필터가 활성화되어 있고 전체 검색 결과가 없으면 가져오기
+    if (hasActiveFilters && allSearchResults.length === 0 && localSearchParams.destination) {
+      const trimmedDestination = localSearchParams.destination.trim();
+      if (trimmedDestination.length >= 2) {
+        getAllHotels(localSearchParams.destination, true).catch((error) => {
+          console.error("필터링을 위한 전체 호텔 데이터 가져오기 실패:", error);
+        });
+        // 전체 데이터를 가져오는 동안 현재 페이지 결과만 표시
+        setFilteredHotels(searchResults);
+        return;
+      }
+    }
+
     // 전체 검색 결과가 없으면 필터링하지 않음 (getAllHotels가 완료될 때까지 대기)
-    if (allSearchResults.length === 0 && searchResults.length > 0) {
+    if (allSearchResults.length === 0 && searchResults.length > 0 && hasActiveFilters) {
       // 전체 검색 결과가 아직 로드되지 않았으면 현재 페이지 결과만 표시
       setFilteredHotels(searchResults);
       return;
@@ -902,6 +966,8 @@ const HotelSearchPageContent = () => {
     currentPage,
     pageSize,
     router,
+    localSearchParams.destination,
+    getAllHotels,
   ]); // allSearchResults와 currentPage, pageSize 추가
 
   // 현재 페이지에 해당하는 호텔 (필터링 후 페이지네이션된 데이터)

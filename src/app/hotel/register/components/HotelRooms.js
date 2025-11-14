@@ -322,41 +322,57 @@ const HotelRooms = ({
               className="border border-gray-200 rounded-lg overflow-hidden"
             >
               {/* 객실 헤더 */}
-              <div className="bg-gray-50 px-4 py-3 flex justify-between items-center">
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm font-medium text-gray-500">
-                    객실 {index + 1}
-                  </span>
-                  <input
-                    type="text"
-                    value={room.name}
-                    onChange={(e) =>
-                      updateRoom(room.id, { name: e.target.value })
-                    }
-                    readOnly={readOnly}
-                    disabled={readOnly}
-                    className={`text-lg font-medium bg-transparent border-none focus:outline-none focus:ring-0 p-0 ${
-                      readOnly ? "cursor-not-allowed" : ""
-                    }`}
-                    placeholder="객실명을 입력하세요"
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => toggleRoomExpansion(room.id)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    {expandedRoom === room.id ? "접기" : "펼치기"}
-                  </button>
-                  {!readOnly && (
+              <div className="bg-gray-50 px-4 py-3">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center space-x-3 flex-1">
+                    <span className="text-sm font-medium text-gray-500">
+                      객실 {index + 1}
+                    </span>
+                    <input
+                      type="text"
+                      value={room.name}
+                      onChange={(e) =>
+                        updateRoom(room.id, { name: e.target.value })
+                      }
+                      readOnly={readOnly}
+                      disabled={readOnly}
+                      className={`text-lg font-medium bg-transparent border-none focus:outline-none focus:ring-0 p-0 flex-1 ${
+                        readOnly ? "cursor-not-allowed" : ""
+                      }`}
+                      placeholder="예: 스탠다드 트윈 201호"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => removeRoom(room.id)}
-                      className="text-red-400 hover:text-red-600"
+                      onClick={() => toggleRoomExpansion(room.id)}
+                      className="text-gray-400 hover:text-gray-600"
                     >
-                      삭제
+                      {expandedRoom === room.id ? "접기" : "펼치기"}
                     </button>
-                  )}
+                    {!readOnly && (
+                      <button
+                        onClick={() => removeRoom(room.id)}
+                        className="text-red-400 hover:text-red-600"
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </div>
                 </div>
+                {/* 객실명 입력 가이드라인 */}
+                {!readOnly && (
+                  <div className="mt-2 text-xs text-gray-500 bg-blue-50 border border-blue-200 rounded px-3 py-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-medium">💡 가이드:</span>
+                      <div className="flex-1">
+                        <p className="mb-1">객실을 쉽게 식별할 수 있도록 객실 타입과 번호를 함께 입력해주세요.</p>
+                        <p className="text-gray-600">
+                          <strong>예시:</strong> 스탠다드 트윈 201호, 디럭스 더블 301호, 스위트 501호, 해변뷰 트윈 A-101
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 객실 상세 정보 */}
