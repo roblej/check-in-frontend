@@ -202,9 +202,9 @@ const CheckinPage = () => {
                     };
 
                     return (
-                    <tr key={reservation.orderIdx} className="hover:bg-gray-50">
+                    <tr key={reservation.reservIdx} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {getOrderNumber(reservation.roomReservation?.orderNum)}
+                        {getOrderNumber(reservation.orderNum)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {reservation.customer?.name || '정보 없음'}
@@ -213,13 +213,13 @@ const CheckinPage = () => {
                         {reservation.customer?.phone || '정보 없음'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {reservation.roomName}
+                        {reservation.room?.name || '정보 없음'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {reservation.roomReservation.checkinDate}
+                        {reservation.checkinDate}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {reservation.roomReservation.guest}명
+                        {reservation.guest}명
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button 
