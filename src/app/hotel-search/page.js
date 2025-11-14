@@ -455,6 +455,8 @@ const HotelSearchPageContent = () => {
   const lastFetchedKeyRef = useRef(null);
   const lastAllHotelsKeyRef = useRef(null); // getAllHotels 캐시 키
   const isFetchingAllHotelsRef = useRef(false); // getAllHotels 중복 호출 방지
+  const cachedHotelsRef = useRef([]); // 캐시된 호텔 데이터 (ref로 관리)
+  const cachedPageRangeRef = useRef({ start: -1, end: -1 }); // 캐시된 페이지 범위 (ref로 관리)
 
   // 전체 호텔 데이터 가져오기 (필터링용) - 필터 체크 없이 항상 호출 가능
   const getAllHotels = useCallback(
@@ -549,6 +551,8 @@ const HotelSearchPageContent = () => {
         setIsSearching(false);
         setSearchResults([]);
         setAllSearchResults([]);
+        cachedHotelsRef.current = [];
+        cachedPageRangeRef.current = { start: -1, end: -1 };
         setCachedHotels([]);
         setCachedPageRange({ start: -1, end: -1 });
         setTotalPages(0);
@@ -557,19 +561,20 @@ const HotelSearchPageContent = () => {
       }
 
       // 캐시 확인: 현재 페이지가 캐시된 범위 안에 있는지 확인
-      if (useCache && cachedHotels.length > 0) {
-        const cachedStartPage = cachedPageRange.start;
-        const cachedEndPage = cachedPageRange.end;
+      if (useCache && cachedHotelsRef.current.length > 0) {
+        const cachedStartPage = cachedPageRangeRef.current.start;
+        const cachedEndPage = cachedPageRangeRef.current.end;
         
         if (page >= cachedStartPage && page <= cachedEndPage) {
           // 캐시에서 해당 페이지 데이터 추출
           const startIndex = (page - cachedStartPage) * pageSize;
           const endIndex = startIndex + pageSize;
-          const pageHotels = cachedHotels.slice(startIndex, endIndex);
+          const pageHotels = cachedHotelsRef.current.slice(startIndex, endIndex);
           
           if (pageHotels.length > 0) {
             console.log(`캐시에서 페이지 ${page} 데이터 사용 (${pageHotels.length}개)`);
             setSearchResults(pageHotels);
+            setIsSearching(false); // 로딩 상태 해제
             return pageHotels;
           }
         }
@@ -636,13 +641,15 @@ const HotelSearchPageContent = () => {
           console.log("총 페이지 수:", totalPagesValue);
           console.log("총 호텔 개수:", totalElementsValue);
 
-          // 50개를 캐시에 저장
+          // 50개를 캐시에 저장 (ref와 state 모두 업데이트)
           const hotelsArray = Array.isArray(allHotels) ? allHotels : [];
-          setCachedHotels(hotelsArray);
-          setCachedPageRange({ 
+          cachedHotelsRef.current = hotelsArray;
+          cachedPageRangeRef.current = { 
             start: fetchStartPage, 
             end: fetchStartPage + Math.floor(hotelsArray.length / pageSize) - 1 
-          });
+          };
+          setCachedHotels(hotelsArray);
+          setCachedPageRange(cachedPageRangeRef.current);
 
           // 현재 페이지에 해당하는 데이터 추출
           const pageIndex = page - fetchStartPage;
@@ -676,8 +683,8 @@ const HotelSearchPageContent = () => {
         setIsSearching(false); // 로딩 상태 종료
       }
     },
-    [localSearchParams, urlDestination, isDiningMode, pageSize, fetchSize, getAllHotels, cachedHotels, cachedPageRange]
-  ); // currentPage는 dependency에서 제거 (무한 루프 방지)
+    [localSearchParams, urlDestination, isDiningMode, pageSize, fetchSize, getAllHotels]
+  ); // cachedHotels, cachedPageRange는 ref로 관리하므로 dependency에서 제거
 
   // destination 변경 시에만 호텔 데이터 가져오기
   // URL 파라미터와 스토어 모두 확인하여 검색 실행
@@ -704,6 +711,8 @@ const HotelSearchPageContent = () => {
       hasInitializedRef.current = true;
       prevUrlDestinationRef.current = urlDestination;
       // 검색어가 변경되면 캐시 초기화
+      cachedHotelsRef.current = [];
+      cachedPageRangeRef.current = { start: -1, end: -1 };
       setCachedHotels([]);
       setCachedPageRange({ start: -1, end: -1 });
       // URL 파라미터를 직접 사용하여 검색 실행 (스토어 동기화 완료를 기다리지 않음)
@@ -717,6 +726,8 @@ const HotelSearchPageContent = () => {
       hasInitializedRef.current = true;
       prevDestinationRef.current = storeDestination;
       // 검색어가 변경되면 캐시 초기화
+      cachedHotelsRef.current = [];
+      cachedPageRangeRef.current = { start: -1, end: -1 };
       setCachedHotels([]);
       setCachedPageRange({ start: -1, end: -1 });
       getHotels(storeDestination, currentPage, false);
@@ -748,6 +759,8 @@ const HotelSearchPageContent = () => {
     ) {
       prevDiningModeRef.current = isDiningMode;
       // 다이닝 모드가 변경되면 캐시 초기화
+      cachedHotelsRef.current = [];
+      cachedPageRangeRef.current = { start: -1, end: -1 };
       setCachedHotels([]);
       setCachedPageRange({ start: -1, end: -1 });
       // 검색어가 있으면 다시 검색
