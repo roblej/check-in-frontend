@@ -8,10 +8,12 @@ import UsedList from './UsedList';
 import ResaleSearch from './UsedSearch';
 import HotelDetailModal from '../hotel/HotelDetailModal';
 import { usedAPI } from '@/lib/api/used';
+import { useCustomerStore } from '@/stores/customerStore';
 
 const UsedPageContent = ({ initialData, initialSearchParams }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isInlogged = useCustomerStore((state) => state.inlogged);
   
   const [data, setData] = useState({
     content: initialData?.content || [],
@@ -24,9 +26,16 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
   const [customer, setCustomer] = useState(null);
   const [customerLoading, setCustomerLoading] = useState(true);
 
-  // 사용자 정보를 한 번만 가져오기
+  // 사용자 정보를 한 번만 가져오기 (로그인한 경우에만)
   useEffect(() => {
     const fetchUserInfo = async () => {
+      // 로그인하지 않은 경우 API 호출하지 않음
+      if (!isInlogged) {
+        setCustomer(null);
+        setCustomerLoading(false);
+        return;
+      }
+
       try {
         const customerData = await usedAPI.getCustomerInfo();
         setCustomer(customerData);
@@ -44,7 +53,7 @@ const UsedPageContent = ({ initialData, initialSearchParams }) => {
     };
     
     fetchUserInfo();
-  }, []);
+  }, [isInlogged]);
 
   // 모달 상태 관리 - URL과 동기화
   const [modalState, setModalState] = useState({
