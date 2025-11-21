@@ -1,32 +1,229 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 체크인 (CheckIn) - 호텔 예약 플랫폼 프론트엔드
 
-## Getting Started
-<!-- 용준이에요~ -->
-First, run the development server:
+## 📋 프로젝트 개요
 
-```bash
-npm install
+체크인은 종합적인 호텔 예약 플랫폼으로, 사용자가 다양한 숙박시설을 검색하고 예약할 수 있는 서비스입니다.  
+PC 베이스 디자인에 모바일 반응형을 지원하는 현대적인 웹 애플리케이션입니다.
 
-npm run dev
+## 🛠 기술 스택
+
+### Core Framework
+- **Next.js 15.5.4** - React 기반 풀스택 프레임워크
+- **React 19.1.0** - UI 라이브러리
+- **Node.js 18+** - 런타임 환경
+
+### 스타일링
+- **TailwindCSS v4.0** - 유틸리티 기반 CSS 프레임워크
+- **PostCSS** - CSS 후처리
+- **Geist Sans** - 시스템 폰트
+
+### 상태 관리
+- **Zustand 5.0.8** - 경량 상태 관리 라이브러리
+  - `customerStore` - 사용자 인증 상태
+  - `searchStore` - 검색 조건 관리
+  - `reservationStore` - 예약 정보 관리
+  - `paymentStore` - 결제 정보 관리
+
+### API 통신
+- **Axios 1.12.2** - HTTP 클라이언트
+- **@tanstack/react-query 5.90.2** - 서버 상태 관리
+
+### 결제 시스템
+- **@tosspayments/payment-sdk 1.9.1** - 토스페이먼츠 결제 SDK
+
+### UI 컴포넌트
+- **@mui/material 7.3.4** - Material-UI 컴포넌트
+- **lucide-react 0.545.0** - 아이콘 라이브러리
+- **recharts 3.3.0** - 차트 라이브러리
+
+### 외부 API
+- **카카오 맵 API** - 지도 및 위치 서비스
+- **한국관광공사 Tour API** - 관광 정보 데이터
+
+### 개발 도구
+- **ESLint** - 코드 린팅
+- **Turbopack** - 빠른 빌드 도구
+
+## 🚀 시작하기
+
+### 필수 요구사항
+- Node.js 18 이상
+- npm 또는 yarn
+
+### 설치 및 실행
+
+1. **의존성 설치**
+   ```bash
+   npm install
+   ```
+
+3. **환경 변수 설정**
+   `.env.example` 파일을 참고하여 `.env.local` 파일을 생성하고 필요한 환경 변수를 설정하세요:
+   
+   ```bash
+   cp .env.example .env.local
+   ```
+   
+   필수 환경 변수:
+   - `NEXT_PUBLIC_API_URL` - 백엔드 API URL
+   - `NEXT_PUBLIC_TOSS_CLIENT_KEY` - 토스페이먼츠 클라이언트 키
+   - `NEXT_PUBLIC_KAKAO_MAP_API_KEY` - 카카오 맵 API 키
+   - `NEXT_TOUR_KEY` - 한국관광공사 Tour API 키
+   
+   > ⚠️ **주의**: `.env.local` 파일은 `.gitignore`에 포함되어 Git에 커밋되지 않습니다.
+
+4. **개발 서버 실행**
+   ```bash
+   npm run dev
+   ```
+   
+   브라우저에서 [http://localhost:3333](http://localhost:3333)을 열어 확인하세요.
+
+5. **프로덕션 빌드**
+   ```bash
+   npm run build
+   npm start
+   ```
+
+## 📁 프로젝트 구조
+
+```
+src/
+├── app/                      # Next.js App Router 페이지
+│   ├── page.js              # 메인 페이지
+│   ├── hotel-search/        # 호텔 검색 페이지
+│   ├── hotel/               # 호텔 상세 페이지
+│   ├── reservation/         # 예약 페이지
+│   ├── mypage/              # 마이페이지
+│   ├── admin/               # 관리자 페이지
+│   ├── master/              # 마스터 관리 페이지
+│   └── api/                 # API 라우트 (프록시)
+│
+├── components/              # 재사용 가능한 컴포넌트
+│   ├── Header.js            # 헤더 컴포넌트
+│   ├── Footer.js            # 푸터 컴포넌트
+│   ├── hotel/              # 호텔 관련 컴포넌트
+│   ├── payment/             # 결제 관련 컴포넌트
+│   └── admin/               # 관리자 컴포넌트
+│
+├── lib/                     # 유틸리티 및 설정
+│   ├── axios.js             # Axios 인스턴스 설정
+│   └── api/                 # API 함수 모음
+│
+├── stores/                  # Zustand 스토어
+│   ├── customerStore.js     # 사용자 상태 관리
+│   ├── searchStore.js       # 검색 조건 관리
+│   └── reservationStore.js  # 예약 정보 관리
+│
+├── hooks/                   # 커스텀 훅
+│   ├── useReservationLock.js # 예약 잠금 관리
+│   └── useRecentViewedHotels.js # 최근 본 호텔
+│
+└── utils/                   # 유틸리티 함수
+    ├── cookieUtils.js       # 쿠키 관리
+    └── formatRelativeTime.js # 시간 포맷팅
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🎯 주요 기능
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### 호텔 검색 및 예약
+- ✅ **호텔 검색**: 지역, 날짜, 인원 기반 검색
+- ✅ **필터링**: 가격, 카테고리, 편의시설 필터
+- ✅ **호텔 상세**: 이미지 갤러리, 리뷰, 위치 정보
+- ✅ **객실 예약**: 날짜별 예약 가능 여부 확인 및 예약
+- ✅ **실시간 조회수**: 20초마다 자동 갱신
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 결제 시스템
+- ✅ **토스페이먼츠 통합**: 다양한 결제 수단 지원
+- ✅ **캐시/포인트 사용**: 부분 결제 지원
+- ✅ **쿠폰 시스템**: 할인 쿠폰 적용
+- ✅ **결제 검증**: 안전한 결제 프로세스
 
-## Learn More
+### 사용자 기능
+- ✅ **회원가입/로그인**: 일반 회원가입 및 소셜 로그인 (Naver, Kakao)
+- ✅ **마이페이지**: 예약 내역, 리뷰, 문의 관리
+- ✅ **즐겨찾기**: 호텔 및 객실 북마크
+- ✅ **최근 본 호텔**: 방문 기록 관리
 
-To learn more about Next.js, take a look at the following resources:
+### 관리자 기능
+- ✅ **호텔 관리**: 호텔 등록 및 승인
+- ✅ **예약 관리**: 체크인/체크아웃 관리
+- ✅ **고객 관리**: 고객 정보 및 예약 내역 조회
+- ✅ **통계 및 리포트**: 매출, 예약 통계
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 기타 기능
+- ✅ **중고거래**: 호텔 관련 중고 상품 거래
+- ✅ **다이닝 예약**: 레스토랑 예약 시스템
+- ✅ **고객센터**: 문의 및 답변 시스템
+- ✅ **다트 게임**: 이벤트 게임
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🎨 디자인 시스템
 
-## Deploy on Vercel
+### 반응형 디자인
+- **PC 베이스**: 데스크톱 우선 설계
+- **모바일 지원**: 반응형 확장
+- **브레이크포인트**: 
+  - `sm:` (640px 이상)
+  - `md:` (768px 이상)
+  - `lg:` (1024px 이상)
+  - `xl:` (1280px 이상)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 컬러 팔레트
+- **Primary**: Blue 계열 (`#3b82f6`)
+- **Secondary**: Orange 계열
+- **Background**: Gray 계열 (`bg-gray-50`)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 애니메이션
+- 커스텀 애니메이션 (`slideInUp`, `fadeIn`, `slideInRight`)
+- 부드러운 전환 효과
+- 성능 최적화된 애니메이션
+
+## 🔧 환경 변수
+
+`.env.local` 파일에 다음 환경 변수를 설정하세요:
+
+```env
+# API 설정
+NEXT_PUBLIC_API_URL=http://localhost:8888
+BACKEND_HOST=http://localhost:8888
+
+# Toss Payments
+NEXT_PUBLIC_TOSS_CLIENT_KEY=your_toss_client_key
+TOSS_SECRET_KEY=your_toss_secret_key
+
+# 카카오 맵
+NEXT_PUBLIC_KAKAO_MAP_API_KEY=your_kakao_map_api_key
+
+# 한국관광공사 Tour API
+NEXT_TOUR_KEY=your_tour_api_key
+
+# 이미지 URL
+NEXT_PUBLIC_ROOM_IMAGE_BASE_URL=https://your-s3-bucket.s3.ap-northeast-2.amazonaws.com/room/
+
+# HTTPS 리다이렉트
+ENABLE_HTTPS_REDIRECT=false
+```
+
+자세한 내용은 `.env.example` 파일을 참고하세요.
+
+## 📚 주요 스크립트
+
+```bash
+# 개발 서버 실행
+npm run dev
+
+# 프로덕션 빌드
+npm run build
+
+# 프로덕션 서버 실행
+npm start
+
+# 린트 검사
+npm run lint
+```
+
+## 🔒 보안
+
+- 환경 변수는 `.env.local`에 저장하고 Git에 커밋하지 않습니다
+- 민감한 정보는 `NEXT_PUBLIC_` 접두사를 사용하지 않습니다
+- API 키는 서버 사이드에서만 사용합니다
