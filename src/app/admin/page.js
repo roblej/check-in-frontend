@@ -3,7 +3,7 @@
 import AdminLayout from '@/components/admin/AdminLayout';
 import ReservationDetailModal from '@/components/admin/ReservationDetailModal';
 import axiosInstance from '@/lib/axios';
-import { Building2, LogOut, Calendar, DollarSign, Users, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Building2, LogOut, DollarSign, Users, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCustomerStore } from '@/stores/customerStore';
@@ -20,7 +20,6 @@ const AdminDashboard = () => {
 
   const [todayCheckinCount, setTodayCheckinCount] = useState(0);
   const [todayCheckoutCount, setTodayCheckoutCount] = useState(0);
-  const [reservationCount, setReservationCount] = useState(0);
   const [thisMonthSales, setThisMonthSales] = useState(0);
   const [roomReservationList, setRoomReservationList] = useState([]);
   const [isLoading, setIsLoading] = useState(true); // 로딩 상태
@@ -51,7 +50,6 @@ const AdminDashboard = () => {
       console.log('대시보드 응답:', data);
       setTodayCheckinCount(data?.today?.checkinCount || 0);
       setTodayCheckoutCount(data?.today?.checkoutCount || 0);
-      setReservationCount(data?.today?.reservationCount || 0);
       setThisMonthSales(data?.today?.thisMonthSales || 0);
       setRoomReservationList(data?.recentReservations || []);
     } catch (error) {
@@ -115,11 +113,6 @@ const AdminDashboard = () => {
       icon: <LogOut size={40} />
     },
     {
-      title: '예약 대기',
-      value: `${reservationCount}`,
-      icon: <Calendar size={40} />
-    },
-    {
       title: '오늘 매출',
       value: `₩${thisMonthSales}`,
       icon: <DollarSign size={40} />
@@ -178,7 +171,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* 통계 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {stats.map((stat, index) => (
             <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">

@@ -275,10 +275,7 @@ const ReservationsPage = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{reservation.roomIdx}호</div>
-                        <div className="text-sm text-gray-500">{reservation.room.name}</div>
-                      </div>
+                      <div className="text-sm font-medium text-gray-900">{reservation.room?.name || '-'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
