@@ -382,7 +382,23 @@ const HotelApproval = () => {
                     <td className="px-6 py-4 w-120">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{request.hotelInfo?.title || '정보 없음'}</div>
-                        <div className="text-sm text-gray-500">{request.hotelInfo?.adress || '주소 정보 없음'}</div>
+                        <div className="text-sm text-gray-500">
+                          {(() => {
+                            const hotelInfo = request.hotelInfo;
+                            if (!hotelInfo) return '주소 정보 없음';
+                            
+                            // baseAddress와 detailAddress가 있으면 조합하여 표시
+                            if (hotelInfo.baseAddress) {
+                              const fullAddress = hotelInfo.detailAddress 
+                                ? `${hotelInfo.baseAddress} ${hotelInfo.detailAddress}`.trim()
+                                : hotelInfo.baseAddress;
+                              return fullAddress || hotelInfo.adress || '주소 정보 없음';
+                            }
+                            
+                            // 하위 호환성: adress가 있으면 사용
+                            return hotelInfo.adress || '주소 정보 없음';
+                          })()}
+                        </div>
                         <div className="text-sm text-gray-500">객실 {request.hotelInfo?.rooms || 0}개</div>
                       </div>
                     </td>

@@ -204,7 +204,21 @@ const MasterDashboard = () => {
                       {request.admin?.adminName || '-'}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                      {request.hotelInfo?.adress || '-'}
+                      {(() => {
+                        const hotelInfo = request.hotelInfo;
+                        if (!hotelInfo) return '-';
+                        
+                        // baseAddress와 detailAddress가 있으면 조합하여 표시
+                        if (hotelInfo.baseAddress) {
+                          const fullAddress = hotelInfo.detailAddress 
+                            ? `${hotelInfo.baseAddress} ${hotelInfo.detailAddress}`.trim()
+                            : hotelInfo.baseAddress;
+                          return fullAddress || hotelInfo.adress || '-';
+                        }
+                        
+                        // 하위 호환성: adress가 있으면 사용
+                        return hotelInfo.adress || '-';
+                      })()}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                       {request.hotelInfo?.rooms || 0}개

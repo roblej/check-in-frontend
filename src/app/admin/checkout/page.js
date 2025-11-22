@@ -162,7 +162,7 @@ const CheckoutPage = () => {
                     연락처
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    객실번호
+                    객실
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     체크인일
@@ -192,10 +192,18 @@ const CheckoutPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredList.map((reservation, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
+                  filteredList.map((reservation, index) => {
+                    // orderNum에서 마지막 부분만 추출 (예: hotel_142851-3490_98k9sa6d4 -> 98k9sa6d4)
+                    const getOrderNumber = (orderNum) => {
+                      if (!orderNum) return '-';
+                      const parts = orderNum.split('_');
+                      return parts.length > 1 ? parts[parts.length - 1] : orderNum;
+                    };
+
+                    return (
+                    <tr key={reservation.reservIdx} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {index+1}
+                        {getOrderNumber(reservation.orderNum)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {reservation.customer?.name || '정보 없음'}
@@ -204,16 +212,16 @@ const CheckoutPage = () => {
                         {reservation.customer?.phone || '정보 없음'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {reservation.roomName}호
+                        {reservation.room?.name || '정보 없음'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {reservation.roomReservation.checkinDate}
+                        {reservation.checkinDate}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {reservation.roomReservation.checkoutDate}
+                        {reservation.checkoutDate}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {reservation.roomReservation.guest}명
+                        {reservation.guest}명
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button 
@@ -224,7 +232,8 @@ const CheckoutPage = () => {
                         </button>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
