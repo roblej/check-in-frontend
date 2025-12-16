@@ -43,9 +43,9 @@ jobs:
         ssh-private-key: ${{ secrets.FRONTEND_EC2_SSH_KEY }}
     - name: Create SSL Files
       run: |
-        mkdir -p ssl
-        echo "${{ secrets.SSL_CERT }}" > ssl/certificate.crt
-        echo "${{ secrets.SSL_KEY }}" > ssl/private.key
+        mkdir -p nginx/ssl
+        echo "${{ secrets.SSL_CERT }}" > nginx/ssl/certificate.crt
+        echo "${{ secrets.SSL_KEY }}" > nginx/ssl/private.key
     # ==========================================================
     # ⚡️ 속도 개선 1: tar로 압축하여 단일 파일로 전송
     # ==========================================================
@@ -58,7 +58,6 @@ jobs:
           docker-compose.yml \
           .dockerignore \
           nginx/ \
-          ssl/ \
           .next/ \
           public/ \
           src/ \
