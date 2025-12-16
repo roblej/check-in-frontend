@@ -27,6 +27,7 @@ server {
     
     # HTTP 요청을 HTTPS로 리다이렉트
     return 301 https://$server_name$request_uri;
+
 }
 
 # API 프록시용 서버 (백엔드로 직접 프록시)

@@ -25,7 +25,7 @@ services:
     restart: always
     volumes:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
-      - ./ssl:/etc/nginx/ssl:ro  # SSL 인증서 디렉토리 마운트
+      - ./nginx/ssl:/etc/nginx/ssl:ro  # SSL 인증서 디렉토리 마운트
     ports:
       - "80:80"
       - "443:443"
