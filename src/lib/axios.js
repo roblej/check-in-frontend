@@ -103,15 +103,15 @@ axiosInstance.interceptors.response.use(
     // 에러 처리
     if (error.response) {
       // 401 에러 처리 (인증 실패)
-      if (error.response.status === 401) {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("accessToken");
-          // 현재 페이지가 에러 페이지가 아닐 때만 리다이렉트
-          if (!window.location.pathname.startsWith('/error/')) {
-            window.location.href = '/error/401';
-          }
-        }
-      }
+      // if (error.response.status === 401) {
+      //   if (typeof window !== "undefined") {
+      //     localStorage.removeItem("accessToken");
+      //     // 현재 페이지가 에러 페이지가 아닐 때만 리다이렉트
+      //     if (!window.location.pathname.startsWith('/error/')) {
+      //       window.location.href = '/error/401';
+      //     }
+      //   }
+      // }
 
       // 403 에러 처리 (권한 없음)
       if (error.response.status === 403) {
